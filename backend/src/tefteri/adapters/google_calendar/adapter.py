@@ -15,7 +15,7 @@ from tefteri.domain.entities import (
     RemoteEntry,
 )
 from tefteri.domain.enums import Capability, ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable
+from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 
 API = "https://www.googleapis.com/calendar/v3"
 TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105
@@ -55,17 +55,25 @@ class GoogleCalendarBackend:
         return {Capability.RECURRING}
 
     async def _refresh(self) -> str:
-        response = await request(
-            self._client,
-            "POST",
-            TOKEN_URL,
-            data={
-                "grant_type": "refresh_token",
-                "refresh_token": self._refresh_token,
-                "client_id": self._client_id,
-                "client_secret": self._client_secret,
-            },
-        )
+        try:
+            response = await request(
+                self._client,
+                "POST",
+                TOKEN_URL,
+                ok_conflict_statuses=(),
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": self._refresh_token,
+                    "client_id": self._client_id,
+                    "client_secret": self._client_secret,
+                },
+            )
+        except (BackendUnavailable, AuthExpired):
+            raise
+        except BackendError as exc:
+            # Google answers 400 ``invalid_grant`` for an expired or revoked refresh token
+            # (and 400/401 for a bad client): the account must be reconnected.
+            raise AuthExpired("Google rejected the stored credentials") from exc
         self._access_token = str(response.json()["access_token"])
         return self._access_token
 

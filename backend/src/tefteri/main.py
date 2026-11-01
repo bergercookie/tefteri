@@ -18,6 +18,7 @@ from tefteri.api.routers import conflicts as conflicts_router
 from tefteri.api.routers import connections as connections_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
+from tefteri.api.routers import reviews as reviews_router
 from tefteri.api.routers import sync as sync_router
 from tefteri.api.routers import tasks as tasks_router
 from tefteri.api.routers import users as users_router
@@ -35,6 +36,7 @@ from tefteri.services.connections import AdapterRegistry, ConnectionService
 from tefteri.services.goals import GoalService
 from tefteri.services.google_oauth import GoogleOAuth
 from tefteri.services.notes import NoteService
+from tefteri.services.reviews import ReviewService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 from tefteri.services.users import UserService
@@ -106,7 +108,9 @@ def create_app(
     app.state.task_service = task_service
     app.state.goal_service = GoalService(task_service)
     app.state.calendar_service = CalendarService(connection_service)
-    app.state.note_service = NoteService(connection_service)
+    note_service = NoteService(connection_service)
+    app.state.note_service = note_service
+    app.state.review_service = ReviewService(note_service)
     app.state.conflict_service = ConflictService(connection_service)
     app.state.user_service = UserService()
     app.state.google_oauth = (
@@ -140,6 +144,7 @@ def create_app(
         views_router,
         conflicts_router,
         planning_router,
+        reviews_router,
         users_router,
     ):
         app.include_router(r.router, prefix="/api/v1")

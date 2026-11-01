@@ -1,4 +1,5 @@
-"""The whole app on PostgreSQL (asyncpg): migrations, sign-in, sync, writes, goals, user delete.
+"""The whole app on PostgreSQL (asyncpg): migrations, sign-in, sync, writes, goals, reviews,
+notes, user delete.
 
 Runs only when ``TEFTERI_TEST_POSTGRES_URL`` is set. The CI Postgres job runs it with
 ``just backend::test-postgres``.
@@ -88,6 +89,27 @@ async def test_main_flow_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> N
     await pg_api.patch(f"{V1}/tasks/{task['id']}", json={"goal_id": goal["id"]})
     goals = (await pg_api.get(f"{V1}/goals")).json()
     assert goals[0]["progress"] == 1.0
+
+    # Review, retrospective and a process note linked to the task (JSON columns, FKs).
+    plan = (
+        await pg_api.post(
+            f"{V1}/plans",
+            json={"period_type": "year", "period_start": "2026-01-01", "title": "2026"},
+        )
+    ).json()
+    review = (await pg_api.get(f"{V1}/plans/{plan['id']}/review")).json()
+    assert (review["planned_count"], review["completed_count"]) == (2, 2)
+    saved = await pg_api.put(
+        f"{V1}/plans/{plan['id']}/review/retrospective", json={"body": "Good year."}
+    )
+    assert saved.json()["retrospective"]["kind"] == "retrospective"
+    note = (
+        await pg_api.post(
+            f"{V1}/notes", json={"title": "Steps", "kind": "process", "task_ids": [task["id"]]}
+        )
+    ).json()
+    assert note["task_ids"] == [task["id"]]
+    assert (await pg_api.delete(f"{V1}/notes/{note['id']}")).status_code == 204
 
 
 async def test_conflict_and_cascades_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> None:

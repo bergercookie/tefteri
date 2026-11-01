@@ -10,7 +10,7 @@ import respx
 from tefteri.adapters.vikunja import VikunjaTaskBackend
 from tefteri.domain.entities import Container, TaskDraft, TaskPatch
 from tefteri.domain.enums import ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable, RemoteConflict
 
 BASE = "https://vikunja.test/api/v1"
 
@@ -45,7 +45,8 @@ async def test_lists_projects_and_tasks_with_auth_header(backend: VikunjaTaskBac
     assert containers == [Container("2", "Work")]
     page = await backend.list_tasks(containers[0], None)
     assert page.items[0].title == "Write report"
-    assert page.items[0].due_at is None and page.items[0].version == "2026-11-01T10:00:00Z"
+    assert page.items[0].due_at is None
+    assert page.items[0].version.startswith("2026-11-01T10:00:00Z#")
     assert projects.calls[0].request.headers["authorization"] == "Bearer tok"
     assert tasks.call_count == 1
 
@@ -87,8 +88,9 @@ async def test_set_schedule_writes_start_and_end(backend: VikunjaTaskBackend) ->
         json=task_json(start_date="2026-11-02T09:00:00Z", end_date="2026-11-02T10:00:00Z")
     )
     start = datetime(2026, 11, 2, 9, tzinfo=UTC)
+    current = await backend.get_task("7")
     task = await backend.set_schedule(
-        "7", start, datetime(2026, 11, 2, 10, tzinfo=UTC), "2026-11-01T10:00:00Z"
+        "7", start, datetime(2026, 11, 2, 10, tzinfo=UTC), current.version
     )
     assert task.scheduled_start == start
     sent = post.calls[0].request.content.decode()
@@ -121,3 +123,24 @@ async def test_error_mapping(backend: VikunjaTaskBackend) -> None:
     respx.get(f"{BASE}/projects").respond(503)
     with pytest.raises(BackendUnavailable):
         await backend.list_containers()
+
+
+@respx.mock
+async def test_version_detects_writes_within_the_same_second(backend: VikunjaTaskBackend) -> None:
+    # ``updated`` has second resolution: a remote edit in the same second must still conflict.
+    respx.get(f"{BASE}/tasks/7").respond(json=task_json())
+    seen = await backend.get_task("7")
+    respx.get(f"{BASE}/tasks/7").respond(json=task_json(title="Edited in Vikunja"))
+    with pytest.raises(RemoteConflict):
+        await backend.update_task("7", TaskPatch(title="x"), seen.version)
+
+
+@respx.mock
+async def test_invalid_data_is_not_a_conflict(backend: VikunjaTaskBackend) -> None:
+    # Vikunja answers 412 "Invalid Data" for validation errors; that is no version conflict.
+    respx.put(f"{BASE}/projects/2/tasks").respond(
+        412, json={"code": 2002, "message": "Invalid Data", "invalid_fields": ["title"]}
+    )
+    with pytest.raises(BackendError) as raised:
+        await backend.create_task(TaskDraft("2", ""))
+    assert not isinstance(raised.value, RemoteConflict)

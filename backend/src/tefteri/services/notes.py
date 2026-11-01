@@ -1,4 +1,4 @@
-"""Note use cases: the daily note and links between notes and tasks."""
+"""Note use cases: the daily note, custom and process notes, and links between notes and tasks."""
 
 import uuid
 from datetime import date
@@ -12,12 +12,16 @@ from tefteri.db.models.links import TaskNoteLink
 from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
 from tefteri.db.repositories.items import NoteRepository, TaskNoteLinkRepository
-from tefteri.domain.entities import NoteDraft, RemoteNote
-from tefteri.domain.enums import ConnectionKind, SyncState
+from tefteri.domain.entities import NoteDraft, NotePatch, RemoteNote
+from tefteri.domain.enums import ConnectionKind, Context, SyncState
 from tefteri.domain.ports import NoteBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
 from tefteri.services.mirror import note_values
+from tefteri.services.tasks import UNSET
+
+# Kinds a user creates directly; daily notes come from ``daily`` and retrospectives from reviews.
+USER_KINDS = frozenset({"custom", "process"})
 
 
 class NoteService:
@@ -125,18 +129,6 @@ class NoteService:
             TaskNoteLink(task_id=task.id, note_id=note.id)
         )
 
-    async def create_for_task(
-        self, db: AsyncSession, user_id: uuid.UUID, task: Task, title: str, body: str = ""
-    ) -> Note:
-        """Create a custom note in the note app and link it to ``task``."""
-        connection = await self.notes_connection(db, user_id)
-        remote = await guard(
-            connection, self._backend(connection).create_note(NoteDraft(title, body))
-        )
-        note = await self._mirror(db, user_id, connection, remote, "custom")
-        await self.link(db, user_id, task, note)
-        return note
-
     async def linked_notes(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> list[Note]:
         """Return the notes linked to a task."""
         rows = (
@@ -144,6 +136,86 @@ class NoteService:
                 select(Note)
                 .join(TaskNoteLink, TaskNoteLink.note_id == Note.id)
                 .where(TaskNoteLink.task_id == task.id, Note.user_id == user_id)
+            )
+        ).scalars()
+        return list(rows)
+
+    async def create(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        *,
+        title: str,
+        body: str = "",
+        kind: str = "custom",
+        context: Context | None = None,
+        connection_id: uuid.UUID | None = None,
+        tasks: list[Task] | None = None,
+    ) -> Note:
+        """Create a note in the note app, cache it and link it to ``tasks``."""
+        connection = await self.notes_connection(db, user_id, connection_id)
+        remote = await guard(
+            connection, self._backend(connection).create_note(NoteDraft(title, body))
+        )
+        note = await self._mirror(db, user_id, connection, remote, kind)
+        note.context = context.value if context is not None else None
+        for task in tasks or []:
+            await self.link(db, user_id, task, note)
+        await db.flush()
+        return note
+
+    async def update(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        note: Note,
+        *,
+        title: str | None = None,
+        body: str | None = None,
+        context: object = UNSET,
+    ) -> Note:
+        """Change a note. Title and body go to the note app first; ``context`` stays local."""
+        if context is not UNSET:
+            note.context = None if context is None else Context(str(context)).value
+        if title is not None or body is not None:
+            connection = await self.notes_connection(db, user_id, note.connection_id)
+            remote = await guard(
+                connection,
+                self._backend(connection).update_note(
+                    note.remote_id, NotePatch(title=title, body=body), note.remote_version
+                ),
+            )
+            self._apply(note, remote)
+        await db.flush()
+        return note
+
+    async def delete(self, db: AsyncSession, user_id: uuid.UUID, note: Note) -> None:
+        """Delete a note in the note app, then in the cache (its task links go with it)."""
+        connection = await self.notes_connection(db, user_id, note.connection_id)
+        await guard(connection, self._backend(connection).delete_note(note.remote_id))
+        await NoteRepository(db, user_id).delete(note)
+
+    async def unlink(self, db: AsyncSession, user_id: uuid.UUID, task: Task, note: Note) -> None:
+        """Remove the link between a task and a note; both stay."""
+        link = (
+            await db.execute(
+                select(TaskNoteLink).where(
+                    TaskNoteLink.task_id == task.id,
+                    TaskNoteLink.note_id == note.id,
+                    TaskNoteLink.user_id == user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if link is not None:
+            await TaskNoteLinkRepository(db, user_id).delete(link)
+
+    async def linked_tasks(self, db: AsyncSession, user_id: uuid.UUID, note: Note) -> list[Task]:
+        """Return the tasks linked to a note (the other direction of ``linked_notes``)."""
+        rows = (
+            await db.execute(
+                select(Task)
+                .join(TaskNoteLink, TaskNoteLink.task_id == Task.id)
+                .where(TaskNoteLink.note_id == note.id, Task.user_id == user_id)
             )
         ).scalars()
         return list(rows)

@@ -35,4 +35,13 @@ depends_on = ["tefteri.services", "tefteri.domain", "tefteri.db", "tefteri.auth"
 
 [[modules]]
 path = "tefteri"
-depends_on = ["tefteri.api", "tefteri.services", "tefteri.adapters", "tefteri.db", "tefteri.auth", "tefteri.security", "tefteri.domain", "tefteri.config"]
+depends_on = [
+  "tefteri.api",
+  "tefteri.services",
+  "tefteri.adapters",
+  "tefteri.db",
+  "tefteri.auth",
+  "tefteri.security",
+  "tefteri.domain",
+  "tefteri.config",
+]

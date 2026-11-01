@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
@@ -76,6 +76,7 @@ class TaskNoteIn(BaseModel):
     note_id: uuid.UUID | None = None
     title: str | None = Field(default=None, min_length=1, max_length=500)
     body: str = ""
+    kind: Literal["custom", "process"] = "custom"
 
 
 @router.get("")
@@ -199,5 +200,32 @@ async def link_note(
         note = await notes.get(db, user.id, body.note_id)
         await notes.link(db, user.id, task, note)
     else:
-        note = await notes.create_for_task(db, user.id, task, body.title or task.title, body.body)
+        note = await notes.create(
+            db,
+            user.id,
+            title=body.title or task.title,
+            body=body.body,
+            kind=body.kind,
+            tasks=[task],
+        )
     return NoteOut.of(note, await load_maps(db, user.id))
+
+
+@router.get("/{task_id}/notes")
+async def task_notes(
+    task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
+) -> list[NoteOut]:
+    """List the notes linked to the task."""
+    task = await _tasks(request).get(db, user.id, task_id)
+    maps = await load_maps(db, user.id)
+    return [NoteOut.of(n, maps) for n in await _notes(request).linked_notes(db, user.id, task)]
+
+
+@router.delete("/{task_id}/notes/{note_id}", status_code=204)
+async def unlink_note(
+    task_id: uuid.UUID, note_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
+) -> None:
+    """Remove the link between the task and a note; both stay."""
+    task = await _tasks(request).get(db, user.id, task_id)
+    notes = _notes(request)
+    await notes.unlink(db, user.id, task, await notes.get(db, user.id, note_id))

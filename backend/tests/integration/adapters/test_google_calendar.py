@@ -116,9 +116,11 @@ async def test_create_update_if_match_and_delete(backend: GoogleCalendarBackend)
 
 @respx.mock
 async def test_revoked_refresh_token_and_outage(backend: GoogleCalendarBackend) -> None:
+    # Google answers 400 ``invalid_grant`` (not 401) for an expired or revoked refresh token.
     respx.post(TOKEN_URL).respond(400, json={"error": "invalid_grant"})
-    with pytest.raises(Exception, match="400"):
+    with pytest.raises(AuthExpired):
         await backend.list_containers()
+    assert (await backend.check_connection()).status is ConnectionStatus.NEEDS_ATTENTION
     respx.post(TOKEN_URL).respond(401)
     with pytest.raises(AuthExpired):
         await backend.list_containers()

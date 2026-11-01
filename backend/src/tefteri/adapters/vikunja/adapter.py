@@ -1,5 +1,7 @@
 """Vikunja task adapter (REST API v1, API-token auth)."""
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -19,6 +21,15 @@ from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflic
 
 _ZERO_DATE = "0001-01-01T00:00:00Z"
 _PAGE_SIZE = 50
+_VERSIONED_FIELDS = (
+    "project_id",
+    "title",
+    "description",
+    "done",
+    "due_date",
+    "start_date",
+    "end_date",
+)
 
 
 def _parse(value: str | None) -> datetime | None:
@@ -29,6 +40,17 @@ def _parse(value: str | None) -> datetime | None:
 
 def _fmt(value: datetime | None) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if value else _ZERO_DATE
+
+
+def _version(data: dict[str, Any]) -> str:
+    """Return the task's version: its ``updated`` stamp plus a digest of the mapped fields.
+
+    Vikunja has no optimistic locking and ``updated`` has second resolution, so two writes
+    within one second share a stamp; the digest tells them apart.
+    """
+    fields = json.dumps([data.get(name) for name in _VERSIONED_FIELDS], default=str)
+    digest = hashlib.sha256(fields.encode()).hexdigest()[:12]
+    return f"{data.get('updated', '')}#{digest}"
 
 
 class VikunjaTaskBackend:
@@ -45,8 +67,15 @@ class VikunjaTaskBackend:
         return {Capability.TASK_TIME, Capability.RECURRING}
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
+        # Vikunja answers 412 for invalid data and 409 for duplicates, never for a version
+        # mismatch (versions are checked here), so neither means ``RemoteConflict``.
         response = await request(
-            self._client, method, self._base + path, headers=self._headers, **kwargs
+            self._client,
+            method,
+            self._base + path,
+            headers=self._headers,
+            ok_conflict_statuses=(),
+            **kwargs,
         )
         return response.json()
 
@@ -60,7 +89,7 @@ class VikunjaTaskBackend:
             due_at=_parse(data.get("due_date")),
             scheduled_start=_parse(data.get("start_date")),
             scheduled_end=_parse(data.get("end_date")),
-            version=str(data.get("updated", "")),
+            version=_version(data),
         )
 
     async def list_containers(self) -> list[Container]:
@@ -109,7 +138,7 @@ class VikunjaTaskBackend:
         self, remote_id: str, expected_version: str | None, changes: dict[str, Any]
     ) -> RemoteTask:
         current = await self._call("GET", f"/tasks/{remote_id}")
-        if expected_version is not None and str(current.get("updated", "")) != expected_version:
+        if expected_version is not None and _version(current) != expected_version:
             raise RemoteConflict(f"task {remote_id} changed remotely")
         current.update(changes)
         return self._task(await self._call("POST", f"/tasks/{remote_id}", json=current))

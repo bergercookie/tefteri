@@ -81,3 +81,17 @@ def test_0004_creates_goals_plans_and_links_tasks(
     insp = inspect(alembic_engine)
     assert "goals" not in insp.get_table_names()
     assert "goal_id" in {c["name"] for c in insp.get_columns("tasks")}  # column came from 0002
+
+
+def test_0005_creates_period_reviews(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0005")
+    insp = inspect(alembic_engine)
+    assert "period_reviews" in insp.get_table_names()
+    uniques = [set(u["column_names"]) for u in insp.get_unique_constraints("period_reviews")]
+    assert {"plan_id"} in uniques
+    alembic_runner.migrate_down_one()
+    insp = inspect(alembic_engine)
+    assert "period_reviews" not in insp.get_table_names()
+    assert "plans" in insp.get_table_names()
