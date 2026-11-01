@@ -127,3 +127,21 @@ async def test_google_oauth_flow(make_settings, world: FakeWorld) -> None:  # ty
 async def test_google_oauth_not_configured(api: AsyncClient) -> None:
     r = await api.get(f"{V1}/connections/google/authorize")
     assert r.status_code == 503 and r.json()["code"] == "google_not_configured"
+
+
+async def test_google_redirect_uses_public_url_when_set(make_settings, world: FakeWorld) -> None:  # type: ignore[no-untyped-def]
+    settings = make_settings(
+        google_client_id="gid", google_client_secret="gs", public_url="https://tefteri.example.org/"
+    )
+    app = create_app(settings, registry=world.registry())
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        login = await c.post(
+            f"{V1}/auth/login", json={"username": "admin", "password": "correct horse battery"}
+        )
+        c.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        url = (await c.get(f"{V1}/connections/google/authorize")).json()["url"]
+        redirect = parse_qs(urlparse(url).query)["redirect_uri"][0]
+        assert redirect == "https://tefteri.example.org/api/v1/connections/google/callback"

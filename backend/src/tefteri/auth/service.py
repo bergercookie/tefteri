@@ -76,7 +76,7 @@ class AuthService:
         return await self.issue_session(db, user)
 
     async def issue_session(self, db: AsyncSession, user: User) -> tuple[str, datetime]:
-        """Create a session for ``user`` (also used by SSO login)."""
+        """Create a session for ``user``."""
         token = secrets.token_urlsafe(32)
         expires = self._clock() + self._lifetime
         db.add(AuthSession(user_id=user.id, token_hash=_digest(token), expires_at=expires))

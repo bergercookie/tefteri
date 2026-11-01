@@ -4,13 +4,13 @@ install:
     uv sync
 
 test:
-    uv run pytest -m "not postgres" tests/unit tests/integration
+    uv run pytest -m "not postgres" --ignore=tests/smoke
 
 e2e:
     uv run pytest tests/e2e
 
 test-postgres:
-    uv run pytest -m postgres tests/integration
+    uv run pytest -m postgres
 
 run:
     uv run uvicorn tefteri.main:create_app --factory --reload

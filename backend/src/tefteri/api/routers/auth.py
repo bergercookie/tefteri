@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from tefteri.api.deps import AuthDep, CurrentUser, Db, SettingsDep, Token
+from tefteri.api.deps import AuthDep, CurrentUser, Db, Token
 from tefteri.api.errors import ApiError
 from tefteri.auth.service import InvalidCredentials
 from tefteri.auth.throttle import Throttled
@@ -41,14 +41,11 @@ class MethodsResponse(BaseModel):
     """Enabled login methods."""
 
     password: bool
-    oidc: bool
 
 
 @router.post("/login")
-async def login(body: LoginRequest, db: Db, auth: AuthDep, settings: SettingsDep) -> LoginResponse:
+async def login(body: LoginRequest, db: Db, auth: AuthDep) -> LoginResponse:
     """Exchange username and password for a bearer token."""
-    if not settings.password_login_enabled:
-        raise ApiError(403, "password_login_disabled", "Password login is disabled")
     try:
         token, expires = await auth.login(db, body.username, body.password)
     except Throttled as exc:
@@ -79,6 +76,6 @@ async def me(user: CurrentUser) -> MeResponse:
 
 
 @router.get("/methods")
-async def methods(settings: SettingsDep) -> MethodsResponse:
+async def methods() -> MethodsResponse:
     """List enabled login methods."""
-    return MethodsResponse(password=settings.password_login_enabled, oidc=settings.oidc_enabled)
+    return MethodsResponse(password=True)

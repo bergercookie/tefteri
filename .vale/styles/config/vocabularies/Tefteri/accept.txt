@@ -9,9 +9,7 @@ Alembic
 SQLite
 PostgreSQL
 Argon2
-OIDC
 OAuth
-Authelia
 devbox
 justfile
 pre-commit

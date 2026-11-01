@@ -12,7 +12,6 @@ dependencies = [
   "aiosqlite>=0.20",
   "asyncpg>=0.30",
   "httpx>=0.27",
-  "authlib>=1.3",
   "argon2-cffi>=23.1",
   "cryptography>=43",
   "itsdangerous>=2.2",
@@ -62,7 +61,7 @@ files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["authlib.*", "respx.*"]
+module = ["respx.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

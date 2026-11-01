@@ -19,15 +19,12 @@ def upgrade() -> None:
         "users",
         sa.Column("username", sa.String(length=150), nullable=False),
         sa.Column("password_hash", sa.String(length=255), nullable=True),
-        sa.Column("oidc_issuer", sa.String(length=255), nullable=True),
-        sa.Column("oidc_subject", sa.String(length=255), nullable=True),
         sa.Column("is_admin", sa.Boolean(), nullable=False),
         sa.Column("timezone", sa.String(length=64), nullable=False),
         sa.Column("disabled", sa.Boolean(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("oidc_issuer", "oidc_subject"),
         sa.UniqueConstraint("username"),
     )
     op.create_table(

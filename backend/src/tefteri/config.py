@@ -17,11 +17,7 @@ class Settings(BaseSettings):
     admin_password_hash: str
     secret_key: str = Field(min_length=16)
 
-    oidc_issuer: str | None = None
-    oidc_client_id: str | None = None
-    oidc_client_secret: str | None = None
-    password_login_enabled: bool = True
-
+    public_url: str | None = None  # base URL for OAuth redirect addresses behind a proxy
     google_client_id: str | None = None
     google_client_secret: str | None = None
 
@@ -41,8 +37,3 @@ class Settings(BaseSettings):
                 "admin_password_hash must be an Argon2 hash (generate with `just hash-password`)"
             ) from exc
         return value
-
-    @property
-    def oidc_enabled(self) -> bool:
-        """Whether OIDC login is fully configured."""
-        return bool(self.oidc_issuer and self.oidc_client_id and self.oidc_client_secret)

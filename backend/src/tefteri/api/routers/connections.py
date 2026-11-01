@@ -18,6 +18,13 @@ from tefteri.services.google_oauth import GoogleOAuth, InvalidState
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 
+def _callback_url(request: Request, public_url: str | None) -> str:
+    """Return the Google callback URL, using the configured public base URL when set."""
+    if public_url:
+        return f"{public_url.rstrip('/')}/api/v1/connections/google/callback"
+    return str(request.url_for("google_callback"))
+
+
 def get_connection_service(request: Request) -> ConnectionService:
     """Return the connection service."""
     service: ConnectionService = request.app.state.connection_service
@@ -131,7 +138,7 @@ async def google_authorize(
     oauth: GoogleOAuth | None = request.app.state.google_oauth
     if oauth is None:
         raise ApiError(503, "google_not_configured", "Google sign-in is not configured")
-    redirect = str(request.url_for("google_callback"))
+    redirect = _callback_url(request, settings.public_url)
     url = oauth.authorize_url(
         user.id, redirect, {"name": display_name, "context": default_context.value}
     )
@@ -142,6 +149,7 @@ async def google_authorize(
 async def google_callback(
     request: Request,
     db: Db,
+    settings: SettingsDep,
     code: str,
     state: str,
     service: ConnectionService = Service,
@@ -154,7 +162,7 @@ async def google_callback(
         data = oauth.read_state(state)
     except InvalidState as exc:
         raise ApiError(400, "invalid_state", "Invalid or expired sign-in request") from exc
-    refresh_token = await oauth.exchange_code(code, str(request.url_for("google_callback")))
+    refresh_token = await oauth.exchange_code(code, _callback_url(request, settings.public_url))
     connection = await service.create(
         db,
         uuid.UUID(data["user_id"]),

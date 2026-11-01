@@ -68,6 +68,6 @@ async def test_session_expires_after_lifetime(make_settings: Callable[..., Setti
 
 
 async def test_methods_health_version(client: AsyncClient) -> None:
-    assert (await client.get("/api/v1/auth/methods")).json() == {"password": True, "oidc": False}
+    assert (await client.get("/api/v1/auth/methods")).json() == {"password": True}
     assert (await client.get("/health")).json() == {"status": "ok"}
     assert "version" in (await client.get("/version")).json()
