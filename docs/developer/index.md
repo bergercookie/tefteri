@@ -7,4 +7,5 @@ These guides are for people who change or deploy tefteri.
 
 architecture
 adding-an-adapter
+deployment
 ```
