@@ -4,8 +4,7 @@ All user-owned entities carry `user_id`; every query is scoped by it (FR-015). I
 Timestamps are UTC with an explicit time zone on the user.
 
 ## User
-- `id`, `username` (unique), `password_hash` (nullable for SSO-only users), `oidc_subject`
-  (nullable, unique with issuer), `is_admin`, `timezone`, `created_at`, `disabled`.
+- `id`, `username` (unique), `password_hash`, `is_admin`, `timezone`, `created_at`, `disabled`.
 - Rules: admin created from deployment config; only admins create users (FR-022).
 
 ## Connection
@@ -22,7 +21,7 @@ Timestamps are UTC with an explicit time zone on the user.
 - `id`, `user_id`, `connection_id`, `container_id`, `remote_id`, `title`, `description`,
   `status` (`open` | `done`), `due_at`, `scheduled_start`, `scheduled_end`, `all_day`,
   `context` (nullable override), `goal_id` (nullable), `remote_version` (etag/updated),
-  `sync_state`, `deleted_remotely`.
+  `sync_state` (`synced` | `conflict` | `deleted_remotely`).
 - Effective context = task override, else container context, else connection default.
 - Unique: (`connection_id`, `remote_id`).
 

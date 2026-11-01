@@ -64,3 +64,6 @@ image `ghcr.io/bergercookie/tefteri:nightly`).
 9. Documentation: open the built docs (`just docs::build`). Confirm that `user/` and
    `developer/` are separate sections, that each user guide can be followed without reading
    code, and that `vale` reports no findings on the README, CONTRIBUTING and `docs/`.
+10. Screenshots: run `just docs::screenshots`. Confirm that `docs/images/` has changes only for
+   screens you changed, that each user guide shows the screen it describes with alt text, and that
+   no image shows real credentials or personal data.

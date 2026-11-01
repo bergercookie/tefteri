@@ -15,7 +15,7 @@
 - Q: Which task manager, calendar and note-taking apps must tefteri support in its first version? → A: One app per kind: Vikunja (tasks), Google Calendar (calendar, including both personal/family calendars, such as the shared family calendar, and company/workspace accounts), and Trilium Next (notes).
 - Q: When the same item has been changed both in tefteri and in the connected app since the last sync, how should tefteri resolve it? → A: Ask the user per conflict, showing both versions.
 - Q: Where should tefteri's own planning data (goals, plans, work/life labels, reviews) live? → A: tefteri's own store is the source of truth for it; retrospectives are also written to Trilium Next as notes.
-- Q: How do people sign in and get their own account on a tefteri installation? → A: Admin-created accounts with username and password, plus optional sign-in through an external SSO/OIDC identity provider (e.g. Authelia). The first admin is created at deployment from a pre-computed password hash; raw passwords are never accepted by configuration.
+- Q: How do people sign in and get their own account on a tefteri installation? → A: Admin-created accounts with username and password. Sign-in through an external SSO/OIDC identity provider is planned for a later version (out of scope for v1). The first admin is created at deployment from a pre-computed password hash; raw passwords are never accepted by configuration.
 - Q: When the user schedules a task at a time, should tefteri also create a Google Calendar event? → A: No. Scheduling only sets the task's date/time in Vikunja; tefteri's calendar view shows scheduled tasks alongside Google Calendar events.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -114,7 +114,6 @@ Several people use the same tefteri installation. Each has their own account, co
 1. **Given** two users, **When** each signs in, **Then** each sees only their own items and connected apps.
 2. **Given** a signed-out visitor, **When** they try to access any data, **Then** access is denied.
 3. **Given** a fresh deployment configured with an admin username and password hash, **When** the admin signs in with the matching password, **Then** they can create further user accounts.
-4. **Given** an SSO/OIDC provider is configured, **When** a user signs in through it, **Then** they land in their own tefteri account and see only their own data.
 
 ---
 
@@ -205,8 +204,8 @@ A user working at a keyboard can move between all views (daily, weekly, monthly,
 - **FR-020**: The set of supported apps MUST be extensible, so that supporting a new task manager, calendar or note-taking app does not change the user-facing behaviour described here.
 - **FR-021**: Credentials and access tokens for connected apps MUST be stored securely and MUST NOT be visible to other users.
 - **FR-022**: The initial administrator MUST be created at first deployment from deployment configuration that supplies a pre-computed password hash; the system MUST NOT accept or store a raw password in configuration. Open self-registration MUST NOT exist; only an administrator can create further accounts.
-- **FR-023**: The system MUST support signing in through a configurable external SSO/OIDC identity provider (e.g. Authelia) in addition to username and password, and MUST be able to run with either method enabled alone.
-- **FR-024**: The system MUST temporarily block further sign-in attempts after 5 consecutive failures for an account or source address within 15 minutes (for 15 minutes), and MUST expire sessions after a configurable period that defaults to 8 hours.
+- **FR-023**: *(Removed from v1: SSO/OIDC sign-in is deferred to a later version. The number is kept so other references stay stable.)*
+- **FR-024**: The system MUST temporarily block further sign-in attempts after 5 consecutive failures for an account within 15 minutes (for 15 minutes), and MUST expire sessions after a configurable period that defaults to 8 hours.
 - **FR-025**: Every tagged release MUST produce downloadable Linux desktop packages (`.deb`, AppImage), an Android package and a server container image published to the project's container registry.
 - **FR-026**: A nightly build MUST publish a container image reachable under a stable `nightly` tag, versioned as `<previous-stable-release>.<commit-hash>.post<N>`, where N counts nightly builds since that stable release. The nightly build also publishes the client packages to a rolling "nightly" pre-release.
 - **FR-027**: Every change MUST be verified by an automated pipeline that runs the same lint, type, architecture-boundary and test checks developers run locally.
@@ -243,6 +242,7 @@ A user working at a keyboard can move between all views (daily, weekly, monthly,
 
 ## Assumptions
 
+- SSO/OIDC sign-in (for example with Authelia) is out of scope for v1 and will be specified later. v1 has username and password sign-in only.
 - Initial scope covers exactly three apps: Vikunja for tasks, Google Calendar for calendar entries (personal/family and company accounts, possibly several at once), and Trilium Next for notes. Additional apps follow later under FR-020.
 - The user's own apps remain the system of record for tasks, calendar entries and notes; tefteri's own store is the source of truth for goals, plans, work/life labels and reviews, and only retrospectives are additionally written to the note-taking app.
 - Sync is user-triggered (sync button) in v1; automatic background sync is out of scope for v1.

@@ -10,9 +10,8 @@ return that user's data. Item list endpoints accept `context=all|work|life` (def
 
 ## Auth
 - `POST /auth/login` - username + password → session/token.
-- `GET /auth/oidc/login`, `GET /auth/oidc/callback` - SSO login (when enabled).
 - `POST /auth/logout`, `GET /auth/me`.
-- `GET /auth/methods` - which login methods are enabled.
+- `GET /auth/methods` - which login methods are enabled (v1: `{"password": true}`).
 
 ## Users (admin only)
 - `GET /users`, `POST /users`, `PATCH /users/{id}`, `DELETE /users/{id}`.

@@ -26,12 +26,13 @@ requested by the user are marked **(user)**.
 
 ## R-04 Pre-commit as the single check file **(user)**
 - **Decision**: `.pre-commit-config.yaml` lists every check. Hooks are `language: system` and
-  call `just <recipe>` for tool-specific steps, so the tool invocation lives in the justfile
-  modules. `just lint` runs `pre-commit run --all-files`. Recipes that hooks call MUST NOT
-  call `just lint`, which would be circular.
-- **Rationale**: Developers, CI and agents get identical checks and use only `just`.
-- **Alternatives**: Separate lint recipes per tool without pre-commit (loses the one-file
-  overview and git-hook integration).
+  call the linters directly (`ruff`, `mypy`, `tach`, `yamllint`, `flutter analyze`, ...).
+  `just lint` runs `pre-commit run --all-files`. CI runs `just lint`. Constitution
+  Principle II allows this exception.
+- **Rationale**: One file lists every check, and no `just` recipe is needed for each tool.
+  People and CI still use only `just lint`.
+- **Alternatives**: Separate lint recipes per tool (loses the one-file overview and git-hook
+  integration); hooks that call `just` recipes (extra indirection, rejected by the user).
 
 ## R-05 Linter for every technology **(user)**
 
@@ -127,46 +128,33 @@ technology requires adding its linter and configuration in the same change.
 - **Decision**: Password logins verify against an Argon2 hash stored per user. The initial
   admin comes from `TEFTERI_ADMIN_USERNAME` and `TEFTERI_ADMIN_PASSWORD_HASH` (pre-computed
   hash, never a raw password); the server refuses to start on a value that is not a valid
-  hash. Admin-only account creation; no self-registration. Optional OIDC login via Authlib
-  (Authorization Code with PKCE); either method can be disabled. API access uses an expiring
+  hash. Admin-only account creation; no self-registration. SSO/OIDC login is deferred
+  to a later version. API access uses an expiring
   bearer token / secure session cookie issued after login.
-- **Rationale**: Meets FR-022, FR-023, FR-015.
+- **Rationale**: Meets FR-022, FR-015 (FR-023, SSO, is deferred).
 
-## R-14 Secrets at rest
-- **Decision**: App tokens and OAuth refresh tokens are encrypted with a key supplied through
-  configuration (Fernet). Losing the key means users reconnect their apps; nothing else is
-  lost.
-
-## R-15 Client
-- **Decision**: Flutter with Riverpod for state, go_router, dio for HTTP; client generated
-  against the OpenAPI document where practical. Views: daily, weekly, monthly, annual, goals,
-  review, notes, settings/connections, plus a global sync button and
-  all/life/work switch. Navigation between views uses Flutter's `Shortcuts`/`Actions` with a
-  central keymap (`frontend/lib/core/shortcuts/`) and a help overlay; plain-key shortcuts are
-  disabled while a text field has focus.
-- **Alternatives**: A web-only UI (does not meet the Flutter requirement).
-
-## R-16 HTTP client **(user)**
-- **Decision**: Use `httpx` for all adapter and OIDC HTTP calls. `httpx2` (Pydantic's
-  continuation of httpx) was considered and rejected by the user.
-- **Rationale**: Established ecosystem support: `respx` for mocking, Authlib's httpx
-  integration and FastAPI's `TestClient` all work with `httpx` directly.
-
-## R-13 Documentation audiences and ASD-STE100 **(constitution VI)**
-- **Decision**: Two documentation sections with separate tables of contents. `docs/user/`:
-  task-based guides (install the client, connect Vikunja, Google Calendar and Trilium Next,
-  plan a day and a week, schedule tasks, resolve conflicts, keyboard shortcuts,
-  troubleshooting an unavailable app). `docs/developer/`: architecture and layering (`tach`),
-  `just` recipes, adapter and API contracts, how to add an adapter, testing, migrations,
-  releases and nightly versions, deployment (incl. Authelia). The README links to both.
-- **Style enforcement**: Vale with a custom `STE` style (sentence length, passive voice,
-  contractions, simpler-word list, semicolons), listed in `.pre-commit-config.yaml`, so
-  `just lint` and CI run it. Rules Vale cannot check (approved vocabulary, one word one
-  meaning, procedure structure) are checked in review.
-- **Rationale**: The official ASD-STE100 dictionary is licensed and cannot be bundled, so the
-  tool check is an approximation, not a certification. Splitting by audience keeps end-user
-  pages free of code detail.
-- **Alternatives considered**: One mixed docs tree (readers must filter); a full STE
-  checker such as a licensed Simplified Technical English product (cost, not scriptable in
-  `just`).
-- **Open item**: Vale has not yet been run on the existing prose (tracked as T120).
+## R-14 Screenshots and diagrams in documentation **(constitution VI, v1.2.0)**
+- **Decision**:
+  1. **App screens** (user guides): Flutter golden tests in `frontend/test/screenshots/`. Each
+     test builds one screen or state with fake providers and fake data (daily view, sync
+     result, unavailable app, conflict, planning views, review, notes, shortcut help) and
+     writes a PNG into `docs/images/`. `just docs::screenshots` regenerates them
+     (`flutter test --update-goldens`). The maintainers run it by hand once in a while and
+     commit the result. There is no automatic stale-image check. An open-licence font is
+     bundled and loaded in the tests so text renders as text, not blocks.
+  2. **Diagrams** (developer guides): Mermaid blocks in the Markdown (architecture layers,
+     sync flow, conflict flow), rendered by Sphinx.
+- **Checks**: `scripts/check_docs.sh` fails when an image in the docs has no alt text or points
+  to a missing file. Vale and review cover the surrounding prose.
+- **Rationale**: Golden tests need no display, run in plain `flutter test`, double as UI
+  regression tests, and use fake data by construction (no real credentials or personal data).
+- **Alternatives considered**: VHS terminal recordings (cannot capture the Flutter UI; not
+  useful enough for now, skipped by the user); `integration_test` under Xvfb with
+  `takeScreenshot` (native rendering, but slower, needs a virtual display); Playwright against
+  the web build (adds a Node toolchain); a CI stale-image check (declined: manual runs
+  instead); hand-made screenshots (forbidden by the constitution).
+- **Risks**: golden images differ between operating systems and Flutter versions, so generate
+  them in the pinned devbox on Linux, with Flutter pinned in `devbox.json`. Images can become
+  outdated between manual runs; the constitution still requires regenerating the images of a
+  screen in the same change that alters it, and review enforces this. Flutter is not
+  installed in the agent environment, so the first run must happen in `devbox shell`.

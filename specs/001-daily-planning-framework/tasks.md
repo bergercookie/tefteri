@@ -11,7 +11,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 **Tests**: Included. The constitution (Principle V, non-negotiable) requires automated tests for all new behaviour, so each story has test tasks that are written first and must fail before the implementation.
 
-**Documentation**: Constitution Principle VI applies to every story: each story ships its user guide (`docs/user/`) and, where relevant, its developer guide (`docs/developer/`) in ASD-STE100, in the same phase as the behaviour. Vale (`just lint`) and `just docs::build` must pass.
+**Documentation**: Constitution Principle VI applies to every story: each story ships its user guide (`docs/user/`) and, where relevant, its developer guide (`docs/developer/`) in ASD-STE100, in the same phase as the behaviour. Vale (`just lint`) and `just docs::build` must pass. User guides show the app with screenshots from golden tests (`just docs::screenshots`, run by hand), and developer guides use Mermaid diagrams (constitution VI).
 
 **Organization**: Tasks are grouped by user story (US1-US9, priority order from spec.md). All commands run through `just` recipes (constitution Principle II).
 
@@ -27,7 +27,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 - [X] T001 Create the directory skeleton from plan.md: `backend/src/tefteri/{api,services,domain,adapters/{vikunja,google_calendar,trilium},db,auth,security}`, `backend/tests/{unit,integration,e2e,smoke}`, `frontend/`, `deploy/`, `packaging/{deb,appimage}`, `scripts/`, `docs/`
 - [X] T002 Create `devbox.json` pinning python, uv, just, pre-commit, shellcheck, shfmt, hadolint, yamllint, actionlint, markdownlint-cli2, taplo and flutter; document Docker (and Android SDK if needed) as exceptions in `README.md`
-- [X] T003 Create `backend/pyproject.toml` (uv-managed deps: fastapi, pydantic, sqlalchemy[asyncio], alembic, aiosqlite, asyncpg, httpx, authlib, argon2-cffi, cryptography; dev: pytest, pytest-asyncio, respx, coverage, ruff, mypy, tach) with ruff (including pydocstyle rules so public modules, classes and functions must be documented), strict mypy and pytest config covering `src` and `tests`
+- [X] T003 Create `backend/pyproject.toml` (uv-managed deps: fastapi, pydantic, sqlalchemy[asyncio], alembic, aiosqlite, asyncpg, httpx, argon2-cffi, cryptography; dev: pytest, pytest-asyncio, respx, coverage, ruff, mypy, tach) with ruff (including pydocstyle rules so public modules, classes and functions must be documented), strict mypy and pytest config covering `src` and `tests`
 - [X] T004 [P] Create `tach.toml` declaring modules `api`, `services`, `domain`, `adapters`, `db`, `auth`, `security` and the rule `api → services → domain ← adapters` (adapters never imported by core)
 - [X] T005 Create the root `justfile` that declares them as modules (`mod backend 'backend/backend.just'`, etc., called as `backend::test`) and defines aggregators `lint`, `test`, `build`, `run`
 - [X] T006 [P] Create `backend/backend.just` as a just module (`mod backend`) with recipes `install`, `test`, `e2e`, `test-postgres`, `run`, `openapi`, `migrate`, called as `just backend::test`
@@ -43,6 +43,11 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T119 [P] Add Vale with a custom ASD-STE100 style (`.vale.ini`, `.vale/styles/STE/`), `vale` in `devbox.json` and a pre-commit hook for `README.md`, `CONTRIBUTING.md` and `docs/*.md`
 - [ ] T120 Run `vale` in `devbox shell`, fix all findings in existing prose and tune the STE rules (the hook is written but not yet run); every docs task (T092, T107, T114, quickstart) must pass it
 - [X] T121 [P] Restructure `docs/` for the two audiences (constitution VI): move `docs/architecture.md` to `docs/developer/architecture.md`, create `docs/user/index.md` and `docs/developer/index.md`, make `docs/index.md` link both sections, keep `just docs::build` (-W) passing, and add any new technical terms to `.vale/styles/config/vocabularies/Tefteri/accept.txt`
+- [ ] T147 [P] Run the shared adapter contract suite (`backend/tests/integration/test_backend_contracts.py`) against the real Vikunja, Google Calendar and Trilium adapters, using a stateful respx fake server per app, so the contract in `contracts/backend-ports.md` holds for every adapter
+- [X] T148 [P] Wire all backend tests into `just`: `backend::test` runs unit, integration, migrations and e2e tests (not smoke, not `postgres`-marked); add `backend/tests/migrations/test_postgres.py` (marked `postgres`, reads `TEFTERI_TEST_POSTGRES_URL`, upgrades to head and downgrades to base); `backend::test-postgres` runs the marked tests
+- [ ] T149 Run `just frontend::analyze` and `just frontend::test` in `devbox shell` and fix findings in the Flutter code written so far (T031, T048-T051); do T133 (pin Flutter) first
+- [ ] T133 [P] Set up Mermaid diagrams in the docs: add `sphinxcontrib-mermaid` to `docs/requirements.txt`, enable it in `docs/conf.py`, keep `just docs::build` (-W) passing, and pin the Flutter version in `devbox.json` so screenshots are reproducible
+- [ ] T134 [P] Set up app screenshots: bundle an open-licence font in `frontend/assets/fonts/` (declare it in `frontend/pubspec.yaml`), add the shared helper `frontend/test/screenshots/screenshot_helper.dart` (loads the font, fixed window size and fake data, writes the PNG to `docs/images/`), and add the recipe `screenshots` to `docs/docs.just` (`just docs::screenshots` runs `flutter test --update-goldens test/screenshots`; run by hand, no CI check)
 
 ---
 
@@ -52,10 +57,10 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] T015 Implement settings in `backend/src/tefteri/config.py` (env-based: `TEFTERI_DATABASE_URL`, `TEFTERI_ADMIN_USERNAME`, `TEFTERI_ADMIN_PASSWORD_HASH`, `TEFTERI_SECRET_KEY`, OIDC options, `TEFTERI_GOOGLE_CLIENT_ID`/`TEFTERI_GOOGLE_CLIENT_SECRET`, login throttling limits (default 5 failures per 15 minutes, 15-minute block) and session lifetime (default 8 hours)); startup MUST fail if the admin value is not a valid Argon2 hash (never accept a raw password)
+- [X] T015 Implement settings in `backend/src/tefteri/config.py` (env-based: `TEFTERI_DATABASE_URL`, `TEFTERI_ADMIN_USERNAME`, `TEFTERI_ADMIN_PASSWORD_HASH`, `TEFTERI_SECRET_KEY`, `TEFTERI_GOOGLE_CLIENT_ID`/`TEFTERI_GOOGLE_CLIENT_SECRET`, login throttling limits per account (default 5 failures per 15 minutes, 15-minute block), session lifetime (default 8 hours) and `TEFTERI_PUBLIC_URL` (base URL used for OAuth redirect addresses)); startup MUST fail if the admin value is not a valid Argon2 hash (never accept a raw password)
 - [X] T016 Implement async engine/session factory supporting SQLite (aiosqlite) and PostgreSQL (asyncpg) in `backend/src/tefteri/db/session.py`
 - [X] T017 Set up Alembic in `backend/migrations/` with async env and an initial migration that works on both SQLite and Postgres (portable SQLAlchemy constructs only)
-- [X] T018 [P] Implement `User` model in `backend/src/tefteri/db/models/user.py`: `username` unique, `password_hash` nullable (SSO-only users), `oidc_subject` nullable and unique with issuer, `is_admin`, `timezone`, `disabled`
+- [X] T018 [P] Implement `User` model in `backend/src/tefteri/db/models/user.py`: `username` unique, `password_hash` (nullable), `is_admin`, `timezone`, `disabled`
 - [X] T019 [P] Implement `Connection` and `SourceContainer` models in `backend/src/tefteri/db/models/connection.py` with `kind` (`tasks`|`calendar`|`notes`), `provider`, `default_context` (`work`|`life`), `encrypted_credentials`, `status` (`ok`|`needs_attention`|`error`), container `context` override
 - [X] T020 [P] Implement `SyncRun` and `Conflict` models in `backend/src/tefteri/db/models/sync.py` (`resolution`: `keep_local`|`keep_remote`; item `sync_state`: `synced`|`conflict`|`deleted_remotely`)
 - [X] T021 [P] Implement token encryption (Fernet) in `backend/src/tefteri/security/crypto.py`
@@ -107,6 +112,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T051 [P] [US1] Flutter widget tests and a backend integration test (stopped fake backend, expired credentials) for the service-unavailable flow in `frontend/test/features/settings/` and `backend/tests/integration/test_service_unavailable.py`
 - [X] T122 [P] [US1] User guides in `docs/user/connect-apps.md` (connect Vikunja, Google Calendar accounts and Trilium Next, use Sync, read last-sync status) and `docs/user/troubleshooting.md` (an app is unreachable, credentials expired: what the message means, Retry, Reconnect), written in ASD-STE100
 - [X] T123 [P] [US1] Developer guide `docs/developer/adding-an-adapter.md`: the three ports, capabilities and errors, the shared contract test suite, how to record HTTP fixtures, and the `tach` layering rule, written in ASD-STE100
+- [ ] T135 [P] [US1] Screenshot tests in `frontend/test/screenshots/connections_test.dart` (fake data, no real credentials or personal data) writing the connections list, a sync result and the unavailable-app card (unreachable and credentials expired) to `docs/images/`; embed them with alt text in `docs/user/connect-apps.md` and `docs/user/troubleshooting.md` next to the steps they show
 
 **Checkpoint**: US1 independently functional (MVP)
 
@@ -133,6 +139,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T059 [P] [US2] Implement the Flutter daily view (entries, tasks, daily note, quick add, complete, delete; show clear messages for unreachable apps and unsupported actions) in `frontend/lib/features/daily/`
 - [ ] T060 [P] [US2] Flutter widget tests for the daily view in `frontend/test/features/daily/`
 - [ ] T124 [P] [US2] User guide `docs/user/daily-planning.md` (daily view, add/complete/delete tasks, the daily note, link a note to a task), written in ASD-STE100
+- [ ] T136 [P] [US2] Screenshot tests in `frontend/test/screenshots/daily_test.dart` (fake data, no real credentials or personal data) writing the daily view (entries, tasks, daily note) and quick add to `docs/images/`; embed them with alt text in `docs/user/daily-planning.md` next to the steps they show
 
 **Checkpoint**: US1 + US2 work together
 
@@ -158,6 +165,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T067 [P] [US3] Implement the Flutter calendar view with drag/choose-time scheduling and distinct styling for tasks vs entries and clear unsupported/unreachable messages in `frontend/lib/features/calendar/`
 - [ ] T068 [P] [US3] Flutter widget tests for scheduling interactions in `frontend/test/features/calendar/`
 - [ ] T125 [P] [US3] User guide `docs/user/scheduling.md` (put a task on the calendar, why no calendar event is created, edit calendar entries, overlaps, apps that cannot store a time), written in ASD-STE100
+- [ ] T137 [P] [US3] Screenshot tests in `frontend/test/screenshots/calendar_test.dart` (fake data, no real credentials or personal data) writing the calendar view with a task scheduled beside entries, and the unsupported-app message to `docs/images/`; embed them with alt text in `docs/user/scheduling.md` next to the steps they show
 
 **Checkpoint**: All P1 stories independently functional
 
@@ -171,6 +179,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T070 Implement conflict detection in the sync/write-through services and `GET /conflicts`, `POST /conflicts/{id}/resolve` in `backend/src/tefteri/services/conflicts.py` and `api/routers/conflicts.py`
 - [ ] T071 [P] Implement the Flutter conflict resolution screen showing both versions in `frontend/lib/features/conflicts/`
 - [ ] T126 [P] User guide `docs/user/conflicts.md` (what a conflict is, compare both versions, keep local or keep remote), written in ASD-STE100
+- [ ] T138 [P] Screenshot tests in `frontend/test/screenshots/conflicts_test.dart` (fake data, no real credentials or personal data) writing the conflict screen showing both versions to `docs/images/`; embed them with alt text in `docs/user/conflicts.md` next to the steps they show
 
 ---
 
@@ -192,6 +201,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T076 [P] [US4] Wire the global all/life/work switch to every Flutter view and show an "unclassified" marker in `frontend/lib/core/context_filter.dart`
 - [ ] T077 [P] [US4] Flutter tests for the context switch across views in `frontend/test/core/context_filter_test.dart`
 - [ ] T127 [P] [US4] User guide `docs/user/work-and-life.md` (label items and containers, the all/life/work switch, the unclassified marker), written in ASD-STE100
+- [ ] T139 [P] [US4] Screenshot tests in `frontend/test/screenshots/context_test.dart` (fake data, no real credentials or personal data) writing the all/life/work switch and the unclassified marker to `docs/images/`; embed them with alt text in `docs/user/work-and-life.md` next to the steps they show
 
 ---
 
@@ -215,12 +225,13 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T084 [P] [US5] Implement Flutter weekly, monthly and annual views and goal breakdown UI, including scheduling goal-derived tasks onto a day or time from any planning view in `frontend/lib/features/{week,month,year,goals}/`
 - [ ] T085 [P] [US5] Flutter widget tests for planning views in `frontend/test/features/`
 - [ ] T128 [P] [US5] User guide `docs/user/planning-goals.md` (goals for year, month and week, break a goal down, progress, schedule from a planning view), written in ASD-STE100
+- [ ] T140 [P] [US5] Screenshot tests in `frontend/test/screenshots/planning_test.dart` (fake data, no real credentials or personal data) writing the weekly, monthly and annual views and the goal breakdown to `docs/images/`; embed them with alt text in `docs/user/planning-goals.md` next to the steps they show
 
 ---
 
 ## Phase 9: User Story 6 - Multiple users (Priority: P2)
 
-**Goal**: Several users, admin-created, each isolated; SSO/OIDC optional.
+**Goal**: Several users, admin-created, each isolated. Sign-in is by username and password only; SSO/OIDC is deferred to a later version.
 
 **Independent Test**: Two users with different connections see only their own data; signed-out access denied.
 
@@ -228,15 +239,16 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 - [ ] T086 [P] [US6] Integration tests: cross-user access to every resource type returns nothing/404, and unauthenticated requests are denied, in `backend/tests/integration/test_isolation.py`
 - [ ] T087 [P] [US6] Integration tests for admin-only user management and no self-registration in `backend/tests/integration/test_users.py`
-- [ ] T088 [P] [US6] Integration tests for OIDC login against a fake provider, including running with only one login method enabled, in `backend/tests/integration/test_oidc.py`
+- [ ] T088 [P] [US6] Integration tests for the `/auth/methods` endpoint and for admin-created users signing in with the password the admin set (a disabled user cannot sign in), in `backend/tests/integration/test_sign_in.py`
 
 ### Implementation for User Story 6
 
-- [ ] T089 [US6] Implement admin-only `GET/POST/PATCH/DELETE /users` in `backend/src/tefteri/api/routers/users.py`
-- [ ] T090 [US6] Implement OIDC login (Authorization Code with PKCE via Authlib) in `backend/src/tefteri/auth/oidc.py` and `/auth/oidc/login|callback`; support enabling either method alone (e.g. Authelia as provider)
-- [ ] T091 [P] [US6] Implement Flutter admin user management screen and OIDC login button in `frontend/lib/features/{admin,auth}/`
-- [ ] T092 [P] [US6] Document multi-user setup, admin bootstrap with a password hash, and Authelia configuration in `docs/developer/deployment.md` (audience: administrators and developers), written in ASD-STE100
-- [ ] T129 [P] [US6] User guide `docs/user/accounts-and-sign-in.md` (sign in with password or SSO, session expiry, blocked sign-in after repeated failures, administrator user management), written in ASD-STE100
+- [ ] T089 [US6] Implement admin-only `GET/POST/PATCH/DELETE /users` (the admin sets the initial password, stored as an Argon2 hash; users can be disabled) in `backend/src/tefteri/api/routers/users.py`
+- [X] T090 Remove the unfinished SSO/OIDC parts (settings, `oidc_*` user columns, `/auth/methods` oidc flag, `authlib` dependency) until SSO is specified in a later version
+- [ ] T091 [P] [US6] Implement Flutter admin user management screen in `frontend/lib/features/{admin,auth}/`
+- [ ] T092 [P] [US6] Document multi-user setup, admin bootstrap with a password hash, and reverse-proxy deployment in `docs/developer/deployment.md` (audience: administrators and developers), written in ASD-STE100
+- [ ] T129 [P] [US6] User guide `docs/user/accounts-and-sign-in.md` (sign in with a password, session expiry, blocked sign-in after repeated failures, administrator user management), written in ASD-STE100
+- [ ] T141 [P] [US6] Screenshot tests in `frontend/test/screenshots/accounts_test.dart` (fake data, no real credentials or personal data) writing the login screen and the admin user management screen to `docs/images/`; embed them with alt text in `docs/user/accounts-and-sign-in.md` next to the steps they show
 
 ---
 
@@ -259,6 +271,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T098 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
 - [ ] T099 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
 - [ ] T130 [P] [US7] User guide `docs/user/reviews-and-retrospectives.md` (open a review, planned versus done, save a retrospective to your notes app, plan history), written in ASD-STE100
+- [ ] T142 [P] [US7] Screenshot tests in `frontend/test/screenshots/review_test.dart` (fake data, no real credentials or personal data) writing the review, retrospective and plan history screens to `docs/images/`; embed them with alt text in `docs/user/reviews-and-retrospectives.md` next to the steps they show
 
 ---
 
@@ -278,6 +291,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T102 [US8] Implement note endpoints `POST/PATCH/DELETE /notes` and `POST /tasks/{id}/notes` in `backend/src/tefteri/api/routers/notes.py`
 - [ ] T103 [P] [US8] Implement Flutter notes screens (list, edit, open from a task) in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
 - [ ] T131 [P] [US8] User guide `docs/user/notes-and-processes.md` (documentation and process notes, link them to tasks, open from a task), written in ASD-STE100
+- [ ] T143 [P] [US8] Screenshot tests in `frontend/test/screenshots/notes_test.dart` (fake data, no real credentials or personal data) writing the notes list and note editor to `docs/images/`; embed them with alt text in `docs/user/notes-and-processes.md` next to the steps they show
 
 ---
 
@@ -296,6 +310,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T105 [US9] Implement a central keymap with Flutter `Shortcuts`/`Actions` for the daily, weekly, monthly, annual, goals, review, notes and settings views plus sync and the all/life/work switch in `frontend/lib/core/shortcuts/`
 - [ ] T106 [US9] Implement the shortcut help overlay (opened with `?`) generated from the keymap, and suppress plain-key shortcuts while a text field has focus, in `frontend/lib/core/shortcuts/`
 - [ ] T107 [P] [US9] Document all shortcuts in `docs/user/shortcuts.md` (user guide, written in ASD-STE100)
+- [ ] T144 [P] [US9] Screenshot tests in `frontend/test/screenshots/shortcuts_test.dart` (fake data, no real credentials or personal data) writing the shortcut help overlay to `docs/images/`; embed them with alt text in `docs/user/shortcuts.md` next to the steps they show
 
 ---
 
@@ -312,19 +327,22 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T114 [P] Write the remaining docs: `docs/user/getting-started.md` (install the client, first sign-in, company Google OAuth approval) and `docs/developer/{setup,testing,releases}.md` (devbox and `just`, tests and migrations, release and nightly versioning), all in ASD-STE100
 - [ ] T115 [P] Add performance tests for the sync target (2,000 tasks / 1,000 entries / 500 notes < 30 s) in `backend/tests/integration/test_sync_performance.py`
 - [ ] T116 [P] Add an automated review-latency test (a review for a year of goals and tasks opens in under 5 seconds, SC-008) in `backend/tests/integration/test_review_performance.py`
-- [ ] T132 [P] Add a docs coverage check `scripts/check_docs.sh` (behind `just docs::check`, shellcheck-clean) that fails when a page listed in `docs/user/index.md` or `docs/developer/index.md` is missing, and when a user guide required by tasks T122, T124-T131, T107 and T114 does not exist
-- [ ] T117 Run the full `quickstart.md` validation (`just lint`, `just test`, just docs::build, e2e, Postgres, image build) and fix findings
+- [ ] T132 [P] Add a docs coverage check `scripts/check_docs.sh` (behind `just docs::check`, shellcheck-clean) that also fails when an image in `docs/` has no alt text or points to a missing file, and that fails when a page listed in `docs/user/index.md` or `docs/developer/index.md` is missing, and when a user guide required by tasks T122, T124-T131, T107 and T114 does not exist
+- [ ] T145 [P] Add Mermaid diagrams to the developer guides: architecture layers (`api`, `services`, `domain`, `adapters`) in `docs/developer/architecture.md`, the sync flow with failure isolation in `docs/developer/sync.md`, and the conflict flow in the same page; add `sync` to the developer toctree
+- [ ] T146 In `devbox shell` run `just docs::screenshots`, check every image for fake data only and readable text (fonts loaded), fix the screenshot tests, and commit `docs/images/`; repeat by hand when a screen changes
+- [ ] T117 Run the full `quickstart.md` validation (`just lint`, `just test`, just docs::build, `just docs::screenshots`, e2e, Postgres, image build) and fix findings
 
 ---
 
 ## Dependencies & Execution Order
 
-- Docs tasks follow the behaviour they describe inside the same phase, and every docs task must pass Vale (T120 must be done first so the rules are tuned).
+- Screenshot tasks (T135-T144) need the screen they show (their story's Flutter UI) and the setup in T133-T134; T146 runs after all of them.
+- Docs tasks follow the behaviour they describe inside the same phase, and every docs task must pass Vale (run T120 when Vale is available in `devbox shell` and recheck the docs written before it, T121-T123).
 - **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 13)**.
 - **US1** first: every other story needs synced data. **US2** and **US3** build on US1's models and services; US3 reuses US2's task service.
 - **US4** touches repositories and views from US1-US3 but is testable on its own with fake data.
 - **US5** needs tasks (US1/US2); scheduling from planning views reuses US3.
-- **US6** user management/OIDC are independent; basic login and `user_id` scoping are already in Foundational.
+- **US6** user management is independent; basic login and `user_id` scoping are already in Foundational.
 - **US7** needs goals/plans (US5) and the note backend (US1). **US8** extends the note service from US2. **US9** (keyboard navigation) comes after US8 so every view it navigates to already exists.
 - Conflict resolution (Phase 6) depends on the sync and write-through services (US1-US3) and is done before US4+ so no later story can overwrite a changed remote item.
 
