@@ -104,8 +104,8 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
           if (byId[entry.key] != null || sync.results[entry.key] != null)
             FailureCard(
               connectionId: entry.key,
-              name: byId[entry.key]?.displayName ??
-                  sync.results[entry.key]!.name,
+              name:
+                  byId[entry.key]?.displayName ?? sync.results[entry.key]!.name,
               reason: entry.value,
               onRetry: () =>
                   ref.read(syncControllerProvider.notifier).retry(entry.key),
@@ -113,7 +113,8 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
               onOpenSettings: () => _openSettings(entry.key, byId[entry.key]),
             ),
         if (list.isEmpty) const _Message('No connections yet.'),
-        for (final c in list) _ConnectionTile(connection: c, result: sync.results[c.id]),
+        for (final c in list)
+          _ConnectionTile(connection: c, result: sync.results[c.id]),
       ],
     );
   }

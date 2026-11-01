@@ -11,27 +11,24 @@ import 'api_client.dart';
 @immutable
 class AuthState {
   /// Creates a state.
-  const AuthState({this.signedIn = false, this.error});
+  const AuthState({this.signedIn = false, this.error, this.isAdmin = false});
 
   /// True after a successful login.
   final bool signedIn;
+
+  /// True when the signed-in user is an administrator.
+  final bool isAdmin;
 
   /// Human-readable error from the last attempt, if any.
   final String? error;
 }
 
-/// Controller for login and logout; also a [Listenable] for the router.
-class AuthController extends StateNotifier<AuthState> with ChangeNotifier {
+/// Controller for login and logout.
+class AuthController extends StateNotifier<AuthState> {
   /// Creates a controller using [_ref] for the API client.
   AuthController(this._ref) : super(const AuthState());
 
   final Ref _ref;
-
-  @override
-  set state(AuthState value) {
-    super.state = value;
-    notifyListeners();
-  }
 
   /// Signs in with [username] and [password].
   Future<void> login(String username, String password) async {
@@ -41,12 +38,23 @@ class AuthController extends StateNotifier<AuthState> with ChangeNotifier {
         data: {'username': username, 'password': password},
       );
       _ref.read(tokenStoreProvider.notifier).set(r.data!['token'] as String);
-      state = const AuthState(signedIn: true);
+      state = AuthState(signedIn: true, isAdmin: await _loadIsAdmin());
     } on DioException catch (e) {
       final detail = (e.response?.data is Map)
           ? (e.response!.data as Map)['detail']?.toString()
           : null;
       state = AuthState(error: detail ?? 'Cannot reach the server');
+    }
+  }
+
+  /// Reads the current user; a failure counts as "not an administrator".
+  Future<bool> _loadIsAdmin() async {
+    try {
+      final r =
+          await _ref.read(dioProvider).get<Map<String, dynamic>>('/auth/me');
+      return r.data?['is_admin'] == true;
+    } on DioException {
+      return false;
     }
   }
 

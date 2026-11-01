@@ -61,7 +61,7 @@ final _connections = [
   },
 ];
 
-Map<String, Object> _result(String id, String name, String outcome,
+Map<String, Object?> _result(String id, String name, String outcome,
         [String? reason]) =>
     {
       'connection_id': id,
@@ -99,8 +99,7 @@ void main() {
     expect(find.byKey(const Key('failure-c1')), findsNothing);
   });
 
-  testWidgets('sync button calls POST /sync and shows success',
-      (tester) async {
+  testWidgets('sync button calls POST /sync and shows success', (tester) async {
     final adapter = await _pump(tester, {
       'POST /sync': [
         _result('c1', 'Work calendar', 'ok'),
@@ -136,8 +135,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Work calendar is unavailable'), findsOneWidget);
-    expect(find.text('Your credentials expired or were revoked.'),
-        findsOneWidget);
+    expect(
+        find.text('Your credentials expired or were revoked.'), findsOneWidget);
     expect(find.text('Home tasks is unavailable'), findsOneWidget);
     expect(find.text('The service is not reachable.'), findsOneWidget);
     for (final id in ['c1', 'c2']) {
@@ -200,8 +199,7 @@ void main() {
     expect(find.text('Provider: vikunja'), findsOneWidget);
   });
 
-  testWidgets('Reconnect for Google fetches the sign-in link',
-      (tester) async {
+  testWidgets('Reconnect for Google fetches the sign-in link', (tester) async {
     final adapter = await _pump(tester, {
       'POST /sync': [
         _result('c1', 'Work calendar', 'needs_attention', 'auth_expired'),

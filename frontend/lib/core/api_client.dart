@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Base URL of the backend API; override at build time with
 /// `--dart-define=TEFTERI_API=https://host/api/v1`.
-const apiBaseUrl =
-    String.fromEnvironment('TEFTERI_API', defaultValue: 'http://localhost:8000/api/v1');
+const apiBaseUrl = String.fromEnvironment('TEFTERI_API',
+    defaultValue: 'http://localhost:8000/api/v1');
 
 /// Holds the current bearer token (null when signed out).
 class TokenStore extends StateNotifier<String?> {

@@ -6,16 +6,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/auth_controller.dart';
-import 'core/shell.dart';
+import 'features/admin/users_screen.dart';
+import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'features/calendar/calendar_screen.dart';
+import 'features/conflicts/conflicts_screen.dart';
+import 'features/daily/daily_screen.dart';
+import 'features/goals/goals_screen.dart';
+import 'features/month/month_screen.dart';
 import 'features/settings/connections_screen.dart';
+import 'features/week/week_screen.dart';
+import 'features/year/year_screen.dart';
+
+/// Notifies the router whenever the sign-in state changes.
+final authRefreshProvider = Provider<Listenable>((ref) {
+  final notifier = ValueNotifier<int>(0);
+  ref.listen(authControllerProvider, (_, __) => notifier.value++);
+  ref.onDispose(notifier.dispose);
+  return notifier;
+});
 
 /// Builds the router; redirects to `/login` while signed out.
 GoRouter buildRouter(Ref ref) {
-  final auth = ref.read(authControllerProvider.notifier);
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: auth,
+    refreshListenable: ref.read(authRefreshProvider),
     redirect: (context, state) {
       final signedIn = ref.read(authControllerProvider).signedIn;
       final atLogin = state.matchedLocation == '/login';
@@ -28,12 +43,20 @@ GoRouter buildRouter(Ref ref) {
         path: '/settings',
         builder: (_, __) => const ConnectionsScreen(),
       ),
+      GoRoute(path: '/users', builder: (_, __) => const UsersScreen()),
       GoRoute(
-        path: '/',
-        builder: (_, __) => const AppShell(
-          title: 'Today',
-          body: Center(child: Text('Daily view coming soon')),
-        ),
+        path: '/password',
+        builder: (_, __) => const ChangePasswordScreen(),
+      ),
+      GoRoute(path: '/', builder: (_, __) => const DailyScreen()),
+      GoRoute(path: '/calendar', builder: (_, __) => const CalendarScreen()),
+      GoRoute(path: '/week', builder: (_, __) => const WeekScreen()),
+      GoRoute(path: '/month', builder: (_, __) => const MonthScreen()),
+      GoRoute(path: '/year', builder: (_, __) => const YearScreen()),
+      GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
+      GoRoute(
+        path: '/conflicts',
+        builder: (_, __) => const ConflictsScreen(),
       ),
     ],
   );

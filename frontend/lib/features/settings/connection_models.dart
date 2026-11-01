@@ -85,8 +85,7 @@ class Connection {
 
   /// True when the connection needs the user to act.
   bool get isFailing =>
-      status != 'ok' ||
-      (lastSyncOutcome != null && lastSyncOutcome != 'ok');
+      status != 'ok' || (lastSyncOutcome != null && lastSyncOutcome != 'ok');
 }
 
 /// Result of a sync for one connection.
@@ -114,9 +113,8 @@ class SyncResult {
       connectionId: '${json['connection_id']}',
       name: '${json['name'] ?? ''}',
       outcome: '${json['outcome'] ?? 'ok'}',
-      reason: json['reason'] == null
-          ? null
-          : FailureReason.parse(json['reason']),
+      reason:
+          json['reason'] == null ? null : FailureReason.parse(json['reason']),
       counts: counts,
     );
   }
