@@ -1,12 +1,3 @@
-<!--
-Sync Impact Report (temporary; remove before commit)
-Version change: 1.1.0 -> 1.2.0 (MINOR: materially expanded guidance in Principle VI)
-Modified principles: VI (adds visual communication and generated, committed screenshots)
-Added sections: none (Technology & Environment Constraints gains a documentation sentence)
-Removed sections: none
-Deferred TODOs: none
--->
-
 # Tefteri Constitution
 
 Tefteri is a daily planning and execution framework. It is a server-client system that
