@@ -11,6 +11,7 @@ Everything is run through `just`. Run `just --list` for the full set of recipes.
 just lint        # pre-commit: all linters (ruff, mypy, tach, dart, shellcheck, yamllint, vale, ...)
 just test        # backend and frontend tests
 just docs::build  # Sphinx + MyST, warnings as errors
+just docs::check  # required guides, toctree pages, image alt text and files
 ```
 Expected: all pass; any linter finding, STE style finding (Vale) or doc warning fails the command.
 
@@ -40,7 +41,8 @@ just backend::test-postgres   # integration tests against Postgres
 ```bash
 just packaging::deb; just packaging::appimage; just packaging::apk   # client packages
 just deploy::build-image      # server Docker image
-just version-nightly         # prints <prev-stable>.<hash>.postN
+just deploy::smoke            # build the image, start it, check health, version and sign-in
+just release::version-nightly  # prints <prev-stable>.<hash>.postN
 ```
 CI performs the same through `just` on a tag push (release) and on a schedule (nightly,
 image `ghcr.io/bergercookie/tefteri:nightly`).

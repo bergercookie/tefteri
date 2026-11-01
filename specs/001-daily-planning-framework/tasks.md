@@ -41,14 +41,14 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T014 [P] Create `.gitignore`, `.env.example` in `deploy/`, and a `CONTRIBUTING.md` that tells contributors and agents to use `just` only
 - [X] T118 [P] Add pytest-alembic migration tests (single head, upgrade, up/down consistency, models match DDL, per-revision checks) in `backend/tests/migrations/`; every new migration task adds a per-revision test there
 - [X] T119 [P] Add Vale with a custom ASD-STE100 style (`.vale.ini`, `.vale/styles/STE/`), `vale` in `devbox.json` and a pre-commit hook for `README.md`, `CONTRIBUTING.md` and `docs/*.md`
-- [ ] T120 Run `vale` in `devbox shell`, fix all findings in existing prose and tune the STE rules (the hook is written but not yet run); every docs task (T092, T107, T114, quickstart) must pass it
+- [X] T120 Run `vale` in `devbox shell`, fix all findings in existing prose and tune the STE rules (the hook is written but not yet run); every docs task (T092, T107, T114, quickstart) must pass it
 - [X] T121 [P] Restructure `docs/` for the two audiences (constitution VI): move `docs/architecture.md` to `docs/developer/architecture.md`, create `docs/user/index.md` and `docs/developer/index.md`, make `docs/index.md` link both sections, keep `just docs::build` (-W) passing, and add any new technical terms to `.vale/styles/config/vocabularies/Tefteri/accept.txt`
-- [ ] T147 [P] Run the shared adapter contract suite (`backend/tests/integration/test_backend_contracts.py`) against the real Vikunja, Google Calendar and Trilium adapters, using a stateful respx fake server per app, so the contract in `contracts/backend-ports.md` holds for every adapter
+- [X] T147 [P] Run the shared adapter contract suite (`backend/tests/integration/test_backend_contracts.py`) against the real Vikunja, Google Calendar and Trilium adapters, using a stateful respx fake server per app, so the contract in `contracts/backend-ports.md` holds for every adapter
 - [X] T148 [P] Wire all backend tests into `just`: `backend::test` runs unit, integration, migrations and e2e tests (not smoke, not `postgres`-marked); add `backend/tests/migrations/test_postgres.py` (marked `postgres`, reads `TEFTERI_TEST_POSTGRES_URL`, upgrades to head and downgrades to base); `backend::test-postgres` runs the marked tests
 - [X] T149 Run `just frontend::analyze` and `just frontend::test` in `devbox shell` and fix findings in the Flutter code written so far (T031, T048-T051); do T133 (pin Flutter) first
 - [X] T150 [P] Add the Postgres end-to-end test `backend/tests/e2e/test_postgres_app.py` (marked `postgres`: real migrations, sign-in, sync, writes, goals, conflicts and user delete cascades on PostgreSQL through asyncpg; runs with `TEFTERI_TEST_POSTGRES_URL`)
-- [ ] T133 [P] Set up Mermaid diagrams in the docs: add `sphinxcontrib-mermaid` to `docs/requirements.txt`, enable it in `docs/conf.py`, keep `just docs::build` (-W) passing, and pin the Flutter version in `devbox.json` so screenshots are reproducible
-- [ ] T134 [P] Set up app screenshots: bundle an open-licence font in `frontend/assets/fonts/` (declare it in `frontend/pubspec.yaml`), add the shared helper `frontend/test/screenshots/screenshot_helper.dart` (loads the font, fixed window size and fake data, writes the PNG to `docs/images/`), and add the recipe `screenshots` to `docs/docs.just` (`just docs::screenshots` runs `flutter test --update-goldens test/screenshots`; run by hand, no CI check)
+- [X] T133 [P] Set up Mermaid diagrams in the docs: add `sphinxcontrib-mermaid` to `docs/requirements.txt`, enable it in `docs/conf.py`, keep `just docs::build` (-W) passing, and pin the Flutter version in `devbox.json` so screenshots are reproducible
+- [X] T134 [P] Set up app screenshots: bundle an open-licence font in `frontend/assets/fonts/` (declare it in `frontend/pubspec.yaml`), add the shared helper `frontend/test/screenshots/screenshot_helper.dart` (loads the font, fixed window size and fake data, writes the PNG to `docs/images/`), and add the recipe `screenshots` to `docs/docs.just` (`just docs::screenshots` runs `flutter test --update-goldens test/screenshots`; run by hand, no CI check)
 
 ---
 
@@ -113,7 +113,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T051 [P] [US1] Flutter widget tests and a backend integration test (stopped fake backend, expired credentials) for the service-unavailable flow in `frontend/test/features/settings/` and `backend/tests/integration/test_service_unavailable.py`
 - [X] T122 [P] [US1] User guides in `docs/user/connect-apps.md` (connect Vikunja, Google Calendar accounts and Trilium Next, use Sync, read last-sync status) and `docs/user/troubleshooting.md` (an app is unreachable, credentials expired: what the message means, Retry, Reconnect), written in ASD-STE100
 - [X] T123 [P] [US1] Developer guide `docs/developer/adding-an-adapter.md`: the three ports, capabilities and errors, the shared contract test suite, how to record HTTP fixtures, and the `tach` layering rule, written in ASD-STE100
-- [ ] T135 [P] [US1] Screenshot tests in `frontend/test/screenshots/connections_test.dart` (fake data, no real credentials or personal data) writing the connections list, a sync result and the unavailable-app card (unreachable and credentials expired) to `docs/images/`; embed them with alt text in `docs/user/connect-apps.md` and `docs/user/troubleshooting.md` next to the steps they show
+- [X] T135 [P] [US1] Screenshot tests in `frontend/test/screenshots/connections_test.dart` (fake data, no real credentials or personal data) writing the connections list, a sync result and the unavailable-app card (unreachable and credentials expired) to `docs/images/`; embed them with alt text in `docs/user/connect-apps.md` and `docs/user/troubleshooting.md` next to the steps they show
 
 **Checkpoint**: US1 independently functional (MVP)
 
@@ -140,7 +140,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T059 [P] [US2] Implement the Flutter daily view (entries, tasks, daily note, quick add, complete, delete; show clear messages for unreachable apps and unsupported actions) in `frontend/lib/features/daily/`
 - [X] T060 [P] [US2] Flutter widget tests for the daily view in `frontend/test/features/daily/`
 - [X] T124 [P] [US2] User guide `docs/user/daily-planning.md` (daily view, add/complete/delete tasks, the daily note, link a note to a task), written in ASD-STE100
-- [ ] T136 [P] [US2] Screenshot tests in `frontend/test/screenshots/daily_test.dart` (fake data, no real credentials or personal data) writing the daily view (entries, tasks, daily note) and quick add to `docs/images/`; embed them with alt text in `docs/user/daily-planning.md` next to the steps they show
+- [X] T136 [P] [US2] Screenshot tests in `frontend/test/screenshots/daily_test.dart` (fake data, no real credentials or personal data) writing the daily view (entries, tasks, daily note) and quick add to `docs/images/`; embed them with alt text in `docs/user/daily-planning.md` next to the steps they show
 
 **Checkpoint**: US1 + US2 work together
 
@@ -166,7 +166,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T067 [P] [US3] Implement the Flutter calendar view with drag/choose-time scheduling and distinct styling for tasks vs entries and clear unsupported/unreachable messages in `frontend/lib/features/calendar/`
 - [X] T068 [P] [US3] Flutter widget tests for scheduling interactions in `frontend/test/features/calendar/`
 - [X] T125 [P] [US3] User guide `docs/user/scheduling.md` (put a task on the calendar, why no calendar event is created, edit calendar entries, overlaps, apps that cannot store a time), written in ASD-STE100
-- [ ] T137 [P] [US3] Screenshot tests in `frontend/test/screenshots/calendar_test.dart` (fake data, no real credentials or personal data) writing the calendar view with a task scheduled beside entries, and the unsupported-app message to `docs/images/`; embed them with alt text in `docs/user/scheduling.md` next to the steps they show
+- [X] T137 [P] [US3] Screenshot tests in `frontend/test/screenshots/calendar_test.dart` (fake data, no real credentials or personal data) writing the calendar view with a task scheduled beside entries, and the unsupported-app message to `docs/images/`; embed them with alt text in `docs/user/scheduling.md` next to the steps they show
 
 **Checkpoint**: All P1 stories independently functional
 
@@ -180,7 +180,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T070 Implement conflict detection in the sync/write-through services and `GET /conflicts`, `POST /conflicts/{id}/resolve` in `backend/src/tefteri/services/conflicts.py` and `api/routers/conflicts.py`
 - [X] T071 [P] Implement the Flutter conflict resolution screen showing both versions in `frontend/lib/features/conflicts/`
 - [X] T126 [P] User guide `docs/user/conflicts.md` (what a conflict is, compare both versions, keep local or keep remote), written in ASD-STE100
-- [ ] T138 [P] Screenshot tests in `frontend/test/screenshots/conflicts_test.dart` (fake data, no real credentials or personal data) writing the conflict screen showing both versions to `docs/images/`; embed them with alt text in `docs/user/conflicts.md` next to the steps they show
+- [X] T138 [P] Screenshot tests in `frontend/test/screenshots/conflicts_test.dart` (fake data, no real credentials or personal data) writing the conflict screen showing both versions to `docs/images/`; embed them with alt text in `docs/user/conflicts.md` next to the steps they show
 
 ---
 
@@ -202,7 +202,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T076 [P] [US4] Wire the global all/life/work switch to every Flutter view and show an "unclassified" marker in `frontend/lib/core/context_filter.dart`
 - [X] T077 [P] [US4] Flutter tests for the context switch across views in `frontend/test/core/context_filter_test.dart`
 - [X] T127 [P] [US4] User guide `docs/user/work-and-life.md` (label items and containers, the all/life/work switch, the unclassified marker), written in ASD-STE100
-- [ ] T139 [P] [US4] Screenshot tests in `frontend/test/screenshots/context_test.dart` (fake data, no real credentials or personal data) writing the all/life/work switch and the unclassified marker to `docs/images/`; embed them with alt text in `docs/user/work-and-life.md` next to the steps they show
+- [X] T139 [P] [US4] Screenshot tests in `frontend/test/screenshots/context_test.dart` (fake data, no real credentials or personal data) writing the all/life/work switch and the unclassified marker to `docs/images/`; embed them with alt text in `docs/user/work-and-life.md` next to the steps they show
 
 ---
 
@@ -226,7 +226,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T084 [P] [US5] Implement Flutter weekly, monthly and annual views and goal breakdown UI, including scheduling goal-derived tasks onto a day or time from any planning view in `frontend/lib/features/{week,month,year,goals}/`
 - [X] T085 [P] [US5] Flutter widget tests for planning views in `frontend/test/features/`
 - [X] T128 [P] [US5] User guide `docs/user/planning-goals.md` (goals for year, month and week, break a goal down, progress, schedule from a planning view), written in ASD-STE100
-- [ ] T140 [P] [US5] Screenshot tests in `frontend/test/screenshots/planning_test.dart` (fake data, no real credentials or personal data) writing the weekly, monthly and annual views and the goal breakdown to `docs/images/`; embed them with alt text in `docs/user/planning-goals.md` next to the steps they show
+- [X] T140 [P] [US5] Screenshot tests in `frontend/test/screenshots/planning_test.dart` (fake data, no real credentials or personal data) writing the weekly, monthly and annual views and the goal breakdown to `docs/images/`; embed them with alt text in `docs/user/planning-goals.md` next to the steps they show
 
 ---
 
@@ -249,7 +249,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T091 [P] [US6] Implement Flutter admin user management screen in `frontend/lib/features/{admin,auth}/`
 - [X] T092 [P] [US6] Document multi-user setup, admin bootstrap with a password hash, and reverse-proxy deployment in `docs/developer/deployment.md` (audience: administrators and developers), written in ASD-STE100
 - [X] T129 [P] [US6] User guide `docs/user/accounts-and-sign-in.md` (sign in with a password, session expiry, blocked sign-in after repeated failures, administrator user management), written in ASD-STE100
-- [ ] T141 [P] [US6] Screenshot tests in `frontend/test/screenshots/accounts_test.dart` (fake data, no real credentials or personal data) writing the login screen and the admin user management screen to `docs/images/`; embed them with alt text in `docs/user/accounts-and-sign-in.md` next to the steps they show
+- [X] T141 [P] [US6] Screenshot tests in `frontend/test/screenshots/accounts_test.dart` (fake data, no real credentials or personal data) writing the login screen and the admin user management screen to `docs/images/`; embed them with alt text in `docs/user/accounts-and-sign-in.md` next to the steps they show
 
 ---
 
@@ -261,18 +261,18 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 7
 
-- [ ] T093 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
-- [ ] T094 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
+- [X] T093 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
+- [X] T094 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
 
 ### Implementation for User Story 7
 
-- [ ] T095 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
-- [ ] T096 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
-- [ ] T097 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
-- [ ] T098 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
-- [ ] T099 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
-- [ ] T130 [P] [US7] User guide `docs/user/reviews-and-retrospectives.md` (open a review, planned versus done, save a retrospective to your notes app, plan history), written in ASD-STE100
-- [ ] T142 [P] [US7] Screenshot tests in `frontend/test/screenshots/review_test.dart` (fake data, no real credentials or personal data) writing the review, retrospective and plan history screens to `docs/images/`; embed them with alt text in `docs/user/reviews-and-retrospectives.md` next to the steps they show
+- [X] T095 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
+- [X] T096 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
+- [X] T097 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
+- [X] T098 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
+- [X] T099 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
+- [X] T130 [P] [US7] User guide `docs/user/reviews-and-retrospectives.md` (open a review, planned versus done, save a retrospective to your notes app, plan history), written in ASD-STE100
+- [X] T142 [P] [US7] Screenshot tests in `frontend/test/screenshots/review_test.dart` (fake data, no real credentials or personal data) writing the review, retrospective and plan history screens to `docs/images/`; embed them with alt text in `docs/user/reviews-and-retrospectives.md` next to the steps they show
 
 ---
 
@@ -284,15 +284,15 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 8
 
-- [ ] T100 [P] [US8] Integration tests for custom documentation/process notes (create, edit, delete) and task links in `backend/tests/integration/test_custom_notes.py`
+- [X] T100 [P] [US8] Integration tests for custom documentation/process notes (create, edit, delete) and task links in `backend/tests/integration/test_custom_notes.py`
 
 ### Implementation for User Story 8
 
-- [ ] T101 [US8] Extend the note service with custom documentation and process notes and two-way task links in `backend/src/tefteri/services/notes.py`
-- [ ] T102 [US8] Implement note endpoints `POST/PATCH/DELETE /notes` and `POST /tasks/{id}/notes` in `backend/src/tefteri/api/routers/notes.py`
-- [ ] T103 [P] [US8] Implement Flutter notes screens (list, edit, open from a task) in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
-- [ ] T131 [P] [US8] User guide `docs/user/notes-and-processes.md` (documentation and process notes, link them to tasks, open from a task), written in ASD-STE100
-- [ ] T143 [P] [US8] Screenshot tests in `frontend/test/screenshots/notes_test.dart` (fake data, no real credentials or personal data) writing the notes list and note editor to `docs/images/`; embed them with alt text in `docs/user/notes-and-processes.md` next to the steps they show
+- [X] T101 [US8] Extend the note service with custom documentation and process notes and two-way task links in `backend/src/tefteri/services/notes.py`
+- [X] T102 [US8] Implement note endpoints `POST/PATCH/DELETE /notes` and `POST /tasks/{id}/notes` in `backend/src/tefteri/api/routers/notes.py`
+- [X] T103 [P] [US8] Implement Flutter notes screens (list, edit, open from a task) in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
+- [X] T131 [P] [US8] User guide `docs/user/notes-and-processes.md` (documentation and process notes, link them to tasks, open from a task), written in ASD-STE100
+- [X] T143 [P] [US8] Screenshot tests in `frontend/test/screenshots/notes_test.dart` (fake data, no real credentials or personal data) writing the notes list and note editor to `docs/images/`; embed them with alt text in `docs/user/notes-and-processes.md` next to the steps they show
 
 ---
 
@@ -304,14 +304,14 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 9
 
-- [ ] T104 [P] [US9] Flutter widget tests: each shortcut opens its view from every other view (at most two key presses), plain-key shortcuts are ignored while a text field has focus, and the help overlay lists every shortcut, in `frontend/test/core/shortcuts_test.dart`
+- [X] T104 [P] [US9] Flutter widget tests: each shortcut opens its view from every other view (at most two key presses), plain-key shortcuts are ignored while a text field has focus, and the help overlay lists every shortcut, in `frontend/test/core/shortcuts_test.dart`
 
 ### Implementation for User Story 9
 
-- [ ] T105 [US9] Implement a central keymap with Flutter `Shortcuts`/`Actions` for the daily, weekly, monthly, annual, goals, review, notes and settings views plus sync and the all/life/work switch in `frontend/lib/core/shortcuts/`
-- [ ] T106 [US9] Implement the shortcut help overlay (opened with `?`) generated from the keymap, and suppress plain-key shortcuts while a text field has focus, in `frontend/lib/core/shortcuts/`
-- [ ] T107 [P] [US9] Document all shortcuts in `docs/user/shortcuts.md` (user guide, written in ASD-STE100)
-- [ ] T144 [P] [US9] Screenshot tests in `frontend/test/screenshots/shortcuts_test.dart` (fake data, no real credentials or personal data) writing the shortcut help overlay to `docs/images/`; embed them with alt text in `docs/user/shortcuts.md` next to the steps they show
+- [X] T105 [US9] Implement a central keymap with Flutter `Shortcuts`/`Actions` for the daily, weekly, monthly, annual, goals, review, notes and settings views plus sync and the all/life/work switch in `frontend/lib/core/shortcuts/`
+- [X] T106 [US9] Implement the shortcut help overlay (opened with `?`) generated from the keymap, and suppress plain-key shortcuts while a text field has focus, in `frontend/lib/core/shortcuts/`
+- [X] T107 [P] [US9] Document all shortcuts in `docs/user/shortcuts.md` (user guide, written in ASD-STE100)
+- [X] T144 [P] [US9] Screenshot tests in `frontend/test/screenshots/shortcuts_test.dart` (fake data, no real credentials or personal data) writing the shortcut help overlay to `docs/images/`; embed them with alt text in `docs/user/shortcuts.md` next to the steps they show
 
 ---
 
@@ -319,18 +319,18 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 **Purpose**: Release engineering, docs, hardening
 
-- [ ] T108 [P] Create `deploy/Dockerfile`, `deploy/compose.yaml` (tefteri + optional Postgres profile) and the smoke test `backend/tests/smoke/test_container.py`
-- [ ] T109 [P] Create `scripts/version.sh` (nightly `<prev>.<hash>.postN` from ghcr tags; PEP 440 and Flutter forms derived from same inputs) with a test and `just version-nightly`
-- [ ] T110 [P] Create `packaging/deb/` and `packaging/appimage/` build files and the `packaging::*` recipes; produce signed `.apk` via keystore secret
-- [ ] T111 Create `.github/workflows/release.yml` (tag `v*` → GitHub release with `.deb`, AppImage, `.apk`; push image `X.Y.Z` and `latest` to `ghcr.io/bergercookie/tefteri`) calling only `just`
-- [ ] T112 Create `.github/workflows/nightly.yml` (scheduled; skip if HEAD unchanged; push image tags `nightly` and the version string; rolling `nightly` pre-release with client artifacts) calling only `just`
-- [ ] T113 [P] Add the OpenAPI snapshot check (`just backend::openapi` → `docs/openapi.json`; test fails on drift)
-- [ ] T114 [P] Write the remaining docs: `docs/user/getting-started.md` (install the client, first sign-in, company Google OAuth approval) and `docs/developer/{setup,testing,releases}.md` (devbox and `just`, tests and migrations, release and nightly versioning), all in ASD-STE100
-- [ ] T115 [P] Add performance tests for the sync target (2,000 tasks / 1,000 entries / 500 notes < 30 s) in `backend/tests/integration/test_sync_performance.py`
-- [ ] T116 [P] Add an automated review-latency test (a review for a year of goals and tasks opens in under 5 seconds, SC-008) in `backend/tests/integration/test_review_performance.py`
-- [ ] T132 [P] Add a docs coverage check `scripts/check_docs.sh` (behind `just docs::check`, shellcheck-clean) that also fails when an image in `docs/` has no alt text or points to a missing file, and that fails when a page listed in `docs/user/index.md` or `docs/developer/index.md` is missing, and when a user guide required by tasks T122, T124-T131, T107 and T114 does not exist
-- [ ] T145 [P] Add Mermaid diagrams to the developer guides: architecture layers (`api`, `services`, `domain`, `adapters`) in `docs/developer/architecture.md`, the sync flow with failure isolation in `docs/developer/sync.md`, and the conflict flow in the same page; add `sync` to the developer toctree
-- [ ] T146 In `devbox shell` run `just docs::screenshots`, check every image for fake data only and readable text (fonts loaded), fix the screenshot tests, and commit `docs/images/`; repeat by hand when a screen changes
+- [X] T108 [P] Create `deploy/Dockerfile`, `deploy/compose.yaml` (tefteri + optional Postgres profile) and the smoke test `backend/tests/smoke/test_container.py`
+- [X] T109 [P] Create `scripts/version.sh` (nightly `<prev>.<hash>.postN` from ghcr tags; PEP 440 and Flutter forms derived from same inputs) with a test and `just release::version-nightly`
+- [X] T110 [P] Create `packaging/deb/` and `packaging/appimage/` build files and the `packaging::*` recipes; produce signed `.apk` via keystore secret
+- [X] T111 Create `.github/workflows/release.yml` (tag `v*` → GitHub release with `.deb`, AppImage, `.apk`; push image `X.Y.Z` and `latest` to `ghcr.io/bergercookie/tefteri`) calling only `just`
+- [X] T112 Create `.github/workflows/nightly.yml` (scheduled; skip if HEAD unchanged; push image tags `nightly` and the version string; rolling `nightly` pre-release with client artifacts) calling only `just`
+- [X] T113 [P] Add the OpenAPI snapshot check (`just backend::openapi` → `docs/openapi.json`; test fails on drift)
+- [X] T114 [P] Write the remaining docs: `docs/user/getting-started.md` (install the client, first sign-in, company Google OAuth approval) and `docs/developer/{setup,testing,releases}.md` (devbox and `just`, tests and migrations, release and nightly versioning), all in ASD-STE100
+- [X] T115 [P] Add performance tests for the sync target (2,000 tasks / 1,000 entries / 500 notes < 30 s) in `backend/tests/integration/test_sync_performance.py`
+- [X] T116 [P] Add an automated review-latency test (a review for a year of goals and tasks opens in under 5 seconds, SC-008) in `backend/tests/integration/test_review_performance.py`
+- [X] T132 [P] Add a docs coverage check `scripts/check_docs.sh` (behind `just docs::check`, shellcheck-clean) that also fails when an image in `docs/` has no alt text or points to a missing file, and that fails when a page listed in `docs/user/index.md` or `docs/developer/index.md` is missing, and when a user guide required by tasks T122, T124-T131, T107 and T114 does not exist
+- [X] T145 [P] Add Mermaid diagrams to the developer guides: architecture layers (`api`, `services`, `domain`, `adapters`) in `docs/developer/architecture.md`, the sync flow with failure isolation in `docs/developer/sync.md`, and the conflict flow in the same page; add `sync` to the developer toctree
+- [X] T146 In `devbox shell` run `just docs::screenshots`, check every image for fake data only and readable text (fonts loaded), fix the screenshot tests, and commit `docs/images/`; repeat by hand when a screen changes
 - [ ] T117 Run the full `quickstart.md` validation (`just lint`, `just test`, just docs::build, `just docs::screenshots`, e2e, Postgres, image build) and fix findings
 
 ---

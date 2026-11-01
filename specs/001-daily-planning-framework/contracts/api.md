@@ -44,11 +44,16 @@ return that user's data. Item list endpoints accept `context=all|work|life` (def
 - `POST /calendar/entries`, `PATCH /calendar/entries/{id}`, `DELETE /calendar/entries/{id}`.
 
 ## Notes
-- `GET /notes` (`kind`, `date`, `context`), `POST /notes`, `GET /notes/{id}`,
-  `PATCH /notes/{id}`, `DELETE /notes/{id}`.
+- `GET /notes` (`kind`, `date`, `context`), `POST /notes`
+  `{title, body?, kind: custom|process, context?, connection_id?, task_ids?}`,
+  `GET /notes/{id}` (includes `task_ids`), `PATCH /notes/{id}` `{title?, body?, context?}`,
+  `DELETE /notes/{id}` (also removes its task links). Title and body changes go to the note
+  app first; 409 `remote_conflict` when the note changed there.
 - `GET /notes/daily/{date}` - get or create the daily note.
 - `POST /notes/daily/{date}/append` `{text, task_id?}` - add text, link to task.
-- `POST /tasks/{id}/notes` - link/create a note for a task.
+- `POST /tasks/{id}/notes` `{note_id?, title?, body?, kind?}` - link an existing note, or
+  create one, for a task. `GET /tasks/{id}/notes` lists the linked notes;
+  `DELETE /tasks/{id}/notes/{note_id}` removes the link and keeps both items.
 
 ## Planning
 - `GET /goals` (`period_type`, `period_start`, `parent_id`), `POST /goals`,
@@ -59,9 +64,14 @@ return that user's data. Item list endpoints accept `context=all|work|life` (def
   - aggregated data for each planning view (entries, tasks, notes, goals, progress).
 
 ## Reviews
-- `GET /plans/{id}/review` - generate or fetch the planned vs completed summary.
+- `GET /plans/{id}/review` (`refresh=true` to compute it again) - generate or fetch the
+  planned vs completed summary. The review is a snapshot taken at `generated_at`: planned
+  items, whether each was completed, carried-over ids, and the retrospective note.
 - `PUT /plans/{id}/review/retrospective` `{body}` - saves the retrospective and writes it to
-  the notes backend.
+  the notes backend (created the first time, updated after). Nothing is saved when the note
+  app fails.
+- `GET /reviews/history` - every plan, newest period first, with `period_ended` and its
+  review summary when one was generated.
 
 ## Operations
 - `GET /health`, `GET /version` (returns the build version string).

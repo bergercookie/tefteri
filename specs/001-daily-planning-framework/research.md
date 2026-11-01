@@ -95,7 +95,7 @@ technology requires adding its linter and configuration in the same change.
   starting at 1 after each stable release.
 - **Publishing**: Docker tags `nightly` (moving) and the full version string on
   `ghcr.io/bergercookie/tefteri`; client artifacts go to a rolling pre-release named `nightly`.
-  Computation lives in one shellcheck-clean script behind `just version-nightly`.
+  Computation lives in one shellcheck-clean script behind `just release::version-nightly`.
 - **Caveat**: `<prev>.<hash>.postN` is **not a valid PEP 440 version** (a hash is not a
   numeric release segment). It is used as the artifact/image identifier. Inside the packages
   the equivalent valid forms are used: Python `1.4.0.post3+a1b2c3d` and Flutter
