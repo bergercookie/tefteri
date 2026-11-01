@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/auth_controller.dart';
+import 'core/shortcuts/app_shortcuts.dart';
 import 'features/admin/users_screen.dart';
 import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
@@ -14,6 +15,10 @@ import 'features/conflicts/conflicts_screen.dart';
 import 'features/daily/daily_screen.dart';
 import 'features/goals/goals_screen.dart';
 import 'features/month/month_screen.dart';
+import 'features/notes/note_editor_screen.dart';
+import 'features/notes/notes_screen.dart';
+import 'features/review/plan_history_screen.dart';
+import 'features/review/review_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/week/week_screen.dart';
 import 'features/year/year_screen.dart';
@@ -58,6 +63,25 @@ GoRouter buildRouter(Ref ref) {
         path: '/conflicts',
         builder: (_, __) => const ConflictsScreen(),
       ),
+      GoRoute(path: '/review', builder: (_, __) => const PlanHistoryScreen()),
+      GoRoute(
+        path: '/review/:planId',
+        builder: (_, s) => ReviewScreen(planId: s.pathParameters['planId']!),
+      ),
+      GoRoute(path: '/notes', builder: (_, __) => const NotesScreen()),
+      GoRoute(
+        path: '/notes/new',
+        builder: (_, s) => NoteEditorScreen(
+          taskId: s.uri.queryParameters['task'],
+          kind: s.uri.queryParameters['kind'] ?? 'custom',
+        ),
+      ),
+      GoRoute(
+        path: '/notes/:noteId',
+        builder: (_, s) => NoteEditorScreen(
+            key: ValueKey(s.pathParameters['noteId']),
+            noteId: s.pathParameters['noteId']),
+      ),
     ],
   );
 }
@@ -72,10 +96,13 @@ class TefteriApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'Tefteri',
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
-      routerConfig: ref.watch(routerProvider),
+      routerConfig: router,
+      builder: (_, child) =>
+          AppShortcuts(router: router, child: child ?? const SizedBox()),
     );
   }
 }

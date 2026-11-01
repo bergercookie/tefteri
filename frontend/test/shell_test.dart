@@ -27,6 +27,9 @@ class _FakeAuth extends AuthController {
 }
 
 Future<void> _openDrawer(WidgetTester tester, bool admin) async {
+  tester.view.physicalSize = const Size(1000, 2400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(ProviderScope(
     overrides: [
       authControllerProvider.overrideWith((ref) => _FakeAuth(ref, admin)),

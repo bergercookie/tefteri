@@ -20,3 +20,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Roboto (SIL Open Font License, see assets/fonts/OFL.txt). Bundled so that
+  # the documentation screenshots show real text on every machine.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

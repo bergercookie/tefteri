@@ -29,11 +29,29 @@ android {
         versionName = flutter.versionName
     }
 
+    // Release signing reads the keystore from the environment (CI secrets, see
+    // docs/developer/releases.md). Without TEFTERI_KEYSTORE the release build uses the
+    // debug keys, so `flutter run --release` still works on a developer machine.
+    val keystore = System.getenv("TEFTERI_KEYSTORE")
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("TEFTERI_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("TEFTERI_KEY_ALIAS")
+                keyPassword = System.getenv("TEFTERI_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                if (keystore != null) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 }

@@ -1,0 +1,3 @@
+# Screenshot tests write docs/images/*.png. Only `just docs::screenshots` runs them.
+tags:
+  screenshots: {}

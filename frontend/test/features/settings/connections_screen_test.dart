@@ -123,6 +123,24 @@ void main() {
     expect(find.text('Sync finished.'), findsOneWidget);
   });
 
+  testWidgets('opening the screen loads the status without a message',
+      (tester) async {
+    final adapter = await _pump(tester, {});
+    expect(adapter.calls, contains('GET /sync/status'));
+    expect(find.text('Sync finished.'), findsNothing);
+  });
+
+  testWidgets('a sync with failures says so in the message', (tester) async {
+    await _pump(tester, {
+      'POST /sync': [_result('c2', 'Home tasks', 'error', 'unreachable')],
+    });
+    await tester.tap(find.byKey(const Key('sync-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Sync finished.'), findsNothing);
+    expect(
+        find.textContaining('1 connection(s) need attention'), findsOneWidget);
+  });
+
   testWidgets('failing connections show name, reason and actions',
       (tester) async {
     await _pump(tester, {

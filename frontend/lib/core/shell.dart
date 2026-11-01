@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../features/settings/sync_controller.dart';
 import 'auth_controller.dart';
 import 'context_filter.dart';
+import 'shortcuts/app_shortcuts.dart';
+import 'shortcuts/keymap.dart';
 
 /// App scaffold shared by all views.
 class AppShell extends ConsumerWidget {
@@ -26,7 +28,7 @@ class AppShell extends ConsumerWidget {
     final sync = ref.watch(syncControllerProvider);
     final isAdmin = ref.watch(authControllerProvider).isAdmin;
     ref.listen<SyncState>(syncControllerProvider, (prev, next) {
-      if (prev == null || !prev.busy || next.busy) return;
+      if (prev == null || !prev.busy || next.busy || !next.announce) return;
       final text = next.error ??
           (next.failures.isEmpty
               ? 'Sync finished.'
@@ -38,23 +40,14 @@ class AppShell extends ConsumerWidget {
       drawer: Drawer(
         child: ListView(
           children: [
-            for (final (label, path) in const [
-              ('Today', '/'),
-              ('Calendar', '/calendar'),
-              ('Week', '/week'),
-              ('Month', '/month'),
-              ('Year', '/year'),
-              ('Goals', '/goals'),
-              ('Conflicts', '/conflicts'),
-              ('Connections', '/settings'),
-              ('Change password', '/password'),
-            ])
+            for (final v in appViews)
               ListTile(
-                key: Key('nav-$path'),
-                title: Text(label),
+                key: Key('nav-${v.path}'),
+                title: Text(v.label),
+                trailing: v.key == null ? null : Text(v.key!.toUpperCase()),
                 onTap: () {
                   Navigator.of(context).pop();
-                  context.go(path);
+                  context.go(v.path);
                 },
               ),
             if (isAdmin)
@@ -82,8 +75,14 @@ class AppShell extends ConsumerWidget {
                 ref.read(contextFilterProvider.notifier).state = s.first,
           ),
           IconButton(
+            key: const Key('shortcuts-button'),
+            tooltip: 'Keyboard shortcuts (?)',
+            icon: const Icon(Icons.keyboard_outlined),
+            onPressed: () => showShortcutHelp(context),
+          ),
+          IconButton(
             key: const Key('sync-button'),
-            tooltip: 'Sync',
+            tooltip: 'Sync (F5)',
             icon: const Icon(Icons.sync),
             onPressed: sync.busy
                 ? null

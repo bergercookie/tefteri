@@ -17,6 +17,7 @@ class SyncState {
     this.results = const {},
     this.error,
     this.lastSyncAt,
+    this.announce = false,
   });
 
   /// True while a sync request runs.
@@ -31,6 +32,10 @@ class SyncState {
   /// Time of the last sync, from the server when known.
   final DateTime? lastSyncAt;
 
+  /// True when the last finished action was a sync the user asked for, so
+  /// the app tells them the outcome. Loading the status is silent.
+  final bool announce;
+
   /// Results that failed.
   List<SyncResult> get failures =>
       results.values.where((r) => r.failed).toList();
@@ -41,12 +46,14 @@ class SyncState {
     Map<String, SyncResult>? results,
     String? error,
     DateTime? lastSyncAt,
+    bool? announce,
   }) =>
       SyncState(
         busy: busy ?? this.busy,
         results: results ?? this.results,
         error: error,
         lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+        announce: announce ?? this.announce,
       );
 }
 
@@ -76,14 +83,15 @@ class SyncController extends StateNotifier<SyncState> {
       });
 
   /// Loads the last known results (`GET /sync/status`).
-  Future<void> loadStatus() => _run(() async {
+  Future<void> loadStatus() => _run(announce: false, () async {
         final r = await _dio.get<Object?>('/sync/status');
         return _merge(r.data, replace: true);
       });
 
-  Future<void> _run(Future<SyncState> Function() action) async {
+  Future<void> _run(Future<SyncState> Function() action,
+      {bool announce = true}) async {
     if (state.busy) return;
-    state = state.copyWith(busy: true);
+    state = state.copyWith(busy: true, announce: announce);
     try {
       state = await action();
     } on DioException catch (e) {
