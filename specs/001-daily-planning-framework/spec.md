@@ -139,7 +139,7 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 ### Edge Cases
 
 - The same item is changed in tefteri and in the source app between syncs (conflict): the user is shown both versions and chooses which to keep; nothing is overwritten automatically.
-- A connected app is offline or credentials have expired or been revoked: the user sees which connection needs attention and other apps are unaffected.
+- A connected app is unreachable or credentials have expired or been revoked: the user is told clearly which connection and why, the change is not applied or queued silently, other apps are unaffected, and the user can retry or reconnect.
 - An item is deleted in the source app: it disappears from tefteri after sync and linked goals/notes show it as removed rather than breaking.
 - A user connects several Google accounts at once (for example a personal account, a shared family calendar and a company account) and each keeps its own work/life assignment and sign-in status.
 - A connected app does not support something tefteri offers (e.g. no time field on tasks): the user is told that the action is unavailable for that app instead of data being silently lost.
@@ -169,11 +169,16 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - **FR-015**: The system MUST support multiple users, each with an independent account, connected apps, items, goals and plans; one user MUST NOT be able to access another's data.
 - **FR-016**: Users MUST be able to create long-term plans (e.g. annual resolutions) and keep them after the period ends.
 - **FR-017**: The system MUST produce a review of any past period showing planned versus completed goals and tasks, and let users record a retrospective linked to that plan. Saved retrospectives MUST also be written to the user's note-taking app as notes.
-- **FR-019**: The system MUST remain usable for viewing already-synced data when a connected app is unavailable, and MUST clearly mark unsynced local changes.
+- **FR-018**: Users MUST be able to create documentation notes, step-by-step processes and checklists, link them to tasks, and re-run a checklist from a clean state.
+- **FR-019**: Connected apps are assumed to be reachable. When one is not (unreachable, credentials expired or revoked), the system MUST say so clearly, naming the connection and the reason, MUST NOT apply or queue the user's change silently, and MUST let the user resolve it (retry, reconnect or fix the connection).
 - **FR-020**: The set of supported apps MUST be extensible, so that supporting a new task manager, calendar or note-taking app does not change the user-facing behaviour described here.
 - **FR-021**: Credentials and access tokens for connected apps MUST be stored securely and MUST NOT be visible to other users.
 - **FR-022**: The initial administrator MUST be created at first deployment from deployment configuration that supplies a pre-computed password hash; the system MUST NOT accept or store a raw password in configuration. Open self-registration MUST NOT exist; only an administrator can create further accounts.
 - **FR-023**: The system MUST support signing in through a configurable external SSO/OIDC identity provider (e.g. Authelia) in addition to username and password, and MUST be able to run with either method enabled alone.
+- **FR-024**: The system MUST limit repeated failed sign-in attempts and MUST expire sessions after a configurable period.
+- **FR-025**: Every tagged release MUST produce downloadable Linux desktop packages (`.deb`, AppImage), an Android package and a server container image published to the project's container registry.
+- **FR-026**: A nightly build MUST publish a container image reachable under a stable `nightly` tag, versioned as `<previous-stable-release>.<commit-hash>.post<N>`, where N counts nightly builds since that stable release.
+- **FR-027**: Every change MUST be verified by an automated pipeline that runs the same lint, type, architecture-boundary and test checks developers run locally.
 
 ### Key Entities
 
@@ -185,7 +190,10 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - **Goal / Plan**: A high-level objective for a period (year, month, week) that can contain smaller goals and tasks and has progress.
 - **Period Review**: A summary of planned versus completed items for a past period plus the user's retrospective.
 - **Context (Work/Life)**: The classification of an item, used for filtering.
-- **Sync State**: Per connection, the last sync time, outcome, and pending local changes or conflicts.
+- **Sync Run**: One sync attempt for a connection, with time, outcome, counts and any error.
+- **Conflict**: A change made both in tefteri and in the connected app; holds both versions until the user chooses which to keep.
+- **Plan**: A period's collection of goals (e.g. the annual resolution plan), kept after the period ends.
+- **Checklist Run**: One use of a checklist, starting from a clean copy with each step tickable.
 
 ## Success Criteria *(mandatory)*
 
@@ -206,8 +214,8 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - Initial scope covers exactly three apps: Vikunja for tasks, Google Calendar for calendar entries (personal/family and company accounts, possibly several at once), and Trilium Next for notes. Additional apps follow later under FR-020.
 - The user's own apps remain the system of record for tasks, calendar entries and notes; tefteri's own store is the source of truth for goals, plans, work/life labels and reviews, and only retrospectives are additionally written to the note-taking app.
 - Sync is user-triggered (sync button) in v1; automatic background sync is out of scope for v1.
-- Users must be online to sync; previously synced data stays viewable offline.
+- Connected services are assumed to be up and reachable. Offline editing and queued changes are out of scope for v1; when a service is down tefteri says so clearly and the user resolves it.
 - Accounts are created by an administrator; there is no public self-registration. Sharing items between tefteri users and team features are out of scope.
 - Work/life is a two-value classification in v1; custom categories are out of scope.
-- A usable web or mobile interface is expected on typical phones and desktop screens.
+- Clients are provided for Linux desktop, Android and the web, usable on typical phone and desktop screens.
 - Notifications and reminders are out of scope for v1; the connected apps provide their own.

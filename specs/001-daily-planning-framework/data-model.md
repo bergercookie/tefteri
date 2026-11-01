@@ -63,8 +63,8 @@ Timestamps are UTC with an explicit time zone on the user.
   `keep_remote`). An item with an open conflict is never overwritten (FR-008).
 
 ## State transitions
-- Item `sync_state`: `synced` → `pending_push` (local edit) → `synced`; `pending_push` →
-  `conflict` (remote changed) → `synced` after resolution; any → `deleted_remotely` after a
-  sync that no longer finds it.
+- Item `sync_state`: `synced` → `conflict` (remote changed since the cached version) →
+  `synced` after the user's resolution; any → `deleted_remotely` after a sync that no longer finds
+  it. A failed write to an unreachable app changes nothing locally and is reported to the user.
 - Connection `status`: `ok` ↔ `needs_attention` (expired/revoked credentials) ↔ `error`
   (unreachable).

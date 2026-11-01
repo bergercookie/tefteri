@@ -42,7 +42,7 @@ desktop (`.deb`, AppImage), Android (`.apk`), web.
 (SC-002); review screen opens in < 5 s (SC-008); ordinary reads from the local cache feel
 instant (< 200 ms p95 for list endpoints on SQLite).
 
-**Constraints**: User-triggered sync only; local cache stays readable when an app is offline;
+**Constraints**: User-triggered sync only; connected apps are assumed up and, when one is not, the user is told which one and why and can retry or reconnect (no offline editing or queued changes);
 no raw passwords in configuration; per-user data isolation on every query; app tokens
 encrypted at rest.
 

@@ -52,3 +52,9 @@ image `ghcr.io/bergercookie/tefteri:nightly`).
 4. Break an annual goal into monthly/weekly goals and tasks, schedule one, and confirm the
    date appears in Vikunja.
 5. At the end of a period, open the review and save a retrospective; confirm the note in Trilium.
+6. Stop the Vikunja service and press **Sync**; confirm tefteri names the connection and the
+   reason, offers retry/reconnect, and neither applies nor queues any change silently.
+7. Timed checks (manual, from the spec's success criteria): connect the three apps in under
+   10 minutes (SC-001), plan a full week in under 10 minutes (SC-006), and complete the daily
+   flow on first attempt (SC-009). The review opening in under 5 seconds (SC-008) is
+   also covered by an automated test.
