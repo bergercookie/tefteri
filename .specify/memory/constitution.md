@@ -52,11 +52,33 @@ All code MUST be well documented, testable and tested.
 
 Rationale: a planning tool that people rely on daily has to be dependable.
 
+### VI. Technical Documentation for Two Audiences (ASD-STE100)
+Tefteri MUST ship good technical documentation for two audiences, kept apart:
+
+- **End users** (people who plan their days with tefteri): task-based guides for setup,
+  connecting apps, daily use, keyboard shortcuts and troubleshooting. These guides MUST NOT
+  need knowledge of the code.
+- **Developers** (people who change or deploy tefteri): architecture, `just` recipes,
+  adapter and API contracts, testing, release and deployment. Public code documentation
+  (Principle V) belongs to this audience.
+
+All prose documentation (README, CONTRIBUTING, `docs/`) MUST follow ASD-STE100 Simplified
+Technical English: short sentences, active voice, one word for one meaning, approved
+vocabulary where it exists. Prose MUST pass the automated style check (Vale, run in
+pre-commit and CI). Rules that a tool cannot check MUST be checked in review. A change that
+alters user-visible or developer-visible behaviour MUST update the matching guide in the
+same change.
+
+Rationale: documentation that is simple and aimed at a clear reader is used. STE also keeps
+it easy to read for non-native English speakers and easy to translate.
+
 ## Technology & Environment Constraints
 
 - Backend: Python, with dependencies managed in a way that is reproducible and locked.
 - Frontend: Flutter, communicating with the backend over a documented API.
 - Tooling: `just` for tasks, devbox for dependencies, as set out in Principles II and III.
+- Documentation: Sphinx (MyST) in `docs/`, split into user and developer sections, checked by
+  Vale against the STE style in `.vale/`.
 - Credentials and tokens for third-party services MUST NOT be committed to the repository.
 
 ## Development Workflow & Quality Gates
@@ -79,4 +101,4 @@ for clarifications and wording fixes.
 Compliance is checked in code review and in the Constitution Check step of Spec Kit plans.
 Violations MUST be fixed or explicitly justified and recorded.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-01 | **Last Amended**: 2026-11-01
+**Version**: 1.1.0 | **Ratified**: 2026-11-01 | **Last Amended**: 2026-11-01
