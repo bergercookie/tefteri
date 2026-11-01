@@ -1,0 +1,301 @@
+---
+
+description: "Task list for Tefteri Daily Planning & Execution Framework"
+---
+
+# Tasks: Tefteri Daily Planning & Execution Framework
+
+**Input**: Design documents from `/specs/001-daily-planning-framework/`
+
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/api.md, contracts/backend-ports.md, quickstart.md
+
+**Tests**: Included. The constitution (Principle V, non-negotiable) requires automated tests for all new behaviour, so each story has test tasks that are written first and must fail before the implementation.
+
+**Organization**: Tasks are grouped by user story (US1-US8, priority order from spec.md). All commands run through `just` recipes (constitution Principle II).
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependency on incomplete tasks)
+- **[Story]**: User story label (US1...US8); none for Setup, Foundational and Polish
+- Paths are relative to the repository root
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: Repository skeleton, tooling, and the justfile/pre-commit/CI system
+
+- [ ] T001 Create the directory skeleton from plan.md: `backend/src/tefteri/{api,services,domain,adapters/{vikunja,google_calendar,trilium},db,auth,security}`, `backend/tests/{unit,integration,e2e,smoke}`, `frontend/`, `deploy/`, `packaging/{deb,appimage}`, `scripts/`, `docs/`
+- [ ] T002 Create `devbox.json` pinning python, uv, just, pre-commit, shellcheck, shfmt, hadolint, yamllint, actionlint, markdownlint-cli2, taplo and flutter; document Docker (and Android SDK if needed) as exceptions in `README.md`
+- [ ] T003 Create `backend/pyproject.toml` (uv-managed deps: fastapi, pydantic, sqlalchemy[asyncio], alembic, aiosqlite, asyncpg, httpx, authlib, argon2-cffi, cryptography; dev: pytest, pytest-asyncio, respx, coverage, ruff, mypy, tach) with ruff, strict mypy and pytest config covering `src` and `tests`
+- [ ] T004 [P] Create `tach.toml` declaring modules `api`, `services`, `domain`, `adapters`, `db`, `auth`, `security` and the rule `api → services → domain ← adapters` (adapters never imported by core)
+- [ ] T005 Create the root `justfile` that imports `backend/backend.just`, `frontend/frontend.just`, `deploy/deploy.just`, `docs/docs.just`, `packaging/packaging.just` and defines aggregators `lint`, `test`, `build`, `run`, `deploy`
+- [ ] T006 [P] Create `backend/backend.just` with prefixed recipes `backend-install`, `backend-test`, `backend-e2e`, `backend-test-postgres`, `backend-mypy`, `backend-ruff`, `backend-tach`, `backend-run`, `backend-openapi`, `backend-migrate`
+- [ ] T007 [P] Create `frontend/frontend.just` (`frontend-install`, `frontend-analyze`, `frontend-format-check`, `frontend-test`, `frontend-build-linux`, `frontend-build-apk`, `frontend-build-web`)
+- [ ] T008 [P] Create `deploy/deploy.just` (`deploy-build-image`, `deploy-up`, `deploy-up-postgres`, `deploy-down`), `docs/docs.just` (`docs-build` with `-W`) and `packaging/packaging.just` (`package-deb`, `package-appimage`, `package-apk`)
+- [ ] T009 Create `.pre-commit-config.yaml` as the single list of all checks; hooks are `language: system` and call `just` recipes; `just lint` runs `pre-commit run --all-files` and no hook-called recipe calls `just lint`
+- [ ] T010 [P] Add linter configs: `.yamllint.yaml`, `.markdownlint-cli2.yaml`, `.hadolint.yaml`, `.shellcheckrc`, `taplo.toml`, `.editorconfig` (shfmt), and justfile format check hook
+- [ ] T011 [P] Create Flutter project in `frontend/` (`pubspec.yaml`, `analysis_options.yaml` with `flutter_lints`, Linux, Android and web targets enabled)
+- [ ] T012 [P] Create `docs/conf.py`, `docs/index.md`, `docs/requirements.txt` (Sphinx + `myst-parser`) and an architecture overview page
+- [ ] T013 Create `.github/workflows/ci.yml` that installs devbox and runs only `just lint`, `just test`, `just docs-build` (Postgres test job via `just backend-test-postgres`); no direct pre-commit/mypy calls
+- [ ] T014 [P] Create `.gitignore`, `.env.example` in `deploy/`, and a `CONTRIBUTING.md` that tells contributors and agents to use `just` only
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Core infrastructure that MUST be complete before ANY user story
+
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+
+- [ ] T015 Implement settings in `backend/src/tefteri/config.py` (env-based: `TEFTERI_DATABASE_URL`, `TEFTERI_ADMIN_USERNAME`, `TEFTERI_ADMIN_PASSWORD_HASH`, `TEFTERI_SECRET_KEY`, OIDC options); startup MUST fail if the admin value is not a valid Argon2 hash (never accept a raw password)
+- [ ] T016 Implement async engine/session factory supporting SQLite (aiosqlite) and PostgreSQL (asyncpg) in `backend/src/tefteri/db/session.py`
+- [ ] T017 Set up Alembic in `backend/migrations/` with async env and an initial migration that works on both SQLite and Postgres (portable SQLAlchemy constructs only)
+- [ ] T018 [P] Implement `User` model in `backend/src/tefteri/db/models/user.py`: `username` unique, `password_hash` nullable (SSO-only users), `oidc_subject` nullable and unique with issuer, `is_admin`, `timezone`, `disabled`
+- [ ] T019 [P] Implement `Connection` and `SourceContainer` models in `backend/src/tefteri/db/models/connection.py` with `kind` (`tasks`|`calendar`|`notes`), `provider`, `default_context` (`work`|`life`), `encrypted_credentials`, `status` (`ok`|`needs_attention`|`error`), container `context` override
+- [ ] T020 [P] Implement `SyncRun` and `Conflict` models in `backend/src/tefteri/db/models/sync.py` (`resolution`: `keep_local`|`keep_remote`; item `sync_state`: `synced`|`pending_push`|`conflict`|`deleted_remotely`)
+- [ ] T021 [P] Implement token encryption (Fernet) in `backend/src/tefteri/security/crypto.py`
+- [ ] T022 Implement repository base with mandatory `user_id` scoping on every query in `backend/src/tefteri/db/repositories/base.py`
+- [ ] T023 Implement password verification, admin bootstrap at startup and session/bearer-token issuing in `backend/src/tefteri/auth/` and `backend/src/tefteri/api/routers/auth.py` (`POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/methods`)
+- [ ] T024 Implement FastAPI app factory, dependency injection, auth dependency, error model `{"detail", "code"}` and `/health`, `/version` in `backend/src/tefteri/main.py` and `backend/src/tefteri/api/`
+- [ ] T025 Define domain entities, enums and exceptions (`BackendUnavailable`, `AuthExpired`, `NotSupported`, `RemoteConflict`) in `backend/src/tefteri/domain/`
+- [ ] T026 Define the `TaskBackend`, `CalendarBackend`, `NoteBackend` ports and `Capability` set per `contracts/backend-ports.md` in `backend/src/tefteri/domain/ports.py`
+- [ ] T027 [P] Implement in-memory fake backends for all three ports in `backend/tests/fakes/` for use by service, integration and e2e tests
+- [ ] T028 [P] Write shared adapter contract test suite parametrised over adapters in `backend/tests/integration/test_backend_contracts.py`
+- [ ] T029 [P] Write tests for config validation (reject raw password, accept Argon2 hash) in `backend/tests/unit/test_config.py` and for login/admin bootstrap in `backend/tests/integration/test_auth.py`
+- [ ] T030 [P] Implement a `just hash-password` recipe and `scripts/hash_password.py` (prompts, prints Argon2 hash)
+- [ ] T031 Create the Flutter app shell in `frontend/lib/` (go_router, Riverpod, dio client with auth, login screen, global context switch (all/life/work) and sync button placeholders)
+
+**Checkpoint**: Foundation ready — user story work can begin
+
+---
+
+## Phase 3: User Story 1 - Connect apps and sync (Priority: P1) 🎯 MVP
+
+**Goal**: Connect Vikunja, Google Calendar and Trilium Next and see their data in tefteri; sync button refreshes it.
+
+**Independent Test**: Connect one app of each kind, press sync, verify items match the source apps; one app failing does not block the others.
+
+### Tests for User Story 1
+
+- [ ] T032 [P] [US1] Unit tests for sync service (per-connection results, failure isolation, deletion marking) in `backend/tests/unit/test_sync_service.py`
+- [ ] T033 [P] [US1] Integration tests for connections and sync endpoints with fake backends in `backend/tests/integration/test_connections_sync.py`
+- [ ] T034 [P] [US1] Recorded-HTTP tests for the Vikunja adapter in `backend/tests/integration/adapters/test_vikunja.py`
+- [ ] T035 [P] [US1] Recorded-HTTP tests for the Google Calendar adapter (multiple accounts, calendars) in `backend/tests/integration/adapters/test_google_calendar.py`
+- [ ] T036 [P] [US1] Recorded-HTTP tests for the Trilium Next adapter in `backend/tests/integration/adapters/test_trilium.py`
+
+### Implementation for User Story 1
+
+- [ ] T037 [P] [US1] Implement `Task` mirror model in `backend/src/tefteri/db/models/task.py` (unique `connection_id`+`remote_id`; fields from data-model.md)
+- [ ] T038 [P] [US1] Implement `CalendarEntry` mirror model in `backend/src/tefteri/db/models/calendar_entry.py`
+- [ ] T039 [P] [US1] Implement `Note` mirror model in `backend/src/tefteri/db/models/note.py` (`kind`: `daily`|`custom`|`process`|`checklist`|`retrospective`)
+- [ ] T040 [US1] Add Alembic migration for the mirror tables in `backend/migrations/versions/`
+- [ ] T041 [P] [US1] Implement Vikunja adapter (token auth, projects as containers) in `backend/src/tefteri/adapters/vikunja/`
+- [ ] T042 [P] [US1] Implement Google Calendar adapter (OAuth2 per account, personal/family/company calendars, sync tokens) in `backend/src/tefteri/adapters/google_calendar/`
+- [ ] T043 [P] [US1] Implement Trilium Next ETAPI adapter in `backend/src/tefteri/adapters/trilium/`
+- [ ] T044 [US1] Implement adapter registry (provider → adapter) and connection service with credential encryption in `backend/src/tefteri/services/connections.py`
+- [ ] T045 [US1] Implement sync service (per connection, cursor/etag, failure isolation, `SyncRun` records, status transitions `ok`↔`needs_attention`↔`error`) in `backend/src/tefteri/services/sync.py`
+- [ ] T046 [US1] Implement endpoints `GET/POST/PATCH/DELETE /connections`, `/connections/google/authorize|callback`, `POST /sync`, `POST /connections/{id}/sync`, `GET /sync/status` in `backend/src/tefteri/api/routers/connections.py` and `sync.py`
+- [ ] T047 [US1] Implement read endpoints `GET /tasks`, `GET /calendar`, `GET /notes` from the cache in `backend/src/tefteri/api/routers/`
+- [ ] T048 [P] [US1] Implement Flutter connections settings screen and sync button with last-sync time/outcome per connection in `frontend/lib/features/settings/`
+- [ ] T049 [P] [US1] Flutter widget tests for the sync button and failure display in `frontend/test/features/settings/`
+
+**Checkpoint**: US1 independently functional (MVP)
+
+---
+
+## Phase 4: User Story 2 - Daily planning and execution (Priority: P1)
+
+**Goal**: Daily view combining entries, tasks and the day's note; manage tasks and notes from it.
+
+**Independent Test**: Open today's view, create/complete/delete a task and add a note; changes appear in the apps after sync.
+
+### Tests for User Story 2
+
+- [ ] T050 [P] [US2] Integration tests for task CRUD/complete write-through in `backend/tests/integration/test_tasks.py`
+- [ ] T051 [P] [US2] Integration tests for daily note get-or-create, append and task link in `backend/tests/integration/test_daily_notes.py`
+- [ ] T052 [P] [US2] E2E test of the daily flow against fake backends in `backend/tests/e2e/test_daily_flow.py`
+
+### Implementation for User Story 2
+
+- [ ] T053 [P] [US2] Implement `TaskNoteLink` model in `backend/src/tefteri/db/models/links.py`
+- [ ] T054 [US2] Implement task service (create, edit, complete, delete via port, then update cache; `pending_push` on failure) in `backend/src/tefteri/services/tasks.py`
+- [ ] T055 [US2] Implement note service (daily get-or-create, append, link to task) in `backend/src/tefteri/services/notes.py`
+- [ ] T056 [US2] Implement endpoints `POST/GET/PATCH/DELETE /tasks`, `POST /tasks/{id}/complete`, `GET /notes/daily/{date}`, `POST /notes/daily/{date}/append`, `POST /tasks/{id}/notes`, `GET /views/day/{date}` in `backend/src/tefteri/api/routers/`
+- [ ] T057 [P] [US2] Implement the Flutter daily view (entries, tasks, daily note, quick add, complete, delete) in `frontend/lib/features/daily/`
+- [ ] T058 [P] [US2] Flutter widget tests for the daily view in `frontend/test/features/daily/`
+
+**Checkpoint**: US1 + US2 work together
+
+---
+
+## Phase 5: User Story 3 - Schedule tasks on the calendar (Priority: P1)
+
+**Goal**: Place tasks on the calendar; date/time written back to the task manager; edit calendar entries.
+
+**Independent Test**: Schedule an unscheduled task; verify date/time updated in Vikunja, no calendar event created, task shown in calendar next to entries.
+
+### Tests for User Story 3
+
+- [ ] T059 [P] [US3] Integration tests for `PUT/DELETE /tasks/{id}/schedule` (write-back, no event created) in `backend/tests/integration/test_scheduling.py`
+- [ ] T060 [P] [US3] Integration tests for calendar entry create/edit/delete and overlap reporting in `backend/tests/integration/test_calendar_entries.py`
+- [ ] T061 [P] [US3] Unit tests for time zone, DST, all-day and recurring handling in `backend/tests/unit/test_time_handling.py`
+
+### Implementation for User Story 3
+
+- [ ] T062 [US3] Implement scheduling service (set/clear schedule via `TaskBackend.set_schedule`, overlap detection) in `backend/src/tefteri/services/scheduling.py`
+- [ ] T063 [US3] Implement calendar service for entry CRUD through `CalendarBackend` in `backend/src/tefteri/services/calendar.py`
+- [ ] T064 [US3] Implement endpoints `PUT/DELETE /tasks/{id}/schedule`, `POST/PATCH/DELETE /calendar/entries`, and make `GET /calendar` return entries and scheduled tasks tagged `type: entry|task` in `backend/src/tefteri/api/routers/calendar.py`
+- [ ] T065 [P] [US3] Implement the Flutter calendar view with drag/choose-time scheduling and distinct styling for tasks vs entries in `frontend/lib/features/calendar/`
+- [ ] T066 [P] [US3] Flutter widget tests for scheduling interactions in `frontend/test/features/calendar/`
+
+**Checkpoint**: All P1 stories independently functional
+
+---
+
+## Phase 6: User Story 4 - Separate work and life (Priority: P2)
+
+**Goal**: Label items work/life (individually or per container) and filter every view.
+
+**Independent Test**: With mixed items, "work only" shows only work items on every view; same for "life only".
+
+### Tests for User Story 4
+
+- [ ] T067 [P] [US4] Unit tests for effective-context resolution (item override → container → connection default; unclassified marker) in `backend/tests/unit/test_context.py`
+- [ ] T068 [P] [US4] Integration tests that `context=work|life|all` filters tasks, calendar, notes, goals and views with zero leakage in `backend/tests/integration/test_context_filter.py`
+
+### Implementation for User Story 4
+
+- [ ] T069 [US4] Implement effective-context resolution and `context` query filter in `backend/src/tefteri/services/context.py` and repositories
+- [ ] T070 [US4] Implement `PATCH /connections/{id}/containers/{cid}` and per-item context update on tasks, entries and notes in `backend/src/tefteri/api/routers/`
+- [ ] T071 [P] [US4] Wire the global all/life/work switch to every Flutter view and show an "unclassified" marker in `frontend/lib/core/context_filter.dart`
+- [ ] T072 [P] [US4] Flutter tests for the context switch across views in `frontend/test/core/context_filter_test.dart`
+
+---
+
+## Phase 7: User Story 5 - Weekly, monthly and annual planning (Priority: P2)
+
+**Goal**: Goals broken down year → month → week → tasks, with progress roll-up and scheduling from any view.
+
+**Independent Test**: Create an annual goal, break it into monthly milestones and weekly tasks, schedule one; goal shows progress.
+
+### Tests for User Story 5
+
+- [ ] T073 [P] [US5] Unit tests for goal hierarchy rules (child period inside parent, progress roll-up computed not stored) in `backend/tests/unit/test_goals.py`
+- [ ] T074 [P] [US5] Integration tests for `/goals`, `/goals/{id}/breakdown`, delete with `linked_tasks=keep|delete`, and `/views/week|month|year` in `backend/tests/integration/test_planning.py`
+
+### Implementation for User Story 5
+
+- [ ] T075 [P] [US5] Implement `Goal` model in `backend/src/tefteri/db/models/goal.py` (`period_type`: `year`|`month`|`week`; `status`: `active`|`done`|`dropped`; `parent_id` nullable; `progress` derived)
+- [ ] T076 [P] [US5] Implement `Plan` model in `backend/src/tefteri/db/models/plan.py` and a migration in `backend/migrations/versions/`
+- [ ] T077 [US5] Implement goal service (hierarchy validation, breakdown into child goals/tasks, progress roll-up, delete with keep/delete linked tasks) in `backend/src/tefteri/services/goals.py`
+- [ ] T078 [US5] Implement endpoints `/goals`, `/goals/{id}/breakdown`, `/plans`, and aggregated `/views/week/{date}`, `/views/month/{date}`, `/views/year/{year}` in `backend/src/tefteri/api/routers/planning.py`
+- [ ] T079 [P] [US5] Implement Flutter weekly, monthly and annual views and goal breakdown UI in `frontend/lib/features/{week,month,year,goals}/`
+- [ ] T080 [P] [US5] Flutter widget tests for planning views in `frontend/test/features/`
+
+---
+
+## Phase 8: User Story 6 - Multiple users (Priority: P2)
+
+**Goal**: Several users, admin-created, each isolated; SSO/OIDC optional.
+
+**Independent Test**: Two users with different connections see only their own data; signed-out access denied.
+
+### Tests for User Story 6
+
+- [ ] T081 [P] [US6] Integration tests: cross-user access to every resource type returns nothing/404, and unauthenticated requests are denied, in `backend/tests/integration/test_isolation.py`
+- [ ] T082 [P] [US6] Integration tests for admin-only user management and no self-registration in `backend/tests/integration/test_users.py`
+- [ ] T083 [P] [US6] Integration tests for OIDC login against a fake provider, including running with only one login method enabled, in `backend/tests/integration/test_oidc.py`
+
+### Implementation for User Story 6
+
+- [ ] T084 [US6] Implement admin-only `GET/POST/PATCH/DELETE /users` in `backend/src/tefteri/api/routers/users.py`
+- [ ] T085 [US6] Implement OIDC login (Authorization Code with PKCE via Authlib) in `backend/src/tefteri/auth/oidc.py` and `/auth/oidc/login|callback`; support enabling either method alone (e.g. Authelia as provider)
+- [ ] T086 [P] [US6] Implement Flutter admin user management screen and OIDC login button in `frontend/lib/features/{admin,auth}/`
+- [ ] T087 [P] [US6] Document multi-user setup, admin bootstrap with a password hash, and Authelia configuration in `docs/deployment.md`
+
+---
+
+## Phase 9: User Story 7 - Long-term plans and retrospectives (Priority: P3)
+
+**Goal**: Keep long-term plans; planned-vs-completed reviews; retrospectives saved to Trilium.
+
+**Independent Test**: For a past period with mixed outcomes, generate the review and save a retrospective that appears as a note.
+
+### Tests for User Story 7
+
+- [ ] T088 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
+- [ ] T089 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
+
+### Implementation for User Story 7
+
+- [ ] T090 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
+- [ ] T091 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
+- [ ] T092 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
+- [ ] T093 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
+- [ ] T094 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
+
+---
+
+## Phase 10: User Story 8 - Structured notes: documentation, processes, checklists (Priority: P3)
+
+**Goal**: Custom notes, processes and reusable checklists linked to tasks.
+
+**Independent Test**: Create a checklist, attach it to a task, tick steps, and re-run from a clean copy.
+
+### Tests for User Story 8
+
+- [ ] T095 [P] [US8] Integration tests for custom notes, task links, `POST /notes/{id}/runs` clean copy and `PATCH /runs/{id}` ticking in `backend/tests/integration/test_checklists.py`
+
+### Implementation for User Story 8
+
+- [ ] T096 [P] [US8] Implement `ChecklistRun` model in `backend/src/tefteri/db/models/checklist.py` and a migration
+- [ ] T097 [US8] Extend the note service with custom notes, process/checklist kinds and runs in `backend/src/tefteri/services/notes.py`
+- [ ] T098 [US8] Implement note endpoints `POST/PATCH/DELETE /notes`, `POST /notes/{id}/runs`, `PATCH /runs/{id}` in `backend/src/tefteri/api/routers/notes.py`
+- [ ] T099 [P] [US8] Implement Flutter notes and checklist screens in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
+
+---
+
+## Phase 11: Conflicts, Delivery & Polish (Cross-Cutting)
+
+**Purpose**: Conflict resolution (FR-008), release engineering, docs, hardening
+
+- [ ] T100 [P] Write unit and integration tests for conflict detection and resolution (`keep_local|keep_remote`, nothing overwritten automatically) in `backend/tests/{unit,integration}/test_conflicts.py`
+- [ ] T101 Implement conflict detection in the sync/write-through services and `GET /conflicts`, `POST /conflicts/{id}/resolve` in `backend/src/tefteri/services/conflicts.py` and `api/routers/conflicts.py`
+- [ ] T102 [P] Implement the Flutter conflict resolution screen showing both versions in `frontend/lib/features/conflicts/`
+- [ ] T103 [P] Create `deploy/Dockerfile`, `deploy/compose.yaml` (tefteri + optional Postgres profile) and the smoke test `backend/tests/smoke/test_container.py`
+- [ ] T104 [P] Create `scripts/version.sh` (nightly `<prev>.<hash>.postN` from ghcr tags; PEP 440 and Flutter forms derived from same inputs) with a test and `just version-nightly`
+- [ ] T105 [P] Create `packaging/deb/` and `packaging/appimage/` build files and the `package-*` recipes; produce signed `.apk` via keystore secret
+- [ ] T106 Create `.github/workflows/release.yml` (tag `v*` → GitHub release with `.deb`, AppImage, `.apk`; push image `X.Y.Z` and `latest` to `ghcr.io/bergercookie/tefteri`) calling only `just`
+- [ ] T107 Create `.github/workflows/nightly.yml` (scheduled; skip if HEAD unchanged; push image tags `nightly` and the version string; rolling `nightly` pre-release with client artifacts) calling only `just`
+- [ ] T108 [P] Add the OpenAPI snapshot check (`just backend-openapi` → `docs/openapi.json`; test fails on drift)
+- [ ] T109 [P] Write user and developer docs in `docs/` (setup, connections guide incl. company Google OAuth approval, releases and nightly versioning)
+- [ ] T110 [P] Add performance tests for the sync target (2,000 tasks / 1,000 entries / 500 notes < 30 s) in `backend/tests/integration/test_sync_performance.py`
+- [ ] T111 Run the full `quickstart.md` validation (`just lint`, `just test`, `just docs-build`, e2e, Postgres, image build) and fix findings
+
+---
+
+## Dependencies & Execution Order
+
+- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 11)**.
+- **US1** first: every other story needs synced data. **US2** and **US3** build on US1's models and services; US3 reuses US2's task service.
+- **US4** touches repositories and views from US1-US3 but is testable on its own with fake data.
+- **US5** needs tasks (US1/US2); scheduling from planning views reuses US3.
+- **US6** user management/OIDC are independent; basic login and `user_id` scoping are already in Foundational.
+- **US7** needs goals/plans (US5) and the note backend (US1). **US8** extends the note service from US2.
+- Conflict tasks (Phase 11) depend on the sync and write-through services (US1-US3).
+
+### Within each story
+Tests first (must fail) → models → services → endpoints → Flutter UI.
+
+### Parallel Opportunities
+- Setup `[P]` tasks (justfile modules, linter configs, Flutter project, docs scaffold).
+- Foundational models, fakes and crypto.
+- The three adapters (US1) and their recorded-HTTP tests.
+- Backend and Flutter work within a story once the API contract is fixed.
+- After US1: US4, US6 and US8 can proceed in parallel with US2/US3.
+
+## Implementation Strategy
+
+1. **MVP**: Phases 1-3 (US1): connect the apps, sync, browse data.
+2. Add US2 and US3 for the full daily plan-and-schedule loop (all P1).
+3. Add P2 stories (US4, US5, US6), then P3 (US7, US8).
+4. Conflict resolution and release engineering (Phase 11) should land before the first tagged release; the CI workflow from Phase 1 gates every change.
