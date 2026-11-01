@@ -42,6 +42,11 @@ desktop (`.deb`, AppImage), Android (`.apk`), web.
 (SC-002); review screen opens in < 5 s (SC-008); ordinary reads from the local cache feel
 instant (< 200 ms p95 for list endpoints on SQLite).
 
+**Writing style**: All prose (README, CONTRIBUTING, `docs/user/`, `docs/developer/`) follows
+ASD-STE100 Simplified Technical English (constitution Principle VI). Vale enforces the checkable rules (sentence length,
+passive voice, contractions, simpler-word list) in pre-commit and CI. The official STE
+dictionary is licensed, so the style is an approximation and reviewers apply the rest.
+
 **Constraints**: User-triggered sync only; connected apps are assumed up and, when one is not, the user is told which one and why and can retry or reconnect (no offline editing or queued changes);
 no raw passwords in configuration; per-user data isolation on every query; app tokens
 encrypted at rest.
@@ -51,17 +56,18 @@ screens (daily, weekly, monthly, annual, goals, reviews, notes, settings/connect
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design. Checked against constitution v1.1.0.*
 
 | Principle | Status | How the plan satisfies it |
 |-----------|--------|---------------------------|
 | I. Python backend, Flutter frontend | PASS | Backend in Python/FastAPI; client in Flutter. Bash is limited to thin scripts. |
-| II. Justfile is the single interface | PASS | Root `justfile` imports `backend/backend.just`, `frontend/frontend.just`, `deploy/deploy.just`, `docs/docs.just`, `packaging/packaging.just`. CI, pre-commit hooks and release workflows call `just` recipes only. |
+| II. Justfile is the single interface | PASS | Root `justfile` declares `backend`, `frontend`, `deploy`, `docs` and `packaging` as just modules (`just backend::test`). CI and release workflows call `just` recipes only; pre-commit hooks call the linters directly. |
 | III. Reproducible environments via devbox | PASS, with documented exceptions | `devbox.json` provides python, uv, just, pre-commit, linters, Flutter. Docker is the stated exception. Android SDK is the second likely exception if devbox cannot provide it reliably (see research R-12). |
 | IV. Pluggable backends | PASS | Three ports (`TaskBackend`, `CalendarBackend`, `NoteBackend`) with one adapter each. `tach` enforces that core code cannot import adapters. Adapters are tested with recorded HTTP responses. |
-| V. Documented, tested, CI-verified | PASS | mypy/ruff/tach/pytest across source, tests and e2e; per-technology linters; Sphinx docs build with warnings as errors in CI. |
+| V. Documented, tested, CI-verified | PASS | mypy/ruff/tach/pytest across source, tests and e2e; pytest-alembic tests for every migration; per-technology linters; Vale checks prose against our ASD-STE100 rule set; Sphinx docs build with warnings as errors in CI. |
+| VI. Documentation for two audiences (STE) | PASS | `docs/` is split into `docs/user/` (task-based end-user guides) and `docs/developer/` (architecture, `just`, contracts, release). All prose follows ASD-STE100; Vale (`.vale/styles/STE`) runs in pre-commit and, through `just lint`, in CI. Behaviour changes update the matching guide in the same change. See research R-13. |
 
-No violations, so Complexity Tracking is empty. Re-check after Phase 1: still PASS.
+No violations, so Complexity Tracking is empty. Re-check after Phase 1 (with Principle VI added in v1.1.0): still PASS.
 
 ## Project Structure
 
@@ -84,7 +90,8 @@ specs/001-daily-planning-framework/
 ```text
 justfile                      # imports every module below; only entry point
 devbox.json                   # dependency setup
-.pre-commit-config.yaml       # the single file listing all checks
+.pre-commit-config.yaml       # the single file listing all checks (incl. Vale)
+.vale.ini, .vale/styles/STE/  # ASD-STE100 style checks for prose
 tach.toml                     # module boundaries for the backend
 .github/workflows/            # ci.yml, release.yml, nightly.yml (call `just` only)
 
@@ -135,7 +142,12 @@ scripts/                      # small, shellcheck-clean Bash helpers (version co
 docs/
 ├── docs.just
 ├── conf.py                   # Sphinx + myst-parser
-└── *.md
+├── index.md                  # splits into the two audiences
+├── user/                     # end users: setup, connections, daily use, shortcuts, troubleshooting
+└── developer/                # developers: architecture, just recipes, contracts, testing, release
+├── index.md                  # splits into the two audiences
+├── user/                     # end users: setup, connections, daily use, shortcuts, troubleshooting
+└── developer/                # developers: architecture, just recipes, contracts, testing, release
 ```
 
 **Structure Decision**: Web-service-plus-client layout with one top-level directory per

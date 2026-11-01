@@ -70,8 +70,9 @@ technology requires adding its linter and configuration in the same change.
 - **Rationale**: Matches constitution principle II and III.
 
 ## R-08 Documentation **(user)**
-- **Decision**: Markdown in `docs/`, built by Sphinx with `myst-parser`; `just docs-build`
-  uses `-W` so warnings fail the build. Spec Kit files under `specs/` are not part of the
+- **Decision**: Markdown in `docs/`, built by Sphinx with `myst-parser`; `just docs::build`
+  uses `-W` so warnings fail the build. `docs/` has two sections, `user/` and `developer/`
+  (see R-13). Spec Kit files under `specs/` are not part of the
   published docs.
 - **Rationale**: Plain Markdown remains readable on GitHub and renders in Sphinx.
 
@@ -150,3 +151,22 @@ technology requires adding its linter and configuration in the same change.
   continuation of httpx) was considered and rejected by the user.
 - **Rationale**: Established ecosystem support: `respx` for mocking, Authlib's httpx
   integration and FastAPI's `TestClient` all work with `httpx` directly.
+
+## R-13 Documentation audiences and ASD-STE100 **(constitution VI)**
+- **Decision**: Two documentation sections with separate tables of contents. `docs/user/`:
+  task-based guides (install the client, connect Vikunja, Google Calendar and Trilium Next,
+  plan a day and a week, schedule tasks, resolve conflicts, keyboard shortcuts,
+  troubleshooting an unavailable app). `docs/developer/`: architecture and layering (`tach`),
+  `just` recipes, adapter and API contracts, how to add an adapter, testing, migrations,
+  releases and nightly versions, deployment (incl. Authelia). The README links to both.
+- **Style enforcement**: Vale with a custom `STE` style (sentence length, passive voice,
+  contractions, simpler-word list, semicolons), listed in `.pre-commit-config.yaml`, so
+  `just lint` and CI run it. Rules Vale cannot check (approved vocabulary, one word one
+  meaning, procedure structure) are checked in review.
+- **Rationale**: The official ASD-STE100 dictionary is licensed and cannot be bundled, so the
+  tool check is an approximation, not a certification. Splitting by audience keeps end-user
+  pages free of code detail.
+- **Alternatives considered**: One mixed docs tree (readers must filter); a full STE
+  checker such as a licensed Simplified Technical English product (cost, not scriptable in
+  `just`).
+- **Open item**: Vale has not yet been run on the existing prose (tracked as T120).

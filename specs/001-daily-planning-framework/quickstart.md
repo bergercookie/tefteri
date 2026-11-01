@@ -8,11 +8,11 @@ Everything is run through `just`. Run `just --list` for the full set of recipes.
 
 ## 1. Quality gate
 ```bash
-just lint        # pre-commit: all linters (ruff, mypy, tach, dart, shellcheck, yamllint, ...)
+just lint        # pre-commit: all linters (ruff, mypy, tach, dart, shellcheck, yamllint, vale, ...)
 just test        # backend and frontend tests
-just docs-build  # Sphinx + MyST, warnings as errors
+just docs::build  # Sphinx + MyST, warnings as errors
 ```
-Expected: all pass; any linter finding or doc warning fails the command.
+Expected: all pass; any linter finding, STE style finding (Vale) or doc warning fails the command.
 
 ## 2. Run the server (SQLite)
 ```bash
@@ -24,7 +24,7 @@ Expected: server starts; it refuses to start if the admin value is not a valid h
 
 ## 3. Validate the P1 flow with fake backends
 ```bash
-just backend-e2e
+just backend::e2e
 ```
 Expected: connects fake Vikunja/Google/Trilium backends, syncs, creates/completes a task,
 schedules it (task date written back, no calendar event created), appends a daily note, and
@@ -32,14 +32,14 @@ reports a conflict that is resolved by choice.
 
 ## 4. Postgres
 ```bash
-just deploy-up-postgres      # compose with Postgres
-just backend-test-postgres   # integration tests against Postgres
+just deploy::up-postgres      # compose with Postgres
+just backend::test-postgres   # integration tests against Postgres
 ```
 
 ## 5. Release artifacts
 ```bash
-just build-client            # .deb, AppImage, .apk (build recipes in packaging.just)
-just build-image             # server Docker image
+just packaging::deb; just packaging::appimage; just packaging::apk   # client packages
+just deploy::build-image      # server Docker image
 just version-nightly         # prints <prev-stable>.<hash>.postN
 ```
 CI performs the same through `just` on a tag push (release) and on a schedule (nightly,
@@ -61,3 +61,6 @@ image `ghcr.io/bergercookie/tefteri:nightly`).
 8. With a keyboard, reach each of the daily, weekly, monthly, annual, goals, review, notes and
    settings views using shortcuts alone, open the shortcut help, and confirm shortcuts do not
    trigger while typing in a text field (SC-010).
+9. Documentation: open the built docs (`just docs::build`). Confirm that `user/` and
+   `developer/` are separate sections, that each user guide can be followed without reading
+   code, and that `vale` reports no findings on the README, CONTRIBUTING and `docs/`.
