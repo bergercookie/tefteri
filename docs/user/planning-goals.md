@@ -17,6 +17,12 @@ You can keep your goals after the period ends.
 2. Choose Week, Month or Year.
 3. To see a different period, choose the arrows or the date at the top.
 
+![The Week view. It shows the goal Run 25 km at 50 percent, one event and three tasks. Two tasks belong to the goal.](../images/planning-week.png)
+
+![The Month view for November 2026 with the goal Run 100 km in November.](../images/planning-month.png)
+
+![The Year view for 2026 with two goals and their progress.](../images/planning-year.png)
+
 The Week view shows the goals of the week. The Month view shows the goals of the month. The Year view shows the goals of the year.
 
 ## Add a goal
@@ -38,10 +44,14 @@ A year goal can have month goals. A month goal can have week goals. A week goal 
 4. To add a task, choose Add task. Type the title and choose the project.
 5. Choose Save.
 
+![The Break down dialog for the goal Run a half marathon, with one new smaller goal and one new task.](../images/planning-breakdown.png)
+
 The period of a smaller goal must be inside the period of its larger goal.
 Tefteri adds a new task to your task app.
 
 ## See how progress grows
+
+![The Goals screen. The year goal Run a half marathon contains a month goal, and the month goal contains a week goal. Each goal has a progress bar.](../images/planning-goals.png)
 
 A goal shows its progress as a number. The progress comes from the smaller goals and the tasks of the goal.
 

@@ -20,6 +20,8 @@ Tefteri does not store these items. They stay in your own apps. Tefteri changes 
 3. To see a different day, choose the arrows or the date at the top.
 4. Press Sync to get the newest data.
 
+![The daily view for 2 November 2026. It shows two events, three tasks and the daily note. One task has the Unclassified marker.](../images/daily-view.png)
+
 If you did not connect your apps, read [Connect your apps](connect-apps.md) first.
 
 ## Add a task
@@ -28,6 +30,8 @@ If you did not connect your apps, read [Connect your apps](connect-apps.md) firs
 2. Type the title of the task.
 3. Choose the project for the task.
 4. Choose Save.
+
+![The Add a task field at the top of the daily view, with the text Book the train tickets.](../images/daily-quick-add.png)
 
 The task goes to your task app. It shows in the daily view when it is due on that day.
 

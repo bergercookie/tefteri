@@ -2,7 +2,6 @@ tefteri
 Tefteri
 Vikunja
 Trilium
-Slamcore
 Flutter
 FastAPI
 Alembic

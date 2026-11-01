@@ -1,5 +1,5 @@
 extends: occurrence
-message: "Sentence has more than %s words. STE: write 20 words or fewer (procedures) or 25 or fewer (descriptions)."
+message: "Sentence has more than 25 words. STE: write 20 words or fewer (procedures) or 25 or fewer (descriptions)."
 level: warning
 scope: sentence
 max: 25

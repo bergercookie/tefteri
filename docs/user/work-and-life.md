@@ -39,6 +39,8 @@ The switch is at the top of every screen. It has three choices:
 1. Choose All, Life or Work at the top of the screen.
 2. Look at the daily view, the calendar and the notes.
 
+![The daily view with the Life filter on. Only life items show. The task Buy a birthday present has the Unclassified marker.](../images/context-switch.png)
+
 The choice applies to tasks, calendar entries and notes in all views. Tefteri keeps your choice when you change screens.
 
 ## The unclassified marker

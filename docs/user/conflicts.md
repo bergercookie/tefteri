@@ -24,22 +24,23 @@ Other items sync as usual. A conflict in one item does not stop the other items.
 ## Compare the two versions
 
 1. On the Conflicts screen, choose an item.
-2. Read the Local version. This is the version in tefteri.
-3. Read the Remote version. This is the version in your app.
+2. Read Your version. This is the version in tefteri.
+3. Read Other app version. This is the version in your app.
 4. Look at the fields that are different. Tefteri marks them.
+
+![A conflict for a task. Your version and the other app version show side by side. The different fields have a color. Two buttons let you keep one version.](../images/conflicts.png)
 
 ## Choose which version to keep
 
 You have two choices:
 
-- Keep local. Tefteri sends its version to your app. The version in your app changes.
-- Keep remote. Tefteri takes the version from your app. The version in tefteri changes.
+- Keep your version. Tefteri sends its version to your app. The version in your app changes.
+- Keep other app version. Tefteri takes the version from your app. The version in tefteri changes.
 
 To choose:
 
 1. Choose the item on the Conflicts screen.
-2. Choose Keep local or Keep remote.
-3. Choose Confirm.
+2. Choose Keep your version or Keep other app version. Tefteri applies your choice at once.
 
 The item has one version now. The conflict is gone from the list.
 

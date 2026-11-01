@@ -24,7 +24,8 @@ swap:
   facilitate: help
   however: but
   therefore: so
-  "e.g.": for example
-  "i.e.": that is
-  "etc.": and so on
+  # Keys are regular expressions, so the dots must be escaped.
+  'e\.g\.': for example
+  'i\.e\.': that is
+  'etc\.': and so on
   "and/or": or

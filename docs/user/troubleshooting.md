@@ -15,6 +15,8 @@ If a change fails, the app did not get the change. Make the change again after y
 
 The message says that tefteri cannot reach the app. The connection shows the status Error.
 
+![Two red cards. Home tasks is unavailable because the service is not reachable. Work calendar is unavailable because the credentials expired. Each card has the buttons Retry, Reconnect and Open settings.](../images/connections-unavailable.png)
+
 Common causes:
 
 - Your computer or phone has no network.

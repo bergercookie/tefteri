@@ -1,0 +1,70 @@
+# Sync and conflicts
+
+Sync starts only when the user asks for it (the Sync button, F5, or `POST /sync`). The
+`SyncService` reads every connection of the user, one after the other. It copies the items into
+the cache tables (`tasks`, `calendar_entries`, `notes`).
+
+## Sync flow
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant API as api: POST /sync
+  participant Sync as SyncService
+  participant DB as Cache (database)
+  participant App as Connected app
+  User->>API: Sync
+  API->>Sync: sync_all(user)
+  loop each connection
+    Sync->>DB: begin nested transaction (savepoint)
+    Sync->>App: list containers and items
+    alt the app answers
+      App-->>Sync: items
+      Sync->>DB: insert new rows, update changed rows
+      Sync->>DB: mark missing rows deleted_remotely
+      Sync->>DB: release savepoint
+    else unreachable, expired credentials or other error
+      App-->>Sync: error
+      Sync->>DB: roll back to savepoint
+    end
+    Sync->>DB: store SyncRun and connection status
+  end
+  Sync-->>API: one result for each connection
+  API-->>User: outcome, counts and reason for each connection
+```
+
+Each connection syncs inside its own savepoint. A failure rolls back only the changes of that
+connection. The other connections still sync. The result names the connection and gives a
+reason: `unreachable`, `auth_expired` or `error`. The connection status changes to `error` or
+`needs_attention`.
+
+The sync does not overwrite a row in the `conflict` state. The row stays as it is until the
+user solves the conflict.
+
+## Writes from tefteri
+
+A write (for example, change a task title) goes to the connected app first. The adapter sends
+the version of the cached item. When the app accepts the change, tefteri updates the cache. When
+the app is unreachable or refuses the change, tefteri changes nothing and returns the error.
+Tefteri does not queue changes.
+
+## Conflict flow
+
+```mermaid
+flowchart TD
+  write[User changes an item in tefteri] --> send[Adapter sends the change with the cached version]
+  send --> check{Did the item change in the app?}
+  check -->|no| ok[App applies the change. Tefteri updates the cache.]
+  check -->|yes: remote_conflict| record[Tefteri stores a Conflict with both versions]
+  record --> mark[Item sync_state becomes conflict]
+  mark --> skip[Sync does not overwrite the item]
+  skip --> choose{User chooses on the Conflicts screen}
+  choose -->|keep_local| push[Send the local version with the current app version]
+  choose -->|keep_remote| pull[Copy the app version into the cache]
+  push --> done[Item sync_state becomes synced. Conflict is resolved.]
+  pull --> done
+```
+
+Tefteri never solves a conflict itself. The `Conflict` row keeps the two versions until the user
+chooses one. Tasks and calendar entries use this flow. For a note, tefteri returns the
+`remote_conflict` error and saves nothing. The user syncs and then makes the change again.

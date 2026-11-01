@@ -16,6 +16,8 @@ This guide also shows the administrator how to manage users.
 3. Type your password.
 4. Choose Sign in.
 
+![The sign-in screen with the fields Username and Password and the Sign in button.](../images/accounts-login.png)
+
 Tefteri shows your planning screens after you sign in.
 
 ## Session length
@@ -28,7 +30,7 @@ Your administrator can change this time.
 Tefteri blocks sign-in for an account after 5 wrong passwords in 15 minutes. The block lasts 15 minutes.
 This stops other people from guessing your password.
 
-If your sign-in is blocked, do these steps:
+If tefteri blocks your sign-in, do these steps:
 
 1. Wait 15 minutes. Do not try to sign in during this time.
 2. Sign in again with the correct password.
@@ -47,6 +49,8 @@ Your administrator can change these limits.
 Use the new password the next time you sign in.
 
 ## Manage users (administrators only)
+
+![The Users screen. It lists three users. Each user has the buttons Disable or Enable, Reset password and Delete.](../images/accounts-users.png)
 
 Only an administrator sees the Users menu item. The first administrator comes from the deployment settings.
 

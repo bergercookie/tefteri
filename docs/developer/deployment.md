@@ -6,10 +6,10 @@ Tefteri reads its settings from environment variables that start with `TEFTERI_`
 ## Settings
 
 | Variable | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `TEFTERI_ADMIN_USERNAME` | `admin` | Username of the first administrator. |
-| `TEFTERI_ADMIN_PASSWORD_HASH` | none | Argon2 hash of the administrator password. Must be set. |
-| `TEFTERI_SECRET_KEY` | none | Secret text of 16 characters or more. Must be set. |
+| `TEFTERI_ADMIN_PASSWORD_HASH` | none | Argon2 hash of the administrator password. You must set it. |
+| `TEFTERI_SECRET_KEY` | none | Secret text of 16 characters or more. You must set it. |
 | `TEFTERI_DATABASE_URL` | `sqlite+aiosqlite:///./tefteri.db` | Database address. |
 | `TEFTERI_PUBLIC_URL` | none | Public base address of the server. |
 | `TEFTERI_GOOGLE_CLIENT_ID` | none | Google OAuth client ID. |
@@ -80,15 +80,40 @@ Tefteri blocks an account when it sees `TEFTERI_LOGIN_MAX_FAILURES` wrong passwo
 `TEFTERI_LOGIN_WINDOW_SECONDS` seconds. The block lasts `TEFTERI_LOGIN_BLOCK_SECONDS` seconds.
 The defaults are 5 wrong passwords, 15 minutes and 15 minutes.
 
-## Container files
+## Run tefteri in a container
 
-The folder `deploy/` has these files now:
+The folder `deploy/` has the container files:
 
-- `deploy.just` has the recipes `build-image`, `up`, `up-postgres` and `down`. Call them as `just deploy::<recipe>`.
+- `Dockerfile` builds the server image. The image runs the migrations at each start and then
+  starts the server on port 8000.
+- `compose.yaml` starts the server. The `postgres` profile also starts PostgreSQL.
 - `.env.example` is the template for the settings.
+- `deploy.just` has the recipes. Call them as `just deploy::<recipe>`.
 
-The recipes use a `Dockerfile` and a `compose.yaml` file. These files are not in `deploy/` yet.
-The recipes do not work until the files exist. This page will describe them when they are added.
+Tagged releases publish the image as `ghcr.io/bergercookie/tefteri:<version>` and
+`ghcr.io/bergercookie/tefteri:latest`. The nightly build publishes
+`ghcr.io/bergercookie/tefteri:nightly`.
+
+To run the server with SQLite:
+
+1. Copy `deploy/.env.example` to `deploy/.env`. Fill in the values.
+2. Run `just deploy::build-image`, or set `TEFTERI_IMAGE` in `.env` to a published image.
+3. Run `just deploy::up`.
+4. Open `http://localhost:8000/health`. The answer is `{"status": "ok"}`.
+
+The SQLite database is in the `data` volume, at `/data/tefteri.db`. Back up this volume.
+
+To use PostgreSQL:
+
+1. In `deploy/.env`, set `POSTGRES_PASSWORD`.
+2. In `deploy/.env`, set `TEFTERI_DATABASE_URL` to
+   `postgresql+asyncpg://tefteri:<POSTGRES_PASSWORD>@postgres:5432/tefteri`.
+3. Run `just deploy::up-postgres`.
+
+To stop the containers, run `just deploy::down`. The volumes stay.
+
+To check an image, run `just deploy::smoke`. The recipe builds the image, starts it and checks
+the health, the version and the sign-in.
 
 ## Reverse proxy
 

@@ -19,6 +19,8 @@ This way, you can see which items are tasks.
 4. To use the keyboard, choose the task and choose Schedule. Then choose a date and a time.
 5. Choose Save.
 
+![The calendar for the week of 2 November 2026. The unscheduled tasks are at the top. The scheduled task Write the release notes shows next to the events, in a different color.](../images/calendar-week.png)
+
 Your task app now has the new date and time. The task shows on the calendar.
 
 ## Move a scheduled task
@@ -70,6 +72,8 @@ Before you save, tefteri asks you to confirm. Choose Confirm to keep the overlap
 
 Some task apps have no field for the time of a task. If your app is like this, tefteri tells you that the action is not available.
 Tefteri does not save the time in a different place. It does not lose data.
+
+![A red message at the top of the calendar: Home tasks does not support this action.](../images/calendar-unsupported.png)
 
 You can do these things:
 

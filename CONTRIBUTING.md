@@ -11,4 +11,4 @@ the underlying tools (pytest, ruff, flutter, docker...) directly.
 
 All prose (README, CONTRIBUTING, `docs/`) follows ASD-STE100 Simplified Technical English.
 Use short sentences, the active voice, and simple words. `vale` checks the rules it can
-(see `.vale/styles/STE/README.md`); it runs in pre-commit.
+(see `.vale/styles/STE/README.md`). It runs in pre-commit.

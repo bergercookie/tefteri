@@ -15,6 +15,8 @@ You can connect these apps:
 2. Open the Settings screen.
 3. Find the list of connections.
 
+![The Connections screen with three connections: Home tasks, Work calendar and Notes. Each shows its app and the time of the last sync.](../images/connections-list.png)
+
 ## Connect Vikunja
 
 You need the web address of your Vikunja server and an API token.
@@ -69,6 +71,8 @@ Tefteri does not sync in the background. You start each sync.
 1. Press the Sync button at the top of the screen.
 2. Wait until the button stops moving.
 3. Read the result for each connection.
+
+![The Connections screen after a sync. A message at the bottom says: Sync finished.](../images/connections-sync-result.png)
 
 To sync one connection only, open Settings and choose Sync next to that connection.
 
