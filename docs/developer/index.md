@@ -1,0 +1,10 @@
+# Developer guide
+
+These guides are for people who change or deploy tefteri.
+
+```{toctree}
+:maxdepth: 1
+
+architecture
+adding-an-adapter
+```
