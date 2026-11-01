@@ -114,6 +114,8 @@ Several people use the same tefteri installation. Each has their own account, co
 1. **Given** two users, **When** each signs in, **Then** each sees only their own items and connected apps.
 2. **Given** a signed-out visitor, **When** they try to access any data, **Then** access is denied.
 3. **Given** a fresh deployment configured with an admin username and password hash, **When** the admin signs in with the matching password, **Then** they can create further user accounts.
+4. **Given** a signed-in user, **When** they give their current password and a new one, **Then** the new password works, the old one stops working, and their other sessions end.
+5. **Given** a user who forgot their password, **When** an administrator sets a new one, **Then** the user can sign in with it.
 
 ---
 
@@ -203,7 +205,7 @@ A user working at a keyboard can move between all views (daily, weekly, monthly,
 - **FR-019**: Connected apps are assumed to be reachable. When one is not (unreachable, credentials expired or revoked), the system MUST say so clearly, naming the connection and the reason, MUST NOT apply or queue the user's change silently, and MUST let the user resolve it (retry, reconnect or fix the connection).
 - **FR-020**: The set of supported apps MUST be extensible, so that supporting a new task manager, calendar or note-taking app does not change the user-facing behaviour described here.
 - **FR-021**: Credentials and access tokens for connected apps MUST be stored securely and MUST NOT be visible to other users.
-- **FR-022**: The initial administrator MUST be created at first deployment from deployment configuration that supplies a pre-computed password hash; the system MUST NOT accept or store a raw password in configuration. Open self-registration MUST NOT exist; only an administrator can create further accounts.
+- **FR-022**: The initial administrator MUST be created at first deployment from deployment configuration that supplies a pre-computed password hash; the system MUST NOT accept or store a raw password in configuration. Open self-registration MUST NOT exist; only an administrator can create further accounts. Every user MUST be able to change their own password (after giving the current one), and an administrator MUST be able to set a new password for any user, disable an account, and delete a user together with that user's data. The system MUST NOT let an administrator disable, demote or delete themselves, or remove the last administrator. Passwords MUST have at least 8 characters.
 - **FR-023**: *(Removed from v1: SSO/OIDC sign-in is deferred to a later version. The number is kept so other references stay stable.)*
 - **FR-024**: The system MUST temporarily block further sign-in attempts after 5 consecutive failures for an account within 15 minutes (for 15 minutes), and MUST expire sessions after a configurable period that defaults to 8 hours.
 - **FR-025**: Every tagged release MUST produce downloadable Linux desktop packages (`.deb`, AppImage), an Android package and a server container image published to the project's container registry.

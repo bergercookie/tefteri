@@ -45,7 +45,8 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T121 [P] Restructure `docs/` for the two audiences (constitution VI): move `docs/architecture.md` to `docs/developer/architecture.md`, create `docs/user/index.md` and `docs/developer/index.md`, make `docs/index.md` link both sections, keep `just docs::build` (-W) passing, and add any new technical terms to `.vale/styles/config/vocabularies/Tefteri/accept.txt`
 - [ ] T147 [P] Run the shared adapter contract suite (`backend/tests/integration/test_backend_contracts.py`) against the real Vikunja, Google Calendar and Trilium adapters, using a stateful respx fake server per app, so the contract in `contracts/backend-ports.md` holds for every adapter
 - [X] T148 [P] Wire all backend tests into `just`: `backend::test` runs unit, integration, migrations and e2e tests (not smoke, not `postgres`-marked); add `backend/tests/migrations/test_postgres.py` (marked `postgres`, reads `TEFTERI_TEST_POSTGRES_URL`, upgrades to head and downgrades to base); `backend::test-postgres` runs the marked tests
-- [ ] T149 Run `just frontend::analyze` and `just frontend::test` in `devbox shell` and fix findings in the Flutter code written so far (T031, T048-T051); do T133 (pin Flutter) first
+- [X] T149 Run `just frontend::analyze` and `just frontend::test` in `devbox shell` and fix findings in the Flutter code written so far (T031, T048-T051); do T133 (pin Flutter) first
+- [X] T150 [P] Add the Postgres end-to-end test `backend/tests/e2e/test_postgres_app.py` (marked `postgres`: real migrations, sign-in, sync, writes, goals, conflicts and user delete cascades on PostgreSQL through asyncpg; runs with `TEFTERI_TEST_POSTGRES_URL`)
 - [ ] T133 [P] Set up Mermaid diagrams in the docs: add `sphinxcontrib-mermaid` to `docs/requirements.txt`, enable it in `docs/conf.py`, keep `just docs::build` (-W) passing, and pin the Flutter version in `devbox.json` so screenshots are reproducible
 - [ ] T134 [P] Set up app screenshots: bundle an open-licence font in `frontend/assets/fonts/` (declare it in `frontend/pubspec.yaml`), add the shared helper `frontend/test/screenshots/screenshot_helper.dart` (loads the font, fixed window size and fake data, writes the PNG to `docs/images/`), and add the recipe `screenshots` to `docs/docs.just` (`just docs::screenshots` runs `flutter test --update-goldens test/screenshots`; run by hand, no CI check)
 
@@ -126,19 +127,19 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 2
 
-- [ ] T052 [P] [US2] Integration tests for task CRUD/complete write-through in `backend/tests/integration/test_tasks.py`
-- [ ] T053 [P] [US2] Integration tests for daily note get-or-create, append and task link in `backend/tests/integration/test_daily_notes.py`
-- [ ] T054 [P] [US2] E2E test of the daily flow against fake backends in `backend/tests/e2e/test_daily_flow.py`
+- [X] T052 [P] [US2] Integration tests for task CRUD/complete write-through in `backend/tests/integration/test_tasks.py`
+- [X] T053 [P] [US2] Integration tests for daily note get-or-create, append and task link in `backend/tests/integration/test_daily_notes.py`
+- [X] T054 [P] [US2] E2E test of the daily flow against fake backends in `backend/tests/e2e/test_daily_flow.py`
 
 ### Implementation for User Story 2
 
-- [ ] T055 [P] [US2] Implement `TaskNoteLink` model in `backend/src/tefteri/db/models/links.py`
-- [ ] T056 [US2] Implement task service (create, edit, complete, delete via port, then update cache; pass `expected_version` and raise `RemoteConflict` on a changed remote; if the app is unreachable apply nothing locally and return a clear error naming the connection and reason; surface `NotSupported` as a clear "unavailable for this app" message) in `backend/src/tefteri/services/tasks.py`
-- [ ] T057 [US2] Implement note service (daily get-or-create, append, link to task) in `backend/src/tefteri/services/notes.py`
-- [ ] T058 [US2] Implement endpoints `POST/GET/PATCH/DELETE /tasks`, `POST /tasks/{id}/complete`, `GET /notes/daily/{date}`, `POST /notes/daily/{date}/append`, `POST /tasks/{id}/notes`, `GET /views/day/{date}` in `backend/src/tefteri/api/routers/`
-- [ ] T059 [P] [US2] Implement the Flutter daily view (entries, tasks, daily note, quick add, complete, delete; show clear messages for unreachable apps and unsupported actions) in `frontend/lib/features/daily/`
-- [ ] T060 [P] [US2] Flutter widget tests for the daily view in `frontend/test/features/daily/`
-- [ ] T124 [P] [US2] User guide `docs/user/daily-planning.md` (daily view, add/complete/delete tasks, the daily note, link a note to a task), written in ASD-STE100
+- [X] T055 [P] [US2] Implement `TaskNoteLink` model in `backend/src/tefteri/db/models/links.py`
+- [X] T056 [US2] Implement task service (create, edit, complete, delete via port, then update cache; pass `expected_version` and raise `RemoteConflict` on a changed remote; if the app is unreachable apply nothing locally and return a clear error naming the connection and reason; surface `NotSupported` as a clear "unavailable for this app" message) in `backend/src/tefteri/services/tasks.py`
+- [X] T057 [US2] Implement note service (daily get-or-create, append, link to task) in `backend/src/tefteri/services/notes.py`
+- [X] T058 [US2] Implement endpoints `POST/GET/PATCH/DELETE /tasks`, `POST /tasks/{id}/complete`, `GET /notes/daily/{date}`, `POST /notes/daily/{date}/append`, `POST /tasks/{id}/notes`, `GET /views/day/{date}` in `backend/src/tefteri/api/routers/`
+- [X] T059 [P] [US2] Implement the Flutter daily view (entries, tasks, daily note, quick add, complete, delete; show clear messages for unreachable apps and unsupported actions) in `frontend/lib/features/daily/`
+- [X] T060 [P] [US2] Flutter widget tests for the daily view in `frontend/test/features/daily/`
+- [X] T124 [P] [US2] User guide `docs/user/daily-planning.md` (daily view, add/complete/delete tasks, the daily note, link a note to a task), written in ASD-STE100
 - [ ] T136 [P] [US2] Screenshot tests in `frontend/test/screenshots/daily_test.dart` (fake data, no real credentials or personal data) writing the daily view (entries, tasks, daily note) and quick add to `docs/images/`; embed them with alt text in `docs/user/daily-planning.md` next to the steps they show
 
 **Checkpoint**: US1 + US2 work together
@@ -153,18 +154,18 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 3
 
-- [ ] T061 [P] [US3] Integration tests for `PUT/DELETE /tasks/{id}/schedule` (write-back, no event created) in `backend/tests/integration/test_scheduling.py`
-- [ ] T062 [P] [US3] Integration tests for calendar entry create/edit/delete and overlap reporting in `backend/tests/integration/test_calendar_entries.py`
-- [ ] T063 [P] [US3] Unit tests for time zone, DST, all-day and recurring handling in `backend/tests/unit/test_time_handling.py`
+- [X] T061 [P] [US3] Integration tests for `PUT/DELETE /tasks/{id}/schedule` (write-back, no event created) in `backend/tests/integration/test_scheduling.py`
+- [X] T062 [P] [US3] Integration tests for calendar entry create/edit/delete and overlap reporting in `backend/tests/integration/test_calendar_entries.py`
+- [X] T063 [P] [US3] Unit tests for time zone, DST, all-day and recurring handling in `backend/tests/unit/test_time_handling.py`
 
 ### Implementation for User Story 3
 
-- [ ] T064 [US3] Implement scheduling service (set/clear schedule via `TaskBackend.set_schedule`, overlap detection; same `expected_version`, unreachable and `NotSupported` handling as the task service) in `backend/src/tefteri/services/scheduling.py`
-- [ ] T065 [US3] Implement calendar service for entry CRUD through `CalendarBackend` in `backend/src/tefteri/services/calendar.py`
-- [ ] T066 [US3] Implement endpoints `PUT/DELETE /tasks/{id}/schedule`, `POST/PATCH/DELETE /calendar/entries`, and make `GET /calendar` return entries and scheduled tasks tagged `type: entry|task` in `backend/src/tefteri/api/routers/calendar.py`
-- [ ] T067 [P] [US3] Implement the Flutter calendar view with drag/choose-time scheduling and distinct styling for tasks vs entries and clear unsupported/unreachable messages in `frontend/lib/features/calendar/`
-- [ ] T068 [P] [US3] Flutter widget tests for scheduling interactions in `frontend/test/features/calendar/`
-- [ ] T125 [P] [US3] User guide `docs/user/scheduling.md` (put a task on the calendar, why no calendar event is created, edit calendar entries, overlaps, apps that cannot store a time), written in ASD-STE100
+- [X] T064 [US3] Implement scheduling service (set/clear schedule via `TaskBackend.set_schedule`, overlap detection; same `expected_version`, unreachable and `NotSupported` handling as the task service) in `backend/src/tefteri/services/scheduling.py`
+- [X] T065 [US3] Implement calendar service for entry CRUD through `CalendarBackend` in `backend/src/tefteri/services/calendar.py`
+- [X] T066 [US3] Implement endpoints `PUT/DELETE /tasks/{id}/schedule`, `POST/PATCH/DELETE /calendar/entries`, and make `GET /calendar` return entries and scheduled tasks tagged `type: entry|task` in `backend/src/tefteri/api/routers/calendar.py`
+- [X] T067 [P] [US3] Implement the Flutter calendar view with drag/choose-time scheduling and distinct styling for tasks vs entries and clear unsupported/unreachable messages in `frontend/lib/features/calendar/`
+- [X] T068 [P] [US3] Flutter widget tests for scheduling interactions in `frontend/test/features/calendar/`
+- [X] T125 [P] [US3] User guide `docs/user/scheduling.md` (put a task on the calendar, why no calendar event is created, edit calendar entries, overlaps, apps that cannot store a time), written in ASD-STE100
 - [ ] T137 [P] [US3] Screenshot tests in `frontend/test/screenshots/calendar_test.dart` (fake data, no real credentials or personal data) writing the calendar view with a task scheduled beside entries, and the unsupported-app message to `docs/images/`; embed them with alt text in `docs/user/scheduling.md` next to the steps they show
 
 **Checkpoint**: All P1 stories independently functional
@@ -175,10 +176,10 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 **Purpose**: Detect and resolve changes made both in tefteri and in a connected app, before the remaining stories build on write-through. Nothing is ever overwritten automatically.
 
-- [ ] T069 [P] Write unit and integration tests for conflict detection and resolution (`keep_local|keep_remote`, nothing overwritten automatically) in `backend/tests/{unit,integration}/test_conflicts.py`
-- [ ] T070 Implement conflict detection in the sync/write-through services and `GET /conflicts`, `POST /conflicts/{id}/resolve` in `backend/src/tefteri/services/conflicts.py` and `api/routers/conflicts.py`
-- [ ] T071 [P] Implement the Flutter conflict resolution screen showing both versions in `frontend/lib/features/conflicts/`
-- [ ] T126 [P] User guide `docs/user/conflicts.md` (what a conflict is, compare both versions, keep local or keep remote), written in ASD-STE100
+- [X] T069 [P] Write unit and integration tests for conflict detection and resolution (`keep_local|keep_remote`, nothing overwritten automatically) in `backend/tests/{unit,integration}/test_conflicts.py`
+- [X] T070 Implement conflict detection in the sync/write-through services and `GET /conflicts`, `POST /conflicts/{id}/resolve` in `backend/src/tefteri/services/conflicts.py` and `api/routers/conflicts.py`
+- [X] T071 [P] Implement the Flutter conflict resolution screen showing both versions in `frontend/lib/features/conflicts/`
+- [X] T126 [P] User guide `docs/user/conflicts.md` (what a conflict is, compare both versions, keep local or keep remote), written in ASD-STE100
 - [ ] T138 [P] Screenshot tests in `frontend/test/screenshots/conflicts_test.dart` (fake data, no real credentials or personal data) writing the conflict screen showing both versions to `docs/images/`; embed them with alt text in `docs/user/conflicts.md` next to the steps they show
 
 ---
@@ -191,16 +192,16 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 4
 
-- [ ] T072 [P] [US4] Unit tests for effective-context resolution (item override → container → connection default; unclassified marker) in `backend/tests/unit/test_context.py`
-- [ ] T073 [P] [US4] Integration tests that `context=work|life|all` filters tasks, calendar entries and notes with zero leakage (goals and views are tested in the US5 planning tests) in `backend/tests/integration/test_context_filter.py`
+- [X] T072 [P] [US4] Unit tests for effective-context resolution (item override → container → connection default; unclassified marker) in `backend/tests/unit/test_context.py`
+- [X] T073 [P] [US4] Integration tests that `context=work|life|all` filters tasks, calendar entries and notes with zero leakage (goals and views are tested in the US5 planning tests) in `backend/tests/integration/test_context_filter.py`
 
 ### Implementation for User Story 4
 
-- [ ] T074 [US4] Implement effective-context resolution and `context` query filter in `backend/src/tefteri/services/context.py` and repositories
-- [ ] T075 [US4] Implement `PATCH /connections/{id}/containers/{cid}` and per-item context update on tasks, entries and notes in `backend/src/tefteri/api/routers/`
-- [ ] T076 [P] [US4] Wire the global all/life/work switch to every Flutter view and show an "unclassified" marker in `frontend/lib/core/context_filter.dart`
-- [ ] T077 [P] [US4] Flutter tests for the context switch across views in `frontend/test/core/context_filter_test.dart`
-- [ ] T127 [P] [US4] User guide `docs/user/work-and-life.md` (label items and containers, the all/life/work switch, the unclassified marker), written in ASD-STE100
+- [X] T074 [US4] Implement effective-context resolution and `context` query filter in `backend/src/tefteri/services/context.py` and repositories
+- [X] T075 [US4] Implement `PATCH /connections/{id}/containers/{cid}` and per-item context update on tasks, entries and notes in `backend/src/tefteri/api/routers/`
+- [X] T076 [P] [US4] Wire the global all/life/work switch to every Flutter view and show an "unclassified" marker in `frontend/lib/core/context_filter.dart`
+- [X] T077 [P] [US4] Flutter tests for the context switch across views in `frontend/test/core/context_filter_test.dart`
+- [X] T127 [P] [US4] User guide `docs/user/work-and-life.md` (label items and containers, the all/life/work switch, the unclassified marker), written in ASD-STE100
 - [ ] T139 [P] [US4] Screenshot tests in `frontend/test/screenshots/context_test.dart` (fake data, no real credentials or personal data) writing the all/life/work switch and the unclassified marker to `docs/images/`; embed them with alt text in `docs/user/work-and-life.md` next to the steps they show
 
 ---
@@ -213,18 +214,18 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 5
 
-- [ ] T078 [P] [US5] Unit tests for goal hierarchy rules (child period inside parent, progress roll-up computed not stored) in `backend/tests/unit/test_goals.py`
-- [ ] T079 [P] [US5] Integration tests for `/goals`, `/goals/{id}/breakdown`, delete with `linked_tasks=keep|delete`, and `/views/week|month|year`, `context` filtering of goals and views, and scheduling a goal-derived task from a planning view in `backend/tests/integration/test_planning.py`
+- [X] T078 [P] [US5] Unit tests for goal hierarchy rules (child period inside parent, progress roll-up computed not stored) in `backend/tests/unit/test_goals.py`
+- [X] T079 [P] [US5] Integration tests for `/goals`, `/goals/{id}/breakdown`, delete with `linked_tasks=keep|delete`, and `/views/week|month|year`, `context` filtering of goals and views, and scheduling a goal-derived task from a planning view in `backend/tests/integration/test_planning.py`
 
 ### Implementation for User Story 5
 
-- [ ] T080 [P] [US5] Implement `Goal` model in `backend/src/tefteri/db/models/goal.py` (`period_type`: `year`|`month`|`week`; `status`: `active`|`done`|`dropped`; `parent_id` nullable; `progress` derived)
-- [ ] T081 [P] [US5] Implement `Plan` model in `backend/src/tefteri/db/models/plan.py` and a migration (with a test in `backend/tests/migrations/`) in `backend/migrations/versions/`
-- [ ] T082 [US5] Implement goal service (hierarchy validation, breakdown into child goals/tasks, progress roll-up, delete with keep/delete linked tasks) in `backend/src/tefteri/services/goals.py`
-- [ ] T083 [US5] Implement endpoints `/goals`, `/goals/{id}/breakdown`, `/plans`, and aggregated `/views/week/{date}`, `/views/month/{date}`, `/views/year/{year}` in `backend/src/tefteri/api/routers/planning.py`
-- [ ] T084 [P] [US5] Implement Flutter weekly, monthly and annual views and goal breakdown UI, including scheduling goal-derived tasks onto a day or time from any planning view in `frontend/lib/features/{week,month,year,goals}/`
-- [ ] T085 [P] [US5] Flutter widget tests for planning views in `frontend/test/features/`
-- [ ] T128 [P] [US5] User guide `docs/user/planning-goals.md` (goals for year, month and week, break a goal down, progress, schedule from a planning view), written in ASD-STE100
+- [X] T080 [P] [US5] Implement `Goal` model in `backend/src/tefteri/db/models/goal.py` (`period_type`: `year`|`month`|`week`; `status`: `active`|`done`|`dropped`; `parent_id` nullable; `progress` derived)
+- [X] T081 [P] [US5] Implement `Plan` model in `backend/src/tefteri/db/models/plan.py` and a migration (with a test in `backend/tests/migrations/`) in `backend/migrations/versions/`
+- [X] T082 [US5] Implement goal service (hierarchy validation, breakdown into child goals/tasks, progress roll-up, delete with keep/delete linked tasks) in `backend/src/tefteri/services/goals.py`
+- [X] T083 [US5] Implement endpoints `/goals`, `/goals/{id}/breakdown`, `/plans`, and aggregated `/views/week/{date}`, `/views/month/{date}`, `/views/year/{year}` in `backend/src/tefteri/api/routers/planning.py`
+- [X] T084 [P] [US5] Implement Flutter weekly, monthly and annual views and goal breakdown UI, including scheduling goal-derived tasks onto a day or time from any planning view in `frontend/lib/features/{week,month,year,goals}/`
+- [X] T085 [P] [US5] Flutter widget tests for planning views in `frontend/test/features/`
+- [X] T128 [P] [US5] User guide `docs/user/planning-goals.md` (goals for year, month and week, break a goal down, progress, schedule from a planning view), written in ASD-STE100
 - [ ] T140 [P] [US5] Screenshot tests in `frontend/test/screenshots/planning_test.dart` (fake data, no real credentials or personal data) writing the weekly, monthly and annual views and the goal breakdown to `docs/images/`; embed them with alt text in `docs/user/planning-goals.md` next to the steps they show
 
 ---
@@ -237,17 +238,17 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 6
 
-- [ ] T086 [P] [US6] Integration tests: cross-user access to every resource type returns nothing/404, and unauthenticated requests are denied, in `backend/tests/integration/test_isolation.py`
-- [ ] T087 [P] [US6] Integration tests for admin-only user management and no self-registration in `backend/tests/integration/test_users.py`
-- [ ] T088 [P] [US6] Integration tests for the `/auth/methods` endpoint and for admin-created users signing in with the password the admin set (a disabled user cannot sign in), in `backend/tests/integration/test_sign_in.py`
+- [X] T086 [P] [US6] Integration tests: cross-user access to every resource type returns nothing/404, and unauthenticated requests are denied, in `backend/tests/integration/test_isolation.py`
+- [X] T087 [P] [US6] Integration tests for admin-only user management and no self-registration in `backend/tests/integration/test_users.py`
+- [X] T088 [P] [US6] Integration tests for the `/auth/methods` endpoint and for admin-created users signing in with the password the admin set (a disabled user cannot sign in), in `backend/tests/integration/test_sign_in.py`
 
 ### Implementation for User Story 6
 
-- [ ] T089 [US6] Implement admin-only `GET/POST/PATCH/DELETE /users` (the admin sets the initial password, stored as an Argon2 hash; users can be disabled) in `backend/src/tefteri/api/routers/users.py`
+- [X] T089 [US6] Implement admin-only `GET/POST/PATCH/DELETE /users` (the admin sets the initial password, stored as an Argon2 hash; a new password resets a forgotten one; users can be disabled or deleted with their data; no self-lockout) and `POST /auth/password` for changing your own password, in `backend/src/tefteri/api/routers/users.py`
 - [X] T090 Remove the unfinished SSO/OIDC parts (settings, `oidc_*` user columns, `/auth/methods` oidc flag, `authlib` dependency) until SSO is specified in a later version
-- [ ] T091 [P] [US6] Implement Flutter admin user management screen in `frontend/lib/features/{admin,auth}/`
-- [ ] T092 [P] [US6] Document multi-user setup, admin bootstrap with a password hash, and reverse-proxy deployment in `docs/developer/deployment.md` (audience: administrators and developers), written in ASD-STE100
-- [ ] T129 [P] [US6] User guide `docs/user/accounts-and-sign-in.md` (sign in with a password, session expiry, blocked sign-in after repeated failures, administrator user management), written in ASD-STE100
+- [X] T091 [P] [US6] Implement Flutter admin user management screen in `frontend/lib/features/{admin,auth}/`
+- [X] T092 [P] [US6] Document multi-user setup, admin bootstrap with a password hash, and reverse-proxy deployment in `docs/developer/deployment.md` (audience: administrators and developers), written in ASD-STE100
+- [X] T129 [P] [US6] User guide `docs/user/accounts-and-sign-in.md` (sign in with a password, session expiry, blocked sign-in after repeated failures, administrator user management), written in ASD-STE100
 - [ ] T141 [P] [US6] Screenshot tests in `frontend/test/screenshots/accounts_test.dart` (fake data, no real credentials or personal data) writing the login screen and the admin user management screen to `docs/images/`; embed them with alt text in `docs/user/accounts-and-sign-in.md` next to the steps they show
 
 ---

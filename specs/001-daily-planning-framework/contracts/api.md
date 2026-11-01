@@ -11,10 +11,15 @@ return that user's data. Item list endpoints accept `context=all|work|life` (def
 ## Auth
 - `POST /auth/login` - username + password → session/token.
 - `POST /auth/logout`, `GET /auth/me`.
+- `POST /auth/password` `{current_password, new_password}` - change your own password (min 8
+  characters); your other sessions end.
 - `GET /auth/methods` - which login methods are enabled (v1: `{"password": true}`).
 
 ## Users (admin only)
-- `GET /users`, `POST /users`, `PATCH /users/{id}`, `DELETE /users/{id}`.
+- `GET /users`, `POST /users` `{username, password, is_admin?, timezone?}`, `PATCH /users/{id}`
+  `{password?, is_admin?, disabled?, timezone?}` (a new password resets a forgotten one),
+  `DELETE /users/{id}` (deletes the user's data). 403 `forbidden` for non-admins; 409
+  `username_taken`; 409 `not_allowed` for self-lockout or removing the last administrator.
 
 ## Connections and sync
 - `GET /connections`, `POST /connections`, `PATCH /connections/{id}`,
