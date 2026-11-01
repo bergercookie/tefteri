@@ -1,0 +1,70 @@
+# Nightly: when HEAD changed since the last nightly, publish the image as `nightly` and as
+# <previous-stable>.<hash>.post<N>, and replace the rolling `nightly` pre-release.
+# Every build step calls `just` (see the root justfile); the other steps only provision tools.
+name: nightly
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  packages: write
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      needed: ${{ steps.v.outputs.needed }}
+      image: ${{ steps.v.outputs.image }}
+      pep440: ${{ steps.v.outputs.pep440 }}
+      flutter: ${{ steps.v.outputs.flutter }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: jetify-com/devbox-install-action@v0.12.0
+      - id: v
+        run: devbox run -- just release::nightly-versions >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  image:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: jetify-com/devbox-install-action@v0.12.0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: devbox run -- just release::nightly-image "$IMAGE" "$PEP440"
+        env:
+          IMAGE: ${{ needs.version.outputs.image }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+
+  clients:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      # Linux desktop build and AppImage tools: not provided by devbox (README exceptions).
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          clang cmake ninja-build pkg-config libgtk-3-dev file desktop-file-utils
+      - uses: jetify-com/devbox-install-action@v0.12.0
+      - run: devbox run -- just release::nightly-clients "$IMAGE" "$FLUTTER"
+        env:
+          IMAGE: ${{ needs.version.outputs.image }}
+          FLUTTER: ${{ needs.version.outputs.flutter }}
+          TEFTERI_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          TEFTERI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TEFTERI_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TEFTERI_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - run: devbox run -- just release::nightly-publish "$IMAGE"
+        env:
+          IMAGE: ${{ needs.version.outputs.image }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

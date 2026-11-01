@@ -7,6 +7,7 @@ mod frontend 'frontend/frontend.just'
 mod deploy 'deploy/deploy.just'
 mod docs 'docs/docs.just'
 mod packaging 'packaging/packaging.just'
+mod release 'release/release.just'
 
 # List recipes.
 default:
@@ -28,7 +29,3 @@ run: backend::run
 # Prompt for a password and print its Argon2 hash.
 hash-password:
     uv run --project backend python scripts/hash_password.py
-
-# Compute the nightly version string.
-version-nightly:
-    bash scripts/version.sh nightly

@@ -12,6 +12,7 @@ jobs:
       - run: devbox run -- just lint
       - run: devbox run -- just test
       - run: devbox run -- just docs::build
+      - run: devbox run -- just docs::check
   postgres:
     runs-on: ubuntu-latest
     services:

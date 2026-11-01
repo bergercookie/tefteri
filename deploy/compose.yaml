@@ -1,0 +1,34 @@
+# Tefteri server. `just deploy::up` uses SQLite in the `data` volume.
+# `just deploy::up-postgres` also starts PostgreSQL. Then set
+# TEFTERI_DATABASE_URL=postgresql+asyncpg://tefteri:${POSTGRES_PASSWORD}@postgres:5432/tefteri
+# in .env.
+name: tefteri
+
+services:
+  tefteri:
+    image: ${TEFTERI_IMAGE:-tefteri:local}
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    profiles: [postgres]
+    environment:
+      POSTGRES_USER: tefteri
+      POSTGRES_DB: tefteri
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "tefteri"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  data:
+  pgdata:
