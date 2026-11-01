@@ -46,7 +46,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T015 Implement settings in `backend/src/tefteri/config.py` (env-based: `TEFTERI_DATABASE_URL`, `TEFTERI_ADMIN_USERNAME`, `TEFTERI_ADMIN_PASSWORD_HASH`, `TEFTERI_SECRET_KEY`, OIDC options, `TEFTERI_GOOGLE_CLIENT_ID`/`TEFTERI_GOOGLE_CLIENT_SECRET`, login throttling limits and session lifetime); startup MUST fail if the admin value is not a valid Argon2 hash (never accept a raw password)
+- [ ] T015 Implement settings in `backend/src/tefteri/config.py` (env-based: `TEFTERI_DATABASE_URL`, `TEFTERI_ADMIN_USERNAME`, `TEFTERI_ADMIN_PASSWORD_HASH`, `TEFTERI_SECRET_KEY`, OIDC options, `TEFTERI_GOOGLE_CLIENT_ID`/`TEFTERI_GOOGLE_CLIENT_SECRET`, login throttling limits (default 5 failures per 15 minutes, 15-minute block) and session lifetime (default 8 hours)); startup MUST fail if the admin value is not a valid Argon2 hash (never accept a raw password)
 - [ ] T016 Implement async engine/session factory supporting SQLite (aiosqlite) and PostgreSQL (asyncpg) in `backend/src/tefteri/db/session.py`
 - [ ] T017 Set up Alembic in `backend/migrations/` with async env and an initial migration that works on both SQLite and Postgres (portable SQLAlchemy constructs only)
 - [ ] T018 [P] Implement `User` model in `backend/src/tefteri/db/models/user.py`: `username` unique, `password_hash` nullable (SSO-only users), `oidc_subject` nullable and unique with issuer, `is_admin`, `timezone`, `disabled`
@@ -60,7 +60,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [ ] T026 Define the `TaskBackend`, `CalendarBackend`, `NoteBackend` ports and `Capability` set per `contracts/backend-ports.md` in `backend/src/tefteri/domain/ports.py`
 - [ ] T027 [P] Implement in-memory fake backends for all three ports in `backend/tests/fakes/` for use by service, integration and e2e tests
 - [ ] T028 [P] Write shared adapter contract test suite parametrised over adapters in `backend/tests/integration/test_backend_contracts.py`
-- [ ] T029 [P] Write tests for login throttling, session expiry and config validation (reject raw password, accept Argon2 hash) in `backend/tests/unit/test_config.py` and for login/admin bootstrap in `backend/tests/integration/test_auth.py`
+- [ ] T029 [P] Write tests for login throttling (5 failures in 15 minutes blocks for 15 minutes), session expiry (default 8 hours) and config validation (reject raw password, accept Argon2 hash) in `backend/tests/unit/test_config.py` and for login/admin bootstrap in `backend/tests/integration/test_auth.py`
 - [ ] T030 [P] Implement a `just hash-password` recipe and `scripts/hash_password.py` (prompts, prints Argon2 hash)
 - [ ] T031 Create the Flutter app shell in `frontend/lib/` (go_router, Riverpod, dio client with auth, login screen, global context switch (all/life/work) and sync button placeholders)
 
@@ -226,25 +226,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ---
 
-## Phase 10: User Story 9 - Keyboard navigation (Priority: P2)
-
-**Goal**: Navigate between all views and trigger sync and the work/life filter from the keyboard.
-
-**Independent Test**: From any view, reach every other view with the keyboard alone (at most two key presses) and open the shortcut help.
-
-### Tests for User Story 9
-
-- [ ] T093 [P] [US9] Flutter widget tests: each shortcut opens its view from every other view (at most two key presses), plain-key shortcuts are ignored while a text field has focus, and the help overlay lists every shortcut, in `frontend/test/core/shortcuts_test.dart`
-
-### Implementation for User Story 9
-
-- [ ] T094 [US9] Implement a central keymap with Flutter `Shortcuts`/`Actions` for the daily, weekly, monthly, annual, goals, review, notes and settings views plus sync and the all/life/work switch in `frontend/lib/core/shortcuts/`
-- [ ] T095 [US9] Implement the shortcut help overlay (opened with `?`) generated from the keymap, and suppress plain-key shortcuts while a text field has focus, in `frontend/lib/core/shortcuts/`
-- [ ] T096 [P] [US9] Document all shortcuts in `docs/shortcuts.md`
-
----
-
-## Phase 11: User Story 7 - Long-term plans and retrospectives (Priority: P3)
+## Phase 10: User Story 7 - Long-term plans and retrospectives (Priority: P3)
 
 **Goal**: Keep long-term plans; planned-vs-completed reviews; retrospectives saved to Trilium.
 
@@ -252,20 +234,20 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 7
 
-- [ ] T097 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
-- [ ] T098 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
+- [ ] T093 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
+- [ ] T094 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
 
 ### Implementation for User Story 7
 
-- [ ] T099 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
-- [ ] T100 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
-- [ ] T101 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
-- [ ] T102 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
-- [ ] T103 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
+- [ ] T095 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
+- [ ] T096 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
+- [ ] T097 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
+- [ ] T098 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
+- [ ] T099 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
 
 ---
 
-## Phase 12: User Story 8 - Documentation and process notes (Priority: P3)
+## Phase 11: User Story 8 - Documentation and process notes (Priority: P3)
 
 **Goal**: Custom documentation and process notes saved in the note-taking app and linked to tasks.
 
@@ -273,13 +255,31 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 8
 
-- [ ] T104 [P] [US8] Integration tests for custom documentation/process notes (create, edit, delete) and task links in `backend/tests/integration/test_custom_notes.py`
+- [ ] T100 [P] [US8] Integration tests for custom documentation/process notes (create, edit, delete) and task links in `backend/tests/integration/test_custom_notes.py`
 
 ### Implementation for User Story 8
 
-- [ ] T105 [US8] Extend the note service with custom documentation and process notes and two-way task links in `backend/src/tefteri/services/notes.py`
-- [ ] T106 [US8] Implement note endpoints `POST/PATCH/DELETE /notes` and `POST /tasks/{id}/notes` in `backend/src/tefteri/api/routers/notes.py`
-- [ ] T107 [P] [US8] Implement Flutter notes screens (list, edit, open from a task) in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
+- [ ] T101 [US8] Extend the note service with custom documentation and process notes and two-way task links in `backend/src/tefteri/services/notes.py`
+- [ ] T102 [US8] Implement note endpoints `POST/PATCH/DELETE /notes` and `POST /tasks/{id}/notes` in `backend/src/tefteri/api/routers/notes.py`
+- [ ] T103 [P] [US8] Implement Flutter notes screens (list, edit, open from a task) in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
+
+---
+
+## Phase 12: User Story 9 - Keyboard navigation (Priority: P2)
+
+**Goal**: Navigate between all views and trigger sync and the work/life filter from the keyboard.
+
+**Independent Test**: From any view, reach every other view with the keyboard alone (at most two key presses) and open the shortcut help.
+
+### Tests for User Story 9
+
+- [ ] T104 [P] [US9] Flutter widget tests: each shortcut opens its view from every other view (at most two key presses), plain-key shortcuts are ignored while a text field has focus, and the help overlay lists every shortcut, in `frontend/test/core/shortcuts_test.dart`
+
+### Implementation for User Story 9
+
+- [ ] T105 [US9] Implement a central keymap with Flutter `Shortcuts`/`Actions` for the daily, weekly, monthly, annual, goals, review, notes and settings views plus sync and the all/life/work switch in `frontend/lib/core/shortcuts/`
+- [ ] T106 [US9] Implement the shortcut help overlay (opened with `?`) generated from the keymap, and suppress plain-key shortcuts while a text field has focus, in `frontend/lib/core/shortcuts/`
+- [ ] T107 [P] [US9] Document all shortcuts in `docs/shortcuts.md`
 
 ---
 
@@ -307,7 +307,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - **US4** touches repositories and views from US1-US3 but is testable on its own with fake data.
 - **US5** needs tasks (US1/US2); scheduling from planning views reuses US3.
 - **US6** user management/OIDC are independent; basic login and `user_id` scoping are already in Foundational.
-- **US7** needs goals/plans (US5) and the note backend (US1). **US8** extends the note service from US2. **US9** navigates between the views built in US1-US8 and can be built incrementally as each view lands.
+- **US7** needs goals/plans (US5) and the note backend (US1). **US8** extends the note service from US2. **US9** (keyboard navigation) comes after US8 so every view it navigates to already exists.
 - Conflict resolution (Phase 6) depends on the sync and write-through services (US1-US3) and is done before US4+ so no later story can overwrite a changed remote item.
 
 ### Within each story
@@ -324,5 +324,5 @@ Tests first (must fail) → models → services → endpoints → Flutter UI.
 
 1. **MVP**: Phases 1-3 (US1): connect the apps, sync, browse data.
 2. Add US2 and US3 for the full daily plan-and-schedule loop (all P1).
-3. Add P2 stories (US4, US5, US6), then P3 (US7, US8). US9 (keyboard navigation) is P2 and grows with the views.
+3. Add P2 stories (US4, US5, US6), then P3 (US7, US8). US9 (keyboard navigation, P2) follows US8 so that all views exist; it can start earlier for the views already built.
 4. Release engineering (Phase 13) should land before the first tagged release; the CI workflow from Phase 1 gates every change.

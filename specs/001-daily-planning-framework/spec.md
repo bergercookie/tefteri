@@ -206,9 +206,9 @@ A user working at a keyboard can move between all views (daily, weekly, monthly,
 - **FR-021**: Credentials and access tokens for connected apps MUST be stored securely and MUST NOT be visible to other users.
 - **FR-022**: The initial administrator MUST be created at first deployment from deployment configuration that supplies a pre-computed password hash; the system MUST NOT accept or store a raw password in configuration. Open self-registration MUST NOT exist; only an administrator can create further accounts.
 - **FR-023**: The system MUST support signing in through a configurable external SSO/OIDC identity provider (e.g. Authelia) in addition to username and password, and MUST be able to run with either method enabled alone.
-- **FR-024**: The system MUST limit repeated failed sign-in attempts and MUST expire sessions after a configurable period.
+- **FR-024**: The system MUST temporarily block further sign-in attempts after 5 consecutive failures for an account or source address within 15 minutes (for 15 minutes), and MUST expire sessions after a configurable period that defaults to 8 hours.
 - **FR-025**: Every tagged release MUST produce downloadable Linux desktop packages (`.deb`, AppImage), an Android package and a server container image published to the project's container registry.
-- **FR-026**: A nightly build MUST publish a container image reachable under a stable `nightly` tag, versioned as `<previous-stable-release>.<commit-hash>.post<N>`, where N counts nightly builds since that stable release.
+- **FR-026**: A nightly build MUST publish a container image reachable under a stable `nightly` tag, versioned as `<previous-stable-release>.<commit-hash>.post<N>`, where N counts nightly builds since that stable release. The nightly build also publishes the client packages to a rolling "nightly" pre-release.
 - **FR-027**: Every change MUST be verified by an automated pipeline that runs the same lint, type, architecture-boundary and test checks developers run locally.
 - **FR-028**: Users MUST be able to navigate between all views (daily, weekly, monthly, annual, goals, review, notes, settings) and trigger sync and the work/life filter switch using keyboard shortcuts on clients that have a keyboard. Shortcuts MUST be discoverable from within the app, MUST NOT interfere with typing in text fields, and MUST be documented.
 
