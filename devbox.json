@@ -17,7 +17,7 @@
   ],
   "shell": {
     "init_hook": [
-      "[ -d frontend/linux ] || (cd frontend && flutter create --platforms=linux,android,web --project-name tefteri --org dev.bergercookie .)",
+      "[ -d frontend/linux ] || (cd frontend && flutter create --platforms=linux,android,web --project-name tefteri --org dev.bergercookie . && rm -f README.md test/widget_test.dart)",
       "echo 'tefteri devbox ready: run `just --list`'"
     ]
   }
