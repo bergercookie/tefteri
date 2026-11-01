@@ -1,0 +1,279 @@
+"""On-demand sync of connections into the local cache (failures are isolated per connection)."""
+
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from tefteri.db.models.calendar_entry import CalendarEntry
+from tefteri.db.models.connection import Connection, SourceContainer
+from tefteri.db.models.note import Note
+from tefteri.db.models.sync import SyncRun
+from tefteri.db.models.task import Task
+from tefteri.domain.entities import Container
+from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
+from tefteri.domain.errors import AuthExpired, BackendUnavailable
+from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
+from tefteri.services.connections import ConnectionService
+
+CALENDAR_PAST = timedelta(days=90)
+CALENDAR_FUTURE = timedelta(days=400)
+
+
+@dataclass
+class SyncResult:
+    """Outcome of syncing one connection."""
+
+    connection_id: uuid.UUID
+    name: str
+    outcome: str  # 'ok' | 'needs_attention' | 'error'
+    reason: str | None = None  # 'unreachable' | 'auth_expired' | 'error'
+    counts: dict[str, int] = field(
+        default_factory=lambda: {"created": 0, "updated": 0, "deleted": 0}
+    )
+
+
+def _upsert(
+    db: AsyncSession,
+    existing: dict[str, Any],
+    seen: set[str],
+    counts: dict[str, int],
+    model: type[Any],
+    connection: Connection,
+    remote_id: str,
+    version: str,
+    values: dict[str, Any],
+) -> None:
+    """Insert or update one mirror row, never touching rows in conflict."""
+    seen.add(remote_id)
+    row = existing.get(remote_id)
+    if row is None:
+        row = model(
+            user_id=connection.user_id,
+            connection_id=connection.id,
+            remote_id=remote_id,
+            remote_version=version,
+            **values,
+        )
+        db.add(row)
+        existing[remote_id] = row
+        counts["created"] += 1
+    elif row.sync_state == SyncState.CONFLICT.value:
+        return
+    elif row.remote_version != version or row.sync_state == SyncState.DELETED_REMOTELY.value:
+        for key, value in values.items():
+            setattr(row, key, value)
+        row.remote_version = version
+        row.sync_state = SyncState.SYNCED.value
+        counts["updated"] += 1
+
+
+def _mark_deleted(existing: dict[str, Any], seen: set[str], counts: dict[str, int]) -> None:
+    for remote_id, row in existing.items():
+        if remote_id not in seen and row.sync_state == SyncState.SYNCED.value:
+            row.sync_state = SyncState.DELETED_REMOTELY.value
+            counts["deleted"] += 1
+
+
+class SyncService:
+    """Pull data from each connected app into the cache."""
+
+    def __init__(
+        self,
+        connections: ConnectionService,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
+        """Use ``connections`` to build backends; ``clock`` is injectable for tests."""
+        self._connections = connections
+        self._clock = clock
+
+    async def sync_all(self, db: AsyncSession, user_id: uuid.UUID) -> list[SyncResult]:
+        """Sync every connection of the user; one failing connection never stops the others."""
+        results = []
+        for connection in await self._connections.list(db, user_id):
+            results.append(await self.sync_connection(db, connection))
+        return results
+
+    async def sync_connection(self, db: AsyncSession, connection: Connection) -> SyncResult:
+        """Sync one connection and record a ``SyncRun``; failures become a structured result."""
+        result = SyncResult(connection.id, connection.display_name, "ok")
+        started = self._clock()
+        try:
+            async with db.begin_nested():
+                backend = self._connections.backend_for(connection)
+                containers = await self._sync_containers(db, connection, backend)
+                kind = ConnectionKind(connection.kind)
+                if kind is ConnectionKind.TASKS:
+                    await self._sync_tasks(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
+                elif kind is ConnectionKind.CALENDAR:
+                    await self._sync_calendar(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
+                else:
+                    await self._sync_notes(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
+        except AuthExpired:
+            result.outcome, result.reason = ConnectionStatus.NEEDS_ATTENTION.value, "auth_expired"
+        except BackendUnavailable:
+            result.outcome, result.reason = ConnectionStatus.ERROR.value, "unreachable"
+        except Exception:  # noqa: BLE001 - isolate any adapter failure to this connection
+            result.outcome, result.reason = ConnectionStatus.ERROR.value, "error"
+        connection.status = result.outcome
+        connection.last_sync_at = self._clock()
+        connection.last_sync_outcome = result.outcome if result.reason is None else result.reason
+        db.add(
+            SyncRun(
+                user_id=connection.user_id,
+                connection_id=connection.id,
+                started_at=started,
+                finished_at=self._clock(),
+                outcome=result.outcome,
+                counts=result.counts,
+                error=result.reason,
+            )
+        )
+        await db.flush()
+        return result
+
+    async def _sync_containers(
+        self, db: AsyncSession, connection: Connection, backend: Any
+    ) -> dict[str, tuple[Container, uuid.UUID]]:
+        remote = await backend.list_containers()
+        rows = {
+            c.remote_id: c
+            for c in (
+                await db.execute(
+                    select(SourceContainer).where(SourceContainer.connection_id == connection.id)
+                )
+            ).scalars()
+        }
+        out: dict[str, tuple[Container, uuid.UUID]] = {}
+        for container in remote:
+            row = rows.get(container.remote_id)
+            if row is None:
+                row = SourceContainer(
+                    user_id=connection.user_id,
+                    connection_id=connection.id,
+                    remote_id=container.remote_id,
+                    name=container.name,
+                )
+                db.add(row)
+            else:
+                row.name = container.name
+            await db.flush()
+            out[container.remote_id] = (container, row.id)
+        return out
+
+    async def _sync_tasks(
+        self,
+        db: AsyncSession,
+        connection: Connection,
+        backend: TaskBackend,
+        containers: dict[str, tuple[Container, uuid.UUID]],
+        counts: dict[str, int],
+    ) -> None:
+        existing = {
+            t.remote_id: t
+            for t in (
+                await db.execute(select(Task).where(Task.connection_id == connection.id))
+            ).scalars()
+        }
+        seen: set[str] = set()
+        for container, container_row_id in containers.values():
+            for item in (await backend.list_tasks(container, None)).items:
+                _upsert(
+                    db,
+                    existing,
+                    seen,
+                    counts,
+                    Task,
+                    connection,
+                    item.remote_id,
+                    item.version,
+                    {
+                        "container_id": container_row_id,
+                        "title": item.title,
+                        "description": item.description,
+                        "status": "done" if item.done else "open",
+                        "due_at": item.due_at,
+                        "scheduled_start": item.scheduled_start,
+                        "scheduled_end": item.scheduled_end,
+                        "all_day": item.all_day,
+                    },
+                )
+        _mark_deleted(existing, seen, counts)
+
+    async def _sync_calendar(
+        self,
+        db: AsyncSession,
+        connection: Connection,
+        backend: CalendarBackend,
+        containers: dict[str, tuple[Container, uuid.UUID]],
+        counts: dict[str, int],
+    ) -> None:
+        existing = {
+            e.remote_id: e
+            for e in (
+                await db.execute(
+                    select(CalendarEntry).where(CalendarEntry.connection_id == connection.id)
+                )
+            ).scalars()
+        }
+        seen: set[str] = set()
+        now = self._clock()
+        for container, container_row_id in containers.values():
+            page = await backend.list_entries(
+                container, now - CALENDAR_PAST, now + CALENDAR_FUTURE, None
+            )
+            for item in page.items:
+                _upsert(
+                    db,
+                    existing,
+                    seen,
+                    counts,
+                    CalendarEntry,
+                    connection,
+                    item.remote_id,
+                    item.version,
+                    {
+                        "container_id": container_row_id,
+                        "title": item.title,
+                        "start": item.start,
+                        "end": item.end,
+                        "all_day": item.all_day,
+                        "recurrence": item.recurrence,
+                        "location": item.location,
+                    },
+                )
+        _mark_deleted(existing, seen, counts)
+
+    async def _sync_notes(
+        self,
+        db: AsyncSession,
+        connection: Connection,
+        backend: NoteBackend,
+        containers: dict[str, tuple[Container, uuid.UUID]],
+        counts: dict[str, int],
+    ) -> None:
+        existing = {
+            n.remote_id: n
+            for n in (
+                await db.execute(select(Note).where(Note.connection_id == connection.id))
+            ).scalars()
+        }
+        seen: set[str] = set()
+        for container, _ in containers.values():
+            for item in await backend.list_notes(container, None):
+                _upsert(
+                    db,
+                    existing,
+                    seen,
+                    counts,
+                    Note,
+                    connection,
+                    item.remote_id,
+                    item.version,
+                    {"title": item.title, "body": item.body, "note_date": item.note_date},
+                )
+        _mark_deleted(existing, seen, counts)

@@ -1,0 +1,215 @@
+"""Connection management and Google OAuth endpoints."""
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+
+from tefteri.api.deps import CurrentUser, Db, SettingsDep
+from tefteri.api.errors import ApiError
+from tefteri.db.models.connection import Connection, SourceContainer
+from tefteri.domain.enums import Context
+from tefteri.services.connections import ConnectionService, UnknownProvider
+from tefteri.services.google_oauth import GoogleOAuth, InvalidState
+
+router = APIRouter(prefix="/connections", tags=["connections"])
+
+
+def get_connection_service(request: Request) -> ConnectionService:
+    """Return the connection service."""
+    service: ConnectionService = request.app.state.connection_service
+    return service
+
+
+Service = Depends(get_connection_service)
+
+
+class ConnectionIn(BaseModel):
+    """Data to create a connection."""
+
+    provider: str
+    display_name: str = Field(min_length=1, max_length=150)
+    default_context: Context = Context.LIFE
+    settings: dict[str, Any] = Field(default_factory=dict)
+    credentials: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConnectionPatch(BaseModel):
+    """Partial connection update."""
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=150)
+    default_context: Context | None = None
+    settings: dict[str, Any] | None = None
+    credentials: dict[str, Any] | None = None
+
+
+class ConnectionOut(BaseModel):
+    """A connection as shown to the client. Credentials are never returned."""
+
+    id: uuid.UUID
+    kind: str
+    provider: str
+    display_name: str
+    default_context: str
+    settings: dict[str, Any]
+    status: str
+    last_sync_at: datetime | None
+    last_sync_outcome: str | None
+
+    @classmethod
+    def of(cls, c: Connection) -> "ConnectionOut":
+        """Build from the ORM row."""
+        return cls(
+            id=c.id,
+            kind=c.kind,
+            provider=c.provider,
+            display_name=c.display_name,
+            default_context=c.default_context,
+            settings=c.settings,
+            status=c.status,
+            last_sync_at=c.last_sync_at,
+            last_sync_outcome=c.last_sync_outcome,
+        )
+
+
+class ContainerOut(BaseModel):
+    """A project, calendar or note subtree."""
+
+    id: uuid.UUID
+    remote_id: str
+    name: str
+    context: str | None
+
+
+async def _own(service: ConnectionService, db: Db, user: CurrentUser, cid: uuid.UUID) -> Connection:
+    connection = await service.get(db, user.id, cid)
+    if connection is None:
+        raise ApiError(404, "not_found", "Connection not found")
+    return connection
+
+
+@router.get("")
+async def list_connections(
+    db: Db, user: CurrentUser, service: ConnectionService = Service
+) -> list[ConnectionOut]:
+    """List the user's connections."""
+    return [ConnectionOut.of(c) for c in await service.list(db, user.id)]
+
+
+@router.post("", status_code=201)
+async def create_connection(
+    body: ConnectionIn, db: Db, user: CurrentUser, service: ConnectionService = Service
+) -> ConnectionOut:
+    """Connect an app."""
+    try:
+        connection = await service.create(
+            db,
+            user.id,
+            provider=body.provider,
+            display_name=body.display_name,
+            default_context=body.default_context,
+            settings=body.settings,
+            credentials=body.credentials,
+        )
+    except UnknownProvider as exc:
+        raise ApiError(422, "unknown_provider", f"Unknown provider: {body.provider}") from exc
+    return ConnectionOut.of(connection)
+
+
+@router.get("/google/authorize")
+async def google_authorize(
+    request: Request,
+    user: CurrentUser,
+    settings: SettingsDep,
+    display_name: str = "Google Calendar",
+    default_context: Context = Context.LIFE,
+) -> dict[str, str]:
+    """Return the Google consent URL for adding one more Google account."""
+    oauth: GoogleOAuth | None = request.app.state.google_oauth
+    if oauth is None:
+        raise ApiError(503, "google_not_configured", "Google sign-in is not configured")
+    redirect = str(request.url_for("google_callback"))
+    url = oauth.authorize_url(
+        user.id, redirect, {"name": display_name, "context": default_context.value}
+    )
+    return {"url": url}
+
+
+@router.get("/google/callback", name="google_callback")
+async def google_callback(
+    request: Request,
+    db: Db,
+    code: str,
+    state: str,
+    service: ConnectionService = Service,
+) -> ConnectionOut:
+    """Finish Google sign-in. The signed ``state`` identifies the user."""
+    oauth: GoogleOAuth | None = request.app.state.google_oauth
+    if oauth is None:
+        raise ApiError(503, "google_not_configured", "Google sign-in is not configured")
+    try:
+        data = oauth.read_state(state)
+    except InvalidState as exc:
+        raise ApiError(400, "invalid_state", "Invalid or expired sign-in request") from exc
+    refresh_token = await oauth.exchange_code(code, str(request.url_for("google_callback")))
+    connection = await service.create(
+        db,
+        uuid.UUID(data["user_id"]),
+        provider="google_calendar",
+        display_name=data["name"],
+        default_context=Context(data["context"]),
+        settings={},
+        credentials={"refresh_token": refresh_token},
+    )
+    return ConnectionOut.of(connection)
+
+
+@router.patch("/{connection_id}")
+async def update_connection(
+    connection_id: uuid.UUID,
+    body: ConnectionPatch,
+    db: Db,
+    user: CurrentUser,
+    service: ConnectionService = Service,
+) -> ConnectionOut:
+    """Change a connection."""
+    connection = await _own(service, db, user, connection_id)
+    updated = await service.update(
+        db,
+        connection,
+        display_name=body.display_name,
+        default_context=body.default_context,
+        settings=body.settings,
+        credentials=body.credentials,
+    )
+    return ConnectionOut.of(updated)
+
+
+@router.delete("/{connection_id}", status_code=204)
+async def delete_connection(
+    connection_id: uuid.UUID, db: Db, user: CurrentUser, service: ConnectionService = Service
+) -> None:
+    """Remove a connection and its cached items."""
+    await service.delete(db, user.id, await _own(service, db, user, connection_id))
+
+
+@router.get("/{connection_id}/containers")
+async def list_containers(
+    connection_id: uuid.UUID, db: Db, user: CurrentUser, service: ConnectionService = Service
+) -> list[ContainerOut]:
+    """List the projects, calendars or note subtrees found by the last sync."""
+    await _own(service, db, user, connection_id)
+    rows = (
+        await db.execute(
+            select(SourceContainer).where(
+                SourceContainer.connection_id == connection_id,
+                SourceContainer.user_id == user.id,
+            )
+        )
+    ).scalars()
+    return [
+        ContainerOut(id=r.id, remote_id=r.remote_id, name=r.name, context=r.context) for r in rows
+    ]
