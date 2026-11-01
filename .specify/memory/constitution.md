@@ -1,50 +1,82 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Tefteri Constitution
+
+Tefteri is a daily planning and execution framework. It is a server-client system that
+integrates with a user's existing task management, calendar and note taking applications
+through flexible backends.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Python Backend, Flutter Frontend
+The server MUST be implemented in Python. The client MUST be implemented in Flutter. Other
+languages for core application code require a constitution amendment.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: a small, fixed stack keeps the project maintainable and lets contributors and
+coding agents move across the codebase without context switching.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Justfile Is the Single Interface
+The `justfile` is the single source of truth for every interaction with this repository.
+Developers, CI pipelines and coding agents MUST use `just` recipes for building, testing,
+linting, formatting, running, and any other repeatable task.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+- CI workflows MUST invoke `just` recipes and MUST NOT duplicate their logic inline.
+- A task that is run more than once MUST get a recipe.
+- Documentation and agent instructions MUST reference recipes, not raw underlying commands.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Rationale: one entry point guarantees that local, CI and agent runs behave identically.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### III. Reproducible Environments via Devbox
+Project dependencies and toolchains MUST be declared and installed with devbox. The exception
+is a major dependency that is impractical to install through devbox (for example `docker`);
+each such exception MUST be documented in the README together with its required version.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+Rationale: a clone-and-`devbox shell` setup removes "works on my machine" problems.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### IV. Pluggable Backends
+Integrations with task management, calendar and note taking applications MUST sit behind
+well-defined adapter interfaces. The core planning and execution logic MUST NOT depend on a
+specific third-party application. Adding a new integration MUST NOT require changes to core
+logic. Each adapter MUST be testable without access to the live third-party service.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Rationale: users bring their own tools; flexibility is the product's core value.
+
+### V. Documented, Tested, CI-Verified Code (NON-NEGOTIABLE)
+All code MUST be well documented, testable and tested.
+
+- Public modules, classes, functions and widgets MUST have documentation describing purpose
+  and behaviour; user-visible behaviour changes MUST update the docs in the same change.
+- New behaviour MUST ship with automated tests; bug fixes MUST include a regression test.
+- Code MUST be designed for testability (dependency injection, no hidden global state).
+- A CI pipeline MUST run linting, formatting checks and the full test suite for both backend
+  and frontend on every pull request, via `just` recipes. Changes MUST NOT be merged while
+  CI is failing.
+
+Rationale: a planning tool that people rely on daily has to be dependable.
+
+## Technology & Environment Constraints
+
+- Backend: Python, with dependencies managed in a way that is reproducible and locked.
+- Frontend: Flutter, communicating with the backend over a documented API.
+- Tooling: `just` for tasks, devbox for dependencies, as set out in Principles II and III.
+- Credentials and tokens for third-party services MUST NOT be committed to the repository.
+
+## Development Workflow & Quality Gates
+
+- Work is done on branches and merged through pull requests.
+- Every pull request MUST pass CI and be reviewed for constitution compliance.
+- The `justfile` recipes used by CI MUST be runnable locally inside `devbox shell`.
+- Complexity beyond what a feature requires MUST be justified in the plan or pull request.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes other practices in this repository. Amendments require a pull
+request that updates this file, states the rationale, and describes any migration needed for
+existing code or tooling.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Versioning follows semantic versioning: MAJOR for backward-incompatible removals or
+redefinitions of principles, MINOR for new principles or materially expanded guidance, PATCH
+for clarifications and wording fixes.
+
+Compliance is checked in code review and in the Constitution Check step of Spec Kit plans.
+Violations MUST be fixed or explicitly justified and recorded.
+
+**Version**: 1.0.0 | **Ratified**: 2026-11-01 | **Last Amended**: 2026-11-01
