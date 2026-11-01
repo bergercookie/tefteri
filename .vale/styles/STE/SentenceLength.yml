@@ -1,0 +1,6 @@
+extends: occurrence
+message: "Sentence has more than %s words. STE: write 20 words or fewer (procedures) or 25 or fewer (descriptions)."
+level: warning
+scope: sentence
+max: 25
+token: '\b[\w''-]+\b'

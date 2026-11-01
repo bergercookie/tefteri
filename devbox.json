@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
+  "packages": [
+    "python@3.12",
+    "uv@latest",
+    "just@latest",
+    "pre-commit@latest",
+    "shellcheck@latest",
+    "shfmt@latest",
+    "hadolint@latest",
+    "yamllint@latest",
+    "actionlint@latest",
+    "markdownlint-cli2@latest",
+    "taplo@latest",
+    "vale@latest",
+    "flutter@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "[ -d frontend/linux ] || (cd frontend && flutter create --platforms=linux,android,web --project-name tefteri --org dev.bergercookie .)",
+      "echo 'tefteri devbox ready: run `just --list`'"
+    ]
+  }
+}

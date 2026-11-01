@@ -1,0 +1,6 @@
+extends: existence
+message: "Avoid the semicolon. STE: write two short sentences."
+level: warning
+nonword: true
+tokens:
+  - ';'

@@ -1,0 +1,7 @@
+extends: existence
+message: "Do not use the contraction '%s'. STE: write the full words."
+level: warning
+ignorecase: true
+raw:
+  - "\\b\\w+'(s|t|re|ve|ll|d|m)\\b"
+tokens: []

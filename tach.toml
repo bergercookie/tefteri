@@ -1,0 +1,38 @@
+source_roots = ["backend/src"]
+exclude = ["backend/tests", "backend/migrations", "**/__pycache__"]
+
+[[modules]]
+path = "tefteri.domain"
+depends_on = []
+
+[[modules]]
+path = "tefteri.adapters"
+depends_on = ["tefteri.domain"]
+
+[[modules]]
+path = "tefteri.config"
+depends_on = []
+
+[[modules]]
+path = "tefteri.security"
+depends_on = []
+
+[[modules]]
+path = "tefteri.db"
+depends_on = ["tefteri.domain", "tefteri.security"]
+
+[[modules]]
+path = "tefteri.auth"
+depends_on = ["tefteri.db", "tefteri.security", "tefteri.domain"]
+
+[[modules]]
+path = "tefteri.services"
+depends_on = ["tefteri.domain", "tefteri.db", "tefteri.auth", "tefteri.security"]
+
+[[modules]]
+path = "tefteri.api"
+depends_on = ["tefteri.services", "tefteri.domain", "tefteri.db", "tefteri.auth", "tefteri.config"]
+
+[[modules]]
+path = "tefteri"
+depends_on = ["tefteri.api", "tefteri.services", "tefteri.adapters", "tefteri.db", "tefteri.auth", "tefteri.security", "tefteri.domain", "tefteri.config"]

@@ -1,0 +1,107 @@
+# The single list of all checks (run by `just lint` and CI).
+# Hooks call the tools directly. They never call `just lint`.
+#
+# `pass_filenames: false` means the tool checks a whole project, not only the changed files.
+repos:
+  - repo: local
+    hooks:
+      # ---- Backend (Python) ----
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --project backend --directory backend ruff check .
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --project backend --directory backend ruff format --check .
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: mypy
+        name: mypy
+        entry: uv run --project backend --directory backend mypy
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: tach
+        name: tach (module boundaries)
+        entry: uv run --project backend tach check
+        language: system
+        pass_filenames: false
+        files: ^(backend/|tach\.toml$)
+
+      # ---- Frontend (Flutter) ----
+      - id: flutter-analyze
+        name: flutter analyze
+        entry: flutter analyze
+        language: system
+        pass_filenames: false
+        files: ^frontend/.*\.dart$
+
+      - id: dart-format
+        name: dart format
+        entry: dart format --set-exit-if-changed frontend/lib frontend/test
+        language: system
+        pass_filenames: false
+        files: ^frontend/.*\.dart$
+
+      # ---- Repository files ----
+      - id: just-format
+        name: just format
+        entry: just --unstable --fmt --check
+        language: system
+        pass_filenames: false
+        files: (^justfile$|\.just$)
+
+      - id: yamllint
+        name: yamllint
+        entry: yamllint -c .yamllint.yaml
+        language: system
+        types: [yaml]
+
+      - id: actionlint
+        name: actionlint (GitHub workflows)
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/
+
+      - id: taplo
+        name: taplo (TOML format)
+        entry: taplo format --check
+        language: system
+        types: [toml]
+
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [shell]
+
+      - id: shfmt
+        name: shfmt
+        entry: shfmt -d
+        language: system
+        types: [shell]
+
+      - id: hadolint
+        name: hadolint (Dockerfile)
+        entry: hadolint
+        language: system
+        files: Dockerfile
+
+      # ---- Prose ----
+      - id: markdownlint
+        name: markdownlint
+        entry: markdownlint-cli2
+        language: system
+        types: [markdown]
+
+      - id: vale
+        name: vale (ASD-STE100 style)
+        entry: vale --config .vale.ini
+        language: system
+        files: ^(README|CONTRIBUTING)\.md$|^docs/.*\.md$

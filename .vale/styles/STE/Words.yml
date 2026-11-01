@@ -1,0 +1,30 @@
+extends: substitution
+message: "Use '%s' instead of '%s' (STE)."
+level: warning
+ignorecase: true
+swap:
+  utilize: use
+  utilise: use
+  commence: start
+  initiate: start
+  terminate: stop
+  approximately: about
+  perform: do
+  ensure: make sure
+  prior to: before
+  subsequently: then
+  in order to: to
+  additional: more
+  obtain: get
+  require: need
+  requires: needs
+  required: needed
+  via: through
+  leverage: use
+  facilitate: help
+  however: but
+  therefore: so
+  "e.g.": for example
+  "i.e.": that is
+  "etc.": and so on
+  "and/or": or
