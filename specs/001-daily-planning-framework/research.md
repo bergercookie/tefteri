@@ -139,8 +139,10 @@ technology requires adding its linter and configuration in the same change.
 ## R-15 Client
 - **Decision**: Flutter with Riverpod for state, go_router, dio for HTTP; client generated
   against the OpenAPI document where practical. Views: daily, weekly, monthly, annual, goals,
-  review, notes/checklists, settings/connections, plus a global sync button and
-  all/life/work switch.
+  review, notes, settings/connections, plus a global sync button and
+  all/life/work switch. Navigation between views uses Flutter's `Shortcuts`/`Actions` with a
+  central keymap (`frontend/lib/core/shortcuts/`) and a help overlay; plain-key shortcuts are
+  disabled while a text field has focus.
 - **Alternatives**: A web-only UI (does not meet the Flutter requirement).
 
 ## R-16 HTTP client **(user)**

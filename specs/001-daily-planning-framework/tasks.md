@@ -11,7 +11,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 **Tests**: Included. The constitution (Principle V, non-negotiable) requires automated tests for all new behaviour, so each story has test tasks that are written first and must fail before the implementation.
 
-**Organization**: Tasks are grouped by user story (US1-US8, priority order from spec.md). All commands run through `just` recipes (constitution Principle II).
+**Organization**: Tasks are grouped by user story (US1-US9, priority order from spec.md). All commands run through `just` recipes (constitution Principle II).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -86,7 +86,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 - [ ] T037 [P] [US1] Implement `Task` mirror model in `backend/src/tefteri/db/models/task.py` (unique `connection_id`+`remote_id`; fields from data-model.md)
 - [ ] T038 [P] [US1] Implement `CalendarEntry` mirror model in `backend/src/tefteri/db/models/calendar_entry.py`
-- [ ] T039 [P] [US1] Implement `Note` mirror model in `backend/src/tefteri/db/models/note.py` (`kind`: `daily`|`custom`|`process`|`checklist`|`retrospective`)
+- [ ] T039 [P] [US1] Implement `Note` mirror model in `backend/src/tefteri/db/models/note.py` (`kind`: `daily`|`custom`|`process`|`retrospective`)
 - [ ] T040 [US1] Add Alembic migration for the mirror tables in `backend/migrations/versions/`
 - [ ] T041 [P] [US1] Implement Vikunja adapter (token auth, projects as containers) in `backend/src/tefteri/adapters/vikunja/`
 - [ ] T042 [P] [US1] Implement Google Calendar adapter (OAuth2 per account, personal/family/company calendars, sync tokens) in `backend/src/tefteri/adapters/google_calendar/`
@@ -226,7 +226,25 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ---
 
-## Phase 10: User Story 7 - Long-term plans and retrospectives (Priority: P3)
+## Phase 10: User Story 9 - Keyboard navigation (Priority: P2)
+
+**Goal**: Navigate between all views and trigger sync and the work/life filter from the keyboard.
+
+**Independent Test**: From any view, reach every other view with the keyboard alone (at most two key presses) and open the shortcut help.
+
+### Tests for User Story 9
+
+- [ ] T093 [P] [US9] Flutter widget tests: each shortcut opens its view from every other view (at most two key presses), plain-key shortcuts are ignored while a text field has focus, and the help overlay lists every shortcut, in `frontend/test/core/shortcuts_test.dart`
+
+### Implementation for User Story 9
+
+- [ ] T094 [US9] Implement a central keymap with Flutter `Shortcuts`/`Actions` for the daily, weekly, monthly, annual, goals, review, notes and settings views plus sync and the all/life/work switch in `frontend/lib/core/shortcuts/`
+- [ ] T095 [US9] Implement the shortcut help overlay (opened with `?`) generated from the keymap, and suppress plain-key shortcuts while a text field has focus, in `frontend/lib/core/shortcuts/`
+- [ ] T096 [P] [US9] Document all shortcuts in `docs/shortcuts.md`
+
+---
+
+## Phase 11: User Story 7 - Long-term plans and retrospectives (Priority: P3)
 
 **Goal**: Keep long-term plans; planned-vs-completed reviews; retrospectives saved to Trilium.
 
@@ -234,63 +252,62 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 
 ### Tests for User Story 7
 
-- [ ] T093 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
-- [ ] T094 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
+- [ ] T097 [P] [US7] Unit tests for review computation (planned vs completed, carried over) in `backend/tests/unit/test_review.py`
+- [ ] T098 [P] [US7] Integration tests for `/plans/{id}/review` and `PUT .../review/retrospective` writing a note to the fake note backend in `backend/tests/integration/test_reviews.py`
 
 ### Implementation for User Story 7
 
-- [ ] T095 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
-- [ ] T096 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
-- [ ] T097 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
-- [ ] T098 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
-- [ ] T099 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
+- [ ] T099 [P] [US7] Implement `PeriodReview` model in `backend/src/tefteri/db/models/review.py` and a migration (snapshot semantics per data-model.md)
+- [ ] T100 [US7] Implement review service and retrospective note writing through `NoteBackend` in `backend/src/tefteri/services/reviews.py`
+- [ ] T101 [US7] Implement review endpoints and plan history browsing in `backend/src/tefteri/api/routers/reviews.py`
+- [ ] T102 [P] [US7] Implement Flutter review, retrospective and plan history screens in `frontend/lib/features/review/`
+- [ ] T103 [P] [US7] Flutter widget tests for review screens in `frontend/test/features/review/`
 
 ---
 
-## Phase 11: User Story 8 - Structured notes: documentation, processes, checklists (Priority: P3)
+## Phase 12: User Story 8 - Documentation and process notes (Priority: P3)
 
-**Goal**: Custom notes, processes and reusable checklists linked to tasks.
+**Goal**: Custom documentation and process notes saved in the note-taking app and linked to tasks.
 
-**Independent Test**: Create a checklist, attach it to a task, tick steps, and re-run from a clean copy.
+**Independent Test**: Create a process note, link it to a task, open it from the task and edit it; verify it is saved in the note-taking app.
 
 ### Tests for User Story 8
 
-- [ ] T100 [P] [US8] Integration tests for custom notes, task links, `POST /notes/{id}/runs` clean copy and `PATCH /runs/{id}` ticking in `backend/tests/integration/test_checklists.py`
+- [ ] T104 [P] [US8] Integration tests for custom documentation/process notes (create, edit, delete) and task links in `backend/tests/integration/test_custom_notes.py`
 
 ### Implementation for User Story 8
 
-- [ ] T101 [P] [US8] Implement `ChecklistRun` model in `backend/src/tefteri/db/models/checklist.py` and a migration
-- [ ] T102 [US8] Extend the note service with custom notes, process/checklist kinds and runs in `backend/src/tefteri/services/notes.py`
-- [ ] T103 [US8] Implement note endpoints `POST/PATCH/DELETE /notes`, `POST /notes/{id}/runs`, `PATCH /runs/{id}` in `backend/src/tefteri/api/routers/notes.py`
-- [ ] T104 [P] [US8] Implement Flutter notes and checklist screens in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
+- [ ] T105 [US8] Extend the note service with custom documentation and process notes and two-way task links in `backend/src/tefteri/services/notes.py`
+- [ ] T106 [US8] Implement note endpoints `POST/PATCH/DELETE /notes` and `POST /tasks/{id}/notes` in `backend/src/tefteri/api/routers/notes.py`
+- [ ] T107 [P] [US8] Implement Flutter notes screens (list, edit, open from a task) in `frontend/lib/features/notes/` with widget tests in `frontend/test/features/notes/`
 
 ---
 
-## Phase 12: Delivery & Polish (Cross-Cutting)
+## Phase 13: Delivery & Polish (Cross-Cutting)
 
 **Purpose**: Release engineering, docs, hardening
 
-- [ ] T105 [P] Create `deploy/Dockerfile`, `deploy/compose.yaml` (tefteri + optional Postgres profile) and the smoke test `backend/tests/smoke/test_container.py`
-- [ ] T106 [P] Create `scripts/version.sh` (nightly `<prev>.<hash>.postN` from ghcr tags; PEP 440 and Flutter forms derived from same inputs) with a test and `just version-nightly`
-- [ ] T107 [P] Create `packaging/deb/` and `packaging/appimage/` build files and the `package-*` recipes; produce signed `.apk` via keystore secret
-- [ ] T108 Create `.github/workflows/release.yml` (tag `v*` → GitHub release with `.deb`, AppImage, `.apk`; push image `X.Y.Z` and `latest` to `ghcr.io/bergercookie/tefteri`) calling only `just`
-- [ ] T109 Create `.github/workflows/nightly.yml` (scheduled; skip if HEAD unchanged; push image tags `nightly` and the version string; rolling `nightly` pre-release with client artifacts) calling only `just`
-- [ ] T110 [P] Add the OpenAPI snapshot check (`just backend-openapi` → `docs/openapi.json`; test fails on drift)
-- [ ] T111 [P] Write user and developer docs in `docs/` (setup, connections guide incl. company Google OAuth approval, releases and nightly versioning)
-- [ ] T112 [P] Add performance tests for the sync target (2,000 tasks / 1,000 entries / 500 notes < 30 s) in `backend/tests/integration/test_sync_performance.py`
-- [ ] T113 [P] Add an automated review-latency test (a review for a year of goals and tasks opens in under 5 seconds, SC-008) in `backend/tests/integration/test_review_performance.py`
-- [ ] T114 Run the full `quickstart.md` validation (`just lint`, `just test`, `just docs-build`, e2e, Postgres, image build) and fix findings
+- [ ] T108 [P] Create `deploy/Dockerfile`, `deploy/compose.yaml` (tefteri + optional Postgres profile) and the smoke test `backend/tests/smoke/test_container.py`
+- [ ] T109 [P] Create `scripts/version.sh` (nightly `<prev>.<hash>.postN` from ghcr tags; PEP 440 and Flutter forms derived from same inputs) with a test and `just version-nightly`
+- [ ] T110 [P] Create `packaging/deb/` and `packaging/appimage/` build files and the `package-*` recipes; produce signed `.apk` via keystore secret
+- [ ] T111 Create `.github/workflows/release.yml` (tag `v*` → GitHub release with `.deb`, AppImage, `.apk`; push image `X.Y.Z` and `latest` to `ghcr.io/bergercookie/tefteri`) calling only `just`
+- [ ] T112 Create `.github/workflows/nightly.yml` (scheduled; skip if HEAD unchanged; push image tags `nightly` and the version string; rolling `nightly` pre-release with client artifacts) calling only `just`
+- [ ] T113 [P] Add the OpenAPI snapshot check (`just backend-openapi` → `docs/openapi.json`; test fails on drift)
+- [ ] T114 [P] Write user and developer docs in `docs/` (setup, connections guide incl. company Google OAuth approval, releases and nightly versioning)
+- [ ] T115 [P] Add performance tests for the sync target (2,000 tasks / 1,000 entries / 500 notes < 30 s) in `backend/tests/integration/test_sync_performance.py`
+- [ ] T116 [P] Add an automated review-latency test (a review for a year of goals and tasks opens in under 5 seconds, SC-008) in `backend/tests/integration/test_review_performance.py`
+- [ ] T117 Run the full `quickstart.md` validation (`just lint`, `just test`, `just docs-build`, e2e, Postgres, image build) and fix findings
 
 ---
 
 ## Dependencies & Execution Order
 
-- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 12)**.
+- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 13)**.
 - **US1** first: every other story needs synced data. **US2** and **US3** build on US1's models and services; US3 reuses US2's task service.
 - **US4** touches repositories and views from US1-US3 but is testable on its own with fake data.
 - **US5** needs tasks (US1/US2); scheduling from planning views reuses US3.
 - **US6** user management/OIDC are independent; basic login and `user_id` scoping are already in Foundational.
-- **US7** needs goals/plans (US5) and the note backend (US1). **US8** extends the note service from US2.
+- **US7** needs goals/plans (US5) and the note backend (US1). **US8** extends the note service from US2. **US9** navigates between the views built in US1-US8 and can be built incrementally as each view lands.
 - Conflict resolution (Phase 6) depends on the sync and write-through services (US1-US3) and is done before US4+ so no later story can overwrite a changed remote item.
 
 ### Within each story
@@ -307,5 +324,5 @@ Tests first (must fail) → models → services → endpoints → Flutter UI.
 
 1. **MVP**: Phases 1-3 (US1): connect the apps, sync, browse data.
 2. Add US2 and US3 for the full daily plan-and-schedule loop (all P1).
-3. Add P2 stories (US4, US5, US6), then P3 (US7, US8).
-4. Release engineering (Phase 12) should land before the first tagged release; the CI workflow from Phase 1 gates every change.
+3. Add P2 stories (US4, US5, US6), then P3 (US7, US8). US9 (keyboard navigation) is P2 and grows with the views.
+4. Release engineering (Phase 13) should land before the first tagged release; the CI workflow from Phase 1 gates every change.

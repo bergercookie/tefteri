@@ -136,6 +136,37 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 
 ---
 
+### User Story 8 - Documentation and process notes (Priority: P3)
+
+Beyond daily notes, the user can create custom notes for documentation and for well-defined step-by-step processes, and link them to tasks so they are one click away while working.
+
+**Why this priority**: Extends note-taking; not needed for the core loop.
+
+**Independent Test**: Create a process note, link it to a task, open it from the task, and edit it; verify the note is saved in the note-taking app.
+
+**Acceptance Scenarios**:
+
+1. **Given** a connected note-taking app, **When** the user creates a documentation or process note in tefteri, **Then** it is saved in the note-taking app and appears in the notes list.
+2. **Given** a task, **When** the user links a note to it, **Then** the note can be opened from the task and the task from the note.
+
+---
+
+### User Story 9 - Keyboard navigation (Priority: P2)
+
+A user working at a keyboard can move between all views (daily, weekly, monthly, annual, goals, review, notes, settings) and trigger common actions (sync, switching the work/life filter) with keyboard shortcuts, without using a mouse or touch.
+
+**Why this priority**: Fast navigation is essential to a daily planning tool people open many times a day; it is an explicit requirement.
+
+**Independent Test**: From any view, reach every other view using only the keyboard, and open the shortcut help.
+
+**Acceptance Scenarios**:
+
+1. **Given** any view, **When** the user presses the shortcut for another view, **Then** that view opens.
+2. **Given** the user is typing in a text field, **When** they press a plain-key shortcut, **Then** the key is entered as text and no navigation happens.
+3. **Given** any view, **When** the user opens the shortcut help, **Then** all shortcuts are listed.
+
+---
+
 ### Edge Cases
 
 - The same item is changed in tefteri and in the source app between syncs (conflict): the user is shown both versions and chooses which to keep; nothing is overwritten automatically.
@@ -169,7 +200,7 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - **FR-015**: The system MUST support multiple users, each with an independent account, connected apps, items, goals and plans; one user MUST NOT be able to access another's data.
 - **FR-016**: Users MUST be able to create long-term plans (e.g. annual resolutions) and keep them after the period ends.
 - **FR-017**: The system MUST produce a review of any past period showing planned versus completed goals and tasks, and let users record a retrospective linked to that plan. Saved retrospectives MUST also be written to the user's note-taking app as notes.
-- **FR-018**: Users MUST be able to create documentation notes, step-by-step processes and checklists, link them to tasks, and re-run a checklist from a clean state.
+- **FR-018**: Users MUST be able to create documentation notes and step-by-step process notes, save them in the note-taking app, and link them to tasks.
 - **FR-019**: Connected apps are assumed to be reachable. When one is not (unreachable, credentials expired or revoked), the system MUST say so clearly, naming the connection and the reason, MUST NOT apply or queue the user's change silently, and MUST let the user resolve it (retry, reconnect or fix the connection).
 - **FR-020**: The set of supported apps MUST be extensible, so that supporting a new task manager, calendar or note-taking app does not change the user-facing behaviour described here.
 - **FR-021**: Credentials and access tokens for connected apps MUST be stored securely and MUST NOT be visible to other users.
@@ -179,6 +210,7 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - **FR-025**: Every tagged release MUST produce downloadable Linux desktop packages (`.deb`, AppImage), an Android package and a server container image published to the project's container registry.
 - **FR-026**: A nightly build MUST publish a container image reachable under a stable `nightly` tag, versioned as `<previous-stable-release>.<commit-hash>.post<N>`, where N counts nightly builds since that stable release.
 - **FR-027**: Every change MUST be verified by an automated pipeline that runs the same lint, type, architecture-boundary and test checks developers run locally.
+- **FR-028**: Users MUST be able to navigate between all views (daily, weekly, monthly, annual, goals, review, notes, settings) and trigger sync and the work/life filter switch using keyboard shortcuts on clients that have a keyboard. Shortcuts MUST be discoverable from within the app, MUST NOT interfere with typing in text fields, and MUST be documented.
 
 ### Key Entities
 
@@ -186,14 +218,13 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - **Connection**: A user's link to an external task manager, calendar or note-taking app, with its sync status and its default work/life assignment.
 - **Task**: A unit of work with title, status, optional due date/time and scheduled time, optional parent goal and linked notes; mirrors an item in the task manager.
 - **Calendar Entry**: A time-based event mirrored from the calendar app; may be linked to a task.
-- **Note**: A document in the note-taking app. Kinds: daily TODO note, custom/documentation note, process, checklist, retrospective.
+- **Note**: A document in the note-taking app. Kinds: daily TODO note, custom/documentation note, process, retrospective.
 - **Goal / Plan**: A high-level objective for a period (year, month, week) that can contain smaller goals and tasks and has progress.
 - **Period Review**: A summary of planned versus completed items for a past period plus the user's retrospective.
 - **Context (Work/Life)**: The classification of an item, used for filtering.
 - **Sync Run**: One sync attempt for a connection, with time, outcome, counts and any error.
 - **Conflict**: A change made both in tefteri and in the connected app; holds both versions until the user chooses which to keep.
 - **Plan**: A period's collection of goals (e.g. the annual resolution plan), kept after the period ends.
-- **Checklist Run**: One use of a checklist, starting from a clean copy with each step tickable.
 
 ## Success Criteria *(mandatory)*
 
@@ -208,6 +239,7 @@ The user writes long-term plans such as an annual resolution, and later reviews 
 - **SC-007**: No user can see another user's data in any access test.
 - **SC-008**: At the end of a period, users can open a planned-versus-completed review in under 5 seconds, without compiling it by hand.
 - **SC-009**: 90% of test users complete the daily plan-and-execute flow (view day, add task, schedule it, complete it, add a note) on the first attempt.
+- **SC-010**: From any view, every other view is reachable using the keyboard alone in at most two key presses.
 
 ## Assumptions
 

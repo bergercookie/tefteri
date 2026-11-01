@@ -47,7 +47,7 @@ no raw passwords in configuration; per-user data isolation on every query; app t
 encrypted at rest.
 
 **Scale/Scope**: Households and small teams (≈ 1-50 users per installation); about 8 client
-screens (daily, weekly, monthly, annual, goals, reviews, notes/checklists, settings/connections).
+screens (daily, weekly, monthly, annual, goals, reviews, notes, settings/connections), with keyboard shortcuts for navigating between all views.
 
 ## Constitution Check
 

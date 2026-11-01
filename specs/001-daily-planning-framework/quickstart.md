@@ -58,3 +58,6 @@ image `ghcr.io/bergercookie/tefteri:nightly`).
    10 minutes (SC-001), plan a full week in under 10 minutes (SC-006), and complete the daily
    flow on first attempt (SC-009). The review opening in under 5 seconds (SC-008) is
    also covered by an automated test.
+8. With a keyboard, reach each of the daily, weekly, monthly, annual, goals, review, notes and
+   settings views using shortcuts alone, open the shortcut help, and confirm shortcuts do not
+   trigger while typing in a text field (SC-010).

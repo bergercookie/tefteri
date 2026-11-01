@@ -34,11 +34,9 @@ Timestamps are UTC with an explicit time zone on the user.
 
 ## Note (cached mirror)
 - `id`, `user_id`, `connection_id`, `remote_id`, `kind` (`daily` | `custom` | `process` |
-  `checklist` | `retrospective`), `title`, `body`, `note_date` (for daily), `context`,
+  `retrospective`), `title`, `body`, `note_date` (for daily), `context`,
   `remote_version`, `sync_state`.
 - Link table **TaskNoteLink** (`task_id`, `note_id`, optional anchor).
-- Checklist runs: **ChecklistRun** (`note_id`, `started_at`, `items` with `checked`), each run
-  starts from a clean copy of the template (FR-018).
 
 ## Goal
 - `id`, `user_id`, `parent_id` (nullable, hierarchy), `period_type` (`year` | `month` |

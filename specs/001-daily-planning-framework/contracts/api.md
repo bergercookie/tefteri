@@ -45,7 +45,6 @@ return that user's data. Item list endpoints accept `context=all|work|life` (def
 - `GET /notes/daily/{date}` - get or create the daily note.
 - `POST /notes/daily/{date}/append` `{text, task_id?}` - add text, link to task.
 - `POST /tasks/{id}/notes` - link/create a note for a task.
-- `POST /notes/{id}/runs` - start a clean checklist run; `PATCH /runs/{id}` - tick items.
 
 ## Planning
 - `GET /goals` (`period_type`, `period_start`, `parent_id`), `POST /goals`,
