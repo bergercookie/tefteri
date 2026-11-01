@@ -103,3 +103,21 @@ class AuthService:
     async def logout(self, db: AsyncSession, token: str) -> None:
         """Invalidate a token."""
         await db.execute(delete(AuthSession).where(AuthSession.token_hash == _digest(token)))
+
+    async def change_password(
+        self, db: AsyncSession, user: User, current: str, new_hash: str, keep_token: str
+    ) -> None:
+        """Set a new password after checking the current one; other sessions are ended.
+
+        Raises:
+            InvalidCredentials: the current password is wrong.
+        """
+        if user.password_hash is None or not verify_password(user.password_hash, current):
+            raise InvalidCredentials
+        user.password_hash = new_hash
+        await db.execute(
+            delete(AuthSession).where(
+                AuthSession.user_id == user.id, AuthSession.token_hash != _digest(keep_token)
+            )
+        )
+        await db.flush()

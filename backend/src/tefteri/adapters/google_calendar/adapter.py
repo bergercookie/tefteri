@@ -139,6 +139,12 @@ class GoogleCalendarBackend:
                 return EntryPage(items=entries, sync_token=data.get("nextSyncToken"))
             params["pageToken"] = data["nextPageToken"]
 
+    async def get_entry(self, remote_id: str) -> RemoteEntry:
+        """Fetch one event."""
+        calendar_id, event_id = split_id(remote_id)
+        data = await self._call("GET", f"/calendars/{calendar_id}/events/{event_id}")
+        return self._entry(calendar_id, data)
+
     async def create_entry(self, draft: EntryDraft) -> RemoteEntry:
         """Create an event."""
         if draft.all_day:

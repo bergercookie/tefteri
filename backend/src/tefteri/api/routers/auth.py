@@ -8,8 +8,11 @@ from pydantic import BaseModel
 
 from tefteri.api.deps import AuthDep, CurrentUser, Db, Token
 from tefteri.api.errors import ApiError
+from tefteri.auth.passwords import hash_password
 from tefteri.auth.service import InvalidCredentials
 from tefteri.auth.throttle import Throttled
+from tefteri.services.errors import Invalid
+from tefteri.services.users import check_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,6 +38,13 @@ class MeResponse(BaseModel):
     username: str
     is_admin: bool
     timezone: str
+
+
+class PasswordChange(BaseModel):
+    """Current and new password."""
+
+    current_password: str
+    new_password: str
 
 
 class MethodsResponse(BaseModel):
@@ -79,3 +89,21 @@ async def me(user: CurrentUser) -> MeResponse:
 async def methods() -> MethodsResponse:
     """List enabled login methods."""
     return MethodsResponse(password=True)
+
+
+@router.post("/password", status_code=204)
+async def change_password(
+    body: PasswordChange, db: Db, auth: AuthDep, user: CurrentUser, token: Token
+) -> None:
+    """Change your own password. Your other sessions end."""
+    try:
+        check_password(body.new_password)
+    except Invalid as exc:
+        raise ApiError(422, "invalid", str(exc)) from exc
+    try:
+        await auth.change_password(
+            db, user, body.current_password, hash_password(body.new_password), token
+        )
+    except InvalidCredentials as exc:
+        await db.rollback()
+        raise ApiError(401, "invalid_credentials", "The current password is wrong") from exc

@@ -90,6 +90,10 @@ class CalendarBackend(Backend, Protocol):
         """List events in a window."""
         ...
 
+    async def get_entry(self, remote_id: str) -> RemoteEntry:
+        """Fetch one event."""
+        ...
+
     async def create_entry(self, draft: EntryDraft) -> RemoteEntry:
         """Create an event."""
         ...

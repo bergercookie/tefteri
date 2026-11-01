@@ -98,6 +98,8 @@ async def test_create_update_if_match_and_delete(backend: GoogleCalendarBackend)
     created = await backend.create_entry(EntryDraft(CAL, "Standup", NOW, NOW.replace(minute=15)))
     assert created.version == '"1"'
 
+    respx.get(f"{API}/calendars/{CAL}/events/e1").respond(json=event())
+    assert (await backend.get_entry(created.remote_id)).title == "Standup"
     patch = respx.patch(f"{API}/calendars/{CAL}/events/e1").respond(
         json=event(etag='"2"', summary="Sync")
     )

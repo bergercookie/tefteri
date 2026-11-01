@@ -221,3 +221,36 @@ async def list_containers(
     return [
         ContainerOut(id=r.id, remote_id=r.remote_id, name=r.name, context=r.context) for r in rows
     ]
+
+
+class ContainerPatch(BaseModel):
+    """Label a whole container; ``context: null`` removes the label."""
+
+    context: Context | None
+
+
+@router.patch("/{connection_id}/containers/{container_id}")
+async def update_container(
+    connection_id: uuid.UUID,
+    container_id: uuid.UUID,
+    body: ContainerPatch,
+    db: Db,
+    user: CurrentUser,
+    service: ConnectionService = Service,
+) -> ContainerOut:
+    """Label a project, calendar or folder as work or life."""
+    await _own(service, db, user, connection_id)
+    row = (
+        await db.execute(
+            select(SourceContainer).where(
+                SourceContainer.id == container_id,
+                SourceContainer.connection_id == connection_id,
+                SourceContainer.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise ApiError(404, "not_found", "Container not found")
+    row.context = body.context.value if body.context else None
+    await db.flush()
+    return ContainerOut(id=row.id, remote_id=row.remote_id, name=row.name, context=row.context)

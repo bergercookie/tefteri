@@ -57,3 +57,13 @@ async def current_user(db: Db, auth: AuthDep, token: Token) -> User:
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
+
+
+async def admin_user(user: CurrentUser) -> User:
+    """Return the authenticated user if they are an administrator, else raise 403."""
+    if not user.is_admin:
+        raise ApiError(403, "forbidden", "Only administrators can do this")
+    return user
+
+
+AdminUser = Annotated[User, Depends(admin_user)]

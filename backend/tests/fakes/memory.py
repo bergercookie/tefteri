@@ -179,6 +179,17 @@ class FakeCalendarBackend(_FakeBase):
         ]
         return EntryPage(items=items, sync_token=self._new_version())
 
+    async def get_entry(self, remote_id: str) -> RemoteEntry:
+        """Fetch an event."""
+        self._guard()
+        return self.entries[remote_id]
+
+    def edit_remotely(self, remote_id: str, title: str) -> None:
+        """Simulate a change made directly in the app."""
+        self.entries[remote_id] = replace(
+            self.entries[remote_id], title=title, version=self._new_version()
+        )
+
     async def create_entry(self, draft: EntryDraft) -> RemoteEntry:
         """Create an event."""
         self._guard()

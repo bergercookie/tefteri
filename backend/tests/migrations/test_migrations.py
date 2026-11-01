@@ -56,3 +56,28 @@ def test_0002_downgrade_keeps_0001_tables(
     alembic_runner.migrate_down_one()
     tables = set(inspect(alembic_engine).get_table_names())
     assert "users" in tables and "tasks" not in tables
+
+
+def test_0003_creates_task_note_links(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0003")
+    insp = inspect(alembic_engine)
+    assert "task_note_links" in insp.get_table_names()
+    uniques = [set(u["column_names"]) for u in insp.get_unique_constraints("task_note_links")]
+    assert {"task_id", "note_id"} in uniques
+    alembic_runner.migrate_down_one()
+    assert "task_note_links" not in inspect(alembic_engine).get_table_names()
+
+
+def test_0004_creates_goals_plans_and_links_tasks(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0004")
+    insp = inspect(alembic_engine)
+    assert {"goals", "plans"} <= set(insp.get_table_names())
+    assert "goal_id" in {c["name"] for c in insp.get_columns("tasks")}
+    alembic_runner.migrate_down_one()
+    insp = inspect(alembic_engine)
+    assert "goals" not in insp.get_table_names()
+    assert "goal_id" in {c["name"] for c in insp.get_columns("tasks")}  # column came from 0002

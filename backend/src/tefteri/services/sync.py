@@ -19,6 +19,7 @@ from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
 from tefteri.domain.errors import AuthExpired, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
+from tefteri.services.mirror import entry_values, note_values, task_values
 
 CALENDAR_PAST = timedelta(days=90)
 CALENDAR_FUTURE = timedelta(days=400)
@@ -191,16 +192,7 @@ class SyncService:
                     connection,
                     item.remote_id,
                     item.version,
-                    {
-                        "container_id": container_row_id,
-                        "title": item.title,
-                        "description": item.description,
-                        "status": "done" if item.done else "open",
-                        "due_at": item.due_at,
-                        "scheduled_start": item.scheduled_start,
-                        "scheduled_end": item.scheduled_end,
-                        "all_day": item.all_day,
-                    },
+                    task_values(item, container_row_id),
                 )
         _mark_deleted(existing, seen, counts)
 
@@ -236,15 +228,7 @@ class SyncService:
                     connection,
                     item.remote_id,
                     item.version,
-                    {
-                        "container_id": container_row_id,
-                        "title": item.title,
-                        "start": item.start,
-                        "end": item.end,
-                        "all_day": item.all_day,
-                        "recurrence": item.recurrence,
-                        "location": item.location,
-                    },
+                    entry_values(item, container_row_id),
                 )
         _mark_deleted(existing, seen, counts)
 
@@ -274,6 +258,6 @@ class SyncService:
                     connection,
                     item.remote_id,
                     item.version,
-                    {"title": item.title, "body": item.body, "note_date": item.note_date},
+                    note_values(item),
                 )
         _mark_deleted(existing, seen, counts)

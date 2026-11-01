@@ -80,6 +80,7 @@ async def test_calendar_crud(calendar: CalendarBackend) -> None:
         container, NOW - timedelta(days=1), NOW + timedelta(days=1), None
     )
     assert [e.remote_id for e in page.items] == [entry.remote_id]
+    assert (await calendar.get_entry(entry.remote_id)).title == "Standup"
     updated = await calendar.update_entry(entry.remote_id, EntryPatch(title="Sync"), entry.version)
     assert updated.title == "Sync"
     with pytest.raises(RemoteConflict):

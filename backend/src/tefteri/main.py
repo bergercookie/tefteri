@@ -11,10 +11,17 @@ from tefteri.adapters.google_calendar import GoogleCalendarBackend
 from tefteri.adapters.trilium import TriliumNoteBackend
 from tefteri.adapters.vikunja import VikunjaTaskBackend
 from tefteri.api.errors import install_error_handlers
+from tefteri.api.errors_map import install_service_error_handlers
 from tefteri.api.routers import auth as auth_router
+from tefteri.api.routers import calendar as calendar_router
+from tefteri.api.routers import conflicts as conflicts_router
 from tefteri.api.routers import connections as connections_router
-from tefteri.api.routers import items as items_router
+from tefteri.api.routers import notes as notes_router
+from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import sync as sync_router
+from tefteri.api.routers import tasks as tasks_router
+from tefteri.api.routers import users as users_router
+from tefteri.api.routers import views as views_router
 from tefteri.auth.service import AuthService
 from tefteri.auth.throttle import LoginThrottle
 from tefteri.config import Settings
@@ -22,9 +29,15 @@ from tefteri.db.base import Base
 from tefteri.db.session import create_engine, create_session_factory, session_scope
 from tefteri.domain.enums import ConnectionKind
 from tefteri.security.crypto import TokenCipher
+from tefteri.services.calendar import CalendarService
+from tefteri.services.conflicts import ConflictService
 from tefteri.services.connections import AdapterRegistry, ConnectionService
+from tefteri.services.goals import GoalService
 from tefteri.services.google_oauth import GoogleOAuth
+from tefteri.services.notes import NoteService
 from tefteri.services.sync import SyncService
+from tefteri.services.tasks import TaskService
+from tefteri.services.users import UserService
 
 
 def default_registry(cfg: Settings, http: httpx.AsyncClient) -> AdapterRegistry:
@@ -89,12 +102,20 @@ def create_app(
     app.state.auth_service = auth_service
     app.state.connection_service = connection_service
     app.state.sync_service = SyncService(connection_service)
+    task_service = TaskService(connection_service)
+    app.state.task_service = task_service
+    app.state.goal_service = GoalService(task_service)
+    app.state.calendar_service = CalendarService(connection_service)
+    app.state.note_service = NoteService(connection_service)
+    app.state.conflict_service = ConflictService(connection_service)
+    app.state.user_service = UserService()
     app.state.google_oauth = (
         GoogleOAuth(http, cfg.google_client_id, cfg.google_client_secret, cfg.secret_key)
         if cfg.google_client_id and cfg.google_client_secret
         else None
     )
     install_error_handlers(app)
+    install_service_error_handlers(app)
 
     @app.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:
@@ -109,6 +130,17 @@ def create_app(
         except PackageNotFoundError:
             return {"version": "unknown"}
 
-    for r in (auth_router, connections_router, sync_router, items_router):
+    for r in (
+        auth_router,
+        connections_router,
+        sync_router,
+        tasks_router,
+        calendar_router,
+        notes_router,
+        views_router,
+        conflicts_router,
+        planning_router,
+        users_router,
+    ):
         app.include_router(r.router, prefix="/api/v1")
     return app

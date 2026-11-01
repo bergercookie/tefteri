@@ -1,6 +1,6 @@
 """Shared fixtures."""
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -64,3 +64,52 @@ async def api(
         c.headers["Authorization"] = f"Bearer {r.json()['token']}"
         c.app = app  # type: ignore[attr-defined]
         yield c
+
+
+V1 = "/api/v1"
+
+
+async def connect_all(api: AsyncClient, default_context: str = "life") -> dict[str, str]:
+    """Create one connection of each kind (fake backends) and return their ids by provider."""
+    ids: dict[str, str] = {}
+    for provider in ("vikunja", "google_calendar", "trilium"):
+        r = await api.post(
+            f"{V1}/connections",
+            json={
+                "provider": provider,
+                "display_name": provider,
+                "default_context": default_context,
+                "settings": {},
+                "credentials": {"token": "t"},
+            },
+        )
+        ids[provider] = r.json()["id"]
+    return ids
+
+
+@pytest.fixture
+async def make_user(api: AsyncClient) -> AsyncIterator[Callable[..., Awaitable[AsyncClient]]]:
+    """Create users through the admin API and return a signed-in client for each."""
+    clients: list[AsyncClient] = []
+
+    async def _make(
+        username: str, password: str = "another good pw", **extra: object
+    ) -> AsyncClient:
+        r = await api.post(
+            f"{V1}/users", json={"username": username, "password": password, **extra}
+        )
+        assert r.status_code == 201, r.text
+        client = AsyncClient(
+            transport=ASGITransport(app=api.app),  # type: ignore[attr-defined]
+            base_url="http://test",
+        )
+        login = await client.post(
+            f"{V1}/auth/login", json={"username": username, "password": password}
+        )
+        client.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        clients.append(client)
+        return client
+
+    yield _make
+    for client in clients:
+        await client.aclose()

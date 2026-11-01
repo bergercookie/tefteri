@@ -2,6 +2,8 @@
 
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import Connection, SourceContainer
+from tefteri.db.models.goal import Goal, Plan
+from tefteri.db.models.links import TaskNoteLink
 from tefteri.db.models.note import Note
 from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
@@ -12,9 +14,12 @@ __all__ = [
     "CalendarEntry",
     "Conflict",
     "Connection",
+    "Goal",
     "Note",
+    "Plan",
     "SourceContainer",
     "SyncRun",
+    "TaskNoteLink",
     "Task",
     "User",
 ]
