@@ -134,3 +134,27 @@ async def test_remote_change_updates_cache_but_not_rows_in_conflict(db: AsyncSes
     await sync.sync_all(db, user.id)
     tasks = {t.title: t for t in (await db.execute(select(Task))).scalars()}
     assert "Renamed remotely" in tasks and "New one" in tasks  # conflict row untouched
+
+
+def test_times_are_stored_as_utc() -> None:
+    """11:00+02:00 is 09:00 UTC. SQLite keeps only the wall clock, so it must be converted first."""
+    from datetime import UTC, datetime, timedelta, timezone  # noqa: PLC0415
+
+    from tefteri.domain.entities import RemoteEntry, RemoteTask  # noqa: PLC0415
+    from tefteri.services.mirror import entry_values, task_values, utc  # noqa: PLC0415
+
+    athens = timezone(timedelta(hours=2))
+    due = datetime(2026, 11, 4, 11, tzinfo=athens)
+    values = task_values(RemoteTask("1", "p", "t", "v", due_at=due), None)
+    assert values["due_at"] == datetime(2026, 11, 4, 9, tzinfo=UTC)
+    assert values["due_at"].utcoffset() == timedelta(0)
+    assert values["scheduled_start"] == datetime(2026, 11, 4, 8, tzinfo=UTC)
+    assert values["scheduled_end"] == datetime(2026, 11, 4, 9, tzinfo=UTC)
+
+    entry = RemoteEntry("e", "c", "x", datetime(2026, 11, 4, 12, tzinfo=athens), due, "v")
+    shown = entry_values(entry, None)
+    assert shown["start"] == datetime(2026, 11, 4, 10, tzinfo=UTC)
+    assert shown["end"] == datetime(2026, 11, 4, 9, tzinfo=UTC)
+
+    assert utc(None) is None
+    assert utc(datetime(2026, 11, 4, 9)) == datetime(2026, 11, 4, 9, tzinfo=UTC)  # no offset: UTC

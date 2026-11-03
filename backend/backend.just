@@ -8,7 +8,7 @@ install:
     uv sync
 
 test:
-    uv run pytest -m "not postgres" --ignore=tests/smoke
+    uv run pytest -m "not postgres and not live" --ignore=tests/smoke --ignore=tests/live
 
 e2e:
     uv run pytest tests/e2e
@@ -25,3 +25,24 @@ openapi:
 
 migrate:
     uv run alembic upgrade head
+
+# Start a throw-away Vikunja, run the live tests against it, then stop it. These tests are not
+# part of `just test`. With TEFTERI_LIVE_VIKUNJA_URL set, they use that server and start nothing.
+# Extra arguments go to pytest, for example `just backend::live-vikunja -k move`.
+live-vikunja *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z "${TEFTERI_LIVE_VIKUNJA_URL:-}" ]; then
+        TEFTERI_LIVE_VIKUNJA_URL=$(../scripts/vikunja-dev.sh start)
+        export TEFTERI_LIVE_VIKUNJA_URL
+        trap '../scripts/vikunja-dev.sh stop' EXIT
+    fi
+    echo "Live tests against ${TEFTERI_LIVE_VIKUNJA_URL}"
+    uv run pytest tests/live -m live -p no:cacheprovider {{ args }}
+
+# Start the throw-away Vikunja and keep it running, for manual work. Stop it with vikunja-down.
+vikunja-up:
+    ../scripts/vikunja-dev.sh start
+
+vikunja-down:
+    ../scripts/vikunja-dev.sh stop
