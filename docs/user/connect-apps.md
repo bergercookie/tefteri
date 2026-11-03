@@ -12,8 +12,8 @@ You can connect these apps:
 ## Before you start
 
 1. Log in to tefteri.
-2. Open the Settings screen.
-3. Find the list of connections.
+2. Open the menu and choose Settings.
+3. Choose Connections. You see the list of connections.
 
 ![The Connections screen with three connections: Home tasks, Work calendar and Notes. Each shows its app and the time of the last sync.](../images/connections-list.png)
 

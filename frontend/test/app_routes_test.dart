@@ -7,7 +7,12 @@ import 'package:tefteri/app.dart';
 import 'package:tefteri/core/api_client.dart';
 import 'package:tefteri/core/auth_controller.dart';
 import 'package:tefteri/core/shortcuts/keymap.dart';
+import 'package:tefteri/features/admin/admin_settings_screen.dart';
+import 'package:tefteri/features/admin/users_screen.dart';
+import 'package:tefteri/features/auth/change_password_screen.dart';
 import 'package:tefteri/features/daily/daily_screen.dart';
+import 'package:tefteri/features/settings/connections_screen.dart';
+import 'package:tefteri/features/settings/settings_screen.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
 
 import 'support/fake_api.dart';
@@ -18,7 +23,13 @@ class _SignedIn extends AuthController {
   }
 }
 
-Future<GoRouter> _pump(WidgetTester tester) async {
+class _Admin extends AuthController {
+  _Admin(super.ref) {
+    state = const AuthState(signedIn: true, isAdmin: true);
+  }
+}
+
+Future<GoRouter> _pump(WidgetTester tester, {bool admin = false}) async {
   tester.view.physicalSize = const Size(1000, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -26,6 +37,10 @@ Future<GoRouter> _pump(WidgetTester tester) async {
     'GET /calendar': <Object?>[],
     'GET /tasks': <Object?>[],
     'GET /tasks/counts': <String, int>{},
+    'GET /connections': <Object?>[],
+    'GET /sync/status': {'last_sync_at': null, 'results': <Object?>[]},
+    'GET /me/settings': {'random_time_on_date_drop': false},
+    'GET /users': <Object?>[],
     'GET /views/day/2026-11-04': {
       'date': '2026-11-04',
       'entries': <Object?>[],
@@ -36,7 +51,7 @@ Future<GoRouter> _pump(WidgetTester tester) async {
   final dio = Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = api;
   final container = ProviderContainer(overrides: [
     dioProvider.overrideWithValue(dio),
-    authControllerProvider.overrideWith(_SignedIn.new),
+    authControllerProvider.overrideWith(admin ? _Admin.new : _SignedIn.new),
   ]);
   addTearDown(container.dispose);
   final router = container.read(routerProvider);
@@ -78,5 +93,76 @@ void main() {
     router.go('/calendar');
     await tester.pumpAndSettle();
     expect(find.byType(PlannerScreen), findsOneWidget);
+  });
+
+  testWidgets('Settings lists Connections and Change password', (tester) async {
+    final router = await _pump(tester);
+    router.go('/settings');
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byKey(const Key('settings-connections')), findsOneWidget);
+    expect(find.byKey(const Key('settings-password')), findsOneWidget);
+    // no administrator page for this user
+    expect(find.byKey(const Key('settings-users')), findsNothing);
+  });
+
+  testWidgets('Connections opens from Settings and goes back to it',
+      (tester) async {
+    final router = await _pump(tester);
+    router.go('/settings');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-connections')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ConnectionsScreen), findsOneWidget);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+  });
+
+  testWidgets('Change password opens from Settings', (tester) async {
+    final router = await _pump(tester);
+    router.go('/settings');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-password')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChangePasswordScreen), findsOneWidget);
+    expect(find.byKey(const Key('back-button')), findsOneWidget);
+  });
+
+  testWidgets('an administrator reaches Users through Admin settings',
+      (tester) async {
+    final router = await _pump(tester, admin: true);
+    router.go('/admin');
+    await tester.pumpAndSettle();
+    expect(find.byType(AdminSettingsScreen), findsOneWidget);
+    await tester.tap(find.byKey(const Key('settings-users')));
+    await tester.pumpAndSettle();
+    expect(find.byType(UsersScreen), findsOneWidget);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AdminSettingsScreen), findsOneWidget);
+  });
+
+  testWidgets('other users cannot open Admin settings or Users',
+      (tester) async {
+    final router = await _pump(tester);
+    router.go('/admin');
+    await tester.pumpAndSettle();
+    expect(find.byType(AdminSettingsScreen), findsNothing);
+    expect(find.byType(PlannerScreen), findsOneWidget);
+    router.go('/admin/users');
+    await tester.pumpAndSettle();
+    expect(find.byType(UsersScreen), findsNothing);
+    expect(find.byType(PlannerScreen), findsOneWidget);
+  });
+
+  testWidgets('the old addresses still work', (tester) async {
+    final router = await _pump(tester, admin: true);
+    router.go('/password');
+    await tester.pumpAndSettle();
+    expect(find.byType(ChangePasswordScreen), findsOneWidget);
+    router.go('/users');
+    await tester.pumpAndSettle();
+    expect(find.byType(UsersScreen), findsOneWidget);
   });
 }

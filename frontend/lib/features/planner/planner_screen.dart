@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
@@ -62,21 +63,32 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     final error = ref.watch(plannerErrorProvider);
     return AppShell(
       title: 'Planner',
-      body: Column(
-        children: [
-          if (error != null)
-            ErrorBanner(
-              message: error,
-              onDismiss: () =>
-                  ref.read(plannerErrorProvider.notifier).state = null,
-            ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) =>
-                  c.maxWidth >= twoColumnMinWidth ? _wide() : _narrow(),
-            ),
+      // Left and right arrow move by one week. A text field handles the
+      // arrows itself first (to move the cursor), so typing is not affected.
+      body: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _shift(-1),
+          const SingleActivator(LogicalKeyboardKey.arrowRight): () => _shift(1),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Column(
+            children: [
+              if (error != null)
+                ErrorBanner(
+                  message: error,
+                  onDismiss: () =>
+                      ref.read(plannerErrorProvider.notifier).state = null,
+                ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, c) =>
+                      c.maxWidth >= twoColumnMinWidth ? _wide() : _narrow(),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

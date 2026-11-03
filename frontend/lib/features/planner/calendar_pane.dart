@@ -10,6 +10,7 @@ import '../../core/api_error.dart';
 import '../../core/context_filter.dart';
 import '../../core/planning_models.dart';
 import '../calendar/calendar_providers.dart';
+import 'details_dialogs.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
 import 'time_grid.dart';
@@ -71,6 +72,22 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     });
   }
 
+  /// Shows the week of today and scrolls the grid to the current time.
+  void _goToToday() {
+    widget.onToday();
+    setState(() => _now = widget.clock());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final minutes =
+          (_now.hour * 60 + _now.minute - 2 * 60).clamp(0, minutesPerDay);
+      _scroll.animateTo(
+        minutesToOffset(minutes).clamp(0, _scroll.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
   @override
   void dispose() {
     _tick?.cancel();
@@ -119,27 +136,38 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     );
   }
 
-  Widget _nav() => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            key: const Key('prev-week'),
-            tooltip: 'Previous week',
-            icon: const Icon(Icons.chevron_left),
-            onPressed: () => widget.onShiftWeek(-1),
-          ),
-          TextButton(
-            key: const Key('this-week'),
-            onPressed: widget.onToday,
-            child: Text('Week of ${dateKey(widget.weekStart)}'),
-          ),
-          IconButton(
-            key: const Key('next-week'),
-            tooltip: 'Next week',
-            icon: const Icon(Icons.chevron_right),
-            onPressed: () => widget.onShiftWeek(1),
-          ),
-        ],
+  /// Today button, arrows and the label of the week. On a narrow screen the
+  /// label can shrink, so the row never overflows.
+  Widget _nav() => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            OutlinedButton(
+              key: const Key('today-button'),
+              onPressed: _goToToday,
+              child: const Text('Today'),
+            ),
+            IconButton(
+              key: const Key('prev-week'),
+              tooltip: 'Previous week (Left arrow)',
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () => widget.onShiftWeek(-1),
+            ),
+            IconButton(
+              key: const Key('next-week'),
+              tooltip: 'Next week (Right arrow)',
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () => widget.onShiftWeek(1),
+            ),
+            Expanded(
+              child: Text(
+                'Week of ${dateKey(widget.weekStart)}',
+                key: const Key('week-label'),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       );
 
   Widget _grid(List<CalendarItem> all, String? pending) {
@@ -281,26 +309,28 @@ class _AllDayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chip = Container(
-      key: Key('allday-${item.type}-${item.id}'),
-      margin: const EdgeInsets.symmetric(vertical: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      color: _blockColor(context, item),
-      child: Row(
-        children: [
-          Icon(item.isTask ? Icons.task_alt : Icons.event, size: 12),
-          const SizedBox(width: 2),
-          Expanded(
-            child: Text(item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    decoration:
-                        item.isDone ? TextDecoration.lineThrough : null)),
+    final chip = _OpenDetails(
+        item: item,
+        child: Container(
+          key: Key('allday-${item.type}-${item.id}'),
+          margin: const EdgeInsets.symmetric(vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          color: _blockColor(context, item),
+          child: Row(
+            children: [
+              Icon(item.isTask ? Icons.task_alt : Icons.event, size: 12),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        decoration:
+                            item.isDone ? TextDecoration.lineThrough : null)),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ));
     if (!item.isTask) return chip;
     return PlannerDraggable<CalendarItem>(
         data: item, label: item.title, dimmed: pending, child: chip);
@@ -427,46 +457,48 @@ class _DayColumn extends ConsumerWidget {
     final time =
         '${hhmm(i.start!)}${i.end == null ? '' : ' - ${hhmm(i.end!)}'}';
     final isPending = pending == i.id;
-    final body = Container(
-      key: Key('block-${i.type}-${i.id}'),
-      margin: const EdgeInsets.all(1),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: _blockColor(context, i),
-        borderRadius: BorderRadius.circular(4),
-        border: i.isTask
-            ? Border.all(color: Theme.of(context).colorScheme.tertiary)
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final body = _OpenDetails(
+        item: i,
+        child: Container(
+          key: Key('block-${i.type}-${i.id}'),
+          margin: const EdgeInsets.all(1),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: _blockColor(context, i),
+            borderRadius: BorderRadius.circular(4),
+            border: i.isTask
+                ? Border.all(color: Theme.of(context).colorScheme.tertiary)
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(i.isTask ? Icons.task_alt : Icons.event, size: 12),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Text(i.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        decoration:
-                            i.isDone ? TextDecoration.lineThrough : null)),
+              Row(
+                children: [
+                  Icon(i.isTask ? Icons.task_alt : Icons.event, size: 12),
+                  const SizedBox(width: 2),
+                  Expanded(
+                    child: Text(i.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            decoration:
+                                i.isDone ? TextDecoration.lineThrough : null)),
+                  ),
+                  if (i.clippedStart)
+                    Tooltip(
+                      message: 'Continues from previous day',
+                      child: Icon(Icons.subdirectory_arrow_right,
+                          key: Key('clipped-${i.id}'), size: 12),
+                    ),
+                ],
               ),
-              if (i.clippedStart)
-                Tooltip(
-                  message: 'Continues from previous day',
-                  child: Icon(Icons.subdirectory_arrow_right,
-                      key: Key('clipped-${i.id}'), size: 12),
-                ),
+              if (height >= 40)
+                Text(time,
+                    maxLines: 1, style: Theme.of(context).textTheme.labelSmall),
             ],
           ),
-          if (height >= 40)
-            Text(time,
-                maxLines: 1, style: Theme.of(context).textTheme.labelSmall),
-        ],
-      ),
-    );
+        ));
     return Positioned(
       top: minutesToOffset(span.$1),
       left: colWidth * place.column,
@@ -478,4 +510,22 @@ class _DayColumn extends ConsumerWidget {
           : body,
     );
   }
+}
+
+/// Opens the details pop-up of [item] when the user taps [child]: the task for
+/// a task block, the event for an event.
+class _OpenDetails extends StatelessWidget {
+  const _OpenDetails({required this.item, required this.child});
+
+  final CalendarItem item;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => item.isTask
+            ? showTaskDetails(context, taskId: item.id, title: item.title)
+            : showEventDetails(context, item),
+        child: child,
+      );
 }

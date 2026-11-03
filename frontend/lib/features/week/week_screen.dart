@@ -48,6 +48,7 @@ class _WeekScreenState extends ConsumerState<WeekScreen> {
       onReload: () => ref.invalidate(weekViewProvider(key)),
       onShift: (d) => setState(() =>
           _start = DateTime(_start.year, _start.month, _start.day + 7 * d)),
+      onToday: () => setState(() => _start = weekStartOf(DateTime.now())),
     );
   }
 }

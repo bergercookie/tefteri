@@ -41,9 +41,15 @@ If tefteri blocks your sign-in, do these steps:
 
 Your administrator can change these limits.
 
+## Open your settings
+
+The menu has one item for your settings. Choose Settings. The page lists your settings pages: Connections and Change password.
+
+![The Settings page. It lists two pages: Connections and Change password.](../images/settings-page.png)
+
 ## Change your password
 
-1. Open the menu.
+1. Open the menu and choose Settings.
 2. Choose Change password.
 3. Type your current password.
 4. Type your new password two times.
@@ -55,25 +61,29 @@ Use the new password the next time you sign in.
 
 ![The Users screen. It lists three users. Each user has the buttons Disable or Enable, Reset password and Delete.](../images/accounts-users.png)
 
-Only an administrator sees the Users menu item. The first administrator comes from the deployment settings.
+![The Admin settings page. It lists one page: Users.](../images/admin-settings-page.png)
+
+Only an administrator sees the Admin settings menu item. The Users screen is inside it. The first administrator comes from the deployment settings.
 
 ### Add a user
 
-1. Open the menu and choose Users.
-2. Choose Add user.
-3. Type a username for the new user.
-4. Type a first password for the new user.
-5. Choose Save.
+1. Open the menu and choose Admin settings.
+2. Choose Users.
+3. Choose Add user.
+4. Type a username for the new user.
+5. Type a first password for the new user.
+6. Choose Save.
 
 Give the username and password to the new user. Ask the user to change the password at the first sign-in.
 
 ### Set or reset a password
 
-1. Open the menu and choose Users.
-2. Choose the user.
-3. Choose Set password.
-4. Type the new password.
-5. Choose Save.
+1. Open the menu and choose Admin settings.
+2. Choose Users.
+3. Choose the user.
+4. Choose Set password.
+5. Type the new password.
+6. Choose Save.
 
 Use this when a user forgets a password.
 
@@ -81,9 +91,10 @@ Use this when a user forgets a password.
 
 A disabled user cannot sign in. The data of the user stays in tefteri.
 
-1. Open the menu and choose Users.
-2. Choose the user.
-3. Choose Disable.
+1. Open the menu and choose Admin settings.
+2. Choose Users.
+3. Choose the user.
+4. Choose Disable.
 
 To let the user sign in again, choose Enable.
 
@@ -91,9 +102,10 @@ To let the user sign in again, choose Enable.
 
 Delete a user only when you do not need the data of the user again.
 
-1. Open the menu and choose Users.
-2. Choose the user.
-3. Choose Delete.
-4. Confirm the deletion.
+1. Open the menu and choose Admin settings.
+2. Choose Users.
+3. Choose the user.
+4. Choose Delete.
+5. Confirm the deletion.
 
 Tefteri removes the account and the data of the user. You cannot undo this action.

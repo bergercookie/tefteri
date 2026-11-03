@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/app_selection.dart';
 import 'core/auth_controller.dart';
 import 'core/shortcuts/app_shortcuts.dart';
+import 'features/admin/admin_settings_screen.dart';
 import 'features/admin/users_screen.dart';
 import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
@@ -20,6 +22,7 @@ import 'features/notes/notes_screen.dart';
 import 'features/review/plan_history_screen.dart';
 import 'features/review/review_screen.dart';
 import 'features/settings/connections_screen.dart';
+import 'features/settings/settings_screen.dart';
 import 'features/week/week_screen.dart';
 import 'features/year/year_screen.dart';
 
@@ -44,19 +47,40 @@ GoRouter buildRouter(Ref ref) {
       final signedIn = auth.signedIn;
       final atLogin = state.matchedLocation == '/login';
       if (!signedIn) return atLogin ? null : '/login';
-      return atLogin ? '/' : null;
+      if (atLogin) return '/';
+      // Admin settings are for administrators; the server checks the rights too.
+      final admin = ref.read(authControllerProvider).isAdmin;
+      final adminPage = state.matchedLocation == '/admin' ||
+          state.matchedLocation.startsWith('/admin/');
+      if (adminPage && !admin) return '/';
+      return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
         path: '/settings',
-        builder: (_, __) => const ConnectionsScreen(),
+        builder: (_, __) => const SettingsScreen(),
+        routes: [
+          GoRoute(
+            path: 'connections',
+            builder: (_, __) => const ConnectionsScreen(),
+          ),
+          GoRoute(
+            path: 'password',
+            builder: (_, __) => const ChangePasswordScreen(),
+          ),
+        ],
       ),
-      GoRoute(path: '/users', builder: (_, __) => const UsersScreen()),
       GoRoute(
-        path: '/password',
-        builder: (_, __) => const ChangePasswordScreen(),
+        path: '/admin',
+        builder: (_, __) => const AdminSettingsScreen(),
+        routes: [
+          GoRoute(path: 'users', builder: (_, __) => const UsersScreen()),
+        ],
       ),
+      // Old addresses, from before Settings and Admin settings existed.
+      GoRoute(path: '/password', redirect: (_, __) => '/settings/password'),
+      GoRoute(path: '/users', redirect: (_, __) => '/admin/users'),
       GoRoute(path: '/', builder: (_, __) => const PlannerScreen()),
       GoRoute(path: '/daily', builder: (_, __) => const DailyScreen()),
       GoRoute(path: '/calendar', redirect: (_, __) => '/'),
@@ -115,7 +139,12 @@ class TefteriApp extends ConsumerWidget {
               key: Key('restoring-session'),
               body: Center(child: CircularProgressIndicator()),
             )
-          : AppShortcuts(router: router, child: child ?? const SizedBox()),
+          : AppShortcuts(
+              router: router,
+              // One selection area for the whole app, so the user can select
+              // and copy text on every screen, also in dialogs and messages.
+              child: AppSelection(child: child ?? const SizedBox()),
+            ),
     );
   }
 }

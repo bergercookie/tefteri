@@ -95,6 +95,11 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     if (ok) _noteCtl.clear();
   }
 
+  void _today() => setState(() {
+        _date = DateTime.now();
+        _error = null;
+      });
+
   void _shiftDay(int days) => setState(() {
         _date = DateTime(_date.year, _date.month, _date.day + days);
         _error = null;
@@ -141,6 +146,12 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
   Widget _dayNav() => Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          OutlinedButton(
+            key: const Key('today-button'),
+            onPressed: _today,
+            child: const Text('Today'),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             key: const Key('prev-day'),
             tooltip: 'Previous day',

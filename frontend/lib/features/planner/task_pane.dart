@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
+import 'details_dialogs.dart';
 import 'hover_lift.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
@@ -208,6 +209,7 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
     final tile = ListTile(
       key: Key('task-${t.id}'),
       dense: true,
+      onTap: () => showTaskDetails(context, taskId: t.id, initial: t),
       title: Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text(_due(t), key: Key('task-due-${t.id}')),
       leading: Icon(

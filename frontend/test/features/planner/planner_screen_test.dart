@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_api.dart';
@@ -65,5 +66,60 @@ void main() {
     expect(find.byKey(const Key('reload-button')), findsOneWidget);
     expect(
         find.byKey(const Key('task-t1')), findsOneWidget); // tasks still work
+  });
+
+  group('arrow keys', () {
+    String from(FakeApi api) =>
+        api.where('GET /calendar').last.query['from'] as String;
+
+    testWidgets(
+        'the right arrow shows the next week, the left arrow the previous',
+        (tester) async {
+      final api = plannerApi();
+      await pumpPlanner(tester, api);
+      expect(find.text('Week of 2026-11-02'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await settle(tester);
+      expect(find.text('Week of 2026-11-09'), findsOneWidget);
+      expect(from(api), DateTime(2026, 11, 9).toUtc().toIso8601String());
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await settle(tester);
+      expect(find.text('Week of 2026-10-26'), findsOneWidget);
+      expect(from(api), DateTime(2026, 10, 26).toUtc().toIso8601String());
+    });
+
+    testWidgets('the arrows still work after a click on a filter',
+        (tester) async {
+      final api = plannerApi();
+      await pumpPlanner(tester, api);
+      await tester.tap(find.byKey(const Key('filter-week')));
+      await settle(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await settle(tester);
+      expect(find.text('Week of 2026-11-09'), findsOneWidget);
+    });
+
+    testWidgets('in the search box the arrows move the cursor, not the week',
+        (tester) async {
+      await pumpPlanner(tester, plannerApi());
+      await tester.tap(find.byKey(const Key('task-search')));
+      await tester.enterText(find.byKey(const Key('task-search')), 'trip');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump(const Duration(milliseconds: 300));
+      await settle(tester);
+      expect(find.text('Week of 2026-11-02'), findsOneWidget);
+    });
+
+    testWidgets('the arrow buttons say which key does the same',
+        (tester) async {
+      await pumpPlanner(tester, plannerApi());
+      expect(find.byTooltip('Previous week (Left arrow)'), findsOneWidget);
+      expect(find.byTooltip('Next week (Right arrow)'), findsOneWidget);
+    });
   });
 }
