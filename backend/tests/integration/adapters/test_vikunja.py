@@ -32,6 +32,33 @@ def task_json(**over: object) -> dict[str, object]:
     return data
 
 
+class _Stored:
+    """A Vikunja task that keeps what is written to it and answers reads with it.
+
+    The adapter reads a task back after each write, so a mock of the write alone is not
+    enough: the next read must show the change.
+    """
+
+    def __init__(self, **fields: object) -> None:
+        self.data = task_json(**fields)
+        self.posts: list[dict[str, object]] = []
+
+    def mount(self, task_id: int = 7) -> "_Stored":
+        respx.get(f"{BASE}/tasks/{task_id}").mock(side_effect=self._read)
+        respx.post(f"{BASE}/tasks/{task_id}").mock(side_effect=self._write)
+        return self
+
+    def _read(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=self.data)
+
+    def _write(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        self.posts.append(body)
+        stamp = f"2026-11-04T10:00:{len(self.posts):02d}Z"
+        self.data = {**body, "updated": stamp}
+        return httpx.Response(200, json=self.data)
+
+
 @pytest.fixture
 async def backend() -> AsyncIterator[VikunjaTaskBackend]:
     async with httpx.AsyncClient() as client:
@@ -70,32 +97,23 @@ async def test_create_update_and_stale_version(backend: VikunjaTaskBackend) -> N
     created = await backend.create_task(TaskDraft("2", "Write report"))
     assert created.remote_id == "7"
 
-    respx.get(f"{BASE}/tasks/7").respond(json=task_json())
-    update = respx.post(f"{BASE}/tasks/7").respond(
-        json=task_json(title="Report", updated="2026-11-01T11:00:00Z")
-    )
+    store = _Stored().mount()
     updated = await backend.update_task("7", TaskPatch(title="Report"), created.version)
     assert updated.title == "Report"
-    assert b'"title":"Report"' in update.calls[0].request.content.replace(b" ", b"")
+    assert store.posts[0]["title"] == "Report"
 
     with pytest.raises(RemoteConflict):
         await backend.update_task("7", TaskPatch(title="x"), "an-older-version")
 
 
-def _body(call: respx.models.Call) -> dict[str, object]:
-    body: dict[str, object] = json.loads(call.request.content)
-    return body
-
-
 @respx.mock
 async def test_set_planned_time_writes_only_the_due_date(backend: VikunjaTaskBackend) -> None:
-    respx.get(f"{BASE}/tasks/7").respond(json=task_json())
-    post = respx.post(f"{BASE}/tasks/7").respond(json=task_json(due_date="2026-11-02T10:00:00Z"))
+    store = _Stored().mount()
     due = datetime(2026, 11, 2, 10, tzinfo=UTC)
     current = await backend.get_task("7")
     task = await backend.set_planned_time("7", due, False, current.version)
     assert task.due_at == due and not task.all_day
-    body = _body(post.calls[0])
+    body = store.posts[0]
     assert body["due_date"] == "2026-11-02T10:00:00Z"
     # constitution VII: the start and end dates are not tefteri's planning dates
     assert body["start_date"] == "0001-01-01T00:00:00Z"
@@ -107,39 +125,34 @@ async def test_set_planned_time_keeps_foreign_start_and_end_dates(
     backend: VikunjaTaskBackend,
 ) -> None:
     mine = {"start_date": "2026-10-01T08:00:00Z", "end_date": "2026-10-02T08:00:00Z"}
-    respx.get(f"{BASE}/tasks/7").respond(json=task_json(**mine))
-    post = respx.post(f"{BASE}/tasks/7").respond(json=task_json(**mine))
+    store = _Stored(**mine).mount()
     current = await backend.get_task("7")
     await backend.set_planned_time(
         "7", datetime(2026, 11, 2, 10, tzinfo=UTC), False, current.version
     )
-    body = _body(post.calls[0])
+    body = store.posts[0]
     assert body["start_date"] == mine["start_date"] and body["end_date"] == mine["end_date"]
 
 
 @respx.mock
 async def test_set_planned_time_clears_the_due_date(backend: VikunjaTaskBackend) -> None:
-    respx.get(f"{BASE}/tasks/7").respond(json=task_json(due_date="2026-11-02T10:00:00Z"))
-    post = respx.post(f"{BASE}/tasks/7").respond(json=task_json())
+    store = _Stored(due_date="2026-11-02T10:00:00Z").mount()
     current = await backend.get_task("7")
     task = await backend.set_planned_time("7", None, False, current.version)
     assert task.due_at is None
-    assert _body(post.calls[0])["due_date"] == "0001-01-01T00:00:00Z"
+    assert store.posts[0]["due_date"] == "0001-01-01T00:00:00Z"
 
 
 @respx.mock
 async def test_date_only_due_is_00_00_in_the_users_time_zone() -> None:
     async with httpx.AsyncClient() as client:
         athens = VikunjaTaskBackend(client, "https://vikunja.test/", "tok", "Europe/Athens")
-        respx.get(f"{BASE}/tasks/7").respond(json=task_json())
-        post = respx.post(f"{BASE}/tasks/7").respond(
-            json=task_json(due_date="2026-11-03T22:00:00Z")
-        )
+        store = _Stored().mount()
         current = await athens.get_task("7")
         # the caller may pass any instant on the day; the adapter writes local midnight
         noon = datetime(2026, 11, 4, 12, tzinfo=UTC)
         task = await athens.set_planned_time("7", noon, True, current.version)
-    assert _body(post.calls[0])["due_date"] == "2026-11-03T22:00:00Z"  # 00:00 on 4 Nov, UTC+2
+    assert store.posts[0]["due_date"] == "2026-11-03T22:00:00Z"  # 00:00 on 4 Nov, UTC+2
     assert task.all_day and task.due_at == datetime(2026, 11, 3, 22, tzinfo=UTC)
 
 
@@ -164,8 +177,7 @@ async def test_start_and_end_dates_are_not_read(backend: VikunjaTaskBackend) -> 
 
 @respx.mock
 async def test_complete_and_delete(backend: VikunjaTaskBackend) -> None:
-    respx.get(f"{BASE}/tasks/7").respond(json=task_json())
-    respx.post(f"{BASE}/tasks/7").respond(json=task_json(done=True))
+    _Stored().mount()
     assert (await backend.complete_task("7")).done
     delete = respx.delete(f"{BASE}/tasks/7").respond(json={"message": "ok"})
     await backend.delete_task("7")
@@ -209,3 +221,71 @@ async def test_invalid_data_is_not_a_conflict(backend: VikunjaTaskBackend) -> No
     with pytest.raises(BackendError) as raised:
         await backend.create_task(TaskDraft("2", ""))
     assert not isinstance(raised.value, RemoteConflict)
+
+
+class _RealisticVikunja:
+    """A Vikunja whose update answer is formatted differently from a later read.
+
+    The update answer carries the in-memory task: a sub-second ``updated`` stamp and the
+    due date in the server's offset. A later read gives what the database stored: whole
+    seconds and UTC. A client that builds the version of a task from the update answer
+    then sees a "conflict" when it writes the same task again.
+    """
+
+    def __init__(self) -> None:
+        self.stored = task_json(updated="2026-11-04T10:00:00Z")
+        self.writes = 0
+
+    def read(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=self.stored)
+
+    def write(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        self.writes += 1
+        stamp = f"2026-11-04T10:00:0{self.writes}"
+        self.stored = {**body, "updated": f"{stamp}Z"}
+        due = body["due_date"]
+        shown = {"due_date": due.replace("Z", "+02:00")} if due != "0001-01-01T00:00:00Z" else {}
+        return httpx.Response(200, json={**self.stored, **shown, "updated": f"{stamp}.482913Z"})
+
+
+@respx.mock
+async def test_the_same_task_can_be_planned_twice_in_a_row(backend: VikunjaTaskBackend) -> None:
+    server = _RealisticVikunja()
+    respx.get(f"{BASE}/tasks/7").mock(side_effect=server.read)
+    respx.post(f"{BASE}/tasks/7").mock(side_effect=server.write)
+
+    first = await backend.get_task("7")
+    planned = await backend.set_planned_time(
+        "7", datetime(2026, 11, 4, 15, tzinfo=UTC), False, first.version
+    )
+    # the user drags the block again, with the version that the first write returned
+    moved = await backend.set_planned_time(
+        "7", datetime(2026, 11, 4, 17, tzinfo=UTC), False, planned.version
+    )
+    assert moved.due_at == datetime(2026, 11, 4, 17, tzinfo=UTC)
+    cleared = await backend.set_planned_time("7", None, False, moved.version)
+    assert cleared.due_at is None
+    assert server.writes == 3
+
+
+@respx.mock
+async def test_a_real_change_in_the_app_is_still_a_conflict(
+    backend: VikunjaTaskBackend,
+) -> None:
+    server = _RealisticVikunja()
+    respx.get(f"{BASE}/tasks/7").mock(side_effect=server.read)
+    respx.post(f"{BASE}/tasks/7").mock(side_effect=server.write)
+    first = await backend.get_task("7")
+    planned = await backend.set_planned_time(
+        "7", datetime(2026, 11, 4, 15, tzinfo=UTC), False, first.version
+    )
+    server.stored = {
+        **server.stored,
+        "title": "Renamed in the app",
+        "updated": "2026-11-04T11:00:00Z",
+    }
+    with pytest.raises(RemoteConflict):
+        await backend.set_planned_time(
+            "7", datetime(2026, 11, 4, 17, tzinfo=UTC), False, planned.version
+        )
