@@ -37,7 +37,11 @@ GoRouter buildRouter(Ref ref) {
     initialLocation: '/',
     refreshListenable: ref.read(authRefreshProvider),
     redirect: (context, state) {
-      final signedIn = ref.read(authControllerProvider).signedIn;
+      final auth = ref.read(authControllerProvider);
+      // Stay on the requested page (for example after a reload) until the
+      // session check ends.
+      if (auth.restoring) return null;
+      final signedIn = auth.signedIn;
       final atLogin = state.matchedLocation == '/login';
       if (!signedIn) return atLogin ? null : '/login';
       return atLogin ? '/' : null;
@@ -98,12 +102,20 @@ class TefteriApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final restoring =
+        ref.watch(authControllerProvider.select((s) => s.restoring));
     return MaterialApp.router(
       title: 'Tefteri',
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       routerConfig: router,
-      builder: (_, child) =>
-          AppShortcuts(router: router, child: child ?? const SizedBox()),
+      // Screens load data as soon as they are built, so wait for the session
+      // check instead of sending requests that would fail.
+      builder: (_, child) => restoring
+          ? const Scaffold(
+              key: Key('restoring-session'),
+              body: Center(child: CircularProgressIndicator()),
+            )
+          : AppShortcuts(router: router, child: child ?? const SizedBox()),
     );
   }
 }

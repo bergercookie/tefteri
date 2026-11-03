@@ -6,17 +6,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/api_client.dart';
+import 'package:tefteri/core/open_url.dart';
 import 'package:tefteri/features/settings/connections_screen.dart';
 
 /// Fake HTTP adapter that answers from a route table and records calls.
 class FakeAdapter implements HttpClientAdapter {
   FakeAdapter(this.routes);
 
-  /// Maps "METHOD path" to a JSON body or a status code to fail with.
+  /// Maps "METHOD path" to a JSON body, or to a function of the request
+  /// that returns one.
   final Map<String, Object> routes;
 
   /// Calls seen so far, as "METHOD path".
   final List<String> calls = [];
+
+  /// The last request seen for each "METHOD path".
+  final Map<String, RequestOptions> requests = {};
 
   @override
   void close({bool force = false}) {}
@@ -26,7 +31,9 @@ class FakeAdapter implements HttpClientAdapter {
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     final key = '${options.method} ${options.path}';
     calls.add(key);
-    final route = routes[key];
+    requests[key] = options;
+    var route = routes[key];
+    if (route is Object Function(RequestOptions)) route = route(options);
     if (route == null) {
       return ResponseBody.fromString('{}', 404, headers: _json);
     }
@@ -42,7 +49,7 @@ final _connections = [
   {
     'id': 'c1',
     'kind': 'calendar',
-    'provider': 'google',
+    'provider': 'google_calendar',
     'display_name': 'Work calendar',
     'default_context': 'work',
     'status': 'ok',
@@ -54,20 +61,25 @@ final _connections = [
     'kind': 'tasks',
     'provider': 'vikunja',
     'display_name': 'Home tasks',
-    'default_context': 'personal',
+    'default_context': 'life',
+    'settings': {'base_url': 'https://old.test'},
     'status': 'ok',
     'last_sync_at': null,
     'last_sync_outcome': null,
   },
 ];
 
+/// URLs the screen asked to open in the browser, in order.
+final _opened = <Uri>[];
+
 Map<String, Object?> _result(String id, String name, String outcome,
-        [String? reason]) =>
+        [String? reason, String? detail]) =>
     {
       'connection_id': id,
       'name': name,
       'outcome': outcome,
       'reason': reason,
+      'detail': detail,
       'counts': {'created': 1},
     };
 
@@ -80,8 +92,15 @@ Future<FakeAdapter> _pump(
   });
   final dio = Dio(BaseOptions(baseUrl: 'http://test'))
     ..httpClientAdapter = adapter;
+  _opened.clear();
   await tester.pumpWidget(ProviderScope(
-    overrides: [dioProvider.overrideWithValue(dio)],
+    overrides: [
+      dioProvider.overrideWithValue(dio),
+      openUrlProvider.overrideWithValue((uri) async {
+        _opened.add(uri);
+        return true;
+      }),
+    ],
     child: const MaterialApp(home: ConnectionsScreen()),
   ));
   await tester.pumpAndSettle();
@@ -93,7 +112,8 @@ void main() {
       (tester) async {
     await _pump(tester, {});
     expect(find.text('Work calendar'), findsOneWidget);
-    expect(find.textContaining('calendar - google'), findsOneWidget);
+    expect(find.textContaining('calendar - google_calendar'), findsOneWidget);
+    expect(find.textContaining('vikunja - https://old.test'), findsOneWidget);
     expect(find.textContaining('(ok)'), findsOneWidget);
     expect(find.textContaining('never (none)'), findsOneWidget);
     expect(find.byKey(const Key('failure-c1')), findsNothing);
@@ -205,7 +225,7 @@ void main() {
     expect(find.byKey(const Key('failure-c2')), findsOneWidget);
   });
 
-  testWidgets('Open settings shows connection details', (tester) async {
+  testWidgets('Open settings opens the edit dialog', (tester) async {
     await _pump(tester, {
       'POST /sync': [_result('c2', 'Home tasks', 'error', 'unreachable')],
     });
@@ -213,8 +233,92 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open-settings-c2')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('settings-sheet-c2')), findsOneWidget);
-    expect(find.text('Provider: vikunja'), findsOneWidget);
+    expect(find.text('Edit connection'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'https://old.test'), findsOneWidget);
+  });
+
+  testWidgets('a failed sync shows the error from the server', (tester) async {
+    await _pump(tester, {
+      'POST /sync': [
+        _result('c2', 'Home tasks', 'error', 'unreachable',
+            'cannot reach http://localhost:3456/api/v1/projects'),
+      ],
+    });
+    await tester.tap(find.byKey(const Key('sync-all-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('failure-detail-c2')), findsOneWidget);
+    expect(find.textContaining('localhost:3456'), findsOneWidget);
+  });
+
+  testWidgets('Reconnect for a token app opens the edit dialog',
+      (tester) async {
+    await _pump(tester, {
+      'POST /sync': [_result('c2', 'Home tasks', 'needs_attention')],
+    });
+    await tester.tap(find.byKey(const Key('sync-all-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('reconnect-c2')));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit connection'), findsOneWidget);
+  });
+
+  group('Edit and remove', () {
+    testWidgets('editing the URL keeps the token and sends a PATCH',
+        (tester) async {
+      final adapter =
+          await _pump(tester, {'PATCH /connections/c2': <String, Object?>{}});
+      await tester.tap(find.byKey(const Key('edit-c2')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://new.test');
+      await tester.tap(find.text('Work'));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      expect(adapter.requests['PATCH /connections/c2']!.data, {
+        'display_name': 'Home tasks',
+        'default_context': 'both',
+        'settings': {'base_url': 'https://new.test'},
+      });
+      expect(find.text('Saved Home tasks.'), findsOneWidget);
+    });
+
+    testWidgets('a new token is sent as credentials', (tester) async {
+      final adapter =
+          await _pump(tester, {'PATCH /connections/c2': <String, Object?>{}});
+      await tester.tap(find.byKey(const Key('edit-c2')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('new-connection-token')), 'fresh');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      expect(
+          (adapter.requests['PATCH /connections/c2']!.data
+              as Map)['credentials'],
+          {'token': 'fresh'});
+    });
+
+    testWidgets('Remove asks first, then sends a DELETE', (tester) async {
+      final adapter =
+          await _pump(tester, {'DELETE /connections/c2': <String, Object?>{}});
+      await tester.tap(find.byKey(const Key('remove-c2')));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove Home tasks?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('remove-confirm')));
+      await tester.pumpAndSettle();
+      expect(adapter.calls, contains('DELETE /connections/c2'));
+      expect(find.text('Removed Home tasks.'), findsOneWidget);
+    });
+
+    testWidgets('cancelling Remove sends nothing', (tester) async {
+      final adapter = await _pump(tester, {});
+      await tester.tap(find.byKey(const Key('remove-c2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(adapter.calls, isNot(contains('DELETE /connections/c2')));
+    });
   });
 
   testWidgets('Reconnect for Google fetches the sign-in link', (tester) async {
@@ -239,5 +343,163 @@ void main() {
     await tester.tap(find.byKey(const Key('sync-all-button')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('sync-error')), findsOneWidget);
+  });
+
+  group('Add connection', () {
+    Future<void> openDialog(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('add-connection')));
+      await tester.pumpAndSettle();
+    }
+
+    FilledButton saveButton(WidgetTester tester) => tester
+        .widget<FilledButton>(find.byKey(const Key('new-connection-save')));
+
+    testWidgets(
+        'a new user with no connections adds Vikunja and sees it listed',
+        (tester) async {
+      // Onboarding: the list starts empty and the server stores what we post.
+      final stored = <Map<String, Object?>>[];
+      final adapter = await _pump(tester, {
+        'GET /connections': (RequestOptions _) => stored,
+        'POST /connections': (RequestOptions o) {
+          final body = o.data as Map<String, Object?>;
+          final created = {
+            'id': 'new1',
+            'kind': 'tasks',
+            'provider': body['provider'],
+            'display_name': body['display_name'],
+            'default_context': body['default_context'],
+            'status': 'ok',
+            'last_sync_at': null,
+            'last_sync_outcome': null,
+          };
+          stored.add(created);
+          return created;
+        },
+      });
+      expect(find.text('No connections yet.'), findsOneWidget);
+
+      await openDialog(tester);
+      expect(saveButton(tester).onPressed, isNull);
+      await tester.enterText(
+          find.byKey(const Key('new-connection-name')), 'Home tasks');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://vikunja.test/');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-token')), 'tok');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+
+      // The body that backend/tests/e2e/test_onboarding.py sends to the
+      // real adapters; keep the two in step.
+      expect(adapter.requests['POST /connections']!.data, {
+        'provider': 'vikunja',
+        'display_name': 'Home tasks',
+        'default_context': 'life',
+        'settings': {'base_url': 'https://vikunja.test/'},
+        'credentials': {'token': 'tok'},
+      });
+      expect(find.text('Connected Home tasks.'), findsOneWidget);
+      expect(find.byKey(const Key('connection-new1')), findsOneWidget);
+      expect(find.text('No connections yet.'), findsNothing);
+    });
+
+    Future<Object?> addTrilium(
+        WidgetTester tester, List<String> contextTaps) async {
+      final adapter =
+          await _pump(tester, {'POST /connections': <String, Object?>{}});
+      await openDialog(tester);
+      await tester.tap(find.byKey(const Key('new-connection-provider')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Trilium Next').last);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'ETAPI token'), findsOneWidget);
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://notes.test');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-token')), 'etapi');
+      for (final label in contextTaps) {
+        await tester.tap(find.text(label));
+        await tester.pump();
+      }
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      return adapter.requests['POST /connections']!.data;
+    }
+
+    testWidgets('Trilium Next sends its provider and Work alone',
+        (tester) async {
+      // Life starts selected: add Work, then remove Life.
+      expect(await addTrilium(tester, ['Work', 'Life']), {
+        'provider': 'trilium',
+        'display_name': 'Trilium Next',
+        'default_context': 'work',
+        'settings': {'base_url': 'https://notes.test'},
+        'credentials': {'token': 'etapi'},
+      });
+    });
+
+    testWidgets('selecting Life and Work sends both', (tester) async {
+      final body = await addTrilium(tester, ['Work']);
+      expect((body! as Map)['default_context'], 'both');
+    });
+
+    testWidgets('the last selected context cannot be removed', (tester) async {
+      final body = await addTrilium(tester, ['Life']);
+      expect((body! as Map)['default_context'], 'life');
+    });
+
+    testWidgets('Google Calendar asks the server for the sign-in link',
+        (tester) async {
+      final adapter = await _pump(tester, {
+        'GET /connections/google/authorize': {
+          'url': 'https://accounts.example/auth'
+        },
+      });
+      await openDialog(tester);
+      await tester.tap(find.byKey(const Key('new-connection-provider')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Google Calendar').last);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('new-connection-token')), findsNothing);
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+
+      final request = adapter.requests['GET /connections/google/authorize']!;
+      expect(request.queryParameters, {
+        'display_name': 'Google Calendar',
+        'default_context': 'life',
+      });
+      expect(adapter.calls, isNot(contains('POST /connections')));
+      expect(
+          find.textContaining('https://accounts.example/auth'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('open-sign-in')));
+      await tester.pumpAndSettle();
+      expect(_opened, [Uri.parse('https://accounts.example/auth')]);
+    });
+
+    testWidgets('a refused connection shows the server message',
+        (tester) async {
+      // No route for POST /connections, so the fake answers 404.
+      await _pump(tester, {});
+      await openDialog(tester);
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://vikunja.test');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-token')), 'tok');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('connection-error')), findsOneWidget);
+    });
+
+    testWidgets('Cancel sends nothing', (tester) async {
+      final adapter = await _pump(tester, {});
+      await openDialog(tester);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(adapter.calls, isNot(contains('POST /connections')));
+    });
   });
 }

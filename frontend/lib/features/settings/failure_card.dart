@@ -15,6 +15,7 @@ class FailureCard extends StatelessWidget {
     required this.connectionId,
     required this.name,
     required this.reason,
+    this.detail,
     required this.onRetry,
     required this.onReconnect,
     required this.onOpenSettings,
@@ -29,6 +30,9 @@ class FailureCard extends StatelessWidget {
 
   /// Why the connection failed.
   final FailureReason reason;
+
+  /// The underlying error, when the last sync gave one.
+  final String? detail;
 
   /// Called when the user taps Retry.
   final VoidCallback onRetry;
@@ -56,6 +60,12 @@ class FailureCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(reason.message),
+            if (detail != null)
+              SelectableText(
+                detail!,
+                key: Key('failure-detail-$connectionId'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             const Text('Your changes are not synced yet. They are not lost.'),
             const SizedBox(height: 8),
             Wrap(

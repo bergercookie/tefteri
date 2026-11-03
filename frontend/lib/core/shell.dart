@@ -59,6 +59,16 @@ class AppShell extends ConsumerWidget {
                   context.go('/users');
                 },
               ),
+            const Divider(),
+            ListTile(
+              key: const Key('sign-out'),
+              leading: const Icon(Icons.logout),
+              title: const Text('Sign out'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ref.read(authControllerProvider.notifier).logout();
+              },
+            ),
           ],
         ),
       ),

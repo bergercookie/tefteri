@@ -11,10 +11,18 @@ import 'api_client.dart';
 @immutable
 class AuthState {
   /// Creates a state.
-  const AuthState({this.signedIn = false, this.error, this.isAdmin = false});
+  const AuthState({
+    this.signedIn = false,
+    this.error,
+    this.isAdmin = false,
+    this.restoring = false,
+  });
 
   /// True after a successful login.
   final bool signedIn;
+
+  /// True while the app checks for a session from an earlier visit.
+  final bool restoring;
 
   /// True when the signed-in user is an administrator.
   final bool isAdmin;
@@ -44,6 +52,20 @@ class AuthController extends StateNotifier<AuthState> {
           ? (e.response!.data as Map)['detail']?.toString()
           : null;
       state = AuthState(error: detail ?? 'Cannot reach the server');
+    }
+  }
+
+  /// Resumes an earlier session. On the web the server's HttpOnly session
+  /// cookie survives a page reload; when it is still valid the user stays
+  /// signed in. Any failure leaves the user signed out.
+  Future<void> restore() async {
+    state = const AuthState(restoring: true);
+    try {
+      final r =
+          await _ref.read(dioProvider).get<Map<String, dynamic>>('/auth/me');
+      state = AuthState(signedIn: true, isAdmin: r.data?['is_admin'] == true);
+    } on DioException {
+      state = const AuthState();
     }
   }
 

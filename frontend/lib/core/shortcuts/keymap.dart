@@ -25,7 +25,8 @@ class AppView {
   final String? key;
 }
 
-/// All views in drawer order. Change password and Users have no shortcut.
+/// All views in drawer order. Connections, Change password and Users have no
+/// shortcut; S syncs instead of opening Connections.
 const appViews = [
   AppView('Planner', '/', 'p'),
   AppView('Today', '/daily', 't'),
@@ -36,7 +37,7 @@ const appViews = [
   AppView('Reviews', '/review', 'r'),
   AppView('Notes', '/notes', 'n'),
   AppView('Conflicts', '/conflicts', 'x'),
-  AppView('Connections', '/settings', 's'),
+  AppView('Connections', '/settings'),
   AppView('Change password', '/password'),
 ];
 
@@ -51,8 +52,11 @@ class OpenViewIntent extends Intent {
 
 /// Syncs all connections.
 class SyncIntent extends Intent {
-  /// Creates the intent.
-  const SyncIntent();
+  /// Creates the intent; a [plain] key does nothing while the user types.
+  const SyncIntent({this.plain = false});
+
+  /// True for a one-character key such as S.
+  final bool plain;
 }
 
 /// Sets the global all/life/work filter.
@@ -115,8 +119,14 @@ final List<AppShortcut> appShortcuts = [
         intent: OpenViewIntent(v.path),
       ),
   const AppShortcut(
-    keys: 'F5',
+    keys: 'S',
     description: 'Sync all connections',
+    activator: CharacterActivator('s'),
+    intent: SyncIntent(plain: true),
+  ),
+  const AppShortcut(
+    keys: 'F5',
+    description: 'Sync all connections, also while typing',
     activator: SingleActivator(LogicalKeyboardKey.f5),
     intent: SyncIntent(),
   ),

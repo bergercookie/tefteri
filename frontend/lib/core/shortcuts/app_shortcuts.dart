@@ -25,10 +25,10 @@ class _KeyAction<T extends Intent> extends Action<T> {
   _KeyAction(this._run, this._enabled);
 
   final void Function(T intent) _run;
-  final bool Function() _enabled;
+  final bool Function(T intent) _enabled;
 
   @override
-  bool isEnabled(T intent) => _enabled();
+  bool isEnabled(T intent) => _enabled(intent);
 
   @override
   Object? invoke(T intent) {
@@ -72,26 +72,29 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
         actions: {
           OpenViewIntent: _KeyAction<OpenViewIntent>(
             (i) => widget.router.go(i.path),
-            () => _signedIn && _plainAllowed(),
+            (_) => _signedIn && _plainAllowed(),
           ),
           SetContextIntent: _KeyAction<SetContextIntent>(
             (i) => ref.read(contextFilterProvider.notifier).state = i.filter,
-            () => _signedIn && _plainAllowed(),
+            (_) => _signedIn && _plainAllowed(),
           ),
           SyncIntent: _KeyAction<SyncIntent>(
             (_) => ref.read(syncControllerProvider.notifier).syncAll(),
-            () => _signedIn && !ref.read(syncControllerProvider).busy,
+            (i) =>
+                _signedIn &&
+                !ref.read(syncControllerProvider).busy &&
+                (!i.plain || _plainAllowed()),
           ),
           ShowShortcutsIntent: _KeyAction<ShowShortcutsIntent>(
             (_) {
               final context = _navigator?.context;
               if (context != null) showShortcutHelp(context);
             },
-            _plainAllowed,
+            (_) => _plainAllowed(),
           ),
           LeaveTextFieldIntent: _KeyAction<LeaveTextFieldIntent>(
             (_) => FocusManager.instance.primaryFocus?.unfocus(),
-            textFieldHasFocus,
+            (_) => textFieldHasFocus(),
           ),
         },
         // Takes the focus when nothing else has it, so key events always

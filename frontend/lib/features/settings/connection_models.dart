@@ -41,6 +41,7 @@ class Connection {
     required this.displayName,
     required this.status,
     this.defaultContext,
+    this.settings = const {},
     this.lastSyncAt,
     this.lastSyncOutcome,
   });
@@ -52,6 +53,9 @@ class Connection {
         provider: '${json['provider'] ?? ''}',
         displayName: '${json['display_name'] ?? ''}',
         defaultContext: json['default_context'] as String?,
+        settings: json['settings'] is Map<String, dynamic>
+            ? json['settings'] as Map<String, dynamic>
+            : const {},
         status: '${json['status'] ?? 'ok'}',
         lastSyncAt: json['last_sync_at'] == null
             ? null
@@ -71,8 +75,11 @@ class Connection {
   /// Name shown to the user.
   final String displayName;
 
-  /// Default context (work or personal), if set.
+  /// Context of unlabelled items: `life`, `work` or `both`, if set.
   final String? defaultContext;
+
+  /// Provider settings, for example `base_url`. Never holds credentials.
+  final Map<String, dynamic> settings;
 
   /// Status: `ok`, `needs_attention` or `error`.
   final String status;
@@ -97,6 +104,7 @@ class SyncResult {
     required this.name,
     required this.outcome,
     this.reason,
+    this.detail,
     this.counts = const {},
   });
 
@@ -115,6 +123,7 @@ class SyncResult {
       outcome: '${json['outcome'] ?? 'ok'}',
       reason:
           json['reason'] == null ? null : FailureReason.parse(json['reason']),
+      detail: json['detail'] as String?,
       counts: counts,
     );
   }
@@ -130,6 +139,10 @@ class SyncResult {
 
   /// Failure reason; null when the sync succeeded.
   final FailureReason? reason;
+
+  /// The underlying error from the server, for example the address that
+  /// could not be reached.
+  final String? detail;
 
   /// Item counts by name.
   final Map<String, int> counts;
