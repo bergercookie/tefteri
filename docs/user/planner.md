@@ -11,6 +11,7 @@ The left column is the task list. At the top you find the filters and the search
 The right column is the calendar for one week. It shows your calendar entries and your tasks together.
 
 Task blocks have a colored outline and a check mark. Calendar entries have no outline.
+A red dot and a red line show the current time in the column of the current day. The line moves while you work.
 A task with a date and no time shows in the row called all day.
 
 The work and life switch and the sync button work for both columns. When you choose work, both columns show work items only.

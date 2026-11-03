@@ -82,23 +82,29 @@ FakeApi _api([Map<String, Object?> extra = const {}]) => FakeApi({
       ...extra,
     });
 
+/// A fixed time, so the red line is in the same place in every image.
+DateTime _now() => DateTime(2026, 11, 4, 10, 30);
+
 final _linux = TargetPlatformVariant.only(TargetPlatform.linux);
 
 void main() {
   testWidgets('planner: tasks left, calendar right', (tester) async {
-    await pumpScreen(tester, _api(), PlannerScreen(initialDate: day));
+    await pumpScreen(
+        tester, _api(), PlannerScreen(initialDate: day, clock: _now));
     await saveScreenshot('planner-split');
   });
 
   testWidgets('planner: filter overdue', (tester) async {
-    await pumpScreen(tester, _api(), PlannerScreen(initialDate: day));
+    await pumpScreen(
+        tester, _api(), PlannerScreen(initialDate: day, clock: _now));
     await tester.tap(find.byKey(const Key('filter-overdue')));
     await tester.pumpAndSettle();
     await saveScreenshot('planner-filter-overdue');
   });
 
   testWidgets('planner: search', (tester) async {
-    await pumpScreen(tester, _api(), PlannerScreen(initialDate: day));
+    await pumpScreen(
+        tester, _api(), PlannerScreen(initialDate: day, clock: _now));
     await tester.enterText(find.byKey(const Key('task-search')), 'road');
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
@@ -109,7 +115,7 @@ void main() {
     await pumpScreen(
         tester,
         _api({'PUT /tasks/t2/schedule': _task('t2', 'Buy a birthday present')}),
-        PlannerScreen(initialDate: day));
+        PlannerScreen(initialDate: day, clock: _now));
     final from = tester.getCenter(find.byKey(const Key('task-t2')));
     final column =
         tester.getTopLeft(find.byKey(const Key('day-column-2026-11-05')));
@@ -136,7 +142,7 @@ void main() {
               'Home tasks cannot be reached. Nothing was changed.',
               'backend_unavailable'),
         }),
-        PlannerScreen(initialDate: day));
+        PlannerScreen(initialDate: day, clock: _now));
     final from = tester.getCenter(find.byKey(const Key('task-t2')));
     final column =
         tester.getTopLeft(find.byKey(const Key('day-column-2026-11-05')));
@@ -154,13 +160,15 @@ void main() {
   }, variant: _linux);
 
   testWidgets('planner: small screen, tasks tab', (tester) async {
-    await pumpScreen(tester, _api(), PlannerScreen(initialDate: day),
+    await pumpScreen(
+        tester, _api(), PlannerScreen(initialDate: day, clock: _now),
         size: const Size(420, 760));
     await saveScreenshot('planner-narrow-tasks');
   });
 
   testWidgets('planner: small screen, choose a time', (tester) async {
-    await pumpScreen(tester, _api(), PlannerScreen(initialDate: day),
+    await pumpScreen(
+        tester, _api(), PlannerScreen(initialDate: day, clock: _now),
         size: const Size(420, 760));
     await tester.tap(find.byKey(const Key('schedule-task-t2')));
     await tester.pumpAndSettle();

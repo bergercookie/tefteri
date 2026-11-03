@@ -24,10 +24,13 @@ const double twoColumnMinWidth = 840;
 class PlannerScreen extends ConsumerStatefulWidget {
   /// Creates the screen; the calendar shows the week that holds
   /// [initialDate] (default today).
-  const PlannerScreen({this.initialDate, super.key});
+  const PlannerScreen({this.initialDate, this.clock = DateTime.now, super.key});
 
   /// A day in the week to show first.
   final DateTime? initialDate;
+
+  /// Gives the current time (the red line on the calendar). Tests replace it.
+  final DateTime Function() clock;
 
   @override
   ConsumerState<PlannerScreen> createState() => _PlannerScreenState();
@@ -40,7 +43,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   @override
   void initState() {
     super.initState();
-    _weekStart = _mondayOf(widget.initialDate ?? DateTime.now());
+    _weekStart = _mondayOf(widget.initialDate ?? widget.clock());
   }
 
   static DateTime _mondayOf(DateTime d) =>
@@ -81,7 +84,8 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   CalendarPane _calendar() => CalendarPane(
         weekStart: _weekStart,
         onShiftWeek: _shift,
-        onToday: () => setState(() => _weekStart = _mondayOf(DateTime.now())),
+        clock: widget.clock,
+        onToday: () => setState(() => _weekStart = _mondayOf(widget.clock())),
       );
 
   Widget _wide() => Row(
@@ -131,7 +135,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
       for (var i = 0; i < 14; i++)
         DateTime(_weekStart.year, _weekStart.month, _weekStart.day + i),
     ];
-    final now = DateTime.now();
+    final now = widget.clock();
     final today = DateTime(now.year, now.month, now.day);
     final base = task.dueAt != null && task.scheduledStart != null
         ? task.scheduledStart!.toLocal()
