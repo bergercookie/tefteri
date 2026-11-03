@@ -35,6 +35,7 @@ class SyncResultOut(BaseModel):
     name: str
     outcome: str
     reason: str | None
+    detail: str | None = None
     counts: dict[str, int]
 
     @classmethod
@@ -45,6 +46,7 @@ class SyncResultOut(BaseModel):
             name=r.name,
             outcome=r.outcome,
             reason=r.reason,
+            detail=r.detail,
             counts=r.counts,
         )
 
