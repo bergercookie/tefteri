@@ -26,6 +26,56 @@ Recipes:
 - `just backend::test-postgres` runs the tests with the `postgres` mark. Set
   `TEFTERI_TEST_POSTGRES_URL` first, for example to a database from `just deploy::up-postgres`.
 
+## Live tests with a real Vikunja
+
+The fake apps are only as good as our knowledge of the real apps. The live tests in
+`backend/tests/live/` talk to a real Vikunja instead. They are **not** part of `just test` and
+the CI does not run them. Run them by hand when you change the Vikunja adapter, the sync or the
+scheduling code, and before a release.
+
+```bash
+just backend::live-vikunja
+```
+
+The recipe starts a throw-away Vikunja with `scripts/vikunja-dev.sh`, runs the tests and stops
+Vikunja. The script downloads the binary from `dl.vikunja.io` once, checks its SHA-256 sum and
+keeps it in `.cache/vikunja-dev/`. It works on Linux with an x86-64 CPU and needs no Docker.
+
+| Setting | Meaning |
+| --- | --- |
+| `VIKUNJA_DEV_VERSION` | Version to run, for example `v2.7.1` (default) or `0.24.6`. |
+| `VIKUNJA_DEV_PORT` | Port on 127.0.0.1 (default 3456). Use another port to run two versions at once. |
+| `VIKUNJA_DEV_TIMEZONE` | Time zone of the Vikunja server (default `UTC`). Try `Europe/Athens`. |
+| `TEFTERI_LIVE_VIKUNJA_URL` | Use this server and start nothing, for example a Vikunja in Docker. |
+| `TEFTERI_LIVE_VIKUNJA_TOKEN` | A token of a user on that server. Without it, the tests register a new user. |
+
+Never point the tests at a server with real data. They create users, projects and tasks.
+
+Check the matrix before a release: the current version, the oldest version that you support
+and a server in a time zone with an offset.
+
+```bash
+just backend::live-vikunja
+VIKUNJA_DEV_VERSION=0.24.6 VIKUNJA_DEV_PORT=3457 just backend::live-vikunja
+VIKUNJA_DEV_TIMEZONE=Europe/Athens VIKUNJA_DEV_PORT=3458 just backend::live-vikunja
+```
+
+To look at the server yourself, run `just backend::vikunja-up`. It prints the address and keeps
+Vikunja running. Stop it with `just backend::vikunja-down`.
+
+The live tests found two faults that the fake did not show:
+
+- Vikunja answers a create with a nanosecond `updated` stamp, and a read with whole seconds. The
+  version of a task was different in the two answers, so the next change raised a conflict.
+  The adapter now compares whole seconds.
+- A Vikunja server in a time zone with an offset sends times such as `11:00+02:00`. The cache
+  (SQLite) keeps only the wall-clock part, so tefteri showed the time two hours late after each
+  sync. The adapter and the cache now convert every time to UTC first.
+
+The fake `tests/fakes/http/vikunja.py` can now run in a time zone (`FakeVikunja(timezone=...)`),
+so the normal tests check the second fault too. When a live test finds a new difference, teach the
+fake about it and add a normal test.
+
 The tests `test_sync_performance.py` and `test_review_performance.py` check the speed targets of
 the specification. A sync of 2,000 tasks, 1,000 events and 500 notes must take less than 30
 seconds. A review of a year must open in less than 5 seconds.

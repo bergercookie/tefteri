@@ -329,3 +329,36 @@ async def test_clearing_a_due_date_that_vikunja_keeps_is_an_error(
     current = await backend.get_task("7")
     with pytest.raises(NotSaved):
         await backend.set_planned_time("7", None, False, current.version)
+
+
+def test_a_version_is_the_same_for_every_form_of_the_same_task() -> None:
+    from tefteri.adapters.vikunja.adapter import _version  # noqa: PLC0415
+
+    # Recorded from Vikunja v2.7.1: the create answer and a later read of the same task.
+    created = task_json(updated="2026-11-03T21:04:25.982515748Z", due_date="2026-11-04T09:00:00Z")
+    read = task_json(updated="2026-11-03T21:04:25Z", due_date="2026-11-04T09:00:00Z")
+    assert _version(created) == _version(read)
+    # the same instant in another offset is the same task
+    offset = task_json(updated="2026-11-03T23:04:25+02:00", due_date="2026-11-04T11:00:00+02:00")
+    assert _version(offset) == _version(read)
+    # a real change is still a different version, also within the same second
+    assert _version(task_json(updated="2026-11-03T21:04:25Z", title="x")) != _version(read)
+    assert _version(
+        task_json(updated="2026-11-03T21:04:25Z", due_date="2026-11-05T09:00:00Z")
+    ) != _version(read)
+    # a stamp that is not a timestamp is kept as it is
+    assert _version(task_json(updated="soon")).startswith("soon#")
+
+
+@respx.mock
+async def test_a_task_that_tefteri_just_created_can_be_moved(backend: VikunjaTaskBackend) -> None:
+    """Real Vikunja: the create answer has a nanosecond stamp; the first move used to conflict."""
+    created_json = task_json(updated="2026-11-03T21:04:25.982515748Z")
+    respx.put(f"{BASE}/projects/2/tasks").respond(json=created_json)
+    created = await backend.create_task(TaskDraft("2", "Write report"))
+    store = _Stored(updated="2026-11-03T21:04:25Z").mount()
+    moved = await backend.set_planned_time(
+        "7", datetime(2026, 11, 4, 15, tzinfo=UTC), False, created.version
+    )
+    assert moved.due_at == datetime(2026, 11, 4, 15, tzinfo=UTC)
+    assert len(store.posts) == 1

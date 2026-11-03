@@ -13,6 +13,7 @@ Modelled after Vikunja's behaviour:
 import json
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -22,10 +23,13 @@ ZERO_DATE = "0001-01-01T00:00:00Z"
 _DATE_FIELDS = ("due_date", "start_date", "end_date")
 
 
-def _render(value: datetime | None) -> str:
+def _render(value: datetime | None, tz: ZoneInfo | None = None) -> str:
+    """Render a time as Vikunja does: in the time zone of the server, whole seconds."""
     if value is None:
         return ZERO_DATE
-    return value.astimezone(UTC).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if tz is None or tz == ZoneInfo("UTC"):
+        return value.astimezone(UTC).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return value.astimezone(tz).replace(microsecond=0).isoformat()
 
 
 def _parse(value: object) -> datetime | None:
@@ -38,10 +42,18 @@ class FakeVikunja(FakeHttpServer):
     """In-memory Vikunja server with projects and tasks."""
 
     def __init__(
-        self, base_url: str = "https://vikunja.test", token: str = "vikunja-token"
+        self,
+        base_url: str = "https://vikunja.test",
+        token: str = "vikunja-token",
+        timezone: str = "UTC",
     ) -> None:
-        """Start with one project ("Inbox") and no tasks."""
+        """Start with one project ("Inbox") and no tasks.
+
+        ``timezone`` is the time zone of the server. With ``Europe/Athens`` every time is sent
+        with an offset (``2026-11-04T11:00:00+02:00``), as a real server in that zone does.
+        """
         super().__init__((base_url,))
+        self.tz = ZoneInfo(timezone)
         self.base_url = base_url
         self.token = token
         self.projects: dict[int, dict[str, Any]] = {}
@@ -96,7 +108,7 @@ class FakeVikunja(FakeHttpServer):
     def _task_json(self, task: dict[str, Any]) -> dict[str, Any]:
         out = dict(task)
         for name in (*_DATE_FIELDS, "done_at", "created", "updated"):
-            out[name] = _render(task[name])
+            out[name] = _render(task[name], self.tz)
         out["identifier"] = f"#{task['index']}"
         return out
 

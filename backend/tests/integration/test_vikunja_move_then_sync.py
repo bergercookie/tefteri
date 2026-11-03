@@ -16,10 +16,13 @@ from tests.conftest import ADMIN_PASSWORD, V1
 from tests.fakes.http.vikunja import FakeVikunja
 
 
-@pytest.fixture
-async def stack(make_settings) -> AsyncIterator[tuple[AsyncClient, FakeVikunja]]:  # type: ignore[no-untyped-def]
+@pytest.fixture(params=["UTC", "Europe/Athens"])
+async def stack(  # type: ignore[no-untyped-def]
+    make_settings, request: pytest.FixtureRequest
+) -> AsyncIterator[tuple[AsyncClient, FakeVikunja]]:
+    """The app and a Vikunja whose server runs in UTC, and in a zone with an offset."""
     with respx.mock(assert_all_called=False) as router:
-        server = FakeVikunja()
+        server = FakeVikunja(timezone=request.param)
         server.mount(router)
         async with httpx.AsyncClient() as http:
             registry = AdapterRegistry()
@@ -136,3 +139,27 @@ async def test_when_vikunja_keeps_the_old_date_the_user_sees_an_error_at_once(
     assert (
         (await api.get(f"{V1}/tasks/{task_id}")).json()["due_at"].startswith("2026-11-04T09:00:00")
     )
+
+
+async def test_a_due_date_set_in_vikunja_is_the_same_instant_after_sync(
+    stack: tuple[AsyncClient, FakeVikunja],
+) -> None:
+    """A server in another time zone sends ``11:00+02:00``: that is 09:00 UTC, not 11:00 UTC."""
+    api, server = stack
+    async with httpx.AsyncClient() as vikunja:
+        made = await vikunja.put(
+            f"{server.base_url}/api/v1/projects/1/tasks",
+            headers={"Authorization": f"Bearer {server.token}"},
+            json={"title": "From Vikunja", "due_date": "2026-11-04T09:00:00Z"},
+        )
+    assert made.status_code == 201, made.text
+    await api.post(f"{V1}/sync")
+    tasks = (await api.get(f"{V1}/tasks", params={"due": "all"})).json()
+    cached = next(t for t in tasks if t["title"] == "From Vikunja")
+    assert cached["due_at"].startswith("2026-11-04T09:00:00"), cached["due_at"]
+    assert cached["scheduled_start"].startswith("2026-11-04T08:00:00")
+    # and the calendar block is at the right time
+    calendar = (await api.get(f"{V1}/calendar")).json()
+    block = next(i for i in calendar if i["title"] == "From Vikunja")
+    assert block["start"].startswith("2026-11-04T08:00:00")
+    assert block["end"].startswith("2026-11-04T09:00:00")

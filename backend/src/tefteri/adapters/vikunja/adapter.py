@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import re
 from datetime import UTC, datetime, time
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -37,11 +38,31 @@ _VERSIONED_FIELDS = (
 def _parse(value: str | None) -> datetime | None:
     if not value or value == _ZERO_DATE:
         return None
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    # Vikunja writes times in the time zone of its server (for example ``+02:00``).
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
 
 
 def _fmt(value: datetime | None) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if value else _ZERO_DATE
+
+
+_FRACTION = re.compile(r"\.\d+")
+
+
+def _stamp(value: object) -> str:
+    """Return a Vikunja timestamp as UTC whole seconds, so that its forms compare equal.
+
+    Vikunja answers a create or update with the task as it is in memory (``updated`` with
+    nanoseconds, for example ``2026-11-03T21:04:25.982515748Z``). A later read gives what the
+    database stored (``2026-11-03T21:04:25Z``). The same task must have the same version in
+    both forms. Anything that is not a timestamp is returned as it is.
+    """
+    text = str(value or "")
+    try:
+        parsed = datetime.fromisoformat(_FRACTION.sub("", text).replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    return parsed.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _version(data: dict[str, Any]) -> str:
@@ -50,9 +71,15 @@ def _version(data: dict[str, Any]) -> str:
     Vikunja has no optimistic locking and ``updated`` has second resolution, so two writes
     within one second share a stamp; the digest tells them apart.
     """
-    fields = json.dumps([data.get(name) for name in _VERSIONED_FIELDS], default=str)
+    fields = json.dumps(
+        [
+            _stamp(data.get(name)) if name == "due_date" else data.get(name)
+            for name in _VERSIONED_FIELDS
+        ],
+        default=str,
+    )
     digest = hashlib.sha256(fields.encode()).hexdigest()[:12]
-    return f"{data.get('updated', '')}#{digest}"
+    return f"{_stamp(data.get('updated'))}#{digest}"
 
 
 class VikunjaTaskBackend:

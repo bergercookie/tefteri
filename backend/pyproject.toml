@@ -69,7 +69,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["src"]
-markers = ["postgres: needs a PostgreSQL database"]
+markers = [
+    "postgres: needs a PostgreSQL database",
+    "live: needs a real Vikunja, run it with `just backend::live-vikunja`",
+]
 
 [tool.coverage.run]
 source = ["src/tefteri"]
