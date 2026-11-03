@@ -152,7 +152,12 @@ class VikunjaTaskBackend:
         if expected_version is not None and _version(current) != expected_version:
             raise RemoteConflict(f"task {remote_id} changed remotely")
         current.update(changes)
-        return self._task(await self._call("POST", f"/tasks/{remote_id}", json=current))
+        await self._call("POST", f"/tasks/{remote_id}", json=current)
+        # Read the task back. The update answer is the task as it is in memory (for example a
+        # sub-second ``updated`` stamp), a read gives what is stored. The version must come
+        # from the same form as the next conflict check, or the next write to this task would
+        # look like a change in Vikunja.
+        return self._task(await self._call("GET", f"/tasks/{remote_id}"))
 
     async def update_task(
         self, remote_id: str, patch: TaskPatch, expected_version: str

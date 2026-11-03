@@ -39,4 +39,5 @@ async def test_settings_are_per_user_and_need_a_session(api: AsyncClient) -> Non
     }
 
     api.headers.pop("Authorization", None)
+    api.cookies.clear()  # the web client also signs in with a session cookie
     assert (await api.get(f"{V1}/me/settings")).status_code == 401
