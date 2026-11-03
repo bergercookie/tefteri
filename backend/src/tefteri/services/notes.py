@@ -1,4 +1,4 @@
-"""Note use cases: the daily note, custom and process notes, and links between notes and tasks."""
+"""Note use cases: the daily note, retrospectives, and links between notes and tasks."""
 
 import uuid
 from datetime import date
@@ -20,8 +20,8 @@ from tefteri.services.errors import Invalid, NotFound, guard
 from tefteri.services.mirror import note_values
 from tefteri.services.tasks import UNSET
 
-# Kinds a user creates directly; daily notes come from ``daily`` and retrospectives from reviews.
-USER_KINDS = frozenset({"custom", "process"})
+# Kind of a note that sync found in the note app and tefteri did not create.
+DEFAULT_KIND = "custom"
 
 
 class NoteService:
@@ -77,7 +77,8 @@ class NoteService:
             self._apply(note, remote)
             return await NoteRepository(db, user_id).add(note)
         self._apply(note, remote)
-        note.kind = kind if note.kind == "custom" else note.kind
+        # Notes first seen by sync have the default kind; name them now.
+        note.kind = kind if note.kind == DEFAULT_KIND else note.kind
         await db.flush()
         return note
 
@@ -129,17 +130,6 @@ class NoteService:
             TaskNoteLink(task_id=task.id, note_id=note.id)
         )
 
-    async def linked_notes(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> list[Note]:
-        """Return the notes linked to a task."""
-        rows = (
-            await db.execute(
-                select(Note)
-                .join(TaskNoteLink, TaskNoteLink.note_id == Note.id)
-                .where(TaskNoteLink.task_id == task.id, Note.user_id == user_id)
-            )
-        ).scalars()
-        return list(rows)
-
     async def create(
         self,
         db: AsyncSession,
@@ -147,20 +137,14 @@ class NoteService:
         *,
         title: str,
         body: str = "",
-        kind: str = "custom",
-        context: Context | None = None,
-        connection_id: uuid.UUID | None = None,
-        tasks: list[Task] | None = None,
+        kind: str,
     ) -> Note:
-        """Create a note in the note app, cache it and link it to ``tasks``."""
-        connection = await self.notes_connection(db, user_id, connection_id)
+        """Create a note of ``kind`` in the note app and cache it."""
+        connection = await self.notes_connection(db, user_id)
         remote = await guard(
             connection, self._backend(connection).create_note(NoteDraft(title, body))
         )
         note = await self._mirror(db, user_id, connection, remote, kind)
-        note.context = context.value if context is not None else None
-        for task in tasks or []:
-            await self.link(db, user_id, task, note)
         await db.flush()
         return note
 
@@ -188,34 +172,3 @@ class NoteService:
             self._apply(note, remote)
         await db.flush()
         return note
-
-    async def delete(self, db: AsyncSession, user_id: uuid.UUID, note: Note) -> None:
-        """Delete a note in the note app, then in the cache (its task links go with it)."""
-        connection = await self.notes_connection(db, user_id, note.connection_id)
-        await guard(connection, self._backend(connection).delete_note(note.remote_id))
-        await NoteRepository(db, user_id).delete(note)
-
-    async def unlink(self, db: AsyncSession, user_id: uuid.UUID, task: Task, note: Note) -> None:
-        """Remove the link between a task and a note; both stay."""
-        link = (
-            await db.execute(
-                select(TaskNoteLink).where(
-                    TaskNoteLink.task_id == task.id,
-                    TaskNoteLink.note_id == note.id,
-                    TaskNoteLink.user_id == user_id,
-                )
-            )
-        ).scalar_one_or_none()
-        if link is not None:
-            await TaskNoteLinkRepository(db, user_id).delete(link)
-
-    async def linked_tasks(self, db: AsyncSession, user_id: uuid.UUID, note: Note) -> list[Task]:
-        """Return the tasks linked to a note (the other direction of ``linked_notes``)."""
-        rows = (
-            await db.execute(
-                select(Task)
-                .join(TaskNoteLink, TaskNoteLink.task_id == Task.id)
-                .where(TaskNoteLink.note_id == note.id, Task.user_id == user_id)
-            )
-        ).scalars()
-        return list(rows)

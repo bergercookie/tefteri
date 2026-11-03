@@ -90,7 +90,7 @@ async def test_main_flow_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> N
     goals = (await pg_api.get(f"{V1}/goals")).json()
     assert goals[0]["progress"] == 1.0
 
-    # Review, retrospective and a process note linked to the task (JSON columns, FKs).
+    # Review and retrospective (JSON columns, FKs).
     plan = (
         await pg_api.post(
             f"{V1}/plans",
@@ -103,13 +103,6 @@ async def test_main_flow_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> N
         f"{V1}/plans/{plan['id']}/review/retrospective", json={"body": "Good year."}
     )
     assert saved.json()["retrospective"]["kind"] == "retrospective"
-    note = (
-        await pg_api.post(
-            f"{V1}/notes", json={"title": "Steps", "kind": "process", "task_ids": [task["id"]]}
-        )
-    ).json()
-    assert note["task_ids"] == [task["id"]]
-    assert (await pg_api.delete(f"{V1}/notes/{note['id']}")).status_code == 204
 
 
 async def test_conflict_and_cascades_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> None:

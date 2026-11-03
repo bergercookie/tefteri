@@ -23,7 +23,6 @@ You can also choose the keyboard button at the top of the screen.
 | Y | Year |
 | G | Goals |
 | R | Reviews |
-| N | Notes |
 | X | Conflicts |
 
 The menu also shows the key next to each view.

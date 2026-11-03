@@ -91,7 +91,6 @@ void main() {
       'Year',
       'Goals',
       'Reviews',
-      'Notes',
       'Settings',
     ]) {
       expect(appViews.map((v) => v.label), contains(label));

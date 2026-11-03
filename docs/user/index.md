@@ -13,7 +13,6 @@ daily-planning
 scheduling
 planning-goals
 reviews-and-retrospectives
-notes-and-processes
 shortcuts
 conflicts
 work-and-life

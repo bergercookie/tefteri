@@ -10,7 +10,6 @@ import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
-import '../notes/task_notes_sheet.dart';
 import '../settings/connection_models.dart';
 import '../settings/sync_controller.dart';
 import 'daily_providers.dart';
@@ -289,12 +288,6 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ContextMarker(itemContext: t.context),
-            IconButton(
-              key: Key('notes-${t.id}'),
-              tooltip: 'Notes',
-              icon: const Icon(Icons.sticky_note_2_outlined),
-              onPressed: () => showTaskNotes(context, t),
-            ),
             IconButton(
               key: Key('delete-${t.id}'),
               tooltip: 'Delete task',

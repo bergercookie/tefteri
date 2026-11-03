@@ -17,8 +17,6 @@ import 'features/conflicts/conflicts_screen.dart';
 import 'features/daily/daily_screen.dart';
 import 'features/goals/goals_screen.dart';
 import 'features/month/month_screen.dart';
-import 'features/notes/note_editor_screen.dart';
-import 'features/notes/notes_screen.dart';
 import 'features/review/plan_history_screen.dart';
 import 'features/review/review_screen.dart';
 import 'features/settings/connections_screen.dart';
@@ -96,20 +94,6 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(
         path: '/review/:planId',
         builder: (_, s) => ReviewScreen(planId: s.pathParameters['planId']!),
-      ),
-      GoRoute(path: '/notes', builder: (_, __) => const NotesScreen()),
-      GoRoute(
-        path: '/notes/new',
-        builder: (_, s) => NoteEditorScreen(
-          taskId: s.uri.queryParameters['task'],
-          kind: s.uri.queryParameters['kind'] ?? 'custom',
-        ),
-      ),
-      GoRoute(
-        path: '/notes/:noteId',
-        builder: (_, s) => NoteEditorScreen(
-            key: ValueKey(s.pathParameters['noteId']),
-            noteId: s.pathParameters['noteId']),
       ),
     ],
   );

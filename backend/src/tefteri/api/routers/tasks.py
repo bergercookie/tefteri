@@ -3,20 +3,19 @@
 import uuid
 from datetime import date as date_type
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
-from tefteri.api.schemas import EntryOut, NoteOut, TaskOut, aware
+from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.task import Task
 from tefteri.domain.enums import Context
 from tefteri.services import task_filters
 from tefteri.services.context import ContextFilter, load_maps
 from tefteri.services.goals import GoalService
-from tefteri.services.notes import NoteService
 from tefteri.services.task_filters import DueFilter
 from tefteri.services.tasks import UNSET, TaskService
 
@@ -34,11 +33,6 @@ def _tasks(request: Request) -> TaskService:
 
 def _goals(request: Request) -> GoalService:
     service: GoalService = request.app.state.goal_service
-    return service
-
-
-def _notes(request: Request) -> NoteService:
-    service: NoteService = request.app.state.note_service
     return service
 
 
@@ -83,15 +77,6 @@ class ScheduleOut(BaseModel):
 
     task: TaskOut
     overlaps: list[EntryOut]
-
-
-class TaskNoteIn(BaseModel):
-    """Link an existing note, or create a new note, for a task."""
-
-    note_id: uuid.UUID | None = None
-    title: str | None = Field(default=None, min_length=1, max_length=500)
-    body: str = ""
-    kind: Literal["custom", "process"] = "custom"
 
 
 def _now(request: Request) -> datetime:
@@ -260,45 +245,3 @@ async def unschedule_task(
     task = await service.get(db, user.id, task_id)
     task = await service.unschedule(db, user.id, task)
     return TaskOut.of(task, await load_maps(db, user.id))
-
-
-@router.post("/{task_id}/notes", status_code=201)
-async def link_note(
-    task_id: uuid.UUID, body: TaskNoteIn, request: Request, db: Db, user: CurrentUser
-) -> NoteOut:
-    """Link an existing note to the task, or create a note and link it."""
-    task = await _tasks(request).get(db, user.id, task_id)
-    notes = _notes(request)
-    if body.note_id is not None:
-        note = await notes.get(db, user.id, body.note_id)
-        await notes.link(db, user.id, task, note)
-    else:
-        note = await notes.create(
-            db,
-            user.id,
-            title=body.title or task.title,
-            body=body.body,
-            kind=body.kind,
-            tasks=[task],
-        )
-    return NoteOut.of(note, await load_maps(db, user.id))
-
-
-@router.get("/{task_id}/notes")
-async def task_notes(
-    task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
-) -> list[NoteOut]:
-    """List the notes linked to the task."""
-    task = await _tasks(request).get(db, user.id, task_id)
-    maps = await load_maps(db, user.id)
-    return [NoteOut.of(n, maps) for n in await _notes(request).linked_notes(db, user.id, task)]
-
-
-@router.delete("/{task_id}/notes/{note_id}", status_code=204)
-async def unlink_note(
-    task_id: uuid.UUID, note_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
-) -> None:
-    """Remove the link between the task and a note; both stay."""
-    task = await _tasks(request).get(db, user.id, task_id)
-    notes = _notes(request)
-    await notes.unlink(db, user.id, task, await notes.get(db, user.id, note_id))

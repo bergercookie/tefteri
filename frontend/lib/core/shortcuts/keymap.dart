@@ -37,7 +37,6 @@ const appViews = [
   AppView('Year', '/year', 'y'),
   AppView('Goals', '/goals', 'g'),
   AppView('Reviews', '/review', 'r'),
-  AppView('Notes', '/notes', 'n'),
   AppView('Conflicts', '/conflicts', 'x'),
   AppView('Settings', '/settings'),
 ];

@@ -23,7 +23,6 @@ required=(
     user/planning-goals.md
     user/accounts-and-sign-in.md
     user/reviews-and-retrospectives.md
-    user/notes-and-processes.md
     user/shortcuts.md
     user/troubleshooting.md
     developer/setup.md
