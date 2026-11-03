@@ -1,5 +1,6 @@
 """Vikunja adapter against recorded (hand-written) HTTP responses."""
 
+import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
@@ -81,20 +82,84 @@ async def test_create_update_and_stale_version(backend: VikunjaTaskBackend) -> N
         await backend.update_task("7", TaskPatch(title="x"), "an-older-version")
 
 
+def _body(call: respx.models.Call) -> dict[str, object]:
+    body: dict[str, object] = json.loads(call.request.content)
+    return body
+
+
 @respx.mock
-async def test_set_schedule_writes_start_and_end(backend: VikunjaTaskBackend) -> None:
+async def test_set_planned_time_writes_only_the_due_date(backend: VikunjaTaskBackend) -> None:
     respx.get(f"{BASE}/tasks/7").respond(json=task_json())
-    post = respx.post(f"{BASE}/tasks/7").respond(
+    post = respx.post(f"{BASE}/tasks/7").respond(json=task_json(due_date="2026-11-02T10:00:00Z"))
+    due = datetime(2026, 11, 2, 10, tzinfo=UTC)
+    current = await backend.get_task("7")
+    task = await backend.set_planned_time("7", due, False, current.version)
+    assert task.due_at == due and not task.all_day
+    body = _body(post.calls[0])
+    assert body["due_date"] == "2026-11-02T10:00:00Z"
+    # constitution VII: the start and end dates are not tefteri's planning dates
+    assert body["start_date"] == "0001-01-01T00:00:00Z"
+    assert body["end_date"] == "0001-01-01T00:00:00Z"
+
+
+@respx.mock
+async def test_set_planned_time_keeps_foreign_start_and_end_dates(
+    backend: VikunjaTaskBackend,
+) -> None:
+    mine = {"start_date": "2026-10-01T08:00:00Z", "end_date": "2026-10-02T08:00:00Z"}
+    respx.get(f"{BASE}/tasks/7").respond(json=task_json(**mine))
+    post = respx.post(f"{BASE}/tasks/7").respond(json=task_json(**mine))
+    current = await backend.get_task("7")
+    await backend.set_planned_time(
+        "7", datetime(2026, 11, 2, 10, tzinfo=UTC), False, current.version
+    )
+    body = _body(post.calls[0])
+    assert body["start_date"] == mine["start_date"] and body["end_date"] == mine["end_date"]
+
+
+@respx.mock
+async def test_set_planned_time_clears_the_due_date(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/tasks/7").respond(json=task_json(due_date="2026-11-02T10:00:00Z"))
+    post = respx.post(f"{BASE}/tasks/7").respond(json=task_json())
+    current = await backend.get_task("7")
+    task = await backend.set_planned_time("7", None, False, current.version)
+    assert task.due_at is None
+    assert _body(post.calls[0])["due_date"] == "0001-01-01T00:00:00Z"
+
+
+@respx.mock
+async def test_date_only_due_is_00_00_in_the_users_time_zone() -> None:
+    async with httpx.AsyncClient() as client:
+        athens = VikunjaTaskBackend(client, "https://vikunja.test/", "tok", "Europe/Athens")
+        respx.get(f"{BASE}/tasks/7").respond(json=task_json())
+        post = respx.post(f"{BASE}/tasks/7").respond(
+            json=task_json(due_date="2026-11-03T22:00:00Z")
+        )
+        current = await athens.get_task("7")
+        # the caller may pass any instant on the day; the adapter writes local midnight
+        noon = datetime(2026, 11, 4, 12, tzinfo=UTC)
+        task = await athens.set_planned_time("7", noon, True, current.version)
+    assert _body(post.calls[0])["due_date"] == "2026-11-03T22:00:00Z"  # 00:00 on 4 Nov, UTC+2
+    assert task.all_day and task.due_at == datetime(2026, 11, 3, 22, tzinfo=UTC)
+
+
+@respx.mock
+async def test_a_due_time_of_00_00_local_reads_as_all_day() -> None:
+    async with httpx.AsyncClient() as client:
+        athens = VikunjaTaskBackend(client, "https://vikunja.test/", "tok", "Europe/Athens")
+        respx.get(f"{BASE}/tasks/7").respond(json=task_json(due_date="2026-11-03T22:00:00Z"))
+        respx.get(f"{BASE}/tasks/8").respond(json=task_json(id=8, due_date="2026-11-03T22:30:00Z"))
+        assert (await athens.get_task("7")).all_day
+        assert not (await athens.get_task("8")).all_day
+
+
+@respx.mock
+async def test_start_and_end_dates_are_not_read(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/tasks/7").respond(
         json=task_json(start_date="2026-11-02T09:00:00Z", end_date="2026-11-02T10:00:00Z")
     )
-    start = datetime(2026, 11, 2, 9, tzinfo=UTC)
-    current = await backend.get_task("7")
-    task = await backend.set_schedule(
-        "7", start, datetime(2026, 11, 2, 10, tzinfo=UTC), current.version
-    )
-    assert task.scheduled_start == start
-    sent = post.calls[0].request.content.decode()
-    assert "2026-11-02T09:00:00Z" in sent and "2026-11-02T10:00:00Z" in sent
+    task = await backend.get_task("7")
+    assert task.due_at is None and not task.all_day
 
 
 @respx.mock

@@ -17,7 +17,9 @@ All methods are `async`. Adapters raise `BackendUnavailable`, `AuthExpired`,
 - `list_tasks(container, since: Version | None) -> TaskPage`
 - `get_task(remote_id)`, `create_task(draft)`, `update_task(remote_id, patch, expected_version)`,
   `delete_task(remote_id)`, `complete_task(remote_id)`.
-- `set_schedule(remote_id, start, end, expected_version)` - writes the date/time to the task.
+- `set_planned_time(remote_id, due_at, all_day, expected_version)` - writes the due date (the only
+  planning date) to the task. *Changed by spec 002: see
+  `specs/002-split-planning-layout/contracts/api.md` and `docs/developer/adding-an-adapter.md`.*
 
 ## CalendarBackend (adapter: Google Calendar)
 - One backend instance per Google account credential; `list_containers()` returns that

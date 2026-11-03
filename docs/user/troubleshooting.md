@@ -2,6 +2,14 @@
 
 This page tells you what to do when an app does not answer or refuses your credentials.
 
+## Tasks do not show on the calendar after an upgrade
+
+Older versions of tefteri saved the time of a task in the start date and the end date of the task in Vikunja.
+The planner uses the due date only. A task that has a start date and an end date but no due date shows as not scheduled.
+
+Tefteri does not change these tasks in Vikunja. To put such a task on the calendar again, drag it to a time in the planner.
+Tefteri then saves the due date.
+
 ## Rules that tefteri follows
 
 - Tefteri always tells you which connection failed and why.

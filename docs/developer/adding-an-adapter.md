@@ -9,7 +9,7 @@ The ports are in `tefteri.domain.ports`. All methods are `async`.
 
 | Port | Use | Existing adapter |
 | ---- | --- | ---------------- |
-| `TaskBackend` | Tasks and task schedules | Vikunja |
+| `TaskBackend` | Tasks and the planned time of a task | Vikunja |
 | `CalendarBackend` | Calendar entries | Google Calendar |
 | `NoteBackend` | Notes and daily notes | Trilium Next |
 
@@ -20,6 +20,21 @@ Each port extends `Backend`. `Backend` has three common methods:
 - `check_connection()` returns a `ConnectionHealth` value.
 
 Read `specs/001-daily-planning-framework/contracts/backend-ports.md` for the full list of methods.
+
+## The planned time of a task
+
+A task backend writes the planned time with `set_planned_time(remote_id, due_at, all_day,
+expected_version)`. The due date is the only planning date. Never write a second date field
+for planning, such as a start date.
+
+- With `due_at=None`, clear the due date.
+- With `all_day=True`, the task is for a date only. The caller passes `due_at` as 00:00 local time
+  of that date. Map this value to what your app uses for a date-only due date.
+- When you read a task, set `all_day=True` for a date-only due date. Vikunja has no all-day field,
+  so its adapter uses 00:00 in the time zone of the user.
+- The adapter gets the time zone of the user in `settings["timezone"]`.
+
+The service derives the calendar block. Do not return a block or a start time.
 
 ## Capabilities
 

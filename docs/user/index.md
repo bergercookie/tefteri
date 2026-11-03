@@ -8,6 +8,7 @@ These guides are for people who use tefteri to plan their days. You do not need 
 getting-started
 accounts-and-sign-in
 connect-apps
+planner
 daily-planning
 scheduling
 planning-goals

@@ -1,14 +1,17 @@
 """Response models for cached items. ``effective_context`` is resolved per item."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
 
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
+from tefteri.domain.planning_time import block_for
+from tefteri.domain.timeutil import day_bounds
 from tefteri.services.context import ContextMaps
 
 
@@ -119,6 +122,8 @@ class CalendarItemOut(BaseModel):
     all_day: bool
     context: str | None
     effective_context: str
+    status: str | None = None
+    clipped_start: bool = False
 
     @classmethod
     def of_entry(cls, e: CalendarEntry, maps: ContextMaps) -> "CalendarItemOut":
@@ -136,11 +141,20 @@ class CalendarItemOut(BaseModel):
         )
 
     @classmethod
-    def of_task(cls, t: Task, maps: ContextMaps) -> "CalendarItemOut":
-        """Build from a scheduled task (``scheduled_start`` must be set)."""
-        assert t.scheduled_start is not None  # noqa: S101
-        start = t.scheduled_start
-        end = t.scheduled_end or start + timedelta(hours=1)
+    def of_task(cls, t: Task, maps: ContextMaps, tz_name: str) -> "CalendarItemOut":
+        """Build from a task with a due date (``due_at`` must be set).
+
+        A timed task becomes the block that ends at its due time. An all-day task covers its
+        local day and has ``all_day`` set.
+        """
+        assert t.due_at is not None  # noqa: S101
+        due = aware(t.due_at)
+        if t.all_day:
+            start, end = day_bounds(due.astimezone(ZoneInfo(tz_name)).date(), tz_name)
+            clipped = False
+        else:
+            block = block_for(due, tz_name)
+            start, end, clipped = block.start, block.end, block.clipped_start
         return cls(
             type="task",
             id=t.id,
@@ -151,6 +165,8 @@ class CalendarItemOut(BaseModel):
             all_day=t.all_day,
             context=t.context,
             effective_context=maps.effective(t.context, t.container_id, t.connection_id)[0].value,
+            status=t.status,
+            clipped_start=clipped,
         )
 
 

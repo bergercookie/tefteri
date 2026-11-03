@@ -10,7 +10,7 @@ import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
-import '../calendar/calendar_screen.dart';
+import '../planner/schedule_dialog.dart';
 import 'goal_widgets.dart';
 import 'periods.dart';
 
@@ -80,9 +80,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
       builder: (_) => ScheduleDialog(days: days, initial: initial),
     );
     if (picked == null) return;
-    await _run(() => ref
-        .read(planningApiProvider)
-        .scheduleTask(task.id, picked, picked.add(const Duration(hours: 1))));
+    await _run(
+        () => ref.read(planningApiProvider).scheduleTaskAt(task.id, picked));
   }
 
   Future<void> _link(PlanTask task, List<PlanGoal> goals) async {

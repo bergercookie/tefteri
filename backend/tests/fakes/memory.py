@@ -134,16 +134,19 @@ class FakeTaskBackend(_FakeBase):
         self.tasks[remote_id] = updated
         return updated
 
-    async def set_schedule(
-        self, remote_id: str, start: datetime | None, end: datetime | None, expected_version: str
+    async def set_planned_time(
+        self, remote_id: str, due_at: datetime | None, all_day: bool, expected_version: str
     ) -> RemoteTask:
-        """Write the schedule to the task."""
+        """Write the planned time (the due date) to the task."""
         self._guard()
         self._require(Capability.TASK_TIME)
         current = self.tasks[remote_id]
         self._check_version(current.version, expected_version)
         updated = replace(
-            current, scheduled_start=start, scheduled_end=end, version=self._new_version()
+            current,
+            due_at=due_at,
+            all_day=all_day and due_at is not None,
+            version=self._new_version(),
         )
         self.tasks[remote_id] = updated
         return updated

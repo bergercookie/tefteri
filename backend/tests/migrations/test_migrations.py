@@ -1,5 +1,7 @@
 """Migration tests: pytest-alembic's built-in checks plus per-revision data checks."""
 
+from datetime import datetime
+
 from pytest_alembic import MigrationContext
 from pytest_alembic.tests import (
     test_model_definitions_match_ddl,
@@ -95,3 +97,32 @@ def test_0005_creates_period_reviews(
     insp = inspect(alembic_engine)
     assert "period_reviews" not in insp.get_table_names()
     assert "plans" in insp.get_table_names()
+
+
+def test_0006_adds_random_time_setting_and_keeps_users(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0005")
+    alembic_runner.insert_into("users", {"id": "11111111-1111-1111-1111-111111111111"} | _USER)
+    alembic_runner.migrate_up_to("0006")
+    columns = {c["name"]: c for c in inspect(alembic_engine).get_columns("users")}
+    assert "random_time_on_date_drop" in columns
+    with alembic_engine.connect() as conn:
+        value = conn.exec_driver_sql("select random_time_on_date_drop from users").scalar()
+    assert not value  # existing users get the default: off
+    alembic_runner.migrate_down_one()
+    assert "random_time_on_date_drop" not in {
+        c["name"] for c in inspect(alembic_engine).get_columns("users")
+    }
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from users").scalar() == 1
+
+
+_USER = {
+    "username": "sam",
+    "password_hash": None,
+    "is_admin": False,
+    "timezone": "UTC",
+    "disabled": False,
+    "created_at": datetime(2026, 11, 1),
+}

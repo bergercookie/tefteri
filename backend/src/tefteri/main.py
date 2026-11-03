@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 
 import httpx
@@ -19,6 +20,7 @@ from tefteri.api.routers import connections as connections_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import reviews as reviews_router
+from tefteri.api.routers import settings as settings_router
 from tefteri.api.routers import sync as sync_router
 from tefteri.api.routers import tasks as tasks_router
 from tefteri.api.routers import users as users_router
@@ -48,7 +50,7 @@ def default_registry(cfg: Settings, http: httpx.AsyncClient) -> AdapterRegistry:
     registry.register(
         "vikunja",
         ConnectionKind.TASKS,
-        lambda s, c: VikunjaTaskBackend(http, s["base_url"], c["token"]),
+        lambda s, c: VikunjaTaskBackend(http, s["base_url"], c["token"], s.get("timezone", "UTC")),
     )
     registry.register(
         "google_calendar",
@@ -100,6 +102,7 @@ def create_app(
 
     app = FastAPI(title="tefteri", lifespan=lifespan)
     app.state.settings = cfg
+    app.state.clock = lambda: datetime.now(UTC)
     app.state.session_factory = factory
     app.state.auth_service = auth_service
     app.state.connection_service = connection_service
@@ -146,6 +149,7 @@ def create_app(
         planning_router,
         reviews_router,
         users_router,
+        settings_router,
     ):
         app.include_router(r.router, prefix="/api/v1")
     return app

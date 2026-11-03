@@ -10,7 +10,7 @@ import 'core/shortcuts/app_shortcuts.dart';
 import 'features/admin/users_screen.dart';
 import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
-import 'features/calendar/calendar_screen.dart';
+import 'features/planner/planner_screen.dart';
 import 'features/conflicts/conflicts_screen.dart';
 import 'features/daily/daily_screen.dart';
 import 'features/goals/goals_screen.dart';
@@ -53,8 +53,9 @@ GoRouter buildRouter(Ref ref) {
         path: '/password',
         builder: (_, __) => const ChangePasswordScreen(),
       ),
-      GoRoute(path: '/', builder: (_, __) => const DailyScreen()),
-      GoRoute(path: '/calendar', builder: (_, __) => const CalendarScreen()),
+      GoRoute(path: '/', builder: (_, __) => const PlannerScreen()),
+      GoRoute(path: '/daily', builder: (_, __) => const DailyScreen()),
+      GoRoute(path: '/calendar', redirect: (_, __) => '/'),
       GoRoute(path: '/week', builder: (_, __) => const WeekScreen()),
       GoRoute(path: '/month', builder: (_, __) => const MonthScreen()),
       GoRoute(path: '/year', builder: (_, __) => const YearScreen()),

@@ -56,7 +56,10 @@ async def list_calendar(
     to: datetime | None = None,
     context: ContextFilter = ContextFilter.ALL,
 ) -> list[CalendarItemOut]:
-    """Return calendar entries and scheduled tasks (``type`` says which) in a window."""
+    """Return calendar entries and tasks with a due date (``type`` says which) in a window.
+
+    A timed task is the block that ends at its due time; a date-only task is ``all_day``.
+    """
     maps = await load_maps(db, user.id)
     items: list[CalendarItemOut] = []
     entries = (
@@ -69,16 +72,14 @@ async def list_calendar(
             continue
         items.append(CalendarItemOut.of_entry(e, maps))
     tasks = (
-        await db.execute(
-            select(Task).where(Task.user_id == user.id, Task.scheduled_start.is_not(None))
-        )
+        await db.execute(select(Task).where(Task.user_id == user.id, Task.due_at.is_not(None)))
     ).scalars()
     for t in tasks:
         if t.sync_state == "deleted_remotely":
             continue
         if not maps.matches(context, t.context, t.container_id, t.connection_id):
             continue
-        items.append(CalendarItemOut.of_task(t, maps))
+        items.append(CalendarItemOut.of_task(t, maps, user.timezone))
     if from_ or to:
         low = aware(from_) if from_ else datetime.min.replace(tzinfo=UTC)
         high = aware(to) if to else datetime.max.replace(tzinfo=UTC)

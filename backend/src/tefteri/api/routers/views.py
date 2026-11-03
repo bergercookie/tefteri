@@ -45,7 +45,7 @@ async def day_view(
     for t in (await db.execute(select(Task).where(Task.user_id == user.id))).scalars():
         if t.sync_state == "deleted_remotely":
             continue
-        when = t.scheduled_start or t.due_at
+        when = t.due_at
         if when is None or not (start <= aware(when) < end):
             continue
         if maps.matches(context, t.context, t.container_id, t.connection_id):

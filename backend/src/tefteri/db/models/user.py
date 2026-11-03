@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tefteri.db.base import Base, CreatedMixin, IdMixin
@@ -18,6 +18,10 @@ class User(IdMixin, CreatedMixin, Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     disabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    random_time_on_date_drop: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
+    """A date-only drop on the calendar gets a random time of day instead of staying all-day."""
 
 
 class AuthSession(IdMixin, CreatedMixin, Base):

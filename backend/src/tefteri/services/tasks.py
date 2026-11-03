@@ -1,7 +1,8 @@
 """Task use cases: write through to the task app first, then update the cache."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime
+from random import Random
 from typing import cast
 
 from sqlalchemy import select
@@ -10,10 +11,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
+from tefteri.db.models.user import User
 from tefteri.db.repositories.items import TaskRepository
 from tefteri.domain.entities import RemoteTask, TaskDraft, TaskPatch
 from tefteri.domain.enums import Capability, ConnectionKind, Context, SyncState
 from tefteri.domain.errors import NotSupported
+from tefteri.domain.planning_time import (
+    all_day_due,
+    block_for,
+    due_for_block_start,
+    pick_random_start,
+)
 from tefteri.domain.ports import TaskBackend
 from tefteri.domain.timeutil import overlaps
 from tefteri.services import conflicts
@@ -21,16 +29,16 @@ from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import BackendProblem, Invalid, NotFound, guard
 from tefteri.services.mirror import task_values
 
-DEFAULT_SLOT = timedelta(hours=1)
 UNSET = object()
 
 
 class TaskService:
     """Create, change, complete, delete and schedule tasks."""
 
-    def __init__(self, connections: ConnectionService) -> None:
-        """Use ``connections`` to reach each task app."""
+    def __init__(self, connections: ConnectionService, rng: Random | None = None) -> None:
+        """Use ``connections`` to reach each task app; ``rng`` picks random times (tests inject)."""
         self._connections = connections
+        self._rng = rng or Random()  # noqa: S311 - not a security use
 
     async def _connection_of(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> Connection:
         connection = await self._connections.get(db, user_id, task.connection_id)
@@ -38,8 +46,8 @@ class TaskService:
             raise NotFound
         return connection
 
-    def _backend(self, connection: Connection) -> TaskBackend:
-        return cast(TaskBackend, self._connections.backend_for(connection))
+    async def _backend(self, db: AsyncSession, connection: Connection) -> TaskBackend:
+        return cast(TaskBackend, await self._connections.backend_of_owner(db, connection))
 
     async def get(self, db: AsyncSession, user_id: uuid.UUID, task_id: uuid.UUID) -> Task:
         """Return one of the user's tasks or raise ``NotFound``."""
@@ -73,7 +81,7 @@ class TaskService:
         container = await self._container(db, user_id, connection, container_id)
         remote = await guard(
             connection,
-            self._backend(connection).create_task(
+            (await self._backend(db, connection)).create_task(
                 TaskDraft(container.remote_id, title, description, due_at)
             ),
         )
@@ -126,7 +134,7 @@ class TaskService:
             try:
                 remote = await guard(
                     connection,
-                    self._backend(connection).update_task(
+                    (await self._backend(db, connection)).update_task(
                         task.remote_id,
                         TaskPatch(title=title, description=description, due_at=due_at),
                         task.remote_version,
@@ -163,7 +171,7 @@ class TaskService:
         local: dict[str, object],
     ) -> None:
         try:
-            current = await self._backend(connection).get_task(task.remote_id)
+            current = await (await self._backend(db, connection)).get_task(task.remote_id)
         except Exception:  # noqa: BLE001 - the conflict itself is still reported
             return
         await conflicts.record(db, user_id, "task", task, local, conflicts.task_snapshot(current))
@@ -171,7 +179,8 @@ class TaskService:
     async def complete(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> Task:
         """Mark a task done in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)
-        remote = await guard(connection, self._backend(connection).complete_task(task.remote_id))
+        backend = await self._backend(db, connection)
+        remote = await guard(connection, backend.complete_task(task.remote_id))
         self._apply(task, remote)
         await db.flush()
         return task
@@ -179,46 +188,101 @@ class TaskService:
     async def delete(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> None:
         """Delete a task in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)
-        await guard(connection, self._backend(connection).delete_task(task.remote_id))
+        await guard(connection, (await self._backend(db, connection)).delete_task(task.remote_id))
         await TaskRepository(db, user_id).delete(task)
 
-    async def set_schedule(
+    async def schedule_at(
+        self, db: AsyncSession, user_id: uuid.UUID, task: Task, start: datetime
+    ) -> tuple[Task, list[CalendarEntry]]:
+        """Plan the task's block to start at ``start`` (snapped to 15 minutes).
+
+        Only the due date is written to the task app: one hour after the block start. Creates
+        no calendar event. Returns the task and the calendar entries its block overlaps.
+        """
+        due = due_for_block_start(_aware(start))
+        task = await self._write_planned_time(db, user_id, task, due, all_day=False)
+        return task, await self._overlaps(db, user_id, due)
+
+    async def schedule_date(
+        self, db: AsyncSession, user_id: uuid.UUID, task: Task, day: date
+    ) -> tuple[Task, list[CalendarEntry]]:
+        """Plan the task for a date only, with no time.
+
+        The task becomes all-day. If the user turned on ``random_time_on_date_drop``, it gets a
+        random block start between 08:00 and 19:45 local time on that date instead.
+        """
+        owner = await _owner(db, user_id)
+        if owner.random_time_on_date_drop:
+            start = pick_random_start(day, owner.timezone, self._rng)
+            return await self.schedule_at(db, user_id, task, start)
+        due = all_day_due(day, owner.timezone)
+        task = await self._write_planned_time(db, user_id, task, due, all_day=True)
+        return task, []
+
+    async def unschedule(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> Task:
+        """Remove the task's due date and time in the task app."""
+        return await self._write_planned_time(db, user_id, task, None, all_day=False)
+
+    async def _write_planned_time(
         self,
         db: AsyncSession,
         user_id: uuid.UUID,
         task: Task,
-        start: datetime | None,
-        end: datetime | None,
-    ) -> tuple[Task, list[CalendarEntry]]:
-        """Write (or clear, with ``start=None``) the task's time to the task app.
-
-        Creates no calendar event. Returns the task and the calendar entries it overlaps.
-        """
+        due_at: datetime | None,
+        *,
+        all_day: bool,
+    ) -> Task:
         connection = await self._connection_of(db, user_id, task)
-        backend = self._backend(connection)
+        backend = await self._backend(db, connection)
         if Capability.TASK_TIME not in backend.capabilities():
             await guard(connection, _raise_unsupported())
-        if start is not None and end is None:
-            end = start + DEFAULT_SLOT
-        if start is not None and end is not None and end <= start:
-            raise Invalid("end must be after start")
-        remote = await guard(
-            connection, backend.set_schedule(task.remote_id, start, end, task.remote_version)
-        )
+        try:
+            remote = await guard(
+                connection,
+                backend.set_planned_time(task.remote_id, due_at, all_day, task.remote_version),
+            )
+        except BackendProblem as problem:
+            if problem.code == "remote_conflict" and due_at is not None:
+                # Same handling as an edit: keep both versions and let the user choose.
+                await self._record_conflict(
+                    db,
+                    user_id,
+                    task,
+                    connection,
+                    {
+                        "title": task.title,
+                        "description": task.description,
+                        "status": task.status,
+                        "due_at": _iso(due_at),
+                    },
+                )
+                problem.message += " Open the Conflicts screen to choose a version."
+            raise
         self._apply(task, remote)
         await db.flush()
-        found: list[CalendarEntry] = []
-        if start is not None and end is not None:
-            entries = (
-                await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user_id))
-            ).scalars()
-            found = [
-                e
-                for e in entries
-                if e.sync_state != SyncState.DELETED_REMOTELY.value
-                and overlaps(start, end, _aware(e.start), _aware(e.end))
-            ]
-        return task, found
+        return task
+
+    async def _overlaps(
+        self, db: AsyncSession, user_id: uuid.UUID, due: datetime
+    ) -> list[CalendarEntry]:
+        owner = await _owner(db, user_id)
+        block = block_for(due, owner.timezone)
+        entries = (
+            await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user_id))
+        ).scalars()
+        return [
+            e
+            for e in entries
+            if e.sync_state != SyncState.DELETED_REMOTELY.value
+            and overlaps(block.start, block.end, _aware(e.start), _aware(e.end))
+        ]
+
+
+async def _owner(db: AsyncSession, user_id: uuid.UUID) -> User:
+    owner = await db.get(User, user_id)
+    if owner is None:
+        raise NotFound
+    return owner
 
 
 def _iso(value: datetime | None) -> str | None:

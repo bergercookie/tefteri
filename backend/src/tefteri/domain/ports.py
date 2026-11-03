@@ -66,14 +66,19 @@ class TaskBackend(Backend, Protocol):
         """Mark a task done."""
         ...
 
-    async def set_schedule(
+    async def set_planned_time(
         self,
         remote_id: str,
-        start: datetime | None,
-        end: datetime | None,
+        due_at: datetime | None,
+        all_day: bool,
         expected_version: str,
     ) -> RemoteTask:
-        """Write (or clear, with ``None``) the task's date/time."""
+        """Write (or clear, with ``due_at=None``) the task's planned time.
+
+        The due date is the only planning date of a task. With ``all_day`` the task is planned
+        for a date only: ``due_at`` is then 00:00 local time on that date, and the adapter maps
+        it to whatever its application uses for a date-only due date.
+        """
         ...
 
 

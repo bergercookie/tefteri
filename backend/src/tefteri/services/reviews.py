@@ -77,7 +77,7 @@ def compute_review(
     for t in sorted(tasks, key=lambda t: t.title):
         if t.sync_state == "deleted_remotely":
             continue
-        when = t.scheduled_start or t.due_at
+        when = t.due_at
         in_period = when is not None and start <= _local_day(when, tz) < end
         if t.goal_id in tree or in_period:
             items.append(ReviewItem("task", str(t.id), t.title, t.status == "done"))

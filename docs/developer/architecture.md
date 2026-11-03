@@ -25,3 +25,34 @@ The arrows show the allowed imports. The core code (`api`, `services`, `domain`)
 `adapters`. At start-up, `main.py` registers the adapters in an adapter registry. The services
 get a backend for a connection from this registry. Refer to [Sync](sync.md) for the sync flow
 and the conflict flow.
+
+## The planned time of a task
+
+The due date of a task is its planned time. For Vikunja it is the only date that tefteri stores
+for planning (constitution Principle VII). Tefteri never writes the start date or the end date.
+
+The core code uses one value that does not name Vikunja: `due_at` plus `all_day`. The code in
+`tefteri.domain.planning_time` derives the calendar block from it. The block starts one hour
+before the due time and ends at the due time.
+
+```mermaid
+flowchart LR
+  drop[Drop on a slot] -->|"PUT /tasks/{id}/schedule {start}"| service[TaskService]
+  service -->|"due = snapped start + 1h"| port["TaskBackend.set_planned_time"]
+  port --> vikunja[(Vikunja due_date)]
+  vikunja -->|sync| mirror["mirror: due_at, all_day"]
+  mirror -->|"block_for(due_at)"| calendar["GET /calendar: block = due - 1h to due"]
+```
+
+Each layer has one job:
+
+- `domain.planning_time` holds the rules: the block, the 15-minute grid and the random start.
+- `services.tasks` writes the due date to the task app first. It changes the cache only after the
+  task app accepted the change. It records a conflict when the task changed in the app.
+- The Vikunja adapter maps a date-only task to 00:00 in the time zone of the user. Only the
+  adapter knows this rule.
+- Tefteri derives the cached columns `scheduled_start` and `scheduled_end` from the due date. It
+  never sends them to a task app.
+- `services.task_filters` holds the planner filters. The list endpoint runs them in the database.
+  The counts use the same rules in Python. A test keeps both in step.
+

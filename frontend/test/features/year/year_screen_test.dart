@@ -61,7 +61,7 @@ void main() {
     final put = api.where('PUT /tasks/t1/schedule').single;
     final data = put.data! as Map;
     expect(data['start'], isNotNull);
-    expect(data['end'], isNotNull);
+    expect(data.containsKey('end'), isFalse); // the server derives the due date
     expect(DateTime.parse('${data['start']}').toLocal().year, 2026);
   });
 }

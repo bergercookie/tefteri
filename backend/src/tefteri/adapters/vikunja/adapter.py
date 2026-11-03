@@ -2,8 +2,9 @@
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -27,8 +28,6 @@ _VERSIONED_FIELDS = (
     "description",
     "done",
     "due_date",
-    "start_date",
-    "end_date",
 )
 
 
@@ -56,14 +55,25 @@ def _version(data: dict[str, Any]) -> str:
 class VikunjaTaskBackend:
     """``TaskBackend`` for a Vikunja server. Projects are containers."""
 
-    def __init__(self, client: httpx.AsyncClient, base_url: str, token: str) -> None:
-        """Use ``client`` (injectable for tests) against ``base_url`` with an API ``token``."""
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        base_url: str,
+        token: str,
+        timezone: str = "UTC",
+    ) -> None:
+        """Use ``client`` (injectable for tests) against ``base_url`` with an API ``token``.
+
+        ``timezone`` is the user's time zone. Vikunja has no all-day flag, so a date-only due
+        date is stored as 00:00 in this zone and read back the same way (research R-03).
+        """
+        self._tz = ZoneInfo(timezone)
         self._client = client
         self._base = base_url.rstrip("/") + "/api/v1"
         self._headers = {"Authorization": f"Bearer {token}"}
 
     def capabilities(self) -> set[Capability]:
-        """Vikunja stores task times (start/end) and recurrence."""
+        """Vikunja stores the due date and time of a task, and recurrence."""
         return {Capability.TASK_TIME, Capability.RECURRING}
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
@@ -80,15 +90,16 @@ class VikunjaTaskBackend:
         return response.json()
 
     def _task(self, data: dict[str, Any]) -> RemoteTask:
+        # Only the due date is read: it is the single planning date (constitution VII).
+        due = _parse(data.get("due_date"))
         return RemoteTask(
             remote_id=str(data["id"]),
             container_id=str(data["project_id"]),
             title=data["title"],
             description=data.get("description", "") or "",
             done=bool(data.get("done")),
-            due_at=_parse(data.get("due_date")),
-            scheduled_start=_parse(data.get("start_date")),
-            scheduled_end=_parse(data.get("end_date")),
+            due_at=due,
+            all_day=due is not None and due.astimezone(self._tz).time() == time.min,
             version=_version(data),
         )
 
@@ -164,14 +175,15 @@ class VikunjaTaskBackend:
         """Mark a task done."""
         return await self._update(remote_id, None, {"done": True})
 
-    async def set_schedule(
+    async def set_planned_time(
         self,
         remote_id: str,
-        start: datetime | None,
-        end: datetime | None,
+        due_at: datetime | None,
+        all_day: bool,
         expected_version: str,
     ) -> RemoteTask:
-        """Write or clear the task's start and end date."""
-        return await self._update(
-            remote_id, expected_version, {"start_date": _fmt(start), "end_date": _fmt(end)}
-        )
+        """Write or clear the task's due date. Start and end dates are never written."""
+        if due_at is not None and all_day:
+            local = due_at.astimezone(self._tz)
+            due_at = datetime.combine(local.date(), time.min, tzinfo=self._tz)
+        return await self._update(remote_id, expected_version, {"due_date": _fmt(due_at)})

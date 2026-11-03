@@ -29,6 +29,7 @@ FakeApi _api(List<Object?> results) => FakeApi({
         'results': []
       },
       'POST /sync': results,
+      'GET /me/settings': {'random_time_on_date_drop': false},
     });
 
 /// Uses a fixed sync time, so the image does not change with the clock.
@@ -52,6 +53,20 @@ class _FixedTimeSync extends SyncController {
 final _fixedTime = [syncControllerProvider.overrideWith(_FixedTimeSync.new)];
 
 void main() {
+  testWidgets('planner setting: random time for date-only drops',
+      (tester) async {
+    final api = FakeApi({
+      'GET /connections': connections,
+      'GET /sync/status': {
+        'last_sync_at': '2026-11-02T08:15:00Z',
+        'results': []
+      },
+      'GET /me/settings': {'random_time_on_date_drop': true},
+    });
+    await pumpScreen(tester, api, const ConnectionsScreen());
+    await saveScreenshot('planner-setting-random-time');
+  });
+
   testWidgets('connections list', (tester) async {
     await pumpScreen(tester, _api([]), const ConnectionsScreen());
     await saveScreenshot('connections-list');

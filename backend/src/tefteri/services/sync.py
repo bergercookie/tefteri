@@ -105,7 +105,7 @@ class SyncService:
         started = self._clock()
         try:
             async with db.begin_nested():
-                backend = self._connections.backend_for(connection)
+                backend = await self._connections.backend_of_owner(db, connection)
                 containers = await self._sync_containers(db, connection, backend)
                 kind = ConnectionKind(connection.kind)
                 if kind is ConnectionKind.TASKS:

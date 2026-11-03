@@ -279,7 +279,7 @@ async def _period_view(
     ]
     tasks = []
     for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars():
-        when = t.scheduled_start or t.due_at
+        when = t.due_at
         if t.sync_state == "deleted_remotely" or when is None or not low <= aware(when) < high:
             continue
         if maps.matches(context, t.context, t.container_id, t.connection_id):

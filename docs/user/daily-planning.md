@@ -16,7 +16,7 @@ Tefteri does not store these items. They stay in your own apps. Tefteri changes 
 ## Open the daily view
 
 1. Log in to tefteri.
-2. Choose Today.
+2. Choose Today in the menu, or press T.
 3. To see a different day, choose the arrows or the date at the top.
 4. Press Sync to get the newest data.
 

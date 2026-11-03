@@ -146,13 +146,19 @@ async def test_task_crud_and_schedule(tasks: TaskBackend) -> None:
     assert renamed.title == "Write"
     assert (await tasks.get_task(task.remote_id)).title == "Write"
 
-    # Scheduling is optional; the services refuse it for backends without task times.
+    # Planning is optional; the services refuse it for backends without task times.
     if Capability.TASK_TIME in tasks.capabilities():
-        scheduled = await tasks.set_schedule(
-            task.remote_id, NOW, NOW + timedelta(hours=1), renamed.version
-        )
-        assert scheduled.scheduled_start == NOW
-        assert scheduled.scheduled_end == NOW + timedelta(hours=1)
+        due = NOW + timedelta(hours=1)
+        planned = await tasks.set_planned_time(task.remote_id, due, False, renamed.version)
+        assert planned.due_at == due and not planned.all_day
+        midnight = datetime(2026, 11, 3, tzinfo=UTC)  # the subject's time zone is UTC
+        dated = await tasks.set_planned_time(task.remote_id, midnight, True, planned.version)
+        assert dated.due_at == midnight and dated.all_day
+        cleared = await tasks.set_planned_time(task.remote_id, None, False, dated.version)
+        assert cleared.due_at is None and not cleared.all_day
+        with pytest.raises(RemoteConflict):
+            await tasks.set_planned_time(task.remote_id, due, False, planned.version)
+        renamed = cleared
 
     done = await tasks.complete_task(task.remote_id)
     assert done.done
