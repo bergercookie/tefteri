@@ -272,7 +272,7 @@
             "type": "object"
           },
           "default_context": {
-            "$ref": "#/components/schemas/Context",
+            "$ref": "#/components/schemas/DefaultContext",
             "default": "life"
           },
           "display_name": {
@@ -387,7 +387,7 @@
           "default_context": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Context"
+                "$ref": "#/components/schemas/DefaultContext"
               },
               {
                 "type": "null"
@@ -539,6 +539,16 @@
         ],
         "title": "DayView",
         "type": "object"
+      },
+      "DefaultContext": {
+        "description": "Context of a connection's unlabelled items: one context, or both.",
+        "enum": [
+          "work",
+          "life",
+          "both"
+        ],
+        "title": "DefaultContext",
+        "type": "string"
       },
       "DueFilter": {
         "description": "The filters offered at the top of the task view.",
@@ -1748,6 +1758,17 @@
             "title": "Counts",
             "type": "object"
           },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -2278,7 +2299,7 @@
   "paths": {
     "/api/v1/auth/login": {
       "post": {
-        "description": "Exchange username and password for a bearer token.",
+        "description": "Exchange username and password for a session token.\n\nThe token is also set as an HttpOnly, SameSite=Strict cookie so the web client stays\nsigned in across reloads without page scripts ever being able to read the token.",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -2320,7 +2341,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Invalidate the current token.",
+        "description": "Invalidate the current token and clear the session cookie.",
         "operationId": "logout_api_v1_auth_logout_post",
         "responses": {
           "204": {
@@ -2783,7 +2804,7 @@
             "name": "default_context",
             "required": false,
             "schema": {
-              "$ref": "#/components/schemas/Context",
+              "$ref": "#/components/schemas/DefaultContext",
               "default": "life"
             }
           }
@@ -2822,7 +2843,7 @@
     },
     "/api/v1/connections/google/callback": {
       "get": {
-        "description": "Finish Google sign-in. The signed ``state`` identifies the user.",
+        "description": "Finish Google sign-in. The signed ``state`` identifies the user.\n\nGoogle sends the user's browser here, so the answer is a page, not JSON: the web\nclient's Connections screen when this server serves it, else a short confirmation.",
         "operationId": "google_callback_api_v1_connections_google_callback_get",
         "parameters": [
           {
@@ -2847,13 +2868,16 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
+              "text/html": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConnectionOut"
+                  "type": "string"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "303": {
+            "description": "Back to the web client's Connections screen"
           },
           "422": {
             "content": {

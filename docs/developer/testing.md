@@ -14,7 +14,7 @@ The backend tests are in `backend/tests/`:
 | `integration/adapters/` | Each adapter against recorded or faked HTTP answers (respx). |
 | `e2e/` | Full user flows through HTTP. |
 | `migrations/` | The Alembic migrations (pytest-alembic). |
-| `smoke/` | The server image. `just deploy::smoke` runs them. |
+| `smoke/` | The server image, alone and through `deploy/compose.yaml`. `just deploy::smoke` runs them. |
 
 The fake apps are in `tests/fakes/`. They keep their items in memory, and a test can make
 them unreachable or make their credentials expire.

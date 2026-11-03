@@ -25,7 +25,6 @@ You can also choose the keyboard button at the top of the screen.
 | R | Reviews |
 | N | Notes |
 | X | Conflicts |
-| S | Connections (settings) |
 
 The menu also shows the key next to each view.
 
@@ -33,7 +32,8 @@ The menu also shows the key next to each view.
 
 | Key | Action |
 | --- | --- |
-| F5 | Sync all connections |
+| S | Sync all connections |
+| F5 | Sync all connections, also while you type |
 | 1 | Show all items |
 | 2 | Show life items only |
 | 3 | Show work items only |
