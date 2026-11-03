@@ -1,5 +1,9 @@
 # Documentation recipes. Call as `just docs::build`.
 
+# List the recipes of this module.
+default:
+    @just --list docs
+
 build:
     uv run --with-requirements requirements.txt sphinx-build -W -b html . _build/html
 

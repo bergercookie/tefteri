@@ -1,5 +1,9 @@
 # Backend recipes (run with the module directory as cwd). Call as `just backend::<recipe>`.
 
+# List the recipes of this module.
+default:
+    @just --list backend
+
 install:
     uv sync
 

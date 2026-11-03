@@ -1,5 +1,9 @@
 # Frontend (Flutter) recipes.
 
+# List the recipes of this module.
+default:
+    @just --list frontend
+
 install:
     flutter pub get
 
