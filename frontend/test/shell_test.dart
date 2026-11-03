@@ -24,20 +24,26 @@ class _FakeAuth extends AuthController {
   _FakeAuth(super.ref, bool admin) {
     state = AuthState(signedIn: true, isAdmin: admin);
   }
+
+  @override
+  Future<void> logout() async => state = const AuthState();
 }
 
-Future<void> _openDrawer(WidgetTester tester, bool admin) async {
+Future<ProviderContainer> _openDrawer(WidgetTester tester, bool admin) async {
   tester.view.physicalSize = const Size(1000, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(ProviderScope(
-    overrides: [
-      authControllerProvider.overrideWith((ref) => _FakeAuth(ref, admin)),
-    ],
+  final container = ProviderContainer(overrides: [
+    authControllerProvider.overrideWith((ref) => _FakeAuth(ref, admin)),
+  ]);
+  addTearDown(container.dispose);
+  await tester.pumpWidget(UncontrolledProviderScope(
+    container: container,
     child: const MaterialApp(home: AppShell(title: 'T', body: SizedBox())),
   ));
   await tester.tap(find.byTooltip('Open navigation menu'));
   await tester.pumpAndSettle();
+  return container;
 }
 
 void adminMenuTests() {
@@ -69,5 +75,12 @@ void adminMenuTests() {
     await _openDrawer(tester, false);
     expect(find.byKey(const Key('nav-/users')), findsNothing);
     expect(find.byKey(const Key('nav-/password')), findsOneWidget);
+  });
+
+  testWidgets('Sign out in the drawer ends the session', (tester) async {
+    final container = await _openDrawer(tester, false);
+    await tester.tap(find.byKey(const Key('sign-out')));
+    await tester.pumpAndSettle();
+    expect(container.read(authControllerProvider).signedIn, isFalse);
   });
 }

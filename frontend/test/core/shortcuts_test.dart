@@ -81,7 +81,8 @@ void main() {
   test('the keymap has one unique key for each view', () {
     final keys = [for (final s in appShortcuts) s.keys];
     expect(keys.toSet(), hasLength(keys.length));
-    for (final v in appViews.where((v) => v.path != '/password')) {
+    for (final v in appViews
+        .where((v) => v.path != '/password' && v.path != '/settings')) {
       expect(v.key, isNotNull, reason: '${v.label} needs a shortcut');
     }
     for (final label in [
@@ -153,6 +154,20 @@ void main() {
     expect(container.read(contextFilterProvider), ContextFilter.life);
     await _press(tester, '1');
     expect(container.read(contextFilterProvider), ContextFilter.all);
+  });
+
+  testWidgets('S syncs and does not open Connections', (tester) async {
+    final (router, _) = await _pump(tester);
+    router.go('/week');
+    await tester.pumpAndSettle();
+    await _press(tester, 's');
+    expect(_sync.calls, 1);
+    expect(find.text('page:/week'), findsOneWidget);
+    // While typing, s is a letter in the field.
+    await tester.tap(find.byKey(const Key('field-/week')));
+    await tester.pump();
+    await _press(tester, 's');
+    expect(_sync.calls, 1);
   });
 
   testWidgets('F5 syncs, also while typing', (tester) async {

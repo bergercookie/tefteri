@@ -5,8 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/auth_controller.dart';
 
-/// Starts the app inside a Riverpod scope.
+/// Starts the app inside a Riverpod scope, resuming an earlier session.
 void main() {
-  runApp(const ProviderScope(child: TefteriApp()));
+  final container = ProviderContainer();
+  container.read(authControllerProvider.notifier).restore();
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const TefteriApp(),
+  ));
 }
