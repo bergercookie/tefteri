@@ -1,4 +1,4 @@
-# Build context is the repository root; the image needs only backend/ and deploy/.
+# Build context is the repository root; the image needs only backend/, deploy/ and the web build.
 *
 !backend/pyproject.toml
 !backend/uv.lock
@@ -6,5 +6,6 @@
 !backend/alembic.ini
 !backend/migrations
 !deploy/entrypoint.sh
+!frontend/build/web
 **/__pycache__
 **/*.pyc

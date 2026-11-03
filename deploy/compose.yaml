@@ -9,7 +9,7 @@ services:
     image: ${TEFTERI_IMAGE:-tefteri:local}
     env_file: .env
     ports:
-      - "8000:8000"
+      - "${TEFTERI_HOST_PORT:-8000}:8000"
     volumes:
       - data:/data
     restart: unless-stopped
@@ -20,7 +20,9 @@ services:
     environment:
       POSTGRES_USER: tefteri
       POSTGRES_DB: tefteri
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Not `:?`: compose resolves every service, so that would also fail `just deploy::up`.
+      # The postgres image refuses to start without a password.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -23,8 +23,11 @@ COPY --from=build /app/.venv /app/.venv
 COPY backend/alembic.ini ./
 COPY backend/migrations ./migrations
 COPY deploy/entrypoint.sh /usr/local/bin/tefteri-entrypoint
+# Built on the host by `just deploy::build-image` (frontend::build-web).
+COPY frontend/build/web ./web
 ENV PATH=/app/.venv/bin:$PATH \
-    TEFTERI_DATABASE_URL=sqlite+aiosqlite:////data/tefteri.db
+    TEFTERI_DATABASE_URL=sqlite+aiosqlite:////data/tefteri.db \
+    TEFTERI_WEB_DIR=/app/web
 USER tefteri
 VOLUME /data
 EXPOSE 8000

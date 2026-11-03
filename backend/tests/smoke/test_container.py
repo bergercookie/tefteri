@@ -1,13 +1,10 @@
-"""Smoke test for the server image: start it, then check health, version and sign-in.
+"""Smoke test for the server image: start it, then check health, version, web client and sign-in.
 
 Set ``TEFTERI_SMOKE_IMAGE`` (``just deploy::smoke`` does) to run it; without it the test
 is skipped. Needs Docker.
 """
 
-import os
-import shutil
 import subprocess
-import time
 import uuid
 from collections.abc import Iterator
 
@@ -15,26 +12,16 @@ import httpx
 import pytest
 
 from tefteri.auth.passwords import hash_password
+from tests.smoke.conftest import IMAGE, PASSWORD, docker, needs_image, wait_for_health
 
-IMAGE = os.environ.get("TEFTERI_SMOKE_IMAGE")
-PASSWORD = "smoke test password"
-
-pytestmark = pytest.mark.skipif(
-    not IMAGE or shutil.which("docker") is None, reason="TEFTERI_SMOKE_IMAGE or docker missing"
-)
-
-
-def _docker(*args: str) -> str:
-    return subprocess.run(
-        ["docker", *args], check=True, capture_output=True, text=True
-    ).stdout.strip()
+pytestmark = needs_image
 
 
 @pytest.fixture(scope="module")
 def server() -> Iterator[str]:
     """Run the image on a free port and return its base URL."""
     name = f"tefteri-smoke-{uuid.uuid4().hex[:8]}"
-    _docker(
+    docker(
         "run",
         "-d",
         "--name",
@@ -50,18 +37,9 @@ def server() -> Iterator[str]:
         str(IMAGE),
     )
     try:
-        port = _docker("port", name, "8000/tcp").splitlines()[0].rsplit(":", 1)[1]
+        port = docker("port", name, "8000/tcp").splitlines()[0].rsplit(":", 1)[1]
         url = f"http://127.0.0.1:{port}"
-        deadline = time.monotonic() + 60
-        while True:
-            try:
-                if httpx.get(f"{url}/health", timeout=2).status_code == 200:
-                    break
-            except httpx.TransportError:
-                pass
-            if time.monotonic() > deadline:
-                raise AssertionError("server did not start:\n" + _docker("logs", name))
-            time.sleep(0.5)
+        wait_for_health(url, lambda: docker("logs", name))
         yield url
     finally:
         subprocess.run(["docker", "rm", "-f", name], check=False, capture_output=True)
@@ -70,6 +48,12 @@ def server() -> Iterator[str]:
 def test_health_and_version(server: str) -> None:
     assert httpx.get(f"{server}/health").json() == {"status": "ok"}
     assert httpx.get(f"{server}/version").json()["version"] not in ("", "unknown")
+
+
+def test_serves_the_web_client(server: str) -> None:
+    index = httpx.get(f"{server}/")
+    assert index.status_code == 200 and "flutter_bootstrap.js" in index.text
+    assert httpx.get(f"{server}/flutter_bootstrap.js").status_code == 200
 
 
 def test_admin_signs_in_on_the_migrated_database(server: str) -> None:

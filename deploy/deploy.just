@@ -1,6 +1,8 @@
 # Container deployment recipes. Call as `just deploy::<recipe>`.
 
+# Builds the web client first; the image serves it at /.
 build-image:
+    just frontend::build-web
     docker build -f Dockerfile -t tefteri:local ${TEFTERI_VERSION:+--build-arg TEFTERI_VERSION=$TEFTERI_VERSION} ..
 
 up:
