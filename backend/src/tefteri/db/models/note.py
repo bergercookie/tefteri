@@ -11,7 +11,7 @@ from tefteri.domain.enums import SyncState
 
 
 class Note(IdMixin, Base):
-    """A note copy. ``kind`` is daily, custom, process or retrospective."""
+    """A note copy. ``kind`` is daily, retrospective or ``custom`` (found by sync)."""
 
     __tablename__ = "notes"
     __table_args__ = (UniqueConstraint("connection_id", "remote_id"),)

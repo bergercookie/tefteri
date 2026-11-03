@@ -19,9 +19,7 @@ async def test_daily_note_get_or_create_and_append(api: AsyncClient, world: Fake
     assert "met Sam" in next(iter(world.notes["default"].notes.values())).body
 
 
-async def test_append_links_note_to_task_and_task_notes_endpoint(
-    api: AsyncClient, world: FakeWorld
-) -> None:
+async def test_append_links_note_to_task(api: AsyncClient, world: FakeWorld) -> None:
     ids = await connect_all(api)
     await api.post(f"{V1}/sync")
     task = (
@@ -32,14 +30,8 @@ async def test_append_links_note_to_task_and_task_notes_endpoint(
             f"{V1}/notes/daily/2026-11-02/append", json={"text": "about T", "task_id": task["id"]}
         )
     ).json()
-    # linking the same note again is idempotent
-    again = await api.post(f"{V1}/tasks/{task['id']}/notes", json={"note_id": note["id"]})
-    assert again.status_code == 201 and again.json()["id"] == note["id"]
-    created = await api.post(
-        f"{V1}/tasks/{task['id']}/notes", json={"title": "Steps", "body": "1. do it"}
-    )
-    assert created.json()["kind"] == "custom"
-    assert len(world.notes["default"].notes) == 2
+    assert note["kind"] == "daily"
+    assert len(world.notes["default"].notes) == 1
 
 
 async def test_daily_without_notes_connection_and_unreachable(
