@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.connection import Connection, SourceContainer
-from tefteri.domain.enums import Context
+from tefteri.domain.enums import DefaultContext
 
 
 class ContextFilter(StrEnum):
@@ -36,18 +36,19 @@ class ContextMaps:
 
     def effective(
         self, item_context: str | None, container_id: uuid.UUID | None, connection_id: uuid.UUID
-    ) -> tuple[Context, str]:
+    ) -> tuple[DefaultContext, str]:
         """Return ``(context, source)``: item override, else container, else connection default.
 
         ``source`` is ``item``, ``container`` or ``connection``. ``connection`` means the item
-        has no label of its own (the UI shows the unclassified marker).
+        has no label of its own (the UI shows the unclassified marker). Only a connection
+        default can be ``both``.
         """
         if item_context:
-            return Context(item_context), "item"
+            return DefaultContext(item_context), "item"
         container = self.containers.get(container_id) if container_id else None
         if container:
-            return Context(container), "container"
-        return Context(self.connections[connection_id]), "connection"
+            return DefaultContext(container), "container"
+        return DefaultContext(self.connections[connection_id]), "connection"
 
     def matches(
         self,
@@ -59,7 +60,8 @@ class ContextMaps:
         """Return whether an item passes the filter. ``all`` passes everything."""
         if wanted is ContextFilter.ALL:
             return True
-        return self.effective(item_context, container_id, connection_id)[0].value == wanted.value
+        context = self.effective(item_context, container_id, connection_id)[0]
+        return context is DefaultContext.BOTH or context.value == wanted.value
 
 
 async def load_maps(db: AsyncSession, user_id: uuid.UUID) -> ContextMaps:

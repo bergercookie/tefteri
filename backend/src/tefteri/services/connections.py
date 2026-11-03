@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.connection import Connection
 from tefteri.db.models.user import User
 from tefteri.db.repositories.connections import ConnectionRepository
-from tefteri.domain.enums import ConnectionKind, ConnectionStatus, Context
+from tefteri.domain.enums import ConnectionKind, ConnectionStatus, DefaultContext
 from tefteri.domain.ports import Backend
 from tefteri.security.crypto import TokenCipher
 
@@ -104,7 +104,7 @@ class ConnectionService:
         *,
         provider: str,
         display_name: str,
-        default_context: Context,
+        default_context: DefaultContext,
         settings: dict[str, Any],
         credentials: dict[str, Any],
     ) -> Connection:
@@ -127,7 +127,7 @@ class ConnectionService:
         connection: Connection,
         *,
         display_name: str | None = None,
-        default_context: Context | None = None,
+        default_context: DefaultContext | None = None,
         settings: dict[str, Any] | None = None,
         credentials: dict[str, Any] | None = None,
     ) -> Connection:

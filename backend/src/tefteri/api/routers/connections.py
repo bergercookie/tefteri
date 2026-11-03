@@ -1,17 +1,19 @@
 """Connection management and Google OAuth endpoints."""
 
+import html
 import uuid
 from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db, SettingsDep
 from tefteri.api.errors import ApiError
 from tefteri.db.models.connection import Connection, SourceContainer
-from tefteri.domain.enums import Context
+from tefteri.domain.enums import Context, DefaultContext
 from tefteri.services.connections import ConnectionService, UnknownProvider
 from tefteri.services.google_oauth import GoogleOAuth, InvalidState
 
@@ -39,7 +41,7 @@ class ConnectionIn(BaseModel):
 
     provider: str
     display_name: str = Field(min_length=1, max_length=150)
-    default_context: Context = Context.LIFE
+    default_context: DefaultContext = DefaultContext.LIFE
     settings: dict[str, Any] = Field(default_factory=dict)
     credentials: dict[str, Any] = Field(default_factory=dict)
 
@@ -48,7 +50,7 @@ class ConnectionPatch(BaseModel):
     """Partial connection update."""
 
     display_name: str | None = Field(default=None, min_length=1, max_length=150)
-    default_context: Context | None = None
+    default_context: DefaultContext | None = None
     settings: dict[str, Any] | None = None
     credentials: dict[str, Any] | None = None
 
@@ -132,7 +134,7 @@ async def google_authorize(
     user: CurrentUser,
     settings: SettingsDep,
     display_name: str = "Google Calendar",
-    default_context: Context = Context.LIFE,
+    default_context: DefaultContext = DefaultContext.LIFE,
 ) -> dict[str, str]:
     """Return the Google consent URL for adding one more Google account."""
     oauth: GoogleOAuth | None = request.app.state.google_oauth
@@ -145,7 +147,12 @@ async def google_authorize(
     return {"url": url}
 
 
-@router.get("/google/callback", name="google_callback")
+@router.get(
+    "/google/callback",
+    name="google_callback",
+    response_class=HTMLResponse,
+    responses={303: {"description": "Back to the web client's Connections screen"}},
+)
 async def google_callback(
     request: Request,
     db: Db,
@@ -153,8 +160,12 @@ async def google_callback(
     code: str,
     state: str,
     service: ConnectionService = Service,
-) -> ConnectionOut:
-    """Finish Google sign-in. The signed ``state`` identifies the user."""
+) -> Response:
+    """Finish Google sign-in. The signed ``state`` identifies the user.
+
+    Google sends the user's browser here, so the answer is a page, not JSON: the web
+    client's Connections screen when this server serves it, else a short confirmation.
+    """
     oauth: GoogleOAuth | None = request.app.state.google_oauth
     if oauth is None:
         raise ApiError(503, "google_not_configured", "Google sign-in is not configured")
@@ -168,11 +179,18 @@ async def google_callback(
         uuid.UUID(data["user_id"]),
         provider="google_calendar",
         display_name=data["name"],
-        default_context=Context(data["context"]),
+        default_context=DefaultContext(data["context"]),
         settings={},
         credentials={"refresh_token": refresh_token},
     )
-    return ConnectionOut.of(connection)
+    if settings.web_dir is not None:
+        base = (settings.public_url or "").rstrip("/")
+        return RedirectResponse(f"{base}/#/settings", status_code=303)
+    name = html.escape(connection.display_name)
+    return HTMLResponse(
+        f"<!doctype html><title>tefteri</title><p>{name} is connected. "
+        "You can close this tab and go back to tefteri.</p>"
+    )
 
 
 @router.patch("/{connection_id}")

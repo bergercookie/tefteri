@@ -1,5 +1,6 @@
 """Connections and sync endpoints with fake backends."""
 
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -117,7 +118,12 @@ async def test_google_oauth_flow(make_settings, world: FakeWorld) -> None:  # ty
                     f"{V1}/connections/google/callback",
                     params={"code": "c", "state": query["state"][0]},
                 )
-            assert cb.status_code == 200 and cb.json()["provider"] == "google_calendar"
+            # Google sends the browser here, so the answer is a page, not JSON.
+            assert cb.status_code == 200 and "Work is connected" in cb.text
+            listed = (await c.get(f"{V1}/connections")).json()
+            assert [(x["provider"], x["display_name"]) for x in listed] == [
+                ("google_calendar", "Work")
+            ]
             bad = await c.get(
                 f"{V1}/connections/google/callback", params={"code": "c", "state": "forged"}
             )
@@ -145,3 +151,27 @@ async def test_google_redirect_uses_public_url_when_set(make_settings, world: Fa
         url = (await c.get(f"{V1}/connections/google/authorize")).json()["url"]
         redirect = parse_qs(urlparse(url).query)["redirect_uri"][0]
         assert redirect == "https://tefteri.example.org/api/v1/connections/google/callback"
+
+
+async def test_google_callback_returns_to_the_web_client(  # type: ignore[no-untyped-def]
+    make_settings, world: FakeWorld, tmp_path: Path
+) -> None:
+    (tmp_path / "index.html").write_text("<html></html>")
+    settings = make_settings(google_client_id="gid", google_client_secret="gs", web_dir=tmp_path)
+    app = create_app(settings, registry=world.registry())
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        login = await c.post(
+            f"{V1}/auth/login", json={"username": "admin", "password": "correct horse battery"}
+        )
+        c.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        url = (await c.get(f"{V1}/connections/google/authorize")).json()["url"]
+        state = parse_qs(urlparse(url).query)["state"][0]
+        with respx.mock:
+            respx.post("https://oauth2.googleapis.com/token").respond(json={"refresh_token": "r"})
+            cb = await c.get(
+                f"{V1}/connections/google/callback", params={"code": "c", "state": state}
+            )
+        assert cb.status_code == 303 and cb.headers["location"] == "/#/settings"

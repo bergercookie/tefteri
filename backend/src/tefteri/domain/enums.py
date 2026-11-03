@@ -10,6 +10,14 @@ class Context(StrEnum):
     LIFE = "life"
 
 
+class DefaultContext(StrEnum):
+    """Context of a connection's unlabelled items: one context, or both."""
+
+    WORK = "work"
+    LIFE = "life"
+    BOTH = "both"
+
+
 class ConnectionKind(StrEnum):
     """Kind of external application a connection talks to."""
 
