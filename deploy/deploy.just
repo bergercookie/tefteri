@@ -1,5 +1,9 @@
 # Container deployment recipes. Call as `just deploy::<recipe>`.
 
+# List the recipes of this module.
+default:
+    @just --list deploy
+
 # Builds the web client first; the image serves it at /.
 build-image:
     just frontend::build-web

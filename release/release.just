@@ -2,6 +2,10 @@
 # The GitHub workflows release.yml and nightly.yml call only these recipes.
 # Recipes run in this directory, so paths to the repository root start with `..`.
 
+# List the recipes of this module.
+default:
+    @just --list release
+
 # --- Tagged releases ---
 
 # Build the server image for the release tag at HEAD; push it as X.Y.Z and latest.

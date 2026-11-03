@@ -1,6 +1,10 @@
 # Client packaging recipes. Call as `just packaging::<recipe>`.
 # TEFTERI_VERSION (from scripts/version.sh) sets the package version. Output goes to dist/.
 
+# List the recipes of this module.
+default:
+    @just --list packaging
+
 deb:
     just frontend::build-linux
     bash deb/build.sh
