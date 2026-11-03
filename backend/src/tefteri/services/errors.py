@@ -3,7 +3,13 @@
 from collections.abc import Awaitable
 
 from tefteri.db.models.connection import Connection
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, NotSupported, RemoteConflict
+from tefteri.domain.errors import (
+    AuthExpired,
+    BackendUnavailable,
+    NotSaved,
+    NotSupported,
+    RemoteConflict,
+)
 
 
 class BackendProblem(Exception):
@@ -44,6 +50,13 @@ async def guard[T](connection: Connection, call: Awaitable[T]) -> T:
     except NotSupported as exc:
         raise BackendProblem(
             "not_supported", name, f"{name} does not support this action ({exc.capability.value})."
+        ) from exc
+    except NotSaved as exc:
+        raise BackendProblem(
+            "not_saved",
+            name,
+            f"{name} answered, but it did not keep the change. Nothing was changed in tefteri. "
+            f"({exc})",
         ) from exc
     except RemoteConflict as exc:
         raise BackendProblem(

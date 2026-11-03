@@ -24,5 +24,13 @@ class NotSupported(BackendError):
         self.capability = capability
 
 
+class NotSaved(BackendError):
+    """The application accepted a change but did not keep it.
+
+    The adapter read the item back and found the old value. Tefteri shows this at once, so that
+    the user does not see a change that the next sync would take back.
+    """
+
+
 class RemoteConflict(BackendError):
     """The remote item changed since the cached version was read."""

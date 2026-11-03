@@ -8,6 +8,7 @@ from tefteri.services.errors import BackendProblem, Invalid, NotFound
 _STATUS = {
     "backend_unavailable": 502,
     "auth_expired": 502,
+    "not_saved": 502,
     "not_supported": 409,
     "remote_conflict": 409,
 }

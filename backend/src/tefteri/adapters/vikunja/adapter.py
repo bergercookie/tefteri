@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 from datetime import UTC, datetime, time
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -18,7 +19,9 @@ from tefteri.domain.entities import (
     TaskPatch,
 )
 from tefteri.domain.enums import Capability, ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import AuthExpired, BackendUnavailable, NotSaved, RemoteConflict
+
+logger = logging.getLogger(__name__)
 
 _ZERO_DATE = "0001-01-01T00:00:00Z"
 _PAGE_SIZE = 50
@@ -191,4 +194,17 @@ class VikunjaTaskBackend:
         if due_at is not None and all_day:
             local = due_at.astimezone(self._tz)
             due_at = datetime.combine(local.date(), time.min, tzinfo=self._tz)
-        return await self._update(remote_id, expected_version, {"due_date": _fmt(due_at)})
+        task = await self._update(remote_id, expected_version, {"due_date": _fmt(due_at)})
+        # The task was read back. If Vikunja kept another date, tell the user now: a
+        # change that the next sync takes back is worse than a message.
+        if task.due_at != due_at:
+            logger.warning(
+                "Vikunja kept due_date %s for task %s after a write of %s",
+                task.due_at,
+                remote_id,
+                due_at,
+            )
+            raise NotSaved(
+                f"wrote the due date {due_at}, but Vikunja has {task.due_at} for task {remote_id}"
+            )
+        return task
