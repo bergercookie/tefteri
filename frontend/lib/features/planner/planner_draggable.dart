@@ -4,6 +4,8 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../theme/theme.dart';
+
 /// Wraps [child] so that it can be dragged with [data].
 ///
 /// Touch screens need a long press so that a swipe still scrolls. Mouse and
@@ -37,12 +39,17 @@ class PlannerDraggable<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.tefteri;
     final feedback = Material(
       elevation: 4,
-      borderRadius: BorderRadius.circular(6),
+      color: colors.taskContainer,
+      borderRadius: BorderRadius.circular(Corner.md),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        child: Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge),
       ),
     );
     // A drag on this widget moves the task. It must not also start a text

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_error.dart';
 import '../../core/context_filter.dart';
 import '../../core/planning_models.dart';
+import '../../theme/theme.dart';
 import '../calendar/calendar_providers.dart';
 import 'details_dialogs.dart';
 import 'planner_draggable.dart';
@@ -115,7 +116,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
         _nav(),
         Expanded(
           child: items.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Loading(),
             error: (e, _) => Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -139,7 +140,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
   /// Today button, arrows and the label of the week. On a narrow screen the
   /// label can shrink, so the row never overflows.
   Widget _nav() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 4),
         child: Row(
           children: [
             OutlinedButton(
@@ -159,11 +160,13 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
               icon: const Icon(Icons.chevron_right),
               onPressed: () => widget.onShiftWeek(1),
             ),
+            const SizedBox(width: Space.sm),
             Expanded(
               child: Text(
                 'Week of ${dateKey(widget.weekStart)}',
                 key: const Key('week-label'),
                 overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
           ],
@@ -178,12 +181,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
           children: [
             const SizedBox(width: _gutterWidth),
             for (final d in days)
-              Expanded(
-                child: Center(
-                  child: Text('${_weekdays[d.weekday - 1]} ${d.day}',
-                      style: Theme.of(context).textTheme.labelMedium),
-                ),
-              ),
+              Expanded(child: _DayHeader(day: d, today: _sameDay(d, _now))),
           ],
         ),
         IntrinsicHeight(
@@ -194,7 +192,10 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                 width: _gutterWidth,
                 child: Center(
                     child: Text('all day',
-                        style: Theme.of(context).textTheme.labelSmall)),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant))),
               ),
               for (final d in days)
                 Expanded(
@@ -203,6 +204,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
             ],
           ),
         ),
+        const SizedBox(height: Space.xs),
         const Divider(height: 1),
         Expanded(
           child: SingleChildScrollView(
@@ -221,7 +223,13 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                           child: Align(
                             alignment: Alignment.topCenter,
                             child: Text('${h.toString().padLeft(2, '0')}:00',
-                                style: Theme.of(context).textTheme.labelSmall),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant)),
                           ),
                         ),
                     ],
@@ -297,8 +305,17 @@ String? _taskIdOf(Object data) {
 }
 
 Color _blockColor(BuildContext context, CalendarItem i) {
-  final scheme = Theme.of(context).colorScheme;
-  return i.isTask ? scheme.tertiaryContainer : scheme.primaryContainer;
+  return i.isTask
+      ? context.tefteri.taskContainer
+      : context.tefteri.eventContainer;
+}
+
+/// The strong color on the left edge of a block: tasks in terracotta, events
+/// in ink blue, finished tasks in sage.
+Color _accentColor(BuildContext context, CalendarItem i) {
+  final c = context.tefteri;
+  if (!i.isTask) return c.event;
+  return i.isDone ? c.done : c.task;
 }
 
 class _AllDayChip extends StatelessWidget {
@@ -314,12 +331,16 @@ class _AllDayChip extends StatelessWidget {
         child: Container(
           key: Key('allday-${item.type}-${item.id}'),
           margin: const EdgeInsets.symmetric(vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          color: _blockColor(context, item),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: _blockColor(context, item),
+            borderRadius: BorderRadius.circular(Corner.sm),
+          ),
           child: Row(
             children: [
-              Icon(item.isTask ? Icons.task_alt : Icons.event, size: 12),
-              const SizedBox(width: 2),
+              Container(
+                  width: 3, height: 22, color: _accentColor(context, item)),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(item.title,
                     maxLines: 1,
@@ -383,12 +404,16 @@ class _DayColumn extends ConsumerWidget {
         key: boxKey,
         height: hourHeight * 24,
         decoration: BoxDecoration(
-          color: candidates.isEmpty
-              ? null
-              : Theme.of(context)
+          color: candidates.isNotEmpty
+              ? Theme.of(context)
                   .colorScheme
                   .primaryContainer
-                  .withValues(alpha: 0.3),
+                  .withValues(alpha: 0.5)
+              : now != null
+                  ? context.tefteri.today
+                  : day.weekday >= DateTime.saturday
+                      ? context.tefteri.weekend
+                      : null,
           border:
               Border(left: BorderSide(color: Theme.of(context).dividerColor)),
         ),
@@ -397,17 +422,27 @@ class _DayColumn extends ConsumerWidget {
             key: Key('day-column-${dateKey(day)}'),
             clipBehavior: Clip.hardEdge,
             children: [
-              for (var h = 1; h < 24; h++)
+              for (var h = 0; h < 24; h++) ...[
+                if (h > 0)
+                  Positioned(
+                    top: h * hourHeight,
+                    left: 0,
+                    right: 0,
+                    child: Divider(height: 1, color: context.tefteri.rule),
+                  ),
+                // a fainter line at the half hour
                 Positioned(
-                  top: h * hourHeight,
+                  top: h * hourHeight + hourHeight / 2,
                   left: 0,
                   right: 0,
-                  child:
-                      Divider(height: 1, color: Theme.of(context).dividerColor),
+                  child: Divider(
+                      height: 1,
+                      color: context.tefteri.rule.withValues(alpha: 0.4)),
                 ),
+              ],
               for (var n = 0; n < items.length; n++)
                 _block(context, items[n], spans[n], layout[n], c.maxWidth),
-              if (now != null) _nowLine(now!),
+              if (now != null) _nowLine(context, now!),
             ],
           ),
         ),
@@ -417,9 +452,9 @@ class _DayColumn extends ConsumerWidget {
 
   /// The red dot and line at the current time, as in Google Calendar. It does
   /// not take pointer events, so a drop still reaches the column.
-  Widget _nowLine(DateTime now) {
+  Widget _nowLine(BuildContext context, DateTime now) {
     const dot = 10.0;
-    const color = Color(0xFFD93025);
+    final color = context.tefteri.now;
     return Positioned(
       key: const Key('now-indicator'),
       top: minutesToOffset(now.hour * 60 + now.minute) - dot / 2,
@@ -431,10 +466,9 @@ class _DayColumn extends ConsumerWidget {
             Container(
               width: dot,
               height: dot,
-              decoration:
-                  const BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const Expanded(
+            Expanded(
                 child: SizedBox(height: 2, child: ColoredBox(color: color))),
           ],
         ),
@@ -462,40 +496,64 @@ class _DayColumn extends ConsumerWidget {
         child: Container(
           key: Key('block-${i.type}-${i.id}'),
           margin: const EdgeInsets.all(1),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: _blockColor(context, i),
-            borderRadius: BorderRadius.circular(4),
-            border: i.isTask
-                ? Border.all(color: Theme.of(context).colorScheme.tertiary)
-                : null,
+            borderRadius: BorderRadius.circular(Corner.sm),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // A strong edge on the left and a tint: terracotta for tasks, ink
+          // blue for events, sage once a task is done.
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Icon(i.isTask ? Icons.task_alt : Icons.event, size: 12),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    child: Text(i.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            decoration:
-                                i.isDone ? TextDecoration.lineThrough : null)),
-                  ),
-                  if (i.clippedStart)
-                    Tooltip(
-                      message: 'Continues from previous day',
-                      child: Icon(Icons.subdirectory_arrow_right,
-                          key: Key('clipped-${i.id}'), size: 12),
-                    ),
-                ],
+              Container(
+                key: Key('block-accent-${i.type}-${i.id}'),
+                width: 3,
+                color: _accentColor(context, i),
               ),
-              if (height >= 40)
-                Text(time,
-                    maxLines: 1, style: Theme.of(context).textTheme.labelSmall),
+              Expanded(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(i.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                        decoration: i.isDone
+                                            ? TextDecoration.lineThrough
+                                            : null)),
+                          ),
+                          if (i.clippedStart)
+                            Tooltip(
+                              message: 'Continues from previous day',
+                              child: Icon(Icons.subdirectory_arrow_right,
+                                  key: Key('clipped-${i.id}'), size: 12),
+                            ),
+                        ],
+                      ),
+                      if (height >= 40)
+                        Text(time,
+                            maxLines: 1,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ));
@@ -508,6 +566,49 @@ class _DayColumn extends ConsumerWidget {
           ? PlannerDraggable<CalendarItem>(
               data: i, label: i.title, dimmed: isPending, child: body)
           : body,
+    );
+  }
+}
+
+/// Weekday and date of one column. Today's date sits in a filled circle.
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.day, required this.today});
+
+  final DateTime day;
+  final bool today;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_weekdays[day.weekday - 1],
+                style: text.labelSmall?.copyWith(
+                    color: today ? scheme.primary : scheme.onSurfaceVariant)),
+            const SizedBox(width: 4),
+            Container(
+              constraints: const BoxConstraints(minWidth: 24),
+              height: 24,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: today
+                  ? BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(Corner.pill))
+                  : null,
+              child: Text('${day.day}',
+                  style: text.titleSmall?.copyWith(
+                      color: today ? scheme.onPrimary : scheme.onSurface)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

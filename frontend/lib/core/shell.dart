@@ -1,4 +1,5 @@
-/// Common scaffold with the context switch and sync button.
+/// Common scaffold: navigation, header with the context switch and the sync
+/// button.
 library;
 
 import 'package:flutter/material.dart';
@@ -6,12 +7,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/settings/sync_controller.dart';
+import '../theme/theme.dart';
 import 'auth_controller.dart';
 import 'context_filter.dart';
 import 'shortcuts/app_shortcuts.dart';
 import 'shortcuts/keymap.dart';
 
-/// App scaffold shared by all views.
+/// Window width from which the navigation is a permanent rail on the left
+/// instead of a drawer behind a menu button.
+const double railMinWidth = 960;
+
+/// Window width from which the rail shows labels and shortcut keys beside the
+/// icons instead of below them.
+const double railExtendedMinWidth = 1180;
+
+const double _railCompactWidth = 76;
+const double _railExtendedWidth = 216;
+
+/// Narrower than this, the context switch moves to its own row.
+const double _headerWrapWidth = 720;
+
+/// The icon of each view, all in the same outlined style.
+const _viewIcons = <String, IconData>{
+  '/': Icons.view_column_outlined,
+  '/daily': Icons.today_outlined,
+  '/week': Icons.view_week_outlined,
+  '/month': Icons.calendar_view_month_outlined,
+  '/year': Icons.calendar_month_outlined,
+  '/goals': Icons.flag_outlined,
+  '/review': Icons.auto_stories_outlined,
+  '/conflicts': Icons.call_split_outlined,
+  '/settings': Icons.tune_outlined,
+};
+
+/// Router location of the current page, or '' without a router (tests).
+String _currentPath(BuildContext context) {
+  final router = GoRouter.maybeOf(context);
+  return router?.routeInformationProvider.value.uri.path ?? '';
+}
+
+bool _isCurrent(String current, String path) => path == '/'
+    ? current == '/'
+    : current == path || current.startsWith('$path/');
+
+/// App scaffold shared by all views: a navigation rail (or a drawer on narrow
+/// windows), a header with the title and the context switch, and the page.
 class AppShell extends ConsumerWidget {
   /// Creates a shell showing [body] under [title].
   const AppShell({
@@ -21,12 +61,11 @@ class AppShell extends ConsumerWidget {
     super.key,
   });
 
-  /// Title shown in the app bar.
+  /// Title shown in the header.
   final String title;
 
-  /// Router location of the parent page. When set, the app bar shows a back
-  /// button next to the menu button (used by the pages under Settings and
-  /// Admin settings).
+  /// Router location of the parent page. When set, the header shows a back
+  /// button (used by the pages under Settings and Admin settings).
   final String? backTo;
 
   /// View content.
@@ -34,9 +73,6 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filter = ref.watch(contextFilterProvider);
-    final sync = ref.watch(syncControllerProvider);
-    final isAdmin = ref.watch(authControllerProvider).isAdmin;
     ref.listen<SyncState>(syncControllerProvider, (prev, next) {
       if (prev == null || !prev.busy || next.busy || !next.announce) return;
       final text = next.error ??
@@ -46,99 +82,297 @@ class AppShell extends ConsumerWidget {
                   'Open Connections for details.');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     });
-    return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            for (final v in appViews)
-              ListTile(
-                key: Key('nav-${v.path}'),
-                title: Text(v.label),
-                trailing: v.key == null ? null : Text(v.key!.toUpperCase()),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  context.go(v.path);
-                },
+    return LayoutBuilder(builder: (context, c) {
+      final rail = c.maxWidth >= railMinWidth;
+      final extended = c.maxWidth >= railExtendedMinWidth;
+      final railWidth = extended ? _railExtendedWidth : _railCompactWidth;
+      return Scaffold(
+        drawer: rail
+            ? null
+            : const Drawer(child: SafeArea(child: _NavPanel(extended: true))),
+        body: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (rail) ...[
+                SizedBox(
+                  width: railWidth,
+                  child: ColoredBox(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: _NavPanel(extended: extended, onRail: true),
+                  ),
+                ),
+                const VerticalDivider(width: 1),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Header(
+                      title: title,
+                      backTo: backTo,
+                      showMenu: !rail,
+                      wrap: c.maxWidth - (rail ? railWidth : 0) <
+                          _headerWrapWidth,
+                    ),
+                    const Divider(height: 1),
+                    Expanded(child: body),
+                  ],
+                ),
               ),
-            if (isAdmin)
-              ListTile(
-                key: const Key('nav-/admin'),
-                title: const Text('Admin settings'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  context.go('/admin');
-                },
-              ),
-            const Divider(),
-            ListTile(
-              key: const Key('sign-out'),
-              leading: const Icon(Icons.logout),
-              title: const Text('Sign out'),
-              onTap: () {
-                Navigator.of(context).pop();
-                ref.read(authControllerProvider.notifier).logout();
-              },
-            ),
-          ],
-        ),
-      ),
-      appBar: AppBar(
-        leadingWidth: backTo == null ? null : 104,
-        leading: backTo == null ? null : _BackAndMenu(backTo: backTo!),
-        title: Text(title),
-        actions: [
-          SegmentedButton<ContextFilter>(
-            segments: [
-              for (final f in ContextFilter.values)
-                ButtonSegment(value: f, label: Text(f.name)),
             ],
-            selected: {filter},
-            onSelectionChanged: (s) =>
-                ref.read(contextFilterProvider.notifier).state = s.first,
           ),
-          IconButton(
-            key: const Key('shortcuts-button'),
-            tooltip: 'Keyboard shortcuts (?)',
-            icon: const Icon(Icons.keyboard_outlined),
-            onPressed: () => showShortcutHelp(context),
+        ),
+      );
+    });
+  }
+}
+
+/// Title, context switch and the header buttons.
+class _Header extends ConsumerWidget {
+  const _Header({
+    required this.title,
+    required this.backTo,
+    required this.showMenu,
+    required this.wrap,
+  });
+
+  final String title;
+  final String? backTo;
+  final bool showMenu;
+  final bool wrap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(contextFilterProvider);
+    final sync = ref.watch(syncControllerProvider);
+    final switcher = SegmentedButton<ContextFilter>(
+      showSelectedIcon: false,
+      segments: [
+        for (final f in ContextFilter.values)
+          ButtonSegment(value: f, label: Text(f.name)),
+      ],
+      selected: {filter},
+      onSelectionChanged: (s) =>
+          ref.read(contextFilterProvider.notifier).state = s.first,
+    );
+    return Padding(
+      padding: const EdgeInsets.all(Space.sm),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              if (showMenu)
+                Builder(
+                  builder: (context) => IconButton(
+                    tooltip:
+                        MaterialLocalizations.of(context).openAppDrawerTooltip,
+                    icon: const Icon(Icons.menu),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                ),
+              if (backTo != null)
+                IconButton(
+                  key: const Key('back-button'),
+                  tooltip: 'Back',
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go(backTo!),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      left: showMenu || backTo != null ? Space.xs : Space.md),
+                  child: Text(title,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall),
+                ),
+              ),
+              if (!wrap) ...[switcher, const SizedBox(width: Space.sm)],
+              IconButton(
+                key: const Key('shortcuts-button'),
+                tooltip: 'Keyboard shortcuts (?)',
+                icon: const Icon(Icons.keyboard_outlined),
+                onPressed: () => showShortcutHelp(context),
+              ),
+              IconButton(
+                key: const Key('sync-button'),
+                tooltip: 'Sync (F5)',
+                icon: const Icon(Icons.sync),
+                onPressed: sync.busy
+                    ? null
+                    : () => ref.read(syncControllerProvider.notifier).syncAll(),
+              ),
+            ],
           ),
-          IconButton(
-            key: const Key('sync-button'),
-            tooltip: 'Sync (F5)',
-            icon: const Icon(Icons.sync),
-            onPressed: sync.busy
-                ? null
-                : () => ref.read(syncControllerProvider.notifier).syncAll(),
-          ),
+          if (wrap)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Align(alignment: Alignment.centerLeft, child: switcher),
+            ),
         ],
       ),
-      body: body,
     );
   }
 }
 
-/// The menu button and a back button side by side, for pages below Settings
-/// and Admin settings.
-class _BackAndMenu extends StatelessWidget {
-  const _BackAndMenu({required this.backTo});
+/// The list of views, Admin settings and Sign out. Used by the rail (compact
+/// or [extended]) and, always extended, by the drawer.
+class _NavPanel extends ConsumerWidget {
+  const _NavPanel({required this.extended, this.onRail = false});
 
-  final String backTo;
+  final bool extended;
+
+  /// True in the permanent rail; false in the drawer, which closes itself
+  /// before it navigates.
+  final bool onRail;
 
   @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(authControllerProvider).isAdmin;
+    final current = _currentPath(context);
+
+    Widget item(String key, String label, IconData icon, String path,
+            {String? shortcut}) =>
+        _NavItem(
+          key: Key(key),
+          label: label,
+          icon: icon,
+          shortcut: shortcut,
+          selected: _isCurrent(current, path),
+          extended: extended,
+          onTap: () {
+            if (!onRail) Navigator.of(context).pop();
+            context.go(path);
+          },
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              extended ? Space.lg : 0, Space.lg, Space.lg, Space.lg),
+          child: Align(
+            alignment: extended ? Alignment.centerLeft : Alignment.center,
+            child: TefteriWordmark(size: 26, showName: extended),
           ),
-          IconButton(
-            key: const Key('back-button'),
-            tooltip: 'Back',
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go(backTo),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+            children: [
+              for (final v in appViews)
+                item('nav-${v.path}', v.label,
+                    _viewIcons[v.path] ?? Icons.circle_outlined, v.path,
+                    shortcut: v.key?.toUpperCase()),
+              if (isAdmin)
+                item('nav-/admin', 'Admin settings',
+                    Icons.admin_panel_settings_outlined, '/admin'),
+            ],
           ),
-        ],
-      );
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(Space.sm),
+          child: _NavItem(
+            key: const Key('sign-out'),
+            label: 'Sign out',
+            icon: Icons.logout,
+            selected: false,
+            extended: extended,
+            onTap: () {
+              if (!onRail) Navigator.of(context).pop();
+              ref.read(authControllerProvider.notifier).logout();
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One entry of the navigation. The current view has a filled background and
+/// a bar on its left edge, like a tab in a notebook.
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.extended,
+    required this.onTap,
+    this.shortcut,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool extended;
+  final VoidCallback onTap;
+  final String? shortcut;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final fg = selected ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
+    final style = (extended ? text.bodyMedium : text.labelSmall)?.copyWith(
+      color: fg,
+      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+    );
+    final content = extended
+        ? Row(
+            children: [
+              Icon(icon, size: 20, color: fg),
+              const SizedBox(width: Space.md),
+              Expanded(child: Text(label, style: style)),
+              if (shortcut != null)
+                Text(shortcut!,
+                    style: text.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.7))),
+            ],
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: fg),
+              const SizedBox(height: 2),
+              Text(label,
+                  style: style,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center),
+            ],
+          );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Material(
+        color: selected ? scheme.primaryContainer : Colors.transparent,
+        borderRadius: BorderRadius.circular(Corner.md),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          hoverColor: scheme.primaryContainer.withValues(alpha: 0.45),
+          child: Stack(
+            children: [
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 6,
+                  bottom: 6,
+                  child: Container(width: 3, color: scheme.primary),
+                ),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                    horizontal: extended ? Space.md : Space.xs,
+                    vertical: extended ? Space.sm + 2 : Space.sm),
+                child: content,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

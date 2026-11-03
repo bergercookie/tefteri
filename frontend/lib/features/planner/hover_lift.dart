@@ -3,6 +3,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../theme/theme.dart';
+
 /// Scale of a row while the pointer is over it.
 const double hoverScale = 1.015;
 
@@ -56,14 +58,14 @@ class _HoverLiftState extends State<HoverLift> {
             color: _hover
                 ? scheme.primaryContainer.withValues(alpha: 0.35)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(Corner.md),
             border: Border.all(
               color: _hover ? scheme.primary : Colors.transparent,
             ),
             boxShadow: [
               if (_hover)
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
+                  color: scheme.shadow.withValues(alpha: 0.18),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),

@@ -9,6 +9,7 @@ import '../../core/api_error.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 
 /// Loads open conflicts (`GET /conflicts`). The API has no context filter
 /// for conflicts, so all of them are shown.
@@ -54,7 +55,7 @@ class _ConflictsScreenState extends ConsumerState<ConflictsScreen> {
                 onDismiss: () => setState(() => _error = null)),
           Expanded(
             child: conflicts.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

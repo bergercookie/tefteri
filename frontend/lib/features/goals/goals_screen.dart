@@ -10,6 +10,7 @@ import '../../core/api_error.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import '../settings/connection_models.dart';
 import '../settings/sync_controller.dart';
 import 'breakdown_dialog.dart';
@@ -255,7 +256,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
           ),
           Expanded(
             child: goals.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -273,8 +274,10 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 padding: const EdgeInsets.all(8),
                 children: [
                   if (list.isEmpty)
-                    const Text('No goals for this period.',
-                        key: Key('no-goals')),
+                    const EmptyState(
+                        icon: Icons.flag_outlined,
+                        message: 'No goals for this period.',
+                        messageKey: Key('no-goals')),
                   for (final g in list) _node(g, 0),
                 ],
               ),

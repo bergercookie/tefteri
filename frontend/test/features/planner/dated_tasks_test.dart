@@ -67,12 +67,16 @@ void main() {
       calItem('task', 't1', 'Focus', start: DateTime(2026, 11, 4, 12)),
     ]);
     await pumpPlanner(tester, api);
-    BoxDecoration deco(String key) =>
+    Color tint(String key) =>
         (tester.widget<Container>(find.byKey(Key(key))).decoration!
-            as BoxDecoration);
-    expect(deco('block-entry-e1').color, isNot(deco('block-task-t1').color));
-    expect(deco('block-task-t1').border, isNotNull); // tasks have an outline
-    expect(deco('block-entry-e1').border, isNull);
+                as BoxDecoration)
+            .color!;
+    Color accent(String key) =>
+        tester.widget<Container>(find.byKey(Key(key))).color!;
+    expect(tint('block-entry-e1'), isNot(tint('block-task-t1')));
+    // a strong colored edge on the left of every block
+    expect(
+        accent('block-accent-entry-e1'), isNot(accent('block-accent-task-t1')));
   });
 
   testWidgets('overlapping items sit side by side', (tester) async {

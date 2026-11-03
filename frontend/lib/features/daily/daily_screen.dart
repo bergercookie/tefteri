@@ -10,6 +10,7 @@ import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import '../settings/connection_models.dart';
 import '../settings/sync_controller.dart';
 import 'daily_providers.dart';
@@ -120,7 +121,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
           const Divider(height: 1),
           Expanded(
             child: view.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

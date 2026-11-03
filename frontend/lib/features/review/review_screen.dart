@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import '../goals/periods.dart';
 import 'review_api.dart';
 import 'review_models.dart';
@@ -92,7 +93,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 onDismiss: () => setState(() => _error = null)),
           Expanded(
             child: review.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -212,7 +213,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         dense: true,
         leading: Icon(
           i.completed ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: i.completed ? Colors.green : null,
+          color: i.completed ? context.tefteri.done : null,
           semanticLabel: i.completed ? 'Done' : 'Not done',
         ),
         title: Text(i.title),

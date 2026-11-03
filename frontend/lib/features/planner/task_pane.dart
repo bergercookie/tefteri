@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
+import '../../theme/theme.dart';
 import 'details_dialogs.dart';
 import 'hover_lift.dart';
 import 'planner_draggable.dart';
@@ -107,10 +108,8 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
             onChanged: _onChanged,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              isDense: true,
               hintText: 'Search tasks',
               prefixIcon: const Icon(Icons.search),
-              border: const OutlineInputBorder(),
               suffixIcon: _controller.text.isEmpty
                   ? null
                   : IconButton(
@@ -155,7 +154,7 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
                 ),
               ),
               child: tasks.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const Loading(),
                 error: (e, _) => Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -185,58 +184,103 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
     );
   }
 
-  Widget _empty(bool searching, String query) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              searching
-                  ? 'No tasks match "${query.trim()}".'
-                  : 'No tasks here.',
-              key: const Key('task-empty'),
-            ),
-            if (searching)
-              TextButton(
+  Widget _empty(bool searching, String query) => EmptyState(
+        messageKey: const Key('task-empty'),
+        icon: searching ? Icons.search_off_outlined : Icons.edit_note_outlined,
+        message:
+            searching ? 'No tasks match "${query.trim()}".' : 'No tasks here.',
+        action: searching
+            ? TextButton(
                 key: const Key('task-search-clear-empty'),
                 onPressed: _clear,
                 child: const Text('Clear search'),
-              ),
-          ],
-        ),
+              )
+            : null,
       );
 
   Widget _row(PlanTask t, bool pending) {
-    final tile = ListTile(
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.tefteri;
+    final text = Theme.of(context).textTheme;
+    final row = InkWell(
       key: Key('task-${t.id}'),
-      dense: true,
       onTap: () => showTaskDetails(context, taskId: t.id, initial: t),
-      title: Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Text(_due(t), key: Key('task-due-${t.id}')),
-      leading: Icon(
-        t.isScheduled ? Icons.event_available : Icons.radio_button_unchecked,
-        key: Key(t.isScheduled ? 'scheduled-${t.id}' : 'unscheduled-${t.id}'),
-        size: 20,
-      ),
-      trailing: pending
-          ? const SizedBox(
-              key: Key('pending'),
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2))
-          : widget.onScheduleTask == null
-              ? null
-              : TextButton(
-                  key: Key('schedule-task-${t.id}'),
-                  onPressed: () => widget.onScheduleTask!(t),
-                  child: const Text('Schedule…'),
+      child: DecoratedBox(
+        // A ruled line under every task, like the lines of a notebook page.
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: colors.rule)),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Icon(
+                    t.isScheduled
+                        ? Icons.event_available_outlined
+                        : Icons.radio_button_unchecked,
+                    key: Key(t.isScheduled
+                        ? 'scheduled-${t.id}'
+                        : 'unscheduled-${t.id}'),
+                    size: 20,
+                    color:
+                        t.isScheduled ? colors.task : scheme.onSurfaceVariant,
+                  ),
                 ),
+              ),
+              // The red margin line of the page.
+              VerticalDivider(
+                  width: 1, color: colors.margin.withValues(alpha: 0.7)),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: Space.md, vertical: Space.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500)),
+                      Text(_due(t),
+                          key: Key('task-due-${t.id}'), style: text.bodySmall),
+                    ],
+                  ),
+                ),
+              ),
+              if (pending)
+                const Padding(
+                  padding: EdgeInsets.only(right: Space.md),
+                  child: Center(
+                    child: SizedBox(
+                        key: Key('pending'),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                )
+              else if (widget.onScheduleTask != null)
+                Center(
+                  child: TextButton(
+                    key: Key('schedule-task-${t.id}'),
+                    onPressed: () => widget.onScheduleTask!(t),
+                    child: const Text('Schedule…'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
     return PlannerDraggable<PlanTask>(
       key: Key('drag-task-${t.id}'),
       data: t,
       label: t.title,
       dimmed: pending,
-      child: HoverLift(id: t.id, child: tile),
+      child: HoverLift(id: t.id, child: row),
     );
   }
 

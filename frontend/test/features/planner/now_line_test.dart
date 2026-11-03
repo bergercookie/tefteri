@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
+import 'package:tefteri/theme/theme.dart';
 import 'package:tefteri/features/planner/time_grid.dart';
 
 import '../../support/fake_api.dart';
@@ -38,10 +39,10 @@ void main() {
         .cast<Container>();
     final dot = boxes.single.decoration! as BoxDecoration;
     expect(dot.shape, BoxShape.circle);
-    expect(dot.color, const Color(0xFFD93025));
+    expect(dot.color, TefteriColors.light.now);
     final bar = tester.widget<ColoredBox>(
         find.descendant(of: line, matching: find.byType(ColoredBox)).first);
-    expect(bar.color, const Color(0xFFD93025));
+    expect(bar.color, TefteriColors.light.now);
   });
 
   testWidgets('only today\'s column has the line', (tester) async {

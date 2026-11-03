@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/api_error.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import 'user_models.dart';
 
 /// Lists users; lets an admin add, disable, reset and delete them.
@@ -116,7 +117,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
           ),
           Expanded(
             child: users.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, __) => Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Text(apiErrorMessage(e)),

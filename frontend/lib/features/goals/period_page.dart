@@ -10,6 +10,7 @@ import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import '../planner/schedule_dialog.dart';
 import 'goal_widgets.dart';
 import 'periods.dart';
@@ -144,7 +145,7 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           ),
           Expanded(
             child: widget.view.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

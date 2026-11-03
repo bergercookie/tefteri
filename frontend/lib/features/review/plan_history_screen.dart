@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import '../goals/periods.dart';
 import 'review_api.dart';
 import 'review_models.dart';
@@ -73,7 +74,7 @@ class _PlanHistoryScreenState extends ConsumerState<PlanHistoryScreen> {
           ),
           Expanded(
             child: history.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Loading(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -88,9 +89,10 @@ class _PlanHistoryScreenState extends ConsumerState<PlanHistoryScreen> {
                 ),
               ),
               data: (plans) => plans.isEmpty
-                  ? const Center(
-                      child: Text('No plans yet. Add a plan for a year, '
-                          'a month or a week.'))
+                  ? const EmptyState(
+                      icon: Icons.auto_stories_outlined,
+                      message: 'No plans yet. Add a plan for a year, '
+                          'a month or a week.')
                   : ListView(
                       children: [for (final p in plans) _tile(p)],
                     ),
