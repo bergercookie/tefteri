@@ -78,7 +78,7 @@ void main() {
   testWidgets('month type asks for the month period', (tester) async {
     final api = _api();
     await _pump(tester, api);
-    await tester.tap(find.text('Month'));
+    await tester.tap(find.text('Month').last);
     await tester.pumpAndSettle();
     final q = api
         .where('GET /goals')
@@ -173,7 +173,7 @@ void main() {
             ],
     });
     await _pump(tester, api);
-    await tester.tap(find.text('Week'));
+    await tester.tap(find.text('Week').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('goal-menu-w1')));
     await tester.pumpAndSettle();

@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/api_client.dart';
+import 'package:tefteri/theme/theme.dart';
 
 import '../support/fake_api.dart';
 
@@ -24,7 +25,7 @@ const screenshotSize = Size(1100, 720);
 
 bool _fontsLoaded = false;
 
-/// Loads every font of the app bundle (Roboto and the Material icons), so
+/// Loads every font of the app bundle (Instrument Serif, IBM Plex Sans and the Material icons), so
 /// the images show real glyphs instead of boxes.
 Future<void> loadFonts() async {
   if (_fontsLoaded) return;
@@ -40,9 +41,8 @@ Future<void> loadFonts() async {
   _fontsLoaded = true;
 }
 
-/// The app theme, with the bundled font.
-ThemeData screenshotTheme() => ThemeData(
-    colorSchemeSeed: Colors.indigo, useMaterial3: true, fontFamily: 'Roboto');
+/// The app theme, with the bundled fonts.
+ThemeData screenshotTheme() => tefteriLight;
 
 /// Pumps [screen] with the fake backend [api] in a fixed-size window.
 ///

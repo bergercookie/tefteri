@@ -18,6 +18,7 @@ void main() {
     expect(find.byKey(const Key('sync-button')), findsOneWidget);
   });
   adminMenuTests();
+  railTests();
 }
 
 class _FakeAuth extends AuthController {
@@ -30,7 +31,7 @@ class _FakeAuth extends AuthController {
 }
 
 Future<ProviderContainer> _openDrawer(WidgetTester tester, bool admin) async {
-  tester.view.physicalSize = const Size(1000, 2400);
+  tester.view.physicalSize = const Size(800, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final container = ProviderContainer(overrides: [
@@ -97,7 +98,7 @@ void adminMenuTests() {
   });
 
   testWidgets('a page below Settings has a back button', (tester) async {
-    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(const ProviderScope(
@@ -106,5 +107,51 @@ void adminMenuTests() {
     ));
     expect(find.byKey(const Key('back-button')), findsOneWidget);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpWide(WidgetTester tester, double width,
+    {bool admin = false}) async {
+  tester.view.physicalSize = Size(width, 1200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(ProviderScope(
+    overrides: [
+      authControllerProvider.overrideWith((ref) => _FakeAuth(ref, admin)),
+    ],
+    child: const MaterialApp(home: AppShell(title: 'T', body: SizedBox())),
+  ));
+}
+
+void railTests() {
+  testWidgets('a wide window has a permanent rail and no menu button',
+      (tester) async {
+    await _pumpWide(tester, railMinWidth);
+    expect(find.byTooltip('Open navigation menu'), findsNothing);
+    expect(find.byKey(const Key('nav-/')), findsOneWidget);
+    expect(find.byKey(const Key('nav-/settings')), findsOneWidget);
+    expect(find.byKey(const Key('sign-out')), findsOneWidget);
+    expect(find.byKey(const Key('nav-/admin')), findsNothing);
+  });
+
+  testWidgets('the rail shows labels and keys in a very wide window',
+      (tester) async {
+    await _pumpWide(tester, railExtendedMinWidth, admin: true);
+    expect(find.text('Tefteri'), findsOneWidget);
+    expect(find.text('Week'), findsOneWidget);
+    expect(find.text('W'), findsOneWidget); // the shortcut key
+    expect(find.byKey(const Key('nav-/admin')), findsOneWidget);
+  });
+
+  testWidgets('the compact rail has the mark but not the name', (tester) async {
+    await _pumpWide(tester, railMinWidth);
+    expect(find.text('Tefteri'), findsNothing);
+    expect(find.text('Week'), findsOneWidget);
+  });
+
+  testWidgets('a narrow window keeps the drawer', (tester) async {
+    await _pumpWide(tester, railMinWidth - 1);
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+    expect(find.byKey(const Key('nav-/')), findsNothing);
   });
 }

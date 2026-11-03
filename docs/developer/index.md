@@ -7,6 +7,7 @@ These guides are for people who change or deploy tefteri.
 
 setup
 architecture
+design
 sync
 adding-an-adapter
 testing

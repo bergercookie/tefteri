@@ -9,6 +9,7 @@ import '../../core/api_client.dart';
 import '../../core/api_error.dart';
 import '../../core/open_url.dart';
 import '../../core/shell.dart';
+import '../../theme/theme.dart';
 import 'connection_dialog.dart';
 import 'connection_models.dart';
 import 'failure_card.dart';
@@ -49,7 +50,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       title: 'Connections',
       backTo: '/settings',
       body: connections.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Loading(),
         error: (_, __) => _Message(
           'Cannot load connections. Try again.',
           action: TextButton(
@@ -345,10 +346,9 @@ class _Message extends StatelessWidget {
   final Widget? action;
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [Text(text), if (action != null) action!],
-        ),
+  Widget build(BuildContext context) => EmptyState(
+        icon: Icons.link_outlined,
+        message: text,
+        action: action,
       );
 }

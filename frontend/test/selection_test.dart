@@ -60,7 +60,8 @@ void main() {
     // text of a screen is inside it, for example the title of the app bar
     expect(
         find.ancestor(
-            of: find.text('Planner'), matching: find.byType(SelectionArea)),
+            of: find.text('Planner').last,
+            matching: find.byType(SelectionArea)),
         findsOneWidget);
   });
 

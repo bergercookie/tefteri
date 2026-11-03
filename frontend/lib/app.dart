@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'core/app_selection.dart';
 import 'core/auth_controller.dart';
 import 'core/shortcuts/app_shortcuts.dart';
+import 'theme/theme.dart';
 import 'features/admin/admin_settings_screen.dart';
 import 'features/admin/users_screen.dart';
 import 'features/auth/change_password_screen.dart';
@@ -114,14 +115,16 @@ class TefteriApp extends ConsumerWidget {
         ref.watch(authControllerProvider.select((s) => s.restoring));
     return MaterialApp.router(
       title: 'Tefteri',
-      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+      theme: tefteriLight,
+      darkTheme: tefteriDark,
+      themeMode: ThemeMode.system,
       routerConfig: router,
       // Screens load data as soon as they are built, so wait for the session
       // check instead of sending requests that would fail.
       builder: (_, child) => restoring
           ? const Scaffold(
               key: Key('restoring-session'),
-              body: Center(child: CircularProgressIndicator()),
+              body: Loading(),
             )
           : AppShortcuts(
               router: router,

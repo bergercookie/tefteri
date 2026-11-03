@@ -116,6 +116,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
             padding: const EdgeInsets.all(8),
             child: SegmentedButton<int>(
               key: const Key('planner-tabs'),
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(
                     value: 0,
