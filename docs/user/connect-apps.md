@@ -29,16 +29,15 @@ You need the web address of your Vikunja server and an API token.
 6. Type the base URL of your Vikunja server. Type it in full, with https at the start.
 7. Paste the API token.
 8. Choose Save.
-
-Tefteri tests the connection. If the test works, the connection shows the status OK.
+9. Press Sync to test the connection. If the sync works, the connection shows the status OK.
 
 ## Connect a Google account
 
 You use the Google sign-in page. Tefteri never sees your Google password.
 
 1. In tefteri, open Settings and choose Add connection.
-2. Choose Google Calendar.
-3. Sign in to your Google account on the Google page.
+2. Choose Google Calendar. Then choose Continue.
+3. Choose Open Google sign-in. Sign in to your Google account on the Google page.
 4. Read the access request. Choose Allow.
 5. Wait for tefteri to show the connection in the list.
 
@@ -63,6 +62,10 @@ You need the web address of your Trilium Next server and an ETAPI token.
 
 Each connection has containers. A container is a Vikunja project, a Google calendar or a group of notes.
 You can set each container to Life or Work. Then the Life and Work switch shows the right items.
+
+When you add a connection, choose where the items without a label show: Life, Work or both.
+If you choose both, these items show when the switch is on Life and when it is on Work.
+Items and containers that have a label show only in their own context.
 
 ## Use Sync
 
@@ -91,10 +94,18 @@ Each connection shows the time and the result of its last sync.
 
 If you did not sync for a long time, the data on the screen can be old. Press Sync to get new data.
 
+## Change a connection
+
+1. Open Settings.
+2. Choose the edit button (the pencil) next to the connection.
+3. Change the name, the base URL, the token or the context.
+   To keep the stored token, leave the token field empty.
+4. Choose Save. Then press Sync.
+
 ## Remove a connection
 
 1. Open Settings.
-2. Choose the connection.
-3. Choose Remove.
+2. Choose the remove button (the bin) next to the connection.
+3. Choose Remove to confirm.
 
 Tefteri deletes the stored token. Your data stays in your app.

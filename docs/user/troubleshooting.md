@@ -31,6 +31,13 @@ Common causes:
 - The server of the app is off.
 - The base URL in the connection is wrong.
 - A firewall or a VPN blocks the server.
+- The tefteri server runs in a container and the base URL starts with `http://localhost` or
+  `http://127.0.0.1`. In a container, these addresses are the container itself, not your
+  computer. Use an address that the tefteri server can reach, for example the name or the network
+  address of the app server.
+
+After a sync, the message also shows the error from the server, for example the address that
+tefteri could not reach. Use it to find the cause.
 
 To fix the problem:
 
@@ -73,7 +80,7 @@ To fix the problem:
 
 - **Retry** sends the same request again. Use it after you fix the network or after the server starts.
 - **Reconnect** starts the connection steps again. Use it when the token is not valid.
-- **Open settings** shows the connection. Use it to correct the base URL or to remove the connection.
+- **Open settings** opens the settings of the connection. Use it to correct the base URL or the token.
 
 ## If the problem stays
 

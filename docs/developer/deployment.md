@@ -12,6 +12,7 @@ Tefteri reads its settings from environment variables that start with `TEFTERI_`
 | `TEFTERI_SECRET_KEY` | none | Secret text of 16 characters or more. You must set it. |
 | `TEFTERI_DATABASE_URL` | `sqlite+aiosqlite:///./tefteri.db` | Database address. |
 | `TEFTERI_PUBLIC_URL` | none | Public base address of the server. |
+| `TEFTERI_WEB_DIR` | none | Folder of the built web client. If you set it, the server gives the web client at `/`. |
 | `TEFTERI_GOOGLE_CLIENT_ID` | none | Google OAuth client ID. |
 | `TEFTERI_GOOGLE_CLIENT_SECRET` | none | Google OAuth client secret. |
 | `TEFTERI_SESSION_LIFETIME_SECONDS` | `28800` | Session length. The default is 8 hours. |
@@ -32,6 +33,10 @@ If the hash is missing or not valid, the server refuses to start.
 3. Copy the hash that the script prints.
 4. Set `TEFTERI_ADMIN_USERNAME` to the username that you want.
 5. Set `TEFTERI_ADMIN_PASSWORD_HASH` to the hash.
+
+The hash contains `$` characters. In a `.env` file for Docker Compose, put the hash between
+single quotes, for example `TEFTERI_ADMIN_PASSWORD_HASH='$argon2id$v=19$...'`. Without the quotes,
+Docker Compose changes the hash and the server refuses to start.
 
 The administrator signs in with the password and then adds the other users. There is no self-registration.
 The user guide `accounts-and-sign-in` shows the steps in the application.
@@ -85,7 +90,7 @@ The defaults are 5 wrong passwords, 15 minutes and 15 minutes.
 The folder `deploy/` has the container files:
 
 - `Dockerfile` builds the server image. The image runs the migrations at each start and then
-  starts the server on port 8000.
+  starts the server on port 8000. The server also gives the web client at `/`.
 - `compose.yaml` starts the server. The `postgres` profile also starts PostgreSQL.
 - `.env.example` is the template for the settings.
 - `deploy.just` has the recipes. Call them as `just deploy::<recipe>`.
@@ -100,6 +105,10 @@ To run the server with SQLite:
 2. Run `just deploy::build-image`, or set `TEFTERI_IMAGE` in `.env` to a published image.
 3. Run `just deploy::up`.
 4. Open `http://localhost:8000/health`. The answer is `{"status": "ok"}`.
+5. Open `http://localhost:8000/` in your browser to use the web client.
+
+`just deploy::build-image` builds the web client before the image. Thus it needs Flutter. Run it
+in `devbox shell`.
 
 The SQLite database is in the `data` volume, at `/data/tefteri.db`. Back up this volume.
 
@@ -113,7 +122,9 @@ To use PostgreSQL:
 To stop the containers, run `just deploy::down`. The volumes stay.
 
 To check an image, run `just deploy::smoke`. The recipe builds the image, starts it and checks
-the health, the version and the sign-in.
+the health, the version, the web client and the sign-in. It also starts `compose.yaml` with a
+`.env` made from `.env.example`, as `just deploy::up` does. It uses a different project name and
+port, so it does not change a running installation. The CI runs this recipe for each pull request.
 
 ## Reverse proxy
 

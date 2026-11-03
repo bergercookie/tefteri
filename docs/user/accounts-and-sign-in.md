@@ -25,6 +25,9 @@ Tefteri shows your planning screens after you sign in.
 Your session ends after 8 hours. Then tefteri shows the sign-in screen again. Sign in again to continue.
 Your administrator can change this time.
 
+In the web browser, you stay signed in when you reload the page or open tefteri again,
+until the session ends. Choose Sign out to end the session before that time.
+
 ## Blocked sign-in
 
 Tefteri blocks sign-in for an account after 5 wrong passwords in 15 minutes. The block lasts 15 minutes.

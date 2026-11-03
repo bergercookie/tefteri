@@ -44,9 +44,21 @@ The root recipes `lint`, `test`, `build` and `run` call the module recipes.
 3. Run `just backend::migrate`.
 4. Run `just run`. The server listens on `http://localhost:8000`.
 
-## Run the client
+To give the server to other computers, add `--host 0.0.0.0`, for example
+`just run --host 0.0.0.0`.
 
-The client reads the server address at build time. The default is
+## Run the web client
+
+Run `just serve`. This recipe builds the web client and starts the server. The server gives the
+web client at `http://localhost:8000/` and the API at `http://localhost:8000/api/v1`. Open
+`http://localhost:8000/` in your browser.
+
+The web client uses the server that gave it. Do the settings from [Run the server](#run-the-server)
+first. To see a change in the client, stop the server and run `just serve` again.
+
+## Run the desktop client
+
+The desktop client reads the server address at build time. The default is
 `http://localhost:8000/api/v1`.
 
 1. Go to the `frontend` folder.
