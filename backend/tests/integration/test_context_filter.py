@@ -80,3 +80,25 @@ async def test_container_label_applies_and_item_override_wins(
         json={"context": "work"},
     )
     assert missing.status_code == 404
+
+
+async def test_connection_default_both_shows_unlabelled_items_in_life_and_work(
+    api: AsyncClient,
+) -> None:
+    ids = await connect_all(api, default_context="both")
+    await api.post(f"{V1}/sync")
+    for title in ("Unlabelled", "Labelled work"):
+        await api.post(f"{V1}/tasks", json={"connection_id": ids["vikunja"], "title": title})
+    tasks = {t["title"]: t for t in (await api.get(f"{V1}/tasks")).json()}
+    await api.patch(f"{V1}/tasks/{tasks['Labelled work']['id']}", json={"context": "work"})
+    assert tasks["Unlabelled"]["effective_context"] == "both"
+
+    async def titles(context: str) -> set[str]:
+        r = await api.get(f"{V1}/tasks", params={"context": context})
+        return {t["title"] for t in r.json()}
+
+    assert await titles("life") == {"Unlabelled"}
+    assert await titles("work") == {"Unlabelled", "Labelled work"}
+    # A label on a single item or container stays one context.
+    bad = await api.patch(f"{V1}/tasks/{tasks['Unlabelled']['id']}", json={"context": "both"})
+    assert bad.status_code == 422
