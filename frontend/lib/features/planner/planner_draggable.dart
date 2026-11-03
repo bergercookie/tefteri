@@ -45,8 +45,11 @@ class PlannerDraggable<T extends Object> extends StatelessWidget {
         child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     );
-    final shown = Opacity(opacity: dimmed ? 0.5 : 1, child: child);
-    final ghost = Opacity(opacity: 0.4, child: child);
+    // A drag on this widget moves the task. It must not also start a text
+    // selection, so the text inside is not selectable.
+    final content = SelectionContainer.disabled(child: child);
+    final shown = Opacity(opacity: dimmed ? 0.5 : 1, child: content);
+    final ghost = Opacity(opacity: 0.4, child: content);
     if (_touch) {
       return LongPressDraggable<T>(
         data: data,

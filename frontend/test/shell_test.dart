@@ -65,22 +65,47 @@ void adminMenuTests() {
     expect(find.byKey(const Key('nav-/calendar')), findsNothing);
   });
 
-  testWidgets('drawer shows Users only for admins', (tester) async {
+  testWidgets('drawer shows Admin settings only for administrators',
+      (tester) async {
     await _openDrawer(tester, true);
-    expect(find.byKey(const Key('nav-/users')), findsOneWidget);
-    expect(find.byKey(const Key('nav-/password')), findsOneWidget);
+    expect(find.byKey(const Key('nav-/admin')), findsOneWidget);
+    expect(find.text('Admin settings'), findsOneWidget);
+    expect(find.byKey(const Key('nav-/settings')), findsOneWidget);
   });
 
-  testWidgets('drawer hides Users for other users', (tester) async {
+  testWidgets('drawer hides Admin settings from other users', (tester) async {
     await _openDrawer(tester, false);
-    expect(find.byKey(const Key('nav-/users')), findsNothing);
-    expect(find.byKey(const Key('nav-/password')), findsOneWidget);
+    expect(find.byKey(const Key('nav-/admin')), findsNothing);
+    expect(find.byKey(const Key('nav-/settings')), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
   });
 
-  testWidgets('Sign out in the drawer ends the session', (tester) async {
-    final container = await _openDrawer(tester, false);
-    await tester.tap(find.byKey(const Key('sign-out')));
-    await tester.pumpAndSettle();
-    expect(container.read(authControllerProvider).signedIn, isFalse);
+  testWidgets('Connections, Change password and Users are not in the drawer',
+      (tester) async {
+    await _openDrawer(tester, true);
+    for (final path in [
+      '/users',
+      '/password',
+      '/admin/users',
+      '/settings/password',
+      '/settings/connections',
+    ]) {
+      expect(find.byKey(Key('nav-$path')), findsNothing, reason: path);
+    }
+    expect(find.text('Connections'), findsNothing);
+    expect(find.text('Change password'), findsNothing);
+    expect(find.text('Users'), findsNothing);
+  });
+
+  testWidgets('a page below Settings has a back button', (tester) async {
+    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const ProviderScope(
+      child: MaterialApp(
+          home: AppShell(title: 'T', body: SizedBox(), backTo: '/settings')),
+    ));
+    expect(find.byKey(const Key('back-button')), findsOneWidget);
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
   });
 }

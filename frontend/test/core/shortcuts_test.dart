@@ -81,8 +81,7 @@ void main() {
   test('the keymap has one unique key for each view', () {
     final keys = [for (final s in appShortcuts) s.keys];
     expect(keys.toSet(), hasLength(keys.length));
-    for (final v in appViews
-        .where((v) => v.path != '/password' && v.path != '/settings')) {
+    for (final v in appViews.where((v) => v.path != '/settings')) {
       expect(v.key, isNotNull, reason: '${v.label} needs a shortcut');
     }
     for (final label in [
@@ -93,7 +92,7 @@ void main() {
       'Goals',
       'Reviews',
       'Notes',
-      'Connections',
+      'Settings',
     ]) {
       expect(appViews.map((v) => v.label), contains(label));
     }

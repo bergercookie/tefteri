@@ -36,7 +36,7 @@ release. Use them only to try new features.
 1. Start tefteri.
 2. Type your username and the first password from your administrator.
 3. Choose Sign in.
-4. Open the menu and choose Change password. Set a password that only you know.
+4. Open the menu and choose Settings. Then choose Change password. Set a password that only you know.
 
 ![The sign-in screen with the fields Username and Password and the Sign in button.](../images/accounts-login.png)
 
@@ -61,6 +61,11 @@ In this case, Google shows a message that it blocks the app when you connect the
 
 You can connect a personal Google account and a company Google account at the same time. Each
 account is a separate connection.
+
+## Copy text
+
+You can select the text on every screen with the mouse. Then press Ctrl+C to copy it. This is useful for error messages.
+The tasks in the task list are different. You drag them, so you cannot select their text. Choose a task to open its details. You can select the text there.
 
 ## Learn the main screens
 

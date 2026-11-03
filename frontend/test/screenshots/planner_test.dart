@@ -174,4 +174,22 @@ void main() {
     await tester.pumpAndSettle();
     await saveScreenshot('planner-narrow-schedule');
   });
+
+  testWidgets('planner: task details pop-up', (tester) async {
+    await pumpScreen(
+        tester,
+        _api({
+          'GET /tasks/t4': {
+            ..._task('t4', 'Update the road map',
+                due: DateTime(2026, 11, 2, 15)),
+            'description':
+                'Add the Q1 goals.\nAsk the team for feedback before Friday.',
+            'effective_context': 'work',
+          },
+        }),
+        PlannerScreen(initialDate: day, clock: _now));
+    await tester.tap(find.byKey(const Key('task-t4')));
+    await tester.pumpAndSettle();
+    await saveScreenshot('planner-task-details');
+  });
 }

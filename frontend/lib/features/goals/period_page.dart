@@ -27,6 +27,7 @@ class PeriodPage extends ConsumerStatefulWidget {
     required this.view,
     required this.onReload,
     required this.onShift,
+    required this.onToday,
     super.key,
   });
 
@@ -44,6 +45,9 @@ class PeriodPage extends ConsumerStatefulWidget {
 
   /// Moves to the previous (`-1`) or next (`1`) period.
   final void Function(int delta) onShift;
+
+  /// Moves to the period that holds today (the Today button).
+  final VoidCallback onToday;
 
   @override
   ConsumerState<PeriodPage> createState() => _PeriodPageState();
@@ -117,6 +121,12 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              OutlinedButton(
+                key: const Key('today-button'),
+                onPressed: widget.onToday,
+                child: const Text('Today'),
+              ),
+              const SizedBox(width: 8),
               IconButton(
                 key: const Key('prev-period'),
                 tooltip: 'Previous',

@@ -17,6 +17,23 @@ A task with a date and no time shows in the row called all day.
 The work and life switch and the sync button work for both columns. When you choose work, both columns show work items only.
 When you sync, both columns update.
 
+## Move to today
+
+Choose Today at the top of the calendar to go to the week of today. The calendar scrolls to the current time.
+To move by one week, choose the arrows next to the Today button. You can also press the Left arrow key and the Right arrow key.
+The arrow keys do not work while you type in the search box.
+Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
+
+## See the details of a task
+
+Choose a task in the list, or a task block on the calendar. A pop-up shows the details of the task:
+the status, the due date, the time on the calendar, the context and the description.
+Choose Close to close the pop-up.
+
+![The details pop-up of the task Update the road map. It shows the status, the due date, the time on the calendar, the context and the description.](../images/planner-task-details.png)
+
+If you choose a calendar entry, the pop-up shows the time and the context of the entry.
+
 ## Find a task
 
 Use the filters at the top of the task list. Each filter shows how many open tasks it holds.
@@ -67,7 +84,7 @@ Tefteri changes only the due date of the task. It does not make an event in your
 
 The task gets a due date and no time. It shows in the all day row.
 
-You can change what happens in this case. Open Connections and use the switch
+You can change what happens in this case. Open the menu, choose Settings, and then choose Connections. Use the switch
 "Give a random time to date-only drops". When the switch is on, the task gets a random time on that day.
 The time is from 08:00 to 19:45. You can move the block later.
 

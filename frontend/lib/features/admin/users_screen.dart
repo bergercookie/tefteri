@@ -94,6 +94,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     final users = ref.watch(usersProvider);
     return AppShell(
       title: 'Users',
+      backTo: '/admin',
       body: Column(
         children: [
           if (_error != null)

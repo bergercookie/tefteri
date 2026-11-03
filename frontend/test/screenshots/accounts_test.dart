@@ -3,8 +3,10 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/auth_controller.dart';
+import 'package:tefteri/features/admin/admin_settings_screen.dart';
 import 'package:tefteri/features/admin/users_screen.dart';
 import 'package:tefteri/features/auth/login_screen.dart';
+import 'package:tefteri/features/settings/settings_screen.dart';
 
 import 'screenshot_helper.dart';
 
@@ -42,5 +44,16 @@ void main() {
       authControllerProvider.overrideWith(_Admin.new),
     ]);
     await saveScreenshot('accounts-users');
+  });
+
+  testWidgets('settings page', (tester) async {
+    await pumpScreen(tester, FakeApi({}), const SettingsScreen());
+    await saveScreenshot('settings-page');
+  });
+
+  testWidgets('admin settings page', (tester) async {
+    await pumpScreen(tester, FakeApi({}), const AdminSettingsScreen(),
+        overrides: [authControllerProvider.overrideWith(_Admin.new)]);
+    await saveScreenshot('admin-settings-page');
   });
 }

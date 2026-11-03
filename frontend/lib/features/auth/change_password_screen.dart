@@ -72,6 +72,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Change password',
+      backTo: '/settings',
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(

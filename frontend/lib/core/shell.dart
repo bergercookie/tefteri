@@ -14,10 +14,20 @@ import 'shortcuts/keymap.dart';
 /// App scaffold shared by all views.
 class AppShell extends ConsumerWidget {
   /// Creates a shell showing [body] under [title].
-  const AppShell({required this.title, required this.body, super.key});
+  const AppShell({
+    required this.title,
+    required this.body,
+    this.backTo,
+    super.key,
+  });
 
   /// Title shown in the app bar.
   final String title;
+
+  /// Router location of the parent page. When set, the app bar shows a back
+  /// button next to the menu button (used by the pages under Settings and
+  /// Admin settings).
+  final String? backTo;
 
   /// View content.
   final Widget body;
@@ -52,11 +62,11 @@ class AppShell extends ConsumerWidget {
               ),
             if (isAdmin)
               ListTile(
-                key: const Key('nav-/users'),
-                title: const Text('Users'),
+                key: const Key('nav-/admin'),
+                title: const Text('Admin settings'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  context.go('/users');
+                  context.go('/admin');
                 },
               ),
             const Divider(),
@@ -73,6 +83,8 @@ class AppShell extends ConsumerWidget {
         ),
       ),
       appBar: AppBar(
+        leadingWidth: backTo == null ? null : 104,
+        leading: backTo == null ? null : _BackAndMenu(backTo: backTo!),
         title: Text(title),
         actions: [
           SegmentedButton<ContextFilter>(
@@ -103,4 +115,30 @@ class AppShell extends ConsumerWidget {
       body: body,
     );
   }
+}
+
+/// The menu button and a back button side by side, for pages below Settings
+/// and Admin settings.
+class _BackAndMenu extends StatelessWidget {
+  const _BackAndMenu({required this.backTo});
+
+  final String backTo;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+          IconButton(
+            key: const Key('back-button'),
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go(backTo),
+          ),
+        ],
+      );
 }

@@ -47,6 +47,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
     final connections = ref.watch(connectionsProvider);
     return AppShell(
       title: 'Connections',
+      backTo: '/settings',
       body: connections.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => _Message(

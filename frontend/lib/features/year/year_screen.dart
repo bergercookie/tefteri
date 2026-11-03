@@ -44,6 +44,7 @@ class _YearScreenState extends ConsumerState<YearScreen> {
       view: ref.watch(yearViewProvider(_year)),
       onReload: () => ref.invalidate(yearViewProvider(_year)),
       onShift: (d) => setState(() => _year += d),
+      onToday: () => setState(() => _year = DateTime.now().year),
     );
   }
 }

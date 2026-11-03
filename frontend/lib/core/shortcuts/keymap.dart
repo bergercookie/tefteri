@@ -25,8 +25,10 @@ class AppView {
   final String? key;
 }
 
-/// All views in drawer order. Connections, Change password and Users have no
-/// shortcut; S syncs instead of opening Connections.
+/// All views in drawer order. Settings has no shortcut (S syncs). Its pages
+/// (Connections, Change password) and Admin settings, which only an
+/// administrator sees, are reached from the Settings and Admin settings screens,
+/// not from the drawer.
 const appViews = [
   AppView('Planner', '/', 'p'),
   AppView('Today', '/daily', 't'),
@@ -37,8 +39,7 @@ const appViews = [
   AppView('Reviews', '/review', 'r'),
   AppView('Notes', '/notes', 'n'),
   AppView('Conflicts', '/conflicts', 'x'),
-  AppView('Connections', '/settings'),
-  AppView('Change password', '/password'),
+  AppView('Settings', '/settings'),
 ];
 
 /// Opens the view at [path].

@@ -50,6 +50,10 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       onReload: () => ref.invalidate(monthViewProvider(key)),
       onShift: (d) =>
           setState(() => _first = DateTime(_first.year, _first.month + d, 1)),
+      onToday: () => setState(() {
+        final now = DateTime.now();
+        _first = DateTime(now.year, now.month, 1);
+      }),
     );
   }
 }

@@ -122,6 +122,12 @@ class PlanningApi {
     ];
   }
 
+  /// `GET /tasks/{id}`: one task with all its fields.
+  Future<PlanTask> task(String id) async {
+    final r = await _dio.get<Object?>('/tasks/$id');
+    return PlanTask.fromJson(r.data! as Map<String, dynamic>);
+  }
+
   /// `GET /tasks/counts`: open tasks per planner filter, keyed by the
   /// filter's API value.
   Future<Map<String, int>> taskCounts(ContextFilter filter) async {

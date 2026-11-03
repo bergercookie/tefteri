@@ -10,6 +10,20 @@ The planner uses the due date only. A task that has a start date and an end date
 Tefteri does not change these tasks in Vikunja. To put such a task on the calendar again, drag it to a time in the planner.
 Tefteri then saves the due date.
 
+## An app answers but does not keep a change
+
+The message says that the app answered, but it did not keep the change. Tefteri shows this message at once.
+Nothing changed in tefteri, so the calendar still shows the old time. The app and tefteri agree.
+
+Common causes:
+
+- Another tool or a rule in the app changes the date back.
+- The task is a repeating task, or it has rules that change its date.
+- The app is an unusual version.
+
+To fix the problem, try the change again in the app itself. If the app also takes the change back,
+the cause is in the app. Tell your administrator the name of the connection and the time of the change.
+
 ## Rules that tefteri follows
 
 - Tefteri always tells you which connection failed and why.
