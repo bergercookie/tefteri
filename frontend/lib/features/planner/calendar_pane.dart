@@ -1,6 +1,8 @@
 /// The right column of the planner: a week time grid with drop targets.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,6 +30,7 @@ class CalendarPane extends ConsumerStatefulWidget {
     required this.weekStart,
     required this.onShiftWeek,
     required this.onToday,
+    this.clock = DateTime.now,
     super.key,
   });
 
@@ -40,19 +43,43 @@ class CalendarPane extends ConsumerStatefulWidget {
   /// Called when the user asks for the current week.
   final VoidCallback onToday;
 
+  /// Gives the current time. Tests replace it.
+  final DateTime Function() clock;
+
   @override
   ConsumerState<CalendarPane> createState() => _CalendarPaneState();
 }
 
 class _CalendarPaneState extends ConsumerState<CalendarPane> {
-  final _scroll =
-      ScrollController(initialScrollOffset: minutesToOffset(7 * 60));
+  late final ScrollController _scroll;
+  Timer? _tick;
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = widget.clock();
+    // Show the current time when this week holds today, else the morning.
+    final today = _days.any((d) => _sameDay(d, _now));
+    final minutes = today
+        ? (_now.hour * 60 + _now.minute - 2 * 60).clamp(0, minutesPerDay)
+        : 7 * 60;
+    _scroll = ScrollController(initialScrollOffset: minutesToOffset(minutes));
+    // The line moves once a minute.
+    _tick = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() => _now = widget.clock());
+    });
+  }
 
   @override
   void dispose() {
+    _tick?.cancel();
     _scroll.dispose();
     super.dispose();
   }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   List<DateTime> get _days => [
         for (var i = 0; i < calendarDays; i++)
@@ -178,6 +205,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                     day: d,
                     items: _itemsOnDay(all, d, allDay: false),
                     pending: pending,
+                    now: _sameDay(d, _now) ? _now : null,
                   )),
               ],
             ),
@@ -284,11 +312,15 @@ class _DayColumn extends ConsumerWidget {
     required this.day,
     required this.items,
     required this.pending,
+    required this.now,
   });
 
   final DateTime day;
   final List<CalendarItem> items;
   final String? pending;
+
+  /// The current time when [day] is today; null on other days.
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -345,8 +377,36 @@ class _DayColumn extends ConsumerWidget {
                 ),
               for (var n = 0; n < items.length; n++)
                 _block(context, items[n], spans[n], layout[n], c.maxWidth),
+              if (now != null) _nowLine(now!),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// The red dot and line at the current time, as in Google Calendar. It does
+  /// not take pointer events, so a drop still reaches the column.
+  Widget _nowLine(DateTime now) {
+    const dot = 10.0;
+    const color = Color(0xFFD93025);
+    return Positioned(
+      key: const Key('now-indicator'),
+      top: minutesToOffset(now.hour * 60 + now.minute) - dot / 2,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Row(
+          children: [
+            Container(
+              width: dot,
+              height: dot,
+              decoration:
+                  const BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const Expanded(
+                child: SizedBox(height: 2, child: ColoredBox(color: color))),
+          ],
         ),
       ),
     );
