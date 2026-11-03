@@ -11,7 +11,13 @@ import respx
 from tefteri.adapters.vikunja import VikunjaTaskBackend
 from tefteri.domain.entities import Container, TaskDraft, TaskPatch
 from tefteri.domain.enums import ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import (
+    AuthExpired,
+    BackendError,
+    BackendUnavailable,
+    NotSaved,
+    RemoteConflict,
+)
 
 BASE = "https://vikunja.test/api/v1"
 
@@ -289,3 +295,37 @@ async def test_a_real_change_in_the_app_is_still_a_conflict(
         await backend.set_planned_time(
             "7", datetime(2026, 11, 4, 17, tzinfo=UTC), False, planned.version
         )
+
+
+class _IgnoresDueDate(_Stored):
+    """A Vikunja that answers 200 to a due date change but keeps the old date."""
+
+    def _write(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        body["due_date"] = self.data["due_date"]
+        self.posts.append(body)
+        self.data = {**body, "updated": f"2026-11-04T10:00:{len(self.posts):02d}Z"}
+        return httpx.Response(200, json=self.data)
+
+
+@respx.mock
+async def test_a_due_date_that_vikunja_does_not_keep_is_an_error(
+    backend: VikunjaTaskBackend,
+) -> None:
+    store = _IgnoresDueDate(due_date="2026-11-04T09:00:00Z").mount()
+    current = await backend.get_task("7")
+    with pytest.raises(NotSaved, match="Vikunja has 2026-11-04 09:00:00"):
+        await backend.set_planned_time(
+            "7", datetime(2026, 11, 5, 11, tzinfo=UTC), False, current.version
+        )
+    assert len(store.posts) == 1  # the write was tried once, not repeated
+
+
+@respx.mock
+async def test_clearing_a_due_date_that_vikunja_keeps_is_an_error(
+    backend: VikunjaTaskBackend,
+) -> None:
+    _IgnoresDueDate(due_date="2026-11-04T09:00:00Z").mount()
+    current = await backend.get_task("7")
+    with pytest.raises(NotSaved):
+        await backend.set_planned_time("7", None, False, current.version)
