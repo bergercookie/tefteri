@@ -42,6 +42,8 @@ If no task matches, tefteri tells you. Choose Clear search to see the list again
 
 ## Put a task on the calendar
 
+When you point at a task with the mouse, the task lifts, gets an outline and shows a grip on the left. The cursor becomes a hand. This shows that you can drag the task.
+
 1. Find the task in the list.
 2. Drag the task to a time on the calendar.
 3. Drop the task.

@@ -12,6 +12,9 @@ import '../../core/planning_models.dart';
 final userSettingsProvider = FutureProvider<UserSettings>(
     (ref) => ref.watch(planningApiProvider).settings());
 
+/// Widest the settings card gets, in logical pixels.
+const double plannerSettingsCardWidth = 560;
+
 /// A switch for `random_time_on_date_drop`. Off by default: a drop on the
 /// all-day row sets a due date only. On: it also picks a random time.
 class PlannerSettingsCard extends ConsumerWidget {
@@ -21,6 +24,19 @@ class PlannerSettingsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(userSettingsProvider);
+    // A wide window would stretch the switch far away from its text, so the
+    // card keeps a readable width and sits at the left edge.
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: plannerSettingsCardWidth),
+        child: _card(context, ref, settings),
+      ),
+    );
+  }
+
+  Widget _card(
+      BuildContext context, WidgetRef ref, AsyncValue<UserSettings> settings) {
     return Card(
       margin: const EdgeInsets.only(top: 16),
       child: settings.when(

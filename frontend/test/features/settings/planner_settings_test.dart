@@ -51,4 +51,18 @@ void main() {
     await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
     expect(find.byKey(const Key('planner-settings-error')), findsOneWidget);
   });
+
+  testWidgets('the card keeps a readable width on a wide window',
+      (tester) async {
+    final api = FakeApi({
+      'GET /me/settings': {'random_time_on_date_drop': false},
+    });
+    // pumpWithApi uses a 1000 wide surface; make it wider than a laptop screen
+    await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
+    tester.view.physicalSize = const Size(1800, 1000);
+    await tester.pumpAndSettle();
+    final card = tester.getRect(find.byType(Card));
+    expect(card.width, lessThanOrEqualTo(plannerSettingsCardWidth));
+    expect(card.left, lessThan(40)); // sits at the left edge, not centered
+  });
 }

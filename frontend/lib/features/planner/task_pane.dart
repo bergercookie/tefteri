@@ -3,11 +3,13 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
+import 'hover_lift.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
 
@@ -57,6 +59,10 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
     ref.read(taskSearchProvider.notifier).state = '';
     setState(() {});
   }
+
+  bool get _touch =>
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +121,17 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
             ),
           ),
         ),
+        if (widget.onScheduleTask == null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+            child: Text(
+              _touch
+                  ? 'Press and hold a task, then drag it onto the calendar.'
+                  : 'Drag a task onto the calendar to schedule it.',
+              key: const Key('drag-hint'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
         if (searching)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -217,7 +234,7 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
       data: t,
       label: t.title,
       dimmed: pending,
-      child: tile,
+      child: HoverLift(id: t.id, child: tile),
     );
   }
 
