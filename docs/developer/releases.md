@@ -77,4 +77,3 @@ Put this note in the release notes of the release that adds the planner:
   the task to a time to set the due date.
 - A task with a due time of exactly 00:00 in the time zone of the user shows as a task for a date
   only. Check this convention against your Vikunja server before the release.
-

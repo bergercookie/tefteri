@@ -9,6 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jetify-com/devbox-install-action@v0.12.0
+      # The Dart hooks (format, analyze) need the package config; without it the formatter
+      # uses another style and the analyzer cannot resolve imports.
+      - run: devbox run -- just frontend::install
       - run: devbox run -- just lint
       - run: devbox run -- just test
       - run: devbox run -- just docs::build
