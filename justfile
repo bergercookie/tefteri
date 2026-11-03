@@ -26,6 +26,11 @@ build: deploy::build-image frontend::build-linux frontend::build-web docs::build
 # Run the backend locally.
 run: backend::run
 
+# Build the web client and run the backend serving it at http://localhost:8000.
+# Extra arguments go to uvicorn, for example `just serve --host 0.0.0.0`.
+serve *args: frontend::build-web
+    TEFTERI_WEB_DIR='{{ justfile_directory() }}/frontend/build/web' just backend::run {{ args }}
+
 # Prompt for a password and print its Argon2 hash.
 hash-password:
     uv run --project backend python scripts/hash_password.py

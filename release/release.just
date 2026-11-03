@@ -6,7 +6,7 @@
 
 # Build the server image for the release tag at HEAD; push it as X.Y.Z and latest.
 image:
-    TEFTERI_VERSION="$(bash ../scripts/version.sh release pep440)" just deploy::build-image
+    TEFTERI_VERSION="$(bash ../scripts/version.sh release pep440)" TEFTERI_FLUTTER_VERSION="$(bash ../scripts/version.sh release flutter)" just deploy::build-image
     just deploy::push-image "$(bash ../scripts/version.sh release)" latest
 
 # Build the client packages for the release tag at HEAD into dist/.
@@ -31,8 +31,8 @@ nightly-versions:
     @echo "flutter=$(bash ../scripts/version.sh nightly flutter)"
 
 # Build the nightly server image; push it as `nightly` and as the version string.
-nightly-image image pep440:
-    TEFTERI_VERSION="{{ pep440 }}" just deploy::build-image
+nightly-image image pep440 flutter:
+    TEFTERI_VERSION="{{ pep440 }}" TEFTERI_FLUTTER_VERSION="{{ flutter }}" just deploy::build-image
     just deploy::push-image "{{ image }}" nightly
 
 # Build the nightly client packages into dist/.

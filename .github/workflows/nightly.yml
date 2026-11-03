@@ -39,10 +39,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - run: devbox run -- just release::nightly-image "$IMAGE" "$PEP440"
+      - run: devbox run -- just release::nightly-image "$IMAGE" "$PEP440" "$FLUTTER"
         env:
           IMAGE: ${{ needs.version.outputs.image }}
           PEP440: ${{ needs.version.outputs.pep440 }}
+          FLUTTER: ${{ needs.version.outputs.flutter }}
 
   clients:
     needs: version

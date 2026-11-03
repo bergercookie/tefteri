@@ -12,8 +12,9 @@ e2e:
 test-postgres:
     uv run pytest -m postgres
 
-run:
-    uv run uvicorn tefteri.main:create_app --factory --reload
+# Extra arguments go to uvicorn, for example `just backend::run --host 0.0.0.0`.
+run *args:
+    uv run uvicorn tefteri.main:create_app --factory --reload {{ args }}
 
 openapi:
     uv run python -m tefteri.openapi ../docs/openapi.json
