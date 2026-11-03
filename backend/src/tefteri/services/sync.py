@@ -1,5 +1,6 @@
 """On-demand sync of connections into the local cache (failures are isolated per connection)."""
 
+import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -21,6 +22,8 @@ from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.mirror import entry_values, note_values, task_values
 
+logger = logging.getLogger(__name__)
+
 CALENDAR_PAST = timedelta(days=90)
 CALENDAR_FUTURE = timedelta(days=400)
 
@@ -33,6 +36,7 @@ class SyncResult:
     name: str
     outcome: str  # 'ok' | 'needs_attention' | 'error'
     reason: str | None = None  # 'unreachable' | 'auth_expired' | 'error'
+    detail: str | None = None  # the underlying error, e.g. which address could not be reached
     counts: dict[str, int] = field(
         default_factory=lambda: {"created": 0, "updated": 0, "deleted": 0}
     )
@@ -114,12 +118,18 @@ class SyncService:
                     await self._sync_calendar(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
                 else:
                     await self._sync_notes(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
-        except AuthExpired:
+        except AuthExpired as exc:
             result.outcome, result.reason = ConnectionStatus.NEEDS_ATTENTION.value, "auth_expired"
-        except BackendUnavailable:
+            result.detail = str(exc)
+        except BackendUnavailable as exc:
             result.outcome, result.reason = ConnectionStatus.ERROR.value, "unreachable"
-        except Exception:  # noqa: BLE001 - isolate any adapter failure to this connection
+            result.detail = str(exc)
+        except Exception as exc:  # noqa: BLE001 - isolate any adapter failure to this connection
             result.outcome, result.reason = ConnectionStatus.ERROR.value, "error"
+            result.detail = str(exc) or type(exc).__name__
+            logger.exception("Sync of connection %s failed", connection.id)
+        if result.reason in ("auth_expired", "unreachable"):
+            logger.warning("Sync of connection %s: %s", connection.id, result.detail)
         connection.status = result.outcome
         connection.last_sync_at = self._clock()
         connection.last_sync_outcome = result.outcome if result.reason is None else result.reason

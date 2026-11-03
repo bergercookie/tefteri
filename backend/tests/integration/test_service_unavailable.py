@@ -23,6 +23,7 @@ async def test_stopped_backend_names_connection_and_allows_retry(
     world.tasks["default"].unavailable = True
     failed = (await api.post(f"{V1}/connections/{cid}/sync")).json()
     assert failed["name"] == "Vikunja" and failed["reason"] == "unreachable"
+    assert failed["detail"] == "fake backend is down"  # the cause is shown, not just the reason
     status = (await api.get(f"{V1}/sync/status")).json()[0]
     assert status["status"] == "error" and status["last_sync_outcome"] == "unreachable"
 
