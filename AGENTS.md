@@ -20,4 +20,3 @@ The look is defined in `docs/developer/design.md` and implemented in
 - Check the result: regenerate the screenshots (`just docs::screenshots`),
   look at them in light and dark and at phone and desktop widths, and fix
   anything that looks generic, cramped or low-contrast.
-
