@@ -1,5 +1,7 @@
 """Application settings read from ``TEFTERI_*`` environment variables."""
 
+from pathlib import Path
+
 from argon2 import extract_parameters
 from argon2.exceptions import InvalidHashError
 from pydantic import Field, field_validator
@@ -17,6 +19,7 @@ class Settings(BaseSettings):
     admin_password_hash: str
     secret_key: str = Field(min_length=16)
 
+    web_dir: Path | None = None  # built web client (`flutter build web`), served at /
     public_url: str | None = None  # base URL for OAuth redirect addresses behind a proxy
     google_client_id: str | None = None
     google_client_secret: str | None = None

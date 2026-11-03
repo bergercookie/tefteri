@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 import httpx
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from tefteri.adapters.google_calendar import GoogleCalendarBackend
 from tefteri.adapters.trilium import TriliumNoteBackend
@@ -152,4 +153,7 @@ def create_app(
         settings_router,
     ):
         app.include_router(r.router, prefix="/api/v1")
+    # Mounted last so the API routes above take precedence over the files.
+    if cfg.web_dir is not None:
+        app.mount("/", StaticFiles(directory=cfg.web_dir, html=True), name="web")
     return app

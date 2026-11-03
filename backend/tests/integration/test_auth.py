@@ -71,3 +71,42 @@ async def test_methods_health_version(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/auth/methods")).json() == {"password": True}
     assert (await client.get("/health")).json() == {"status": "ok"}
     assert "version" in (await client.get("/version")).json()
+
+
+async def test_web_session_cookie_survives_a_reload(client: AsyncClient) -> None:
+    r = await client.post(LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD})
+    cookie = r.headers["set-cookie"]
+    assert cookie.startswith(f"tefteri_session={r.json()['token']};")
+    for attribute in ("HttpOnly", "Path=/api", "SameSite=strict"):
+        assert attribute in cookie
+    assert "Secure" not in cookie  # plain http in tests; see the https test below
+    # A reloaded page has no token in memory: the cookie alone signs it in.
+    me = await client.get("/api/v1/auth/me")
+    assert me.status_code == 200 and me.json()["username"] == "admin"
+
+
+async def test_cookie_requests_that_change_data_need_the_client_header(
+    client: AsyncClient,
+) -> None:
+    await client.post(LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD})
+    forged = await client.post("/api/v1/sync")
+    assert forged.status_code == 403 and forged.json()["code"] == "missing_client_header"
+    ok = await client.post("/api/v1/sync", headers={"X-Tefteri-Client": "web"})
+    assert ok.status_code == 200
+
+
+async def test_logout_clears_the_cookie(client: AsyncClient) -> None:
+    await client.post(LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD})
+    out = await client.post("/api/v1/auth/logout", headers={"X-Tefteri-Client": "web"})
+    assert out.status_code == 204 and 'tefteri_session=""' in out.headers["set-cookie"]
+    assert (await client.get("/api/v1/auth/me")).status_code == 401
+
+
+async def test_cookie_is_secure_behind_https(make_settings: Callable[..., Settings]) -> None:
+    app = create_app(make_settings(public_url="https://tefteri.example.org"))
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        r = await c.post(LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD})
+        assert "Secure" in r.headers["set-cookie"]

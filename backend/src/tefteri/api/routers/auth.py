@@ -3,10 +3,10 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 
-from tefteri.api.deps import AuthDep, CurrentUser, Db, Token
+from tefteri.api.deps import SESSION_COOKIE, AuthDep, CurrentUser, Db, SettingsDep, Token
 from tefteri.api.errors import ApiError
 from tefteri.auth.passwords import hash_password
 from tefteri.auth.service import InvalidCredentials
@@ -53,9 +53,24 @@ class MethodsResponse(BaseModel):
     password: bool
 
 
+# Only the API reads the cookie; the web client is served from the same origin.
+_COOKIE_PATH = "/api"
+
+
 @router.post("/login")
-async def login(body: LoginRequest, db: Db, auth: AuthDep) -> LoginResponse:
-    """Exchange username and password for a bearer token."""
+async def login(
+    body: LoginRequest,
+    db: Db,
+    auth: AuthDep,
+    request: Request,
+    response: Response,
+    settings: SettingsDep,
+) -> LoginResponse:
+    """Exchange username and password for a session token.
+
+    The token is also set as an HttpOnly, SameSite=Strict cookie so the web client stays
+    signed in across reloads without page scripts ever being able to read the token.
+    """
     try:
         token, expires = await auth.login(db, body.username, body.password)
     except Throttled as exc:
@@ -68,13 +83,23 @@ async def login(body: LoginRequest, db: Db, auth: AuthDep) -> LoginResponse:
     except InvalidCredentials as exc:
         await db.commit()
         raise ApiError(401, "invalid_credentials", "Invalid username or password") from exc
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        expires=expires,
+        path=_COOKIE_PATH,
+        httponly=True,
+        samesite="strict",
+        secure=request.url.scheme == "https" or (settings.public_url or "").startswith("https://"),
+    )
     return LoginResponse(token=token, expires_at=expires)
 
 
 @router.post("/logout", status_code=204)
-async def logout(db: Db, auth: AuthDep, token: Token) -> None:
-    """Invalidate the current token."""
+async def logout(db: Db, auth: AuthDep, token: Token, response: Response) -> None:
+    """Invalidate the current token and clear the session cookie."""
     await auth.logout(db, token)
+    response.delete_cookie(SESSION_COOKIE, path=_COOKIE_PATH, httponly=True, samesite="strict")
 
 
 @router.get("/me")
