@@ -9,6 +9,7 @@ import '../../core/api_client.dart';
 import '../../core/shell.dart';
 import 'connection_models.dart';
 import 'failure_card.dart';
+import 'planner_settings_card.dart';
 import 'sync_controller.dart';
 
 /// Formats a sync time for display, for example `2026-11-01 09:30`.
@@ -115,6 +116,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
         if (list.isEmpty) const _Message('No connections yet.'),
         for (final c in list)
           _ConnectionTile(connection: c, result: sync.results[c.id]),
+        const PlannerSettingsCard(),
       ],
     );
   }

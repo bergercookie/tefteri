@@ -90,6 +90,9 @@ class PlanTask {
 
   /// True when the task is complete.
   bool get done => status == 'done';
+
+  /// True when the task has a due date. The due date is the planned time.
+  bool get isScheduled => dueAt != null;
 }
 
 /// A calendar entry (event).
@@ -250,6 +253,8 @@ class CalendarItem {
     this.context,
     this.effectiveContext,
     this.connectionId,
+    this.status,
+    this.clippedStart = false,
   });
 
   /// Parses one calendar item JSON object.
@@ -263,6 +268,8 @@ class CalendarItem {
         context: j['context'] as String?,
         effectiveContext: j['effective_context'] as String?,
         connectionId: j['connection_id'] as String?,
+        status: j['status'] as String?,
+        clippedStart: j['clipped_start'] == true,
       );
 
   /// `entry` or `task`.
@@ -292,8 +299,18 @@ class CalendarItem {
   /// Owning connection id.
   final String? connectionId;
 
+  /// Task status (`open` or `done`); null for events.
+  final String? status;
+
+  /// True when a task block would start on the previous day and is cut at
+  /// 00:00 ("continues from previous day").
+  final bool clippedStart;
+
   /// True when this item is a scheduled task.
   bool get isTask => type == 'task';
+
+  /// True for a task that is done.
+  bool get isDone => isTask && status == 'done';
 }
 
 /// A sync conflict with both versions of the item.
@@ -492,4 +509,18 @@ class TaskDraft {
   /// JSON for the breakdown request.
   Map<String, Object?> toJson() =>
       {'connection_id': connectionId, 'title': title};
+}
+
+/// Planning settings of the signed-in user (`/me/settings`).
+@immutable
+class UserSettings {
+  /// Creates settings.
+  const UserSettings({required this.randomTimeOnDateDrop});
+
+  /// Parses the settings JSON object.
+  factory UserSettings.fromJson(Map<String, dynamic> j) =>
+      UserSettings(randomTimeOnDateDrop: j['random_time_on_date_drop'] == true);
+
+  /// When true, a date-only drop gets a random time of day on that date.
+  final bool randomTimeOnDateDrop;
 }

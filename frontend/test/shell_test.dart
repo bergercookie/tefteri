@@ -41,6 +41,24 @@ Future<void> _openDrawer(WidgetTester tester, bool admin) async {
 }
 
 void adminMenuTests() {
+  testWidgets('drawer lists the planner first and every other view',
+      (tester) async {
+    await _openDrawer(tester, false);
+    expect(find.byKey(const Key('nav-/')), findsOneWidget);
+    for (final path in [
+      '/daily',
+      '/week',
+      '/month',
+      '/year',
+      '/goals',
+      '/review',
+      '/notes',
+    ]) {
+      expect(find.byKey(Key('nav-$path')), findsOneWidget, reason: path);
+    }
+    expect(find.byKey(const Key('nav-/calendar')), findsNothing);
+  });
+
   testWidgets('drawer shows Users only for admins', (tester) async {
     await _openDrawer(tester, true);
     expect(find.byKey(const Key('nav-/users')), findsOneWidget);

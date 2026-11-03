@@ -21,11 +21,11 @@ async def test_daily_flow(api: AsyncClient, world: FakeWorld) -> None:
     ).json()
     scheduled = await api.put(
         f"{V1}/tasks/{task['id']}/schedule",
-        json={"start": "2026-11-02T09:05:00+00:00", "end": "2026-11-02T10:00:00+00:00"},
+        json={"start": "2026-11-02T09:05:00+00:00"},
     )
     assert [e["title"] for e in scheduled.json()["overlaps"]] == ["Standup"]
     remote = next(t for t in world.tasks["default"].tasks.values() if t.title == "Prepare demo")
-    assert remote.scheduled_start is not None
+    assert remote.due_at is not None  # block 09:00-10:00, due 10:00
     assert [e.title for e in world.calendars["default"].entries.values()] == ["Standup"]
 
     await api.post(f"{V1}/tasks/{task['id']}/complete")

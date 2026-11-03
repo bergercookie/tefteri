@@ -18,9 +18,3 @@ final calendarItemsProvider =
   final to = DateTime(from.year, from.month, from.day + calendarDays);
   return ref.watch(planningApiProvider).calendar(from, to, filter);
 });
-
-/// Loads open tasks that have no planned time. Reloads with the filter.
-final unscheduledTasksProvider = FutureProvider<List<PlanTask>>((ref) {
-  final filter = ref.watch(contextFilterProvider);
-  return ref.watch(planningApiProvider).unscheduledTasks(filter);
-});

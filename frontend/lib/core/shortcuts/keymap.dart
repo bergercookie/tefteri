@@ -27,8 +27,8 @@ class AppView {
 
 /// All views in drawer order. Change password and Users have no shortcut.
 const appViews = [
-  AppView('Today', '/', 't'),
-  AppView('Calendar', '/calendar', 'c'),
+  AppView('Planner', '/', 'p'),
+  AppView('Today', '/daily', 't'),
   AppView('Week', '/week', 'w'),
   AppView('Month', '/month', 'm'),
   AppView('Year', '/year', 'y'),

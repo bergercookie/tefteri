@@ -106,17 +106,43 @@ class PlanningApi {
     ];
   }
 
-  /// `GET /tasks?unscheduled=true` for open tasks with no planned time.
-  Future<List<PlanTask>> unscheduledTasks(ContextFilter filter) async {
+  /// `GET /tasks` for the planner: open tasks by [due] filter or by title
+  /// search [query]. A non-empty [query] searches all open tasks and the
+  /// server ignores [due].
+  Future<List<PlanTask>> tasks(ContextFilter filter,
+      {String? due, String? query}) async {
     final r = await _dio.get<Object?>('/tasks', queryParameters: {
-      'unscheduled': 'true',
-      'status': 'open',
+      if (due != null) 'due': due,
+      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       ...filter.queryParameters,
     });
     return [
       for (final t in (r.data as List? ?? const []))
         PlanTask.fromJson(t as Map<String, dynamic>),
     ];
+  }
+
+  /// `GET /tasks/counts`: open tasks per planner filter, keyed by the
+  /// filter's API value.
+  Future<Map<String, int>> taskCounts(ContextFilter filter) async {
+    final r = await _dio.get<Object?>('/tasks/counts',
+        queryParameters: filter.queryParameters);
+    final data = r.data as Map<String, dynamic>? ?? const {};
+    return {for (final e in data.entries) e.key: (e.value as num).toInt()};
+  }
+
+  /// `GET /me/settings`.
+  Future<UserSettings> settings() async {
+    final r = await _dio.get<Object?>('/me/settings');
+    return UserSettings.fromJson(r.data! as Map<String, dynamic>);
+  }
+
+  /// `PATCH /me/settings`.
+  Future<UserSettings> updateSettings(
+      {required bool randomTimeOnDateDrop}) async {
+    final r = await _dio.patch<Object?>('/me/settings',
+        data: {'random_time_on_date_drop': randomTimeOnDateDrop});
+    return UserSettings.fromJson(r.data! as Map<String, dynamic>);
   }
 
   /// `POST /tasks`.
@@ -132,12 +158,16 @@ class PlanningApi {
   /// `DELETE /tasks/{id}`.
   Future<void> deleteTask(String id) => _dio.delete<Object?>('/tasks/$id');
 
-  /// `PUT /tasks/{id}/schedule`. Never creates a calendar event.
-  Future<void> scheduleTask(String id, DateTime start, DateTime end) =>
-      _dio.put<Object?>('/tasks/$id/schedule', data: {
-        'start': start.toUtc().toIso8601String(),
-        'end': end.toUtc().toIso8601String(),
-      });
+  /// `PUT /tasks/{id}/schedule` with a block [start]. The server stores the
+  /// due date one hour later. Never creates a calendar event.
+  Future<void> scheduleTaskAt(String id, DateTime start) =>
+      _dio.put<Object?>('/tasks/$id/schedule',
+          data: {'start': start.toUtc().toIso8601String()});
+
+  /// `PUT /tasks/{id}/schedule` for a date only. The server stores an
+  /// all-day due date, or a random time if the user's setting is on.
+  Future<void> scheduleTaskOnDate(String id, DateTime day) =>
+      _dio.put<Object?>('/tasks/$id/schedule', data: {'date': dateKey(day)});
 
   /// `DELETE /tasks/{id}/schedule`.
   Future<void> unscheduleTask(String id) =>

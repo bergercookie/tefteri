@@ -136,7 +136,7 @@ class ConflictService:
         connection = await self._connections.get(db, user_id, task.connection_id)
         if connection is None:
             raise NotFound
-        backend = cast(TaskBackend, self._connections.backend_for(connection))
+        backend = cast(TaskBackend, await self._connections.backend_of_owner(db, connection))
         current = await guard(connection, backend.get_task(task.remote_id))
         if resolution is Resolution.KEEP_LOCAL:
             local = conflict.local_snapshot

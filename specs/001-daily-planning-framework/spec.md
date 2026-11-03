@@ -16,7 +16,7 @@
 - Q: When the same item has been changed both in tefteri and in the connected app since the last sync, how should tefteri resolve it? → A: Ask the user per conflict, showing both versions.
 - Q: Where should tefteri's own planning data (goals, plans, work/life labels, reviews) live? → A: tefteri's own store is the source of truth for it; retrospectives are also written to Trilium Next as notes.
 - Q: How do people sign in and get their own account on a tefteri installation? → A: Admin-created accounts with username and password. Sign-in through an external SSO/OIDC identity provider is planned for a later version (out of scope for v1). The first admin is created at deployment from a pre-computed password hash; raw passwords are never accepted by configuration.
-- Q: When the user schedules a task at a time, should tefteri also create a Google Calendar event? → A: No. Scheduling only sets the task's date/time in Vikunja; tefteri's calendar view shows scheduled tasks alongside Google Calendar events.
+- Q: When the user schedules a task at a time, should tefteri also create a Google Calendar event? → A: No. Scheduling only sets the task's due date and time in Vikunja (the due date is the canonical date, see constitution Principle VII and spec 002); tefteri's calendar view shows scheduled tasks alongside Google Calendar events.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -58,12 +58,12 @@ The user views their calendar and places tasks from their task manager onto it a
 
 **Why this priority**: Turning a to-do list into a realistic schedule is the key planning capability.
 
-**Independent Test**: Schedule an unscheduled task at a time slot, then verify the task's date/time is updated in the task manager and the entry appears in the calendar.
+**Independent Test**: Schedule an unscheduled task at a time slot, then verify the task's due date and time are updated in the task manager and the entry appears in the calendar.
 
 **Acceptance Scenarios**:
 
-1. **Given** an unscheduled task, **When** the user schedules it at a date and time, **Then** the task's date/time is written back to the task manager, no event is created in the calendar app, and the task appears in the calendar view next to the calendar entries.
-2. **Given** a scheduled task, **When** the user moves it to another slot, **Then** the new date/time is written back.
+1. **Given** an unscheduled task, **When** the user schedules it at a date and time, **Then** the task's due date and time are written back to the task manager, no event is created in the calendar app, and the task appears in the calendar view next to the calendar entries.
+2. **Given** a scheduled task, **When** the user moves it to another slot, **Then** the new due date and time are written back.
 3. **Given** an existing calendar entry, **When** the user edits or deletes it in tefteri, **Then** the change is applied in the calendar app.
 4. **Given** a task is scheduled over an existing calendar entry, **When** the user confirms, **Then** the overlap is clearly shown.
 
@@ -187,7 +187,7 @@ A user working at a keyboard can move between all views (daily, weekly, monthly,
 - **FR-001**: Users MUST be able to connect, view, and disconnect their own task manager, calendar and note-taking app, and MUST be able to connect more than one of each kind. The supported apps in v1 are Vikunja (tasks), Google Calendar (covering both personal/family calendars, including shared family calendars, and company accounts) and Trilium Next (notes).
 - **FR-002**: Users MUST be able to create, view, edit, complete and delete tasks from within tefteri, with changes applied in the connected task manager.
 - **FR-003**: Users MUST be able to view, create, edit and delete calendar entries from within tefteri, with changes applied in the connected calendar.
-- **FR-004**: Users MUST be able to schedule a task on the calendar view, and the resulting date/time changes MUST be written back to the task manager. Scheduling MUST NOT create a separate event in the calendar app; the calendar view MUST display scheduled tasks together with calendar entries, visually distinguished.
+- **FR-004**: Users MUST be able to schedule a task on the calendar view, and the resulting due date and time MUST be written back to the task manager. For Vikunja the due date is the only stored planning date; the calendar block is derived from it (spec 002). Scheduling MUST NOT create a separate event in the calendar app; the calendar view MUST display scheduled tasks together with calendar entries, visually distinguished.
 - **FR-005**: Users MUST be able to read, create and append to daily notes and custom notes in their note-taking app from within tefteri, and link notes to tasks.
 - **FR-006**: Every user interface MUST provide a sync action that refreshes tasks, calendar entries and notes from all connected apps, and MUST show the time and outcome of the last sync per connection.
 - **FR-007**: The system MUST report sync failures per connection, without blocking other connections, and MUST NOT lose or silently overwrite user changes when sync fails or conflicts.
@@ -217,7 +217,7 @@ A user working at a keyboard can move between all views (daily, weekly, monthly,
 
 - **User**: A person with their own account, connections, items, goals and plans.
 - **Connection**: A user's link to an external task manager, calendar or note-taking app, with its sync status and its default work/life assignment.
-- **Task**: A unit of work with title, status, optional due date/time and scheduled time, optional parent goal and linked notes; mirrors an item in the task manager.
+- **Task**: A unit of work with title, status, optional due date/time (the planned time of the task; the calendar block is derived from it), optional parent goal and linked notes; mirrors an item in the task manager.
 - **Calendar Entry**: A time-based event mirrored from the calendar app; may be linked to a task.
 - **Note**: A document in the note-taking app. Kinds: daily TODO note, custom/documentation note, process, retrospective.
 - **Goal / Plan**: A high-level objective for a period (year, month, week) that can contain smaller goals and tasks and has progress.

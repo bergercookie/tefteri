@@ -65,3 +65,16 @@ app with a release-signed app. Keep the keystore safe: you need the same key for
 
 The workflows install devbox. They also install the Linux desktop build tools with `apt-get`,
 because devbox does not give them. The runner gives Docker and the Android SDK.
+
+## Upgrade notes for the planner (spec 002)
+
+Put this note in the release notes of the release that adds the planner:
+
+- The planner schedules tasks by the due date only. It does not write the start date or the end
+  date of a Vikunja task any more.
+- A task that an older version scheduled only through the start date and the end date, and that
+  has no due date, shows as not scheduled. Tefteri does not change it in Vikunja. The user drags
+  the task to a time to set the due date.
+- A task with a due time of exactly 00:00 in the time zone of the user shows as a task for a date
+  only. Check this convention against your Vikunja server before the release.
+

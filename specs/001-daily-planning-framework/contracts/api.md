@@ -35,8 +35,9 @@ return that user's data. Item list endpoints accept `context=all|work|life` (def
 - `GET /tasks` (filters: `context`, `status`, `from`, `to`, `goal_id`, `unscheduled`).
 - `POST /tasks`, `GET /tasks/{id}`, `PATCH /tasks/{id}`, `DELETE /tasks/{id}`,
   `POST /tasks/{id}/complete`.
-- `PUT /tasks/{id}/schedule` `{start, end?}` / `DELETE /tasks/{id}/schedule` - writes the
-  date/time back to the task backend; creates no calendar event.
+- `PUT /tasks/{id}/schedule` `{start}` or `{date}` / `DELETE /tasks/{id}/schedule` - writes the
+  due date back to the task backend; creates no calendar event. *Changed by spec 002: see
+  `specs/002-split-planning-layout/contracts/api.md`.*
 
 ## Calendar
 - `GET /calendar` (`from`, `to`, `context`) → calendar entries **and** scheduled tasks, each

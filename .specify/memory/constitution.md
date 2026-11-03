@@ -83,6 +83,23 @@ Rationale: documentation that is simple and aimed at a clear reader is used. STE
 it easy to read for non-native English speakers and easy to translate. Pictures show the
 reader what to expect and make the text shorter.
 
+### VII. Vikunja Due Date Is the Canonical Date
+When Vikunja is the task backend, a task's due date MUST be the single date of preference for
+that task in every feature (list views, calendar placement, scheduling, drag and drop, sync).
+Features MUST read a task's planned time from its due date and MUST write a newly planned
+time to its due date. A feature MUST NOT introduce a second Vikunja date field (for example
+start date) as the source of truth for when a task is planned.
+
+- The calendar start time of a task event is derived from the due date (for example, due date
+  minus one hour). The derived start time MUST NOT be saved back to Vikunja as a separate
+  planning date.
+- This rule belongs to the Vikunja adapter. Core logic MUST work with a backend-neutral
+  "planned time" and MUST NOT mention Vikunja fields, as Principle IV requires. Other task
+  backends declare their own mapping in their adapter.
+
+Rationale: one agreed date field stops conflicts between views and keeps tefteri in step with
+how the user already uses Vikunja.
+
 ## Technology & Environment Constraints
 
 - Backend: Python, with dependencies managed in a way that is reproducible and locked.
@@ -113,4 +130,4 @@ for clarifications and wording fixes.
 Compliance is checked in code review and in the Constitution Check step of Spec Kit plans.
 Violations MUST be fixed or explicitly justified and recorded.
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-01 | **Last Amended**: 2026-11-01
+**Version**: 1.4.0 | **Ratified**: 2026-11-01 | **Last Amended**: 2026-11-02

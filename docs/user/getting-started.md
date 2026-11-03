@@ -64,6 +64,7 @@ account is a separate connection.
 
 ## Learn the main screens
 
+- [Plan with the planner](planner.md)
 - [Plan your day](daily-planning.md)
 - [Put tasks on the calendar](scheduling.md)
 - [Plan goals](planning-goals.md)

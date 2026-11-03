@@ -81,6 +81,11 @@
             "title": "All Day",
             "type": "boolean"
           },
+          "clipped_start": {
+            "default": false,
+            "title": "Clipped Start",
+            "type": "boolean"
+          },
           "connection_id": {
             "format": "uuid",
             "title": "Connection Id",
@@ -115,6 +120,17 @@
             "format": "date-time",
             "title": "Start",
             "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
           },
           "title": {
             "title": "Title",
@@ -523,6 +539,19 @@
         ],
         "title": "DayView",
         "type": "object"
+      },
+      "DueFilter": {
+        "description": "The filters offered at the top of the task view.",
+        "enum": [
+          "today",
+          "tomorrow",
+          "week",
+          "all",
+          "none",
+          "overdue"
+        ],
+        "title": "DueFilter",
+        "type": "string"
       },
       "EntryIn": {
         "description": "Data to create a calendar entry.",
@@ -1619,9 +1648,22 @@
         "type": "object"
       },
       "ScheduleIn": {
-        "description": "Start (and optional end) of a task's time slot.",
+        "additionalProperties": false,
+        "description": "Where to plan a task: a block start, or a date only. Send exactly one.",
         "properties": {
-          "end": {
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "start": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -1631,17 +1673,9 @@
                 "type": "null"
               }
             ],
-            "title": "End"
-          },
-          "start": {
-            "format": "date-time",
-            "title": "Start",
-            "type": "string"
+            "title": "Start"
           }
         },
-        "required": [
-          "start"
-        ],
         "title": "ScheduleIn",
         "type": "object"
       },
@@ -1664,6 +1698,39 @@
           "overlaps"
         ],
         "title": "ScheduleOut",
+        "type": "object"
+      },
+      "SettingsOut": {
+        "description": "The current user's settings.",
+        "properties": {
+          "random_time_on_date_drop": {
+            "title": "Random Time On Date Drop",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "random_time_on_date_drop"
+        ],
+        "title": "SettingsOut",
+        "type": "object"
+      },
+      "SettingsPatch": {
+        "additionalProperties": false,
+        "description": "Settings to change; fields that are left out stay as they are.",
+        "properties": {
+          "random_time_on_date_drop": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Time On Date Drop"
+          }
+        },
+        "title": "SettingsPatch",
         "type": "object"
       },
       "SyncResultOut": {
@@ -2347,7 +2414,7 @@
     },
     "/api/v1/calendar": {
       "get": {
-        "description": "Return calendar entries and scheduled tasks (``type`` says which) in a window.",
+        "description": "Return calendar entries and tasks with a due date (``type`` says which) in a window.\n\nA timed task is the block that ends at its due time; a date-only task is ``all_day``.",
         "operationId": "list_calendar_api_v1_calendar_get",
         "parameters": [
           {
@@ -3343,6 +3410,68 @@
         ]
       }
     },
+    "/api/v1/me/settings": {
+      "get": {
+        "description": "Return the current user's settings.",
+        "operationId": "get_settings_api_v1_me_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "patch": {
+        "description": "Change the current user's settings.",
+        "operationId": "update_settings_api_v1_me_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/v1/notes": {
       "get": {
         "description": "List the user's notes from the cache.",
@@ -3990,7 +4119,7 @@
     },
     "/api/v1/tasks": {
       "get": {
-        "description": "List the user's tasks from the cache.",
+        "description": "List the user's tasks from the cache.\n\n``due`` and ``q`` are the filters of the planner. They list open tasks unless ``status``\nsays otherwise. A non-empty ``q`` matches titles case-insensitively across all open tasks\nand ignores ``due``.",
         "operationId": "list_tasks_api_v1_tasks_get",
         "parameters": [
           {
@@ -4078,6 +4207,42 @@
               ],
               "title": "Goal Id"
             }
+          },
+          {
+            "description": "Filter open tasks by due date in the user's time zone.",
+            "in": "query",
+            "name": "due",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DueFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter open tasks by due date in the user's time zone.",
+              "title": "Due"
+            }
+          },
+          {
+            "description": "Title search over all open tasks. When set, ``due`` is ignored.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Title search over all open tasks. When set, ``due`` is ignored.",
+              "title": "Q"
+            }
           }
         ],
         "responses": {
@@ -4147,6 +4312,53 @@
           }
         },
         "summary": "Create Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/counts": {
+      "get": {
+        "description": "Count the user's open tasks for each planner filter (the badges of the filter chips).",
+        "operationId": "task_counts_api_v1_tasks_counts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "context",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ContextFilter",
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Task Counts Api V1 Tasks Counts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Counts",
         "tags": [
           "tasks"
         ]
@@ -4476,7 +4688,7 @@
     },
     "/api/v1/tasks/{task_id}/schedule": {
       "delete": {
-        "description": "Clear the task's date and time in the task app.",
+        "description": "Clear the task's due date and time in the task app.",
         "operationId": "unschedule_task_api_v1_tasks__task_id__schedule_delete",
         "parameters": [
           {
@@ -4518,7 +4730,7 @@
         ]
       },
       "put": {
-        "description": "Write the task's date and time to the task app. No calendar event is created.",
+        "description": "Write the task's due date and time to the task app. No calendar event is created.\n\n``start`` plans a one-hour block that starts there (the due time is one hour later).\n``date`` plans a date only (all-day, or a random time if the user's setting is on).",
         "operationId": "schedule_task_api_v1_tasks__task_id__schedule_put",
         "parameters": [
           {

@@ -1,23 +1,30 @@
 """Task endpoints (CRUD, complete, schedule)."""
 
 import uuid
+from datetime import date as date_type
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.schemas import EntryOut, NoteOut, TaskOut, aware
 from tefteri.db.models.task import Task
 from tefteri.domain.enums import Context
+from tefteri.services import task_filters
 from tefteri.services.context import ContextFilter, load_maps
 from tefteri.services.goals import GoalService
 from tefteri.services.notes import NoteService
+from tefteri.services.task_filters import DueFilter
 from tefteri.services.tasks import UNSET, TaskService
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+def _opt_aware(value: datetime | None) -> datetime | None:
+    return aware(value) if value is not None else None
 
 
 def _tasks(request: Request) -> TaskService:
@@ -57,10 +64,18 @@ class TaskPatch(BaseModel):
 
 
 class ScheduleIn(BaseModel):
-    """Start (and optional end) of a task's time slot."""
+    """Where to plan a task: a block start, or a date only. Send exactly one."""
 
-    start: datetime
-    end: datetime | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    start: datetime | None = None
+    date: date_type | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> "ScheduleIn":
+        if (self.start is None) == (self.date is None):
+            raise ValueError("send exactly one of start or date")
+        return self
 
 
 class ScheduleOut(BaseModel):
@@ -79,8 +94,15 @@ class TaskNoteIn(BaseModel):
     kind: Literal["custom", "process"] = "custom"
 
 
+def _now(request: Request) -> datetime:
+    clock = request.app.state.clock
+    now: datetime = clock()
+    return now
+
+
 @router.get("")
 async def list_tasks(
+    request: Request,
     db: Db,
     user: CurrentUser,
     context: ContextFilter = ContextFilter.ALL,
@@ -89,27 +111,70 @@ async def list_tasks(
     to: datetime | None = None,
     unscheduled: bool = False,
     goal_id: uuid.UUID | None = None,
+    due: Annotated[
+        DueFilter | None,
+        Query(description="Filter open tasks by due date in the user's time zone."),
+    ] = None,
+    q: Annotated[
+        str | None,
+        Query(description="Title search over all open tasks. When set, ``due`` is ignored."),
+    ] = None,
 ) -> list[TaskOut]:
-    """List the user's tasks from the cache."""
+    """List the user's tasks from the cache.
+
+    ``due`` and ``q`` are the filters of the planner. They list open tasks unless ``status``
+    says otherwise. A non-empty ``q`` matches titles case-insensitively across all open tasks
+    and ignores ``due``.
+    """
+    searching = bool(q and q.strip())
+    if (due is not None or searching) and not status:
+        status = "open"
     query = select(Task).where(Task.user_id == user.id)
     if status:
         query = query.where(Task.status == status)
     if goal_id:
         query = query.where(Task.goal_id == goal_id)
+    now = _now(request)
+    if due is not None and not searching:
+        # The same rule as ``task_filters.matches``, done in the database (kept in step by tests).
+        query = query.where(task_filters.sql_condition(due, now, user.timezone))
     maps = await load_maps(db, user.id)
+    needle = (q or "").strip().casefold()
     out = []
     for t in (await db.execute(query)).scalars():
-        if unscheduled and t.scheduled_start is not None:
+        if unscheduled and t.due_at is not None:
             continue
         if not maps.matches(context, t.context, t.container_id, t.connection_id):
             continue
-        when = t.scheduled_start or t.due_at
+        if searching and needle not in t.title.casefold():
+            continue
+        when = t.due_at
         if from_ and (when is None or aware(when) < aware(from_)):
             continue
         if to and (when is None or aware(when) >= aware(to)):
             continue
         out.append(TaskOut.of(t, maps))
     return out
+
+
+@router.get("/counts")
+async def task_counts(
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+    context: ContextFilter = ContextFilter.ALL,
+) -> dict[str, int]:
+    """Count the user's open tasks for each planner filter (the badges of the filter chips)."""
+    maps = await load_maps(db, user.id)
+    rows = (
+        await db.execute(select(Task).where(Task.user_id == user.id, Task.status == "open"))
+    ).scalars()
+    pairs = [
+        (_opt_aware(t.due_at), t.all_day)
+        for t in rows
+        if maps.matches(context, t.context, t.container_id, t.connection_id)
+    ]
+    return task_filters.counts(pairs, _now(request), user.timezone)
 
 
 @router.post("", status_code=201)
@@ -170,10 +235,18 @@ async def complete_task(task_id: uuid.UUID, request: Request, db: Db, user: Curr
 async def schedule_task(
     task_id: uuid.UUID, body: ScheduleIn, request: Request, db: Db, user: CurrentUser
 ) -> ScheduleOut:
-    """Write the task's date and time to the task app. No calendar event is created."""
+    """Write the task's due date and time to the task app. No calendar event is created.
+
+    ``start`` plans a one-hour block that starts there (the due time is one hour later).
+    ``date`` plans a date only (all-day, or a random time if the user's setting is on).
+    """
     service = _tasks(request)
     task = await service.get(db, user.id, task_id)
-    task, found = await service.set_schedule(db, user.id, task, body.start, body.end)
+    if body.start is not None:
+        task, found = await service.schedule_at(db, user.id, task, body.start)
+    else:
+        assert body.date is not None  # noqa: S101 - checked by the model validator
+        task, found = await service.schedule_date(db, user.id, task, body.date)
     maps = await load_maps(db, user.id)
     return ScheduleOut(task=TaskOut.of(task, maps), overlaps=[EntryOut.of(e, maps) for e in found])
 
@@ -182,10 +255,10 @@ async def schedule_task(
 async def unschedule_task(
     task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
 ) -> TaskOut:
-    """Clear the task's date and time in the task app."""
+    """Clear the task's due date and time in the task app."""
     service = _tasks(request)
     task = await service.get(db, user.id, task_id)
-    task, _ = await service.set_schedule(db, user.id, task, None, None)
+    task = await service.unschedule(db, user.id, task)
     return TaskOut.of(task, await load_maps(db, user.id))
 
 

@@ -16,8 +16,8 @@ You can also choose the keyboard button at the top of the screen.
 
 | Key | View |
 | --- | --- |
+| P | Planner (the first screen) |
 | T | Today (the daily view) |
-| C | Calendar |
 | W | Week |
 | M | Month |
 | Y | Year |

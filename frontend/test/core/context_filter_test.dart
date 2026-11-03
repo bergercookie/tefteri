@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/context_filter.dart';
-import 'package:tefteri/features/calendar/calendar_screen.dart';
+import 'package:tefteri/features/planner/planner_screen.dart';
 import 'package:tefteri/features/daily/daily_screen.dart';
 
 import '../support/fake_api.dart';
@@ -49,11 +49,11 @@ void main() {
     expect(seen, ['all', 'work', 'life']);
   });
 
-  testWidgets('calendar view reloads with the selected context',
-      (tester) async {
-    final api = FakeApi({'GET /calendar': [], 'GET /tasks': []});
+  testWidgets('planner reloads with the selected context', (tester) async {
+    final api = FakeApi(
+        {'GET /calendar': [], 'GET /tasks': [], 'GET /tasks/counts': {}});
     await pumpWithApi(
-        tester, api, CalendarScreen(initialDate: DateTime(2026, 11, 4)));
+        tester, api, PlannerScreen(initialDate: DateTime(2026, 11, 4)));
     await tester.tap(find.text('work'));
     await tester.pumpAndSettle();
     expect(api.where('GET /calendar').map((r) => r.query['context']),

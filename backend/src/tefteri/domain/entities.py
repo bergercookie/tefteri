@@ -33,8 +33,6 @@ class RemoteTask:
     description: str = ""
     done: bool = False
     due_at: datetime | None = None
-    scheduled_start: datetime | None = None
-    scheduled_end: datetime | None = None
     all_day: bool = False
 
 

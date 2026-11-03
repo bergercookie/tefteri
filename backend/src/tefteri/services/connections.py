@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.connection import Connection
+from tefteri.db.models.user import User
 from tefteri.db.repositories.connections import ConnectionRepository
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus, Context
 from tefteri.domain.ports import Backend
@@ -73,11 +74,18 @@ class ConnectionService:
         data: dict[str, Any] = json.loads(self._cipher.decrypt(connection.encrypted_credentials))
         return data
 
-    def backend_for(self, connection: Connection) -> Backend:
-        """Build the backend for ``connection``."""
+    def backend_for(self, connection: Connection, timezone: str = "UTC") -> Backend:
+        """Build the backend for ``connection``; ``timezone`` is the owner's time zone."""
         return self.registry.build(
-            connection.provider, connection.settings, self.credentials_of(connection)
+            connection.provider,
+            {**connection.settings, "timezone": timezone},
+            self.credentials_of(connection),
         )
+
+    async def backend_of_owner(self, db: AsyncSession, connection: Connection) -> Backend:
+        """Build the backend for ``connection`` using its owner's time zone."""
+        owner = await db.get(User, connection.user_id)
+        return self.backend_for(connection, owner.timezone if owner else "UTC")
 
     async def list(self, db: AsyncSession, user_id: uuid.UUID) -> Sequence[Connection]:
         """List the user's connections."""
