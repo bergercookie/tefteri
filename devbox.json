@@ -13,6 +13,7 @@
     "markdownlint-cli2@latest",
     "taplo@latest",
     "vale@latest",
+    "clang@latest",
     "flutter@3.47.4-sdk-links"
   ],
   "shell": {
