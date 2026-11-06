@@ -64,7 +64,7 @@ def vector() -> str:
         )
 
     def hexc(c):
-        return "#%02X%02X%02X" % c
+        return f"#{c[0]:02X}{c[1]:02X}{c[2]:02X}"
 
     lines = "".join(f"M{p(9, y)}L{p(19, y)}" for y in (9, 14, 19))
     ribbon = f"M{p(17, 1)}L{p(21, 1)}L{p(21, 9)}L{p(19, 7.2)}L{p(17, 9)}Z"
