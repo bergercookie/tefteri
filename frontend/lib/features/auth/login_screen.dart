@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth_controller.dart';
@@ -12,8 +13,7 @@ import '../../theme/theme.dart';
 class LoginScreen extends ConsumerStatefulWidget {
   /// Creates the screen. The server field shows when [showServer] is true;
   /// by default that is every client except the browser one.
-  const LoginScreen({bool? showServer, super.key})
-      : _showServer = showServer;
+  const LoginScreen({bool? showServer, super.key}) : _showServer = showServer;
 
   final bool? _showServer;
 
@@ -24,11 +24,17 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  late final _server =
-      TextEditingController(text: ref.read(serverAddressProvider) ?? '');
+  late final TextEditingController _server;
   final _user = TextEditingController();
   final _pass = TextEditingController();
   String? _serverError;
+
+  @override
+  void initState() {
+    super.initState();
+    _server =
+        TextEditingController(text: ref.read(serverAddressProvider) ?? '');
+  }
 
   @override
   void dispose() {
@@ -50,54 +56,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             padding: const EdgeInsets.all(Space.xl),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: TefteriWordmark(size: 44),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Text('Your plans, on one page.',
-                      style: text.titleLarge
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
-                  const SizedBox(height: Space.xxl),
-                  if (widget._askServer) ...[
-                    TextField(
-                        key: const Key('server'),
-                        controller: _server,
-                        keyboardType: TextInputType.url,
-                        autocorrect: false,
-                        decoration: const InputDecoration(
-                            labelText: 'Server',
-                            hintText: 'https://tefteri.example.com')),
-                    const SizedBox(height: Space.md),
-                  ],
-                  TextField(
-                      key: const Key('username'),
-                      controller: _user,
-                      decoration: const InputDecoration(labelText: 'Username')),
-                  const SizedBox(height: Space.md),
-                  TextField(
-                      key: const Key('password'),
-                      controller: _pass,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Password'),
-                      onSubmitted: (_) => _submit()),
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: Space.sm),
-                      child: Text(error,
-                          style:
-                              text.bodyMedium?.copyWith(color: scheme.error)),
+              // AutofillGroup lets password managers (Bitwarden etc.) fill
+              // and save the username/password pair as one credential.
+              child: AutofillGroup(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: TefteriWordmark(size: 44),
                     ),
-                  const SizedBox(height: Space.lg),
-                  FilledButton(
-                      key: const Key('login-button'),
-                      onPressed: _submit,
-                      child: const Text('Sign in')),
-                ],
+                    const SizedBox(height: Space.sm),
+                    Text('Your plans, on one page.',
+                        style: text.titleLarge
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    const SizedBox(height: Space.xxl),
+                    if (widget._askServer) ...[
+                      TextField(
+                          key: const Key('server'),
+                          controller: _server,
+                          keyboardType: TextInputType.url,
+                          autocorrect: false,
+                          decoration: const InputDecoration(
+                              labelText: 'Server',
+                              hintText: 'https://tefteri.example.com')),
+                      const SizedBox(height: Space.md),
+                    ],
+                    TextField(
+                        key: const Key('username'),
+                        controller: _user,
+                        autofillHints: const [AutofillHints.username],
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.next,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        decoration:
+                            const InputDecoration(labelText: 'Username')),
+                    const SizedBox(height: Space.md),
+                    TextField(
+                        key: const Key('password'),
+                        controller: _pass,
+                        obscureText: true,
+                        autofillHints: const [AutofillHints.password],
+                        textInputAction: TextInputAction.done,
+                        decoration:
+                            const InputDecoration(labelText: 'Password'),
+                        onSubmitted: (_) => _submit()),
+                    if (error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: Space.sm),
+                        child: Text(error,
+                            style:
+                                text.bodyMedium?.copyWith(color: scheme.error)),
+                      ),
+                    const SizedBox(height: Space.lg),
+                    FilledButton(
+                        key: const Key('login-button'),
+                        onPressed: _submit,
+                        child: const Text('Sign in')),
+                  ],
+                ),
               ),
             ),
           ),
@@ -120,5 +139,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref
         .read(authControllerProvider.notifier)
         .login(_user.text, _pass.text);
+    // Tells the platform the login succeeded so it can offer to save the
+    // credentials; with a failed login the context is cancelled instead.
+    // The screen is usually gone by now when login succeeded.
+    final failed = mounted && ref.read(authControllerProvider).error != null;
+    TextInput.finishAutofillContext(shouldSave: !failed);
   }
 }
