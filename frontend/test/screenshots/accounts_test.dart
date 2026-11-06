@@ -28,7 +28,7 @@ Map<String, Object?> _user(String id, String name,
 
 void main() {
   testWidgets('login screen', (tester) async {
-    await pumpScreen(tester, FakeApi({}), const LoginScreen());
+    await pumpScreen(tester, FakeApi({}), const LoginScreen(showServer: false));
     await saveScreenshot('accounts-login');
   });
 
