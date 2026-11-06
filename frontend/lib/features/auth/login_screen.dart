@@ -5,23 +5,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth_controller.dart';
+import '../../core/server_address.dart';
 import '../../theme/theme.dart';
 
 /// Login form.
 class LoginScreen extends ConsumerStatefulWidget {
-  /// Creates the screen.
-  const LoginScreen({super.key});
+  /// Creates the screen. The server field shows when [showServer] is true;
+  /// by default that is every client except the browser one.
+  const LoginScreen({bool? showServer, super.key})
+      : _showServer = showServer;
+
+  final bool? _showServer;
+
+  bool get _askServer => _showServer ?? needsServerAddress;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  late final _server =
+      TextEditingController(text: ref.read(serverAddressProvider) ?? '');
   final _user = TextEditingController();
   final _pass = TextEditingController();
+  String? _serverError;
 
   @override
   void dispose() {
+    _server.dispose();
     _user.dispose();
     _pass.dispose();
     super.dispose();
@@ -29,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final error = ref.watch(authControllerProvider).error;
+    final error = _serverError ?? ref.watch(authControllerProvider).error;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Scaffold(
@@ -52,6 +63,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: text.titleLarge
                           ?.copyWith(color: scheme.onSurfaceVariant)),
                   const SizedBox(height: Space.xxl),
+                  if (widget._askServer) ...[
+                    TextField(
+                        key: const Key('server'),
+                        controller: _server,
+                        keyboardType: TextInputType.url,
+                        autocorrect: false,
+                        decoration: const InputDecoration(
+                            labelText: 'Server',
+                            hintText: 'https://tefteri.example.com')),
+                    const SizedBox(height: Space.md),
+                  ],
                   TextField(
                       key: const Key('username'),
                       controller: _user,
@@ -84,6 +106,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _submit() =>
-      ref.read(authControllerProvider.notifier).login(_user.text, _pass.text);
+  Future<void> _submit() async {
+    if (widget._askServer) {
+      final address = normalizeServerAddress(_server.text);
+      if (address == null) {
+        setState(() => _serverError = 'Enter the address of your server');
+        return;
+      }
+      setState(() => _serverError = null);
+      _server.text = address;
+      await ref.read(serverAddressProvider.notifier).set(address);
+    }
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(_user.text, _pass.text);
+  }
 }
