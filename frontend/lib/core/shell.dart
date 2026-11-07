@@ -22,7 +22,11 @@ const double railMinWidth = 960;
 const double railExtendedMinWidth = 1180;
 
 const double _railCompactWidth = 76;
-const double _railExtendedWidth = 216;
+const double _railExtendedWidth = 232;
+
+/// Distance from the rail's left edge to the icons (and the mark) when the
+/// rail shows labels: the list's side padding plus the item's own.
+const double _railIndent = Space.md + Space.lg;
 
 /// Narrower than this, the context switch moves to its own row.
 const double _headerWrapWidth = 720;
@@ -251,8 +255,9 @@ class _NavPanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
+          // The mark lines up with the icons below it.
           padding: EdgeInsets.fromLTRB(
-              extended ? Space.lg : 0, Space.lg, Space.lg, Space.lg),
+              extended ? _railIndent : 0, Space.lg, Space.lg, Space.lg),
           child: Align(
             alignment: extended ? Alignment.centerLeft : Alignment.center,
             child: TefteriWordmark(size: 26, showName: extended),
@@ -260,7 +265,8 @@ class _NavPanel extends ConsumerWidget {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+            padding: EdgeInsets.symmetric(
+                horizontal: extended ? Space.md : Space.sm),
             children: [
               for (final v in appViews)
                 item('nav-${v.path}', v.label,
@@ -274,7 +280,7 @@ class _NavPanel extends ConsumerWidget {
         ),
         const Divider(height: 1),
         Padding(
-          padding: const EdgeInsets.all(Space.sm),
+          padding: EdgeInsets.all(extended ? Space.md : Space.sm),
           child: _NavItem(
             key: const Key('sign-out'),
             label: 'Sign out',
@@ -365,7 +371,7 @@ class _NavItem extends StatelessWidget {
                 ),
               Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: extended ? Space.md : Space.xs,
+                    horizontal: extended ? Space.lg : Space.xs,
                     vertical: extended ? Space.sm + 2 : Space.sm),
                 child: content,
               ),
