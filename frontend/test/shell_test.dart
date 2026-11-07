@@ -143,6 +143,19 @@ void railTests() {
     expect(find.byKey(const Key('nav-/admin')), findsOneWidget);
   });
 
+  testWidgets('the icons of the labelled rail are indented from its edge',
+      (tester) async {
+    await _pumpWide(tester, railExtendedMinWidth, admin: true);
+    double iconLeft(String key) => tester
+        .getTopLeft(find.descendant(
+            of: find.byKey(Key(key)), matching: find.byType(Icon)))
+        .dx;
+    // Clear of the edge, and the same for every entry, the sign-out one too.
+    expect(iconLeft('nav-/week'), greaterThanOrEqualTo(24));
+    expect(iconLeft('nav-/admin'), iconLeft('nav-/week'));
+    expect(iconLeft('sign-out'), iconLeft('nav-/week'));
+  });
+
   testWidgets('the compact rail has the mark but not the name', (tester) async {
     await _pumpWide(tester, railMinWidth);
     expect(find.text('Tefteri'), findsNothing);
