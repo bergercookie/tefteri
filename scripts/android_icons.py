@@ -1,4 +1,4 @@
-"""Draws the Tefteri notebook mark into the Android launcher icons.
+"""Draws the Tefteri notebook mark into the Android launcher icons and the web icons.
 
 Mirrors `TefteriMark` in frontend/lib/theme/logo.dart. Run from the repository
 root: `python3 scripts/android_icons.py` (needs Pillow).
@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 RES = Path("frontend/android/app/src/main/res")
+WEB = Path("frontend/web")
 PAPER = (0xFB, 0xF8, 0xF1)
 COVER = (0x2F, 0x4B, 0x7C)
 RIBBON = (0xD6, 0x49, 0x33)
@@ -42,6 +43,22 @@ def legacy(size: int) -> Image.Image:
         [0, 0, big - 1, big - 1], radius=big * 0.22, fill=PAPER
     )
     mark(img, big / 2, big / 2, big * 0.66 / 26)
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def maskable(size: int) -> Image.Image:
+    """Full-bleed paper with the mark inside the safe zone (the OS crops the corners)."""
+    big = size * SS
+    img = Image.new("RGBA", (big, big), PAPER + (255,))
+    mark(img, big / 2, big / 2, big * 0.5 / 26)
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def favicon(size: int) -> Image.Image:
+    """The mark alone, large, so that it reads at tab size."""
+    big = size * SS
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    mark(img, big / 2, big / 2, big * 0.94 / 26)
     return img.resize((size, size), Image.LANCZOS)
 
 
@@ -93,6 +110,11 @@ def main() -> None:
         "xxxhdpi": 192,
     }.items():
         legacy(size).save(RES / f"mipmap-{density}" / "ic_launcher.png")
+    (WEB / "icons").mkdir(parents=True, exist_ok=True)
+    favicon(48).save(WEB / "favicon.png")
+    for size in (192, 512):
+        legacy(size).save(WEB / "icons" / f"Icon-{size}.png")
+        maskable(size).save(WEB / "icons" / f"Icon-maskable-{size}.png")
     anydpi = RES / "mipmap-anydpi-v26"
     anydpi.mkdir(exist_ok=True)
     (anydpi / "ic_launcher.xml").write_text(
