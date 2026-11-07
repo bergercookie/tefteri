@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.schemas import EntryOut, TaskOut, aware
+from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.domain.enums import Context
 from tefteri.services import task_filters
@@ -34,6 +35,22 @@ def _tasks(request: Request) -> TaskService:
 def _goals(request: Request) -> GoalService:
     service: GoalService = request.app.state.goal_service
     return service
+
+
+async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
+    """Return one task with its project name and the link that opens it in its app."""
+    maps = await load_maps(db, user_id)
+    project: str | None = None
+    if task.container_id is not None:
+        container = await db.get(SourceContainer, task.container_id)
+        project = container.name if container else None
+    url: str | None = None
+    connection = await db.get(Connection, task.connection_id)
+    if connection is not None and connection.provider == "vikunja":
+        base = str(connection.settings.get("base_url", "")).rstrip("/")
+        if base:
+            url = f"{base}/tasks/{task.remote_id}"
+    return TaskOut.of(task, maps, project=project, url=url)
 
 
 class TaskIn(BaseModel):
@@ -175,14 +192,14 @@ async def create_task(body: TaskIn, request: Request, db: Db, user: CurrentUser)
         due_at=body.due_at,
         goal_id=body.goal_id,
     )
-    return TaskOut.of(task, await load_maps(db, user.id))
+    return await _out(db, user.id, task)
 
 
 @router.get("/{task_id}")
 async def get_task(task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser) -> TaskOut:
     """Return one task."""
     task = await _tasks(request).get(db, user.id, task_id)
-    return TaskOut.of(task, await load_maps(db, user.id))
+    return await _out(db, user.id, task)
 
 
 @router.patch("/{task_id}")
@@ -198,7 +215,7 @@ async def update_task(
     if goal_id not in (UNSET, None):
         await _goals(request).get(db, user.id, uuid.UUID(str(goal_id)))  # must be the user's goal
     await service.update(db, user.id, task, context=context, goal_id=goal_id, **fields)
-    return TaskOut.of(task, await load_maps(db, user.id))
+    return await _out(db, user.id, task)
 
 
 @router.delete("/{task_id}", status_code=204)
@@ -213,7 +230,15 @@ async def complete_task(task_id: uuid.UUID, request: Request, db: Db, user: Curr
     """Mark a task done in the app."""
     service = _tasks(request)
     task = await service.complete(db, user.id, await service.get(db, user.id, task_id))
-    return TaskOut.of(task, await load_maps(db, user.id))
+    return await _out(db, user.id, task)
+
+
+@router.post("/{task_id}/reopen")
+async def reopen_task(task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser) -> TaskOut:
+    """Mark a done task open again in the app."""
+    service = _tasks(request)
+    task = await service.reopen(db, user.id, await service.get(db, user.id, task_id))
+    return await _out(db, user.id, task)
 
 
 @router.put("/{task_id}/schedule")
@@ -244,4 +269,4 @@ async def unschedule_task(
     service = _tasks(request)
     task = await service.get(db, user.id, task_id)
     task = await service.unschedule(db, user.id, task)
-    return TaskOut.of(task, await load_maps(db, user.id))
+    return await _out(db, user.id, task)

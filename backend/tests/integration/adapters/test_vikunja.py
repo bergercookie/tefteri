@@ -362,3 +362,17 @@ async def test_a_task_that_tefteri_just_created_can_be_moved(backend: VikunjaTas
     )
     assert moved.due_at == datetime(2026, 11, 4, 15, tzinfo=UTC)
     assert len(store.posts) == 1
+
+
+@respx.mock
+async def test_reads_label_names_and_reopens(backend: VikunjaTaskBackend) -> None:
+    stored = _Stored(
+        done=True,
+        labels=[{"id": 1, "title": "errand"}, {"id": 2, "title": "home"}, {"id": 3}],
+    ).mount()
+    task = await backend.get_task("7")
+    assert task.labels == ("errand", "home")
+
+    reopened = await backend.reopen_task("7")
+    assert not reopened.done
+    assert stored.posts[-1]["done"] is False

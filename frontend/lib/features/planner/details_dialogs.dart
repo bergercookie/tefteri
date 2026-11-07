@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/open_url.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
+import '../../theme/theme.dart';
+import 'planner_providers.dart';
 
 /// Loads one task from the server, by id.
 final taskDetailProvider = FutureProvider.family<PlanTask, String>(
@@ -34,8 +37,9 @@ Future<void> showEventDetails(BuildContext context, CalendarItem event) =>
 
 const double _dialogWidth = 420;
 
-/// The details of one task. It only shows data; nothing here changes the task.
-class TaskDetailsDialog extends ConsumerWidget {
+/// The details of one task, with buttons at the right of the title to mark it
+/// done or not done, open it in its app and delete it.
+class TaskDetailsDialog extends ConsumerStatefulWidget {
   /// Creates the pop-up.
   const TaskDetailsDialog(
       {required this.taskId, this.initial, this.title, super.key});
@@ -50,37 +54,148 @@ class TaskDetailsDialog extends ConsumerWidget {
   final String? title;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final loaded = ref.watch(taskDetailProvider(taskId));
-    final task = loaded.valueOrNull ?? initial;
+  ConsumerState<TaskDetailsDialog> createState() => _TaskDetailsDialogState();
+}
+
+class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
+  bool _busy = false;
+  String? _error;
+
+  /// Runs [action] against the server, then reloads the task and the planner.
+  Future<void> _run(Future<void> Function(PlanningApi api) action,
+      {bool closeAfter = false}) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await action(ref.read(planningApiProvider));
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = apiErrorMessage(e));
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    ref.read(plannerActionsProvider).refresh();
+    if (closeAfter) {
+      if (mounted) Navigator.of(context).pop();
+    } else {
+      ref.invalidate(taskDetailProvider(widget.taskId));
+    }
+  }
+
+  Future<void> _delete() async {
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('task-delete-confirm'),
+        title: const Text('Delete this task?'),
+        content: const Text('It is deleted in the app that holds it too.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              key: const Key('task-delete-confirm-yes'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (sure == true) {
+      await _run((api) => api.deleteTask(widget.taskId), closeAfter: true);
+    }
+  }
+
+  Future<void> _open(String url) async {
+    final opened = await ref.read(openUrlProvider)(Uri.parse(url));
+    if (!opened && mounted) setState(() => _error = 'Could not open the link.');
+  }
+
+  Widget _buttons(PlanTask task) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            key: const Key('task-toggle-done'),
+            tooltip: task.done ? 'Mark not done' : 'Mark done',
+            icon: Icon(task.done ? Icons.undo : Icons.check_circle_outline),
+            onPressed: _busy
+                ? null
+                : () => _run((api) => task.done
+                    ? api.reopenTask(task.id)
+                    : api.completeTask(task.id)),
+          ),
+          if (task.url != null)
+            IconButton(
+              key: const Key('task-open-app'),
+              tooltip: 'Open in Vikunja',
+              icon: const Icon(Icons.open_in_new),
+              onPressed: () => _open(task.url!),
+            ),
+          IconButton(
+            key: const Key('task-delete'),
+            tooltip: 'Delete',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _busy ? null : _delete,
+          ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final loaded = ref.watch(taskDetailProvider(widget.taskId));
+    final task = loaded.valueOrNull ?? widget.initial;
     return AlertDialog(
       key: const Key('task-details'),
-      title: Text(task?.title ?? title ?? 'Task',
-          key: const Key('task-details-title')),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(task?.title ?? widget.title ?? 'Task',
+                key: const Key('task-details-title')),
+          ),
+          if (task != null) _buttons(task),
+        ],
+      ),
       content: SizedBox(
         width: _dialogWidth,
-        child: task != null
-            ? _TaskFields(task: task)
-            : loaded.when(
-                loading: () => const SizedBox(
-                    height: 80,
-                    child: Center(child: CircularProgressIndicator())),
-                error: (e, _) => Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(apiErrorMessage(e),
-                        key: const Key('task-details-error')),
-                    TextButton(
-                      key: const Key('task-details-retry'),
-                      onPressed: () =>
-                          ref.invalidate(taskDetailProvider(taskId)),
-                      child: const Text('Try again'),
-                    ),
-                  ],
-                ),
-                data: (t) => _TaskFields(task: t),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Space.sm),
+                child: Text(_error!,
+                    key: const Key('task-action-error'),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
+            Flexible(
+              child: task != null
+                  ? _TaskFields(task: task)
+                  : loaded.when(
+                      loading: () => const SizedBox(
+                          height: 80,
+                          child: Center(child: CircularProgressIndicator())),
+                      error: (e, _) => Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(apiErrorMessage(e),
+                              key: const Key('task-details-error')),
+                          TextButton(
+                            key: const Key('task-details-retry'),
+                            onPressed: () => ref
+                                .invalidate(taskDetailProvider(widget.taskId)),
+                            child: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                      data: (t) => _TaskFields(task: t),
+                    ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -135,6 +250,8 @@ class _TaskFields extends StatelessWidget {
           _Row('Due', _due, 'due'),
           _Row('On the calendar', _onCalendar, 'calendar'),
           _Row('Context', _context, 'context'),
+          if (task.project != null) _Row('Project', task.project!, 'project'),
+          if (task.labels.isNotEmpty) _LabelsRow(labels: task.labels),
           if (task.syncState == 'conflict')
             const _Row('Sync',
                 'Changed in both places. Open the Conflicts screen.', 'sync'),
@@ -149,6 +266,35 @@ class _TaskFields extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LabelsRow extends StatelessWidget {
+  const _LabelsRow({required this.labels});
+
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 120,
+              child: Text('Labels',
+                  style: Theme.of(context).textTheme.labelMedium),
+            ),
+            Expanded(
+              child: Wrap(
+                key: const Key('task-details-labels'),
+                spacing: Space.xs,
+                runSpacing: Space.xs,
+                children: [for (final l in labels) Chip(label: Text(l))],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _Row extends StatelessWidget {

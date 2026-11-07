@@ -131,6 +131,9 @@ class VikunjaTaskBackend:
             due_at=due,
             all_day=due is not None and due.astimezone(self._tz).time() == time.min,
             version=_version(data),
+            labels=tuple(
+                str(label["title"]) for label in data.get("labels") or [] if label.get("title")
+            ),
         )
 
     async def list_containers(self) -> list[Container]:
@@ -209,6 +212,10 @@ class VikunjaTaskBackend:
     async def complete_task(self, remote_id: str) -> RemoteTask:
         """Mark a task done."""
         return await self._update(remote_id, None, {"done": True})
+
+    async def reopen_task(self, remote_id: str) -> RemoteTask:
+        """Mark a done task open again."""
+        return await self._update(remote_id, None, {"done": False})
 
     async def set_planned_time(
         self,

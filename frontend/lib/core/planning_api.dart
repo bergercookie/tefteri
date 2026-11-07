@@ -161,6 +161,9 @@ class PlanningApi {
   Future<void> completeTask(String id) =>
       _dio.post<Object?>('/tasks/$id/complete');
 
+  /// `POST /tasks/{id}/reopen`: marks a done task open again.
+  Future<void> reopenTask(String id) => _dio.post<Object?>('/tasks/$id/reopen');
+
   /// `DELETE /tasks/{id}`.
   Future<void> deleteTask(String id) => _dio.delete<Object?>('/tasks/$id');
 

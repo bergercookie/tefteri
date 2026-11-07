@@ -34,6 +34,9 @@ class PlanTask {
     this.context,
     this.effectiveContext,
     this.goalId,
+    this.project,
+    this.labels = const [],
+    this.url,
   });
 
   /// Parses a task JSON object.
@@ -50,6 +53,9 @@ class PlanTask {
         effectiveContext: j['effective_context'] as String?,
         syncState: '${j['sync_state'] ?? 'synced'}',
         goalId: j['goal_id'] == null ? null : '${j['goal_id']}',
+        project: j['project'] as String?,
+        labels: [for (final l in (j['labels'] as List? ?? const [])) '$l'],
+        url: j['url'] as String?,
       );
 
   /// Task id.
@@ -87,6 +93,15 @@ class PlanTask {
 
   /// Id of the goal this task serves, if any.
   final String? goalId;
+
+  /// Name of the project (in the task app) that holds the task.
+  final String? project;
+
+  /// Names of the labels the task has in the task app.
+  final List<String> labels;
+
+  /// Page of the task in the task app, when it has one.
+  final String? url;
 
   /// True when the task is complete.
   bool get done => status == 'done';

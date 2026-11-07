@@ -3,6 +3,8 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/auth_controller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tefteri/core/versions.dart';
 import 'package:tefteri/features/admin/admin_settings_screen.dart';
 import 'package:tefteri/features/admin/users_screen.dart';
 import 'package:tefteri/features/auth/login_screen.dart';
@@ -47,7 +49,12 @@ void main() {
   });
 
   testWidgets('settings page', (tester) async {
-    await pumpScreen(tester, FakeApi({}), const SettingsScreen());
+    SharedPreferences.setMockInitialValues({'show_versions': true});
+    await pumpScreen(tester, FakeApi({}), const SettingsScreen(), overrides: [
+      appVersionProvider
+          .overrideWith((_) async => const AppVersion('1.4.0', 3)),
+      serverVersionProvider.overrideWith((ref, address) async => '1.4.0'),
+    ]);
     await saveScreenshot('settings-page');
   });
 

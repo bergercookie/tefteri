@@ -38,6 +38,7 @@ def task_values(item: RemoteTask, container_row_id: uuid.UUID | None) -> dict[st
         "scheduled_start": due - BLOCK_LENGTH if timed and due else None,
         "scheduled_end": due if timed else None,
         "all_day": item.all_day,
+        "labels": list(item.labels),
     }
 
 
