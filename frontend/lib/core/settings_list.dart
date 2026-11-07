@@ -38,7 +38,10 @@ class SettingsEntry {
 /// A list of [entries] at the left edge, no wider than [settingsListWidth].
 class SettingsList extends StatelessWidget {
   /// Creates the list.
-  const SettingsList({required this.entries, super.key});
+  const SettingsList({required this.entries, this.footer, super.key});
+
+  /// Shown below the pages, for example a card of settings.
+  final Widget? footer;
 
   /// The pages to show.
   final List<SettingsEntry> entries;
@@ -63,6 +66,7 @@ class SettingsList extends StatelessWidget {
                   onTap: () => context.go(e.path),
                 ),
               ),
+            if (footer != null) footer!,
           ],
         ),
       ),

@@ -74,13 +74,14 @@ class FakeApi implements HttpClientAdapter {
 }
 
 /// Pumps [home] with a fake backend and a tall surface.
-Future<void> pumpWithApi(WidgetTester tester, FakeApi api, Widget home) async {
+Future<void> pumpWithApi(WidgetTester tester, FakeApi api, Widget home,
+    {List<Override> overrides = const []}) async {
   tester.view.physicalSize = const Size(1000, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final dio = Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = api;
   await tester.pumpWidget(ProviderScope(
-    overrides: [dioProvider.overrideWithValue(dio)],
+    overrides: [dioProvider.overrideWithValue(dio), ...overrides],
     child: MaterialApp(home: home),
   ));
   await tester.pumpAndSettle();

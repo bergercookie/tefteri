@@ -34,6 +34,7 @@ class RemoteTask:
     done: bool = False
     due_at: datetime | None = None
     all_day: bool = False
+    labels: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

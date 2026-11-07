@@ -134,6 +134,13 @@ class FakeTaskBackend(_FakeBase):
         self.tasks[remote_id] = updated
         return updated
 
+    async def reopen_task(self, remote_id: str) -> RemoteTask:
+        """Mark a task open again."""
+        self._guard()
+        updated = replace(self.tasks[remote_id], done=False, version=self._new_version())
+        self.tasks[remote_id] = updated
+        return updated
+
     async def set_planned_time(
         self, remote_id: str, due_at: datetime | None, all_day: bool, expected_version: str
     ) -> RemoteTask:

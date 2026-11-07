@@ -92,3 +92,22 @@ async def test_list_filters(api: AsyncClient, world: FakeWorld) -> None:
     open_tasks = (await api.get(f"{V1}/tasks", params={"status": "open"})).json()
     assert len(open_tasks) == 1
     assert len((await api.get(f"{V1}/tasks", params={"unscheduled": "true"})).json()) == 2
+
+
+async def test_reopen_and_details(api: AsyncClient, world: FakeWorld) -> None:
+    ids = await _ready(api)
+    task = (
+        await api.post(f"{V1}/tasks", json={"connection_id": ids["vikunja"], "title": "Write"})
+    ).json()
+    remote = next(iter(world.tasks["default"].tasks.values()))
+
+    done = await api.post(f"{V1}/tasks/{task['id']}/complete")
+    assert done.json()["status"] == "done"
+    reopened = await api.post(f"{V1}/tasks/{task['id']}/reopen")
+    assert reopened.status_code == 200 and reopened.json()["status"] == "open"
+    assert not world.tasks["default"].tasks[remote.remote_id].done
+
+    detail = (await api.get(f"{V1}/tasks/{task['id']}")).json()
+    assert detail["project"] == "Inbox"
+    assert detail["labels"] == []
+    assert detail["url"] is None or detail["url"].endswith(f"/tasks/{remote.remote_id}")

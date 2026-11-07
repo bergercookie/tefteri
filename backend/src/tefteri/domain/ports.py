@@ -66,6 +66,10 @@ class TaskBackend(Backend, Protocol):
         """Mark a task done."""
         ...
 
+    async def reopen_task(self, remote_id: str) -> RemoteTask:
+        """Mark a done task open again."""
+        ...
+
     async def set_planned_time(
         self,
         remote_id: str,

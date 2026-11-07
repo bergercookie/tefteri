@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
 import 'package:tefteri/features/planner/time_grid.dart';
@@ -72,8 +73,10 @@ class RequestOptionsLike {
   final Map<String, dynamic> query;
 }
 
-Future<void> pumpPlanner(WidgetTester tester, FakeApi api) =>
-    pumpWithApi(tester, api, PlannerScreen(initialDate: wednesday));
+Future<void> pumpPlanner(WidgetTester tester, FakeApi api,
+        {List<Override> overrides = const []}) =>
+    pumpWithApi(tester, api, PlannerScreen(initialDate: wednesday),
+        overrides: overrides);
 
 /// Top-left of a day's column in the time grid (global).
 Offset columnTopLeft(WidgetTester tester, DateTime day) {

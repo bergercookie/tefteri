@@ -185,6 +185,9 @@ void main() {
             'description':
                 'Add the Q1 goals.\nAsk the team for feedback before Friday.',
             'effective_context': 'work',
+            'project': 'Product',
+            'labels': ['roadmap', 'q1'],
+            'url': 'https://vikunja.example.com/tasks/4',
           },
         }),
         PlannerScreen(initialDate: day, clock: _now));

@@ -83,6 +83,11 @@ class FakeVikunja(FakeHttpServer):
         }
         return project_id
 
+    def add_label(self, task_id: int, title: str) -> None:
+        """Give a task a label directly in the app."""
+        labels = self.tasks[task_id].setdefault("labels", [])
+        labels.append({"id": len(labels) + 1, "title": title, "hex_color": "ffcc00"})
+
     def authorised(self, request: httpx.Request) -> bool:
         """Accept only the configured API token."""
         return str(request.headers.get("authorization", "")) == f"Bearer {self.token}"
@@ -150,6 +155,7 @@ class FakeVikunja(FakeHttpServer):
             "index": index,
             "created": self.now,
             "updated": self.now,
+            "labels": [],
         }
         self._write(task, body)
         self.tasks[task_id] = task

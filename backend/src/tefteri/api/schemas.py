@@ -30,10 +30,23 @@ class TaskOut(BaseModel):
     effective_context: str
     sync_state: str
     goal_id: uuid.UUID | None = None
+    project: str | None = None
+    labels: list[str] = []
+    url: str | None = None
 
     @classmethod
-    def of(cls, t: Task, maps: ContextMaps) -> "TaskOut":
-        """Build from the ORM row."""
+    def of(
+        cls,
+        t: Task,
+        maps: ContextMaps,
+        project: str | None = None,
+        url: str | None = None,
+    ) -> "TaskOut":
+        """Build from the ORM row.
+
+        ``project`` and ``url`` come from the task's container and connection; the task
+        detail endpoints fill them.
+        """
         return cls(
             id=t.id,
             connection_id=t.connection_id,
@@ -47,6 +60,9 @@ class TaskOut(BaseModel):
             effective_context=maps.effective(t.context, t.container_id, t.connection_id)[0].value,
             sync_state=t.sync_state,
             goal_id=t.goal_id,
+            project=project,
+            labels=list(t.labels or []),
+            url=url,
         )
 
 

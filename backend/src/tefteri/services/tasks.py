@@ -185,6 +185,15 @@ class TaskService:
         await db.flush()
         return task
 
+    async def reopen(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> Task:
+        """Mark a done task open again in the app, then in the cache."""
+        connection = await self._connection_of(db, user_id, task)
+        backend = await self._backend(db, connection)
+        remote = await guard(connection, backend.reopen_task(task.remote_id))
+        self._apply(task, remote)
+        await db.flush()
+        return task
+
     async def delete(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> None:
         """Delete a task in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)

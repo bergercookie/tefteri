@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tefteri.db.base import Base, IdMixin
@@ -37,5 +37,6 @@ class Task(IdMixin, Base):
     goal_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("goals.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    labels: Mapped[list[str]] = mapped_column(JSON, default=list)
     remote_version: Mapped[str] = mapped_column(String(255), default="")
     sync_state: Mapped[str] = mapped_column(String(20), default=SyncState.SYNCED.value)
