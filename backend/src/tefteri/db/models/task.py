@@ -11,7 +11,7 @@ from tefteri.domain.enums import SyncState
 
 
 class Task(IdMixin, Base):
-    """A task copy. Effective context = task override, else container, else connection default."""
+    """A local copy of a task."""
 
     __tablename__ = "tasks"
     __table_args__ = (UniqueConstraint("connection_id", "remote_id"),)
@@ -33,7 +33,6 @@ class Task(IdMixin, Base):
     scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     scheduled_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
-    context: Mapped[str | None] = mapped_column(String(8), nullable=True)
     goal_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("goals.id", ondelete="SET NULL"), nullable=True, index=True
     )

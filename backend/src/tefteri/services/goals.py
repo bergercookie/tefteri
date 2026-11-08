@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.goal import Goal, Plan
 from tefteri.db.models.task import Task
-from tefteri.domain.enums import Context
 from tefteri.domain.periods import PeriodType, child_fits, is_aligned
 from tefteri.services.errors import Invalid, NotFound
 from tefteri.services.tasks import TaskService
@@ -101,7 +100,6 @@ class GoalService:
         title: str,
         description: str = "",
         criteria: str = "",
-        context: Context = Context.LIFE,
         parent_id: uuid.UUID | None = None,
     ) -> Goal:
         """Create a goal after checking the period and its place under the parent."""
@@ -121,7 +119,6 @@ class GoalService:
             title=title,
             description=description,
             criteria=criteria,
-            context=context.value,
         )
         db.add(goal)
         await db.flush()
@@ -136,9 +133,8 @@ class GoalService:
         description: str | None = None,
         criteria: str | None = None,
         status: Literal["active", "done", "dropped"] | None = None,
-        context: Context | None = None,
     ) -> Goal:
-        """Change a goal's text, status or context."""
+        """Change a goal's text, status or criteria."""
         if title is not None:
             goal.title = title
         if description is not None:
@@ -147,8 +143,6 @@ class GoalService:
             goal.criteria = criteria
         if status is not None:
             goal.status = status
-        if context is not None:
-            goal.context = context.value
         await db.flush()
         return goal
 
@@ -160,7 +154,6 @@ class GoalService:
         period_type: PeriodType,
         period_start: date,
         titles: list[str],
-        context: Context = Context.LIFE,
         parent_id: uuid.UUID | None = None,
     ) -> list[Goal]:
         """Create one goal per title, all in the same period. All or none are created."""
@@ -171,7 +164,6 @@ class GoalService:
                 period_type=period_type,
                 period_start=period_start,
                 title=title,
-                context=context,
                 parent_id=parent_id,
             )
             for title in titles
@@ -193,7 +185,6 @@ class GoalService:
                 period_type=g.period_type,
                 period_start=g.period_start,
                 title=g.title,
-                context=Context(goal.context),
                 parent_id=goal.id,
             )
             for g in goals

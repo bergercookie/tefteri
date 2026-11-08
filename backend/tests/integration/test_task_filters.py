@@ -105,14 +105,6 @@ async def test_counts_match_the_lists(api: AsyncClient, world: FakeWorld) -> Non
     assert counts == {"today": 3, "tomorrow": 2, "week": 7, "all": 10, "none": 1, "overdue": 3}
 
 
-async def test_counts_respect_the_work_life_filter(api: AsyncClient, world: FakeWorld) -> None:
-    await _seed(api, world)
-    work = (await api.get(f"{V1}/tasks/counts", params={"context": "work"})).json()
-    assert all(v == 0 for v in work.values())  # every connection here is labelled life
-    life = (await api.get(f"{V1}/tasks/counts", params={"context": "life"})).json()
-    assert life["all"] == 10
-
-
 async def test_search_matches_titles_case_insensitively_over_all_open_tasks(
     api: AsyncClient, world: FakeWorld
 ) -> None:
@@ -128,14 +120,6 @@ async def test_search_matches_titles_case_insensitively_over_all_open_tasks(
 async def test_empty_search_falls_back_to_the_filter(api: AsyncClient, world: FakeWorld) -> None:
     await _seed(api, world)
     assert await _titles(api, q="   ", due="none") == {"no date"}
-
-
-async def test_search_still_applies_the_work_life_filter(
-    api: AsyncClient, world: FakeWorld
-) -> None:
-    await _seed(api, world)
-    assert await _titles(api, q="friday", context="work") == set()
-    assert await _titles(api, q="friday", context="life") == {"friday"}
 
 
 async def test_a_dropped_task_moves_between_filters(api: AsyncClient, world: FakeWorld) -> None:

@@ -32,6 +32,5 @@ class CalendarEntry(IdMixin, Base):
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
     recurrence: Mapped[str | None] = mapped_column(Text, nullable=True)  # opaque rule
     location: Mapped[str] = mapped_column(String(500), default="")
-    context: Mapped[str | None] = mapped_column(String(8), nullable=True)
     remote_version: Mapped[str] = mapped_column(String(255), default="")
     sync_state: Mapped[str] = mapped_column(String(20), default=SyncState.SYNCED.value)

@@ -14,7 +14,7 @@ from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
 from tefteri.db.session import create_engine, create_session_factory
 from tefteri.domain.entities import TaskDraft
-from tefteri.domain.enums import DefaultContext, SyncState
+from tefteri.domain.enums import SyncState
 from tefteri.security.crypto import TokenCipher
 from tefteri.services.connections import ConnectionService
 from tefteri.services.sync import SyncService
@@ -42,7 +42,6 @@ async def _setup(db: AsyncSession, world: FakeWorld) -> tuple[ConnectionService,
             user.id,
             provider=provider,
             display_name=name,
-            default_context=DefaultContext.LIFE,
             settings={},
             credentials={"token": "t"},
         )

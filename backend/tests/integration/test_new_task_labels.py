@@ -134,7 +134,6 @@ async def stack(  # type: ignore[no-untyped-def]
                     json={
                         "provider": "vikunja",
                         "display_name": "Home tasks",
-                        "default_context": "life",
                         "settings": {"base_url": server.base_url},
                         "credentials": {"token": server.token},
                     },

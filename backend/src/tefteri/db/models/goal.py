@@ -26,7 +26,6 @@ class Goal(IdMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="")
     criteria: Mapped[str] = mapped_column(Text, default="")
     """What has to be true for the goal to count as complete (used by annual goals)."""
-    context: Mapped[str] = mapped_column(String(8), default="life")
     status: Mapped[str] = mapped_column(String(8), default="active")  # active|done|dropped
 
 

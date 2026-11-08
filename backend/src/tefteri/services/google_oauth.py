@@ -32,7 +32,7 @@ class GoogleOAuth:
         self._signer = URLSafeTimedSerializer(secret_key, salt="google-oauth")
 
     def authorize_url(self, user_id: uuid.UUID, redirect_uri: str, extra: dict[str, Any]) -> str:
-        """Return the Google consent URL. ``extra`` (name, context) travels in signed state."""
+        """Return the Google consent URL. ``extra`` (the name) travels in signed state."""
         state = self._signer.dumps({"user_id": str(user_id), **extra})
         query = urlencode(
             {

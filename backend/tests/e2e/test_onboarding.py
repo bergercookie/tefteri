@@ -49,7 +49,6 @@ async def test_new_user_adds_a_vikunja_connection_and_syncs(client: AsyncClient)
         json={
             "provider": "vikunja",
             "display_name": "Home tasks",
-            "default_context": "life",
             "settings": {"base_url": "https://vikunja.test/"},
             "credentials": {"token": "tok"},
         },
