@@ -22,6 +22,8 @@ class ConnectionHealth:
 
     status: ConnectionStatus
     detail: str = ""
+    message: str = ""
+    """What went wrong, in words: which address answered what."""
 
 
 @dataclass(frozen=True)

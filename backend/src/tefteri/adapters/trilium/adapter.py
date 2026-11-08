@@ -14,7 +14,25 @@ from tefteri.domain.entities import (
     RemoteNote,
 )
 from tefteri.domain.enums import Capability, ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable, RemoteConflict
+
+
+def clean_base_url(address: str) -> str:
+    """Return the address of the Trilium server from what a person pasted.
+
+    People paste the address of the page they have open (with ``#root/abc`` at the end), the
+    address of the API (with ``/etapi``) or an address with a trailing slash. All of these give
+    the server address, which is what the adapter needs: ``https://host`` or ``http://host:8080/sub``.
+    """
+    base = address.strip().split("#", 1)[0].split("?", 1)[0].rstrip("/")
+    if base.endswith("/etapi"):
+        base = base[: -len("/etapi")].rstrip("/")
+    return base
+
+
+def is_system_note(note_id: str) -> bool:
+    """Trilium's own notes (hidden subtree, launchers, options) have ids that start with ``_``."""
+    return note_id.startswith("_")
 
 
 class TriliumNoteBackend:
@@ -25,7 +43,7 @@ class TriliumNoteBackend:
     ) -> None:
         """Use ``client`` against ``base_url`` with an ETAPI ``token``."""
         self._client = client
-        self._base = base_url.rstrip("/") + "/etapi"
+        self._base = clean_base_url(base_url) + "/etapi"
         self._headers = {"Authorization": token}
         self._root = root_note_id
 
@@ -55,18 +73,35 @@ class TriliumNoteBackend:
         root = await self._call("GET", f"/notes/{self._root}")
         containers = [Container(self._root, root["title"])]
         for child_id in root.get("childNoteIds", []):
+            # Not the hidden subtree and the other system notes: they hold thousands of notes
+            # that are not the user's.
+            if is_system_note(child_id):
+                continue
             child = await self._call("GET", f"/notes/{child_id}")
             containers.append(Container(child["noteId"], child["title"]))
         return containers
 
     async def check_connection(self) -> ConnectionHealth:
-        """Check the token by reading the app info."""
+        """Check the address and the token by reading the app info and the root note."""
         try:
             await self._call("GET", "/app-info")
-        except AuthExpired:
-            return ConnectionHealth(ConnectionStatus.NEEDS_ATTENTION, "auth_expired")
-        except BackendUnavailable:
-            return ConnectionHealth(ConnectionStatus.ERROR, "unreachable")
+            await self._call("GET", f"/notes/{self._root}")
+        except AuthExpired as exc:
+            return ConnectionHealth(
+                ConnectionStatus.NEEDS_ATTENTION,
+                "auth_expired",
+                f"{exc}. Check the ETAPI token: create a new one in Trilium under Options, ETAPI.",
+            )
+        except BackendUnavailable as exc:
+            return ConnectionHealth(ConnectionStatus.ERROR, "unreachable", str(exc))
+        except BackendError as exc:
+            # For example 404: the address is that of another server, or the root note is
+            # not there.
+            return ConnectionHealth(
+                ConnectionStatus.ERROR,
+                "error",
+                f"{exc}. Check the address and the root note.",
+            )
         return ConnectionHealth(ConnectionStatus.OK)
 
     async def list_notes(self, container: Container, since: str | None) -> list[RemoteNote]:  # noqa: ARG002
@@ -76,7 +111,11 @@ class TriliumNoteBackend:
             "/notes",
             params={"search": "note.noteId != ''", "ancestorNoteId": container.remote_id},
         )
-        return [await self._note(meta) for meta in found.get("results", [])]
+        return [
+            await self._note(meta)
+            for meta in found.get("results", [])
+            if not is_system_note(meta["noteId"])
+        ]
 
     async def get_note(self, remote_id: str) -> RemoteNote:
         """Fetch one note with its content."""

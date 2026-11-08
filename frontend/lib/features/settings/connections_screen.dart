@@ -162,8 +162,11 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       );
       return;
     }
-    await _send('Connected ${body['display_name']}.',
-        (dio) => dio.post<void>('/connections', data: body));
+    await _send('Connected ${body['display_name']}.', (dio) async {
+      final r =
+          await dio.post<Map<String, dynamic>>('/connections', data: body);
+      return r.data?['id'] as String?;
+    }, name: '${body['display_name']}');
   }
 
   Future<void> _edit(Connection c) async {
@@ -172,8 +175,10 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       builder: (_) => ConnectionDialog(initial: c),
     );
     if (body == null || !mounted) return;
-    await _send('Saved ${body['display_name']}.',
-        (dio) => dio.patch<void>('/connections/${c.id}', data: body));
+    await _send('Saved ${body['display_name']}.', (dio) async {
+      await dio.patch<void>('/connections/${c.id}', data: body);
+      return c.id;
+    }, name: '${body['display_name']}');
   }
 
   Future<void> _remove(Connection c) async {
@@ -198,17 +203,34 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    await _send('Removed ${c.displayName}.',
-        (dio) => dio.delete<void>('/connections/${c.id}'));
+    await _send('Removed ${c.displayName}.', (dio) async {
+      await dio.delete<void>('/connections/${c.id}');
+      return null;
+    });
   }
 
   /// Runs [request], then reloads the list and shows [done] or the error.
-  Future<void> _send(
-      String done, Future<void> Function(Dio dio) request) async {
+  ///
+  /// [request] answers the id of a connection to test, or null. A connection
+  /// that was just saved is tested at once, so that a wrong address or token
+  /// shows now, with the reason, and not later as a failed sync.
+  Future<void> _send(String done, Future<String?> Function(Dio dio) request,
+      {String? name}) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await request(ref.read(dioProvider));
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      final dio = ref.read(dioProvider);
+      final id = await request(dio);
+      final problem = id == null ? null : await _problemWith(dio, id);
+      if (problem == null) {
+        messenger.showSnackBar(SnackBar(content: Text(done)));
+      } else {
+        messenger.showSnackBar(SnackBar(
+          key: const Key('connection-check-failed'),
+          duration: const Duration(seconds: 12),
+          content: Text('${name ?? 'The connection'} is saved, but it does not '
+              'work. $problem'),
+        ));
+      }
     } on DioException catch (e) {
       messenger.showSnackBar(SnackBar(
         key: const Key('connection-error'),
@@ -216,6 +238,21 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       ));
     }
     ref.invalidate(connectionsProvider);
+  }
+
+  /// Asks the server to test connection [id]. Returns what is wrong, or null
+  /// when it works (or when the test itself cannot run: the save went well).
+  Future<String?> _problemWith(Dio dio, String id) async {
+    try {
+      final r = await dio.post<Map<String, dynamic>>('/connections/$id/check');
+      final data = r.data ?? const {};
+      if (data['status'] == 'ok') return null;
+      final message = data['message'] as String?;
+      if (message != null && message.isNotEmpty) return message;
+      return FailureReason.parse(data['reason']).message;
+    } on DioException {
+      return null;
+    }
   }
 
   /// Gets a Google sign-in link from the server and offers to open it.

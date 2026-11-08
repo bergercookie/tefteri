@@ -8,6 +8,7 @@ import pytest
 import respx
 
 from tefteri.adapters.trilium import TriliumNoteBackend
+from tefteri.adapters.trilium.adapter import clean_base_url
 from tefteri.domain.entities import Container, NoteDraft, NotePatch
 from tefteri.domain.enums import ConnectionStatus
 from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
@@ -91,3 +92,97 @@ async def test_error_mapping(backend: TriliumNoteBackend) -> None:
     respx.get(f"{BASE}/notes/y").respond(502)
     with pytest.raises(BackendUnavailable):
         await backend.get_note("y")
+
+
+@pytest.mark.parametrize(
+    ("pasted", "expected"),
+    [
+        ("https://trilium.test", "https://trilium.test"),
+        ("https://trilium.test/", "https://trilium.test"),
+        ("  https://trilium.test/etapi  ", "https://trilium.test"),
+        ("https://trilium.test/etapi/", "https://trilium.test"),
+        ("https://trilium.test/#root/abc123", "https://trilium.test"),
+        ("http://192.168.1.5:8080/?x=1#root", "http://192.168.1.5:8080"),
+        ("https://example.com/trilium/etapi", "https://example.com/trilium"),
+        ("https://example.com/trilium/", "https://example.com/trilium"),
+    ],
+)
+def test_the_server_address_is_cleaned(pasted: str, expected: str) -> None:
+    assert clean_base_url(pasted) == expected
+
+
+@respx.mock
+async def test_an_address_with_etapi_or_a_note_in_it_still_works() -> None:
+    route = respx.get(f"{BASE}/app-info").respond(json={"appVersion": "0.63"})
+    respx.get(f"{BASE}/notes/root").respond(json=meta("root", "Root"))
+    async with httpx.AsyncClient() as client:
+        for pasted in ("https://trilium.test/etapi/", "https://trilium.test/#root/abc"):
+            health = await TriliumNoteBackend(client, pasted, "etoken").check_connection()
+            assert health.status is ConnectionStatus.OK, pasted
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_system_notes_are_not_containers_or_notes(backend: TriliumNoteBackend) -> None:
+    root = {**meta("root", "Root"), "childNoteIds": ["_hidden", "w1", "_share"]}
+    respx.get(f"{BASE}/notes/root").respond(json=root)
+    hidden = respx.get(f"{BASE}/notes/_hidden").respond(json=meta("_hidden", "Hidden"))
+    respx.get(f"{BASE}/notes/w1").respond(json=meta("w1", "Work"))
+    assert [c.name for c in await backend.list_containers()] == ["Root", "Work"]
+    assert not hidden.called  # not even read
+
+    respx.get(f"{BASE}/notes").respond(
+        json={"results": [meta("n1"), meta("_lbRoot", "Launch bar"), meta("_options")]}
+    )
+    respx.get(f"{BASE}/notes/n1/content").respond(text="hi", headers={"content-type": "text/html"})
+    notes = await backend.list_notes(Container("root", "Root"), None)
+    assert [n.remote_id for n in notes] == ["n1"]
+
+
+@respx.mock
+async def test_a_working_connection_reads_the_app_info_and_the_root(
+    backend: TriliumNoteBackend,
+) -> None:
+    respx.get(f"{BASE}/app-info").respond(json={"appVersion": "0.63"})
+    root = respx.get(f"{BASE}/notes/root").respond(json=meta("root", "Root"))
+    health = await backend.check_connection()
+    assert health.status is ConnectionStatus.OK and health.message == ""
+    assert root.called
+
+
+@respx.mock
+async def test_a_wrong_token_says_where_to_make_a_new_one(
+    backend: TriliumNoteBackend,
+) -> None:
+    respx.get(f"{BASE}/app-info").respond(401, json={"code": "NOT_AUTHENTICATED"})
+    health = await backend.check_connection()
+    assert health.status is ConnectionStatus.NEEDS_ATTENTION and health.detail == "auth_expired"
+    assert "ETAPI token" in health.message and f"{BASE}/app-info" in health.message
+
+
+@respx.mock
+async def test_an_address_that_is_not_trilium_says_which_url_answered_what(
+    backend: TriliumNoteBackend,
+) -> None:
+    # A web page or another service answers 404 at /etapi/app-info.
+    respx.get(f"{BASE}/app-info").respond(404, text="Not Found")
+    health = await backend.check_connection()
+    assert health.status is ConnectionStatus.ERROR and health.detail == "error"
+    assert f"GET {BASE}/app-info answered 404" in health.message
+    assert "address" in health.message
+
+
+@respx.mock
+async def test_a_missing_root_note_is_reported(backend: TriliumNoteBackend) -> None:
+    respx.get(f"{BASE}/app-info").respond(json={})
+    respx.get(f"{BASE}/notes/root").respond(404, json={"code": "NOTE_NOT_FOUND"})
+    health = await backend.check_connection()
+    assert health.status is ConnectionStatus.ERROR and "root note" in health.message
+
+
+@respx.mock
+async def test_an_unreachable_server_names_the_address(backend: TriliumNoteBackend) -> None:
+    respx.get(f"{BASE}/app-info").mock(side_effect=httpx.ConnectError("name not known"))
+    health = await backend.check_connection()
+    assert health.status is ConnectionStatus.ERROR and health.detail == "unreachable"
+    assert "trilium.test" in health.message and "name not known" in health.message

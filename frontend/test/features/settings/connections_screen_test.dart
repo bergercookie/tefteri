@@ -262,6 +262,106 @@ void main() {
     expect(find.text('Edit connection'), findsOneWidget);
   });
 
+  group('Testing a connection after it is saved', () {
+    Future<FakeAdapter> editAndSave(
+        WidgetTester tester, Map<String, Object> extra) async {
+      final adapter = await _pump(tester, {
+        'PATCH /connections/c2': <String, Object?>{},
+        ...extra,
+      });
+      await tester.tap(find.byKey(const Key('edit-c2')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://new.test');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      return adapter;
+    }
+
+    testWidgets('a working connection says it is saved', (tester) async {
+      final adapter = await editAndSave(tester, {
+        'POST /connections/c2/check': {
+          'status': 'ok',
+          'reason': null,
+          'message': null,
+        },
+      });
+      expect(adapter.calls, contains('POST /connections/c2/check'));
+      expect(find.text('Saved Home tasks.'), findsOneWidget);
+      expect(find.byKey(const Key('connection-check-failed')), findsNothing);
+    });
+
+    testWidgets('a connection that does not work shows the reason',
+        (tester) async {
+      await editAndSave(tester, {
+        'POST /connections/c2/check': {
+          'status': 'error',
+          'reason': 'error',
+          'message': 'GET https://new.test/etapi/app-info answered 404. '
+              'Check the address and the root note.',
+        },
+      });
+      expect(find.byKey(const Key('connection-check-failed')), findsOneWidget);
+      expect(find.textContaining('Home tasks is saved, but it does not work.'),
+          findsOneWidget);
+      expect(find.textContaining('app-info answered 404'), findsOneWidget);
+      expect(find.text('Saved Home tasks.'), findsNothing);
+    });
+
+    testWidgets('without a message, the reason code gets plain words',
+        (tester) async {
+      await editAndSave(tester, {
+        'POST /connections/c2/check': {
+          'status': 'error',
+          'reason': 'unreachable',
+          'message': null,
+        },
+      });
+      expect(
+          find.textContaining('The service is not reachable.'), findsOneWidget);
+    });
+
+    testWidgets('when the test itself cannot run, the save still counts',
+        (tester) async {
+      // No route for the check: the fake answers 404.
+      await editAndSave(tester, {});
+      expect(find.text('Saved Home tasks.'), findsOneWidget);
+    });
+
+    testWidgets('a new connection is tested with the id the server gave it',
+        (tester) async {
+      final adapter = await _pump(tester, {
+        'POST /connections': {'id': 'c9', 'display_name': 'Notes'},
+        'POST /connections/c9/check': {
+          'status': 'needs_attention',
+          'reason': 'auth_expired',
+          'message': 'credentials rejected. Check the ETAPI token.',
+        },
+      });
+      await tester.tap(find.byKey(const Key('add-connection')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('new-connection-provider')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Trilium Next').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('new-connection-name')), 'Notes');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://trilium.test');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-token')), 'secret');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      expect(
+          adapter.calls,
+          containsAllInOrder(
+              ['POST /connections', 'POST /connections/c9/check']));
+      expect(find.textContaining('Check the ETAPI token.'), findsOneWidget);
+    });
+  });
+
   group('Edit and remove', () {
     testWidgets('editing the URL keeps the token and sends a PATCH',
         (tester) async {
