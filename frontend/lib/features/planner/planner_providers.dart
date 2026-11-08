@@ -119,6 +119,10 @@ class PlannerActions {
   Future<void> scheduleOnDate(String taskId, DateTime day) =>
       _run(taskId, (api) => api.scheduleTaskOnDate(taskId, day));
 
+  /// Marks [taskId] as done in the task app.
+  Future<void> complete(String taskId) =>
+      _run(taskId, (api) => api.completeTask(taskId));
+
   /// Removes the due date and time of [taskId].
   Future<void> unschedule(String taskId) =>
       _run(taskId, (api) => api.unscheduleTask(taskId));
