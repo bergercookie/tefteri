@@ -73,6 +73,7 @@ class TaskService:
         due_at: datetime | None = None,
         container_id: uuid.UUID | None = None,
         goal_id: uuid.UUID | None = None,
+        labels: tuple[str, ...] = (),
     ) -> Task:
         """Create a task in the app, then cache it. Nothing is cached when the app fails."""
         connection = await self._connections.get(db, user_id, connection_id)
@@ -82,7 +83,7 @@ class TaskService:
         remote = await guard(
             connection,
             (await self._backend(db, connection)).create_task(
-                TaskDraft(container.remote_id, title, description, due_at)
+                TaskDraft(container.remote_id, title, description, due_at, labels)
             ),
         )
         task = Task(

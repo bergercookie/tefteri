@@ -62,6 +62,8 @@ class TaskIn(BaseModel):
     description: str = ""
     due_at: datetime | None = None
     goal_id: uuid.UUID | None = None
+    labels: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=20)
+    """Names of labels for the task. A label that does not exist is created in the task app."""
 
 
 class TaskPatch(BaseModel):
@@ -100,6 +102,16 @@ def _now(request: Request) -> datetime:
     clock = request.app.state.clock
     now: datetime = clock()
     return now
+
+
+def _clean_labels(names: list[str]) -> tuple[str, ...]:
+    """Trim the names, drop the empty ones and the repeats (case does not count)."""
+    seen: dict[str, str] = {}
+    for name in names:
+        clean = name.strip()
+        if clean:
+            seen.setdefault(clean.casefold(), clean)
+    return tuple(seen.values())
 
 
 @router.get("")
@@ -191,6 +203,7 @@ async def create_task(body: TaskIn, request: Request, db: Db, user: CurrentUser)
         description=body.description,
         due_at=body.due_at,
         goal_id=body.goal_id,
+        labels=_clean_labels(body.labels),
     )
     return await _out(db, user.id, task)
 

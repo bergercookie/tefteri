@@ -336,3 +336,43 @@ async def test_archiving_a_project_from_tefteri_archives_it_in_vikunja(
     await _sync(tefteri)
     listed = await tefteri.get(f"{V1}/connections/{connection}/containers")
     assert name not in {c["name"] for c in listed.json()}
+
+
+async def test_a_task_created_with_labels_has_them_in_vikunja(
+    tefteri: AsyncClient, real: RealVikunja
+) -> None:
+    """New labels are created, existing ones are reused whatever their case, and they list."""
+    await _sync(tefteri)
+    connection = (await tefteri.get(f"{V1}/connections")).json()[0]["id"]
+    project = (await tefteri.get(f"{V1}/connections/{connection}/containers")).json()[0]["id"]
+    one, two = _title("alpha"), _title("beta")
+
+    async def create(title: str, labels: list[str]) -> dict[str, Any]:
+        r = await tefteri.post(
+            f"{V1}/tasks",
+            json={
+                "connection_id": connection,
+                "container_id": project,
+                "title": title,
+                "labels": labels,
+            },
+        )
+        assert r.status_code == 201, r.text
+        body: dict[str, Any] = r.json()
+        return body
+
+    first = await create(_title("with labels"), [one, two])
+    assert first["labels"] == [one, two]
+    raw = await real.get(
+        next(
+            t["id"]
+            for t in (await real.client.get(f"{real.base}/tasks", headers=real.headers)).json()
+            if t["title"] == first["title"]
+        )
+    )
+    assert sorted(label["title"] for label in raw["labels"]) == sorted([one, two])
+    # The same label in another case is the same label.
+    second = await create(_title("again"), [one.upper()])
+    assert second["labels"] == [one]
+    listed = (await tefteri.get(f"{V1}/connections/{connection}/labels")).json()
+    assert one in listed and two in listed and listed.count(one) == 1

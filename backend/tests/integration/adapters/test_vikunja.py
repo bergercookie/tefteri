@@ -147,6 +147,61 @@ async def test_archive_that_vikunja_did_not_keep_is_an_error(
 
 
 @respx.mock
+async def test_a_task_is_created_with_its_labels(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/labels").respond(
+        json=[{"id": 4, "title": "Home"}, {"id": 5, "title": "Urgent"}]
+    )
+    created_label = respx.put(f"{BASE}/labels").respond(201, json={"id": 9, "title": "Errands"})
+    respx.put(f"{BASE}/projects/2/tasks").respond(201, json=task_json(id=21))
+    bulk = respx.post(f"{BASE}/tasks/21/labels/bulk").respond(200, json={"labels": []})
+    respx.get(f"{BASE}/tasks/21").respond(
+        json=task_json(
+            id=21,
+            labels=[
+                {"id": 4, "title": "Home"},
+                {"id": 9, "title": "Errands"},
+            ],
+        )
+    )
+    # "home" is written in another case, " " is empty, and "Home" is there twice.
+    task = await backend.create_task(
+        TaskDraft("2", "Buy bread", labels=("home", "Errands", " ", "Home"))
+    )
+    assert json.loads(created_label.calls[0].request.content) == {"title": "Errands"}
+    assert json.loads(bulk.calls[0].request.content) == {"labels": [{"id": 4}, {"id": 9}]}
+    assert task.labels == ("Home", "Errands")
+
+
+@respx.mock
+async def test_a_task_without_labels_makes_no_label_call(
+    backend: VikunjaTaskBackend,
+) -> None:
+    labels = respx.get(f"{BASE}/labels").respond(json=[])
+    respx.put(f"{BASE}/projects/2/tasks").respond(201, json=task_json(id=22))
+    await backend.create_task(TaskDraft("2", "Plain"))
+    assert not labels.called
+
+
+@respx.mock
+async def test_labels_are_listed_in_order_over_all_pages(
+    backend: VikunjaTaskBackend,
+) -> None:
+    first = [{"id": i, "title": f"label {i:02d}"} for i in range(50)]
+    route = respx.get(f"{BASE}/labels")
+    route.side_effect = [
+        httpx.Response(200, json=first),
+        httpx.Response(200, json=[{"id": 99, "title": "Alpha"}]),
+    ]
+    names = await backend.list_labels()
+    assert len(names) == 51 and names[0] == "Alpha" and names[1] == "label 00"
+    # Vikunja answers null, not [], when there are none.
+    respx.get(f"{BASE}/labels").respond(
+        content=b"null", headers={"content-type": "application/json"}
+    )
+    assert await backend.list_labels() == []
+
+
+@respx.mock
 async def test_pagination(backend: VikunjaTaskBackend) -> None:
     first = [task_json(id=i) for i in range(50)]
     route = respx.get(f"{BASE}/projects/2/tasks")

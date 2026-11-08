@@ -210,12 +210,47 @@ class VikunjaTaskBackend:
         """Fetch one task."""
         return self._task(await self._call("GET", f"/tasks/{remote_id}"))
 
+    async def _labels(self) -> dict[str, dict[str, Any]]:
+        """Return the labels of the user by lower-case title (follows pagination)."""
+        found: dict[str, dict[str, Any]] = {}
+        page = 1
+        while True:
+            data = await self._call("GET", "/labels", params={"page": page, "per_page": _PAGE_SIZE})
+            for label in data or []:
+                found.setdefault(str(label["title"]).casefold(), label)
+            if len(data or []) < _PAGE_SIZE:
+                return found
+            page += 1
+
+    async def list_labels(self) -> list[str]:
+        """List the names of the labels, in alphabetical order."""
+        return sorted((str(v["title"]) for v in (await self._labels()).values()), key=str.casefold)
+
+    async def _put_labels(self, task_id: object, names: tuple[str, ...]) -> None:
+        """Put the labels ``names`` on a task; create the ones that do not exist."""
+        known = await self._labels()
+        ids: dict[int, None] = {}  # in order, and each label once: "home" and "Home" are one
+        for name in (n.strip() for n in names if n.strip()):
+            label = known.get(name.casefold())
+            if label is None:
+                label = await self._call("PUT", "/labels", json={"title": name})
+                known[name.casefold()] = label
+            ids[int(label["id"])] = None
+        if ids:
+            await self._call(
+                "POST", f"/tasks/{task_id}/labels/bulk", json={"labels": [{"id": i} for i in ids]}
+            )
+
     async def create_task(self, draft: TaskDraft) -> RemoteTask:
-        """Create a task in a project."""
+        """Create a task in a project, with its labels."""
         body: dict[str, Any] = {"title": draft.title, "description": draft.description}
         if draft.due_at:
             body["due_date"] = _fmt(draft.due_at)
         data = await self._call("PUT", f"/projects/{draft.container_id}/tasks", json=body)
+        if draft.labels:
+            await self._put_labels(data["id"], draft.labels)
+            # Read it back: the answer to the create does not have the labels.
+            data = await self._call("GET", f"/tasks/{data['id']}")
         return self._task(data)
 
     async def _update(

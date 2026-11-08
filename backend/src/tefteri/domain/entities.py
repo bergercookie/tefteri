@@ -49,6 +49,8 @@ class TaskDraft:
     title: str
     description: str = ""
     due_at: datetime | None = None
+    labels: tuple[str, ...] = ()
+    """Names of labels to put on the task. A label that does not exist is created."""
 
 
 @dataclass(frozen=True)
