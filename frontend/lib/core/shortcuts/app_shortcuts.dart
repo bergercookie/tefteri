@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/planner/new_task_dialog.dart';
 import '../../features/settings/sync_controller.dart';
 import '../auth_controller.dart';
 import '../context_filter.dart';
@@ -84,6 +85,13 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
                 _signedIn &&
                 !ref.read(syncControllerProvider).busy &&
                 (!i.plain || _plainAllowed()),
+          ),
+          NewTaskIntent: _KeyAction<NewTaskIntent>(
+            (_) {
+              final context = _navigator?.context;
+              if (context != null) showNewTaskDialog(context);
+            },
+            (_) => _signedIn && _plainAllowed(),
           ),
           ShowShortcutsIntent: _KeyAction<ShowShortcutsIntent>(
             (_) {

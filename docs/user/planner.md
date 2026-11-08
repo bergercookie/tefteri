@@ -38,6 +38,20 @@ A task on the calendar has a small dark label with the name of its project. This
 where each task belongs without opening it. In a short block, the label sits next to the title.
 A long name is cut. Point at the label to read the whole name. Events have no label.
 
+## Create a task
+
+1. Press N, or choose New task above the task list.
+2. Type the title.
+3. Choose the project. Type a few letters, and tefteri shows the projects that match. Use the
+   arrow keys and Enter, or choose a project with the pointer. Tefteri remembers the project
+   for the next task.
+4. Add labels. Type a few letters, and tefteri shows the labels that exist. Press Enter to add
+   the label. If the label does not exist, tefteri creates it in your task app.
+5. Optional: choose a day and a start time. Tefteri puts the task on the calendar.
+6. Choose Create task, or press Ctrl+Enter.
+
+Tefteri creates the task in your task app. The task shows in the list at once.
+
 ## See and change a task
 
 Choose a task in the list, or a task block on the calendar. A pop-up shows the task. You can

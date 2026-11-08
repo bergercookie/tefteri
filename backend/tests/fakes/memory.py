@@ -80,6 +80,7 @@ class FakeTaskBackend(_FakeBase):
         super().__init__(containers)
         self.tasks: dict[str, RemoteTask] = {}
         self.archived: list[Container] = []
+        self.known_labels: set[str] = set()
 
     async def create_container(self, name: str, parent: Container | None) -> Container:
         """Create a project (a subproject of ``parent`` when given)."""
@@ -88,6 +89,12 @@ class FakeTaskBackend(_FakeBase):
         created = Container(self._new_id(), name, parent.remote_id if parent else None)
         self.containers.append(created)
         return created
+
+    async def list_labels(self) -> list[str]:
+        """List the labels that exist, also those only used on tasks."""
+        self._guard()
+        used = {name for t in self.tasks.values() for name in t.labels}
+        return sorted(self.known_labels | used, key=str.casefold)
 
     async def archive_container(self, container: Container) -> None:
         """Archive a project: the app stops listing it (and its subprojects)."""
@@ -124,8 +131,10 @@ class FakeTaskBackend(_FakeBase):
             title=draft.title,
             description=draft.description,
             due_at=draft.due_at,
+            labels=draft.labels,
             version=self._new_version(),
         )
+        self.known_labels.update(draft.labels)
         self.tasks[task.remote_id] = task
         return task
 

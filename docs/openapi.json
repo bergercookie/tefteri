@@ -576,6 +576,17 @@
             "title": "Name",
             "type": "string"
           },
+          "parent_remote_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Remote Id"
+          },
           "remote_id": {
             "title": "Remote Id",
             "type": "string"
@@ -2175,6 +2186,15 @@
             ],
             "title": "Goal Id"
           },
+          "labels": {
+            "items": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Labels",
+            "type": "array"
+          },
           "title": {
             "maxLength": 500,
             "minLength": 1,
@@ -3644,6 +3664,54 @@
           }
         },
         "summary": "Archive Container",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/api/v1/connections/{connection_id}/labels": {
+      "get": {
+        "description": "List the labels that exist in the task app, for suggestions.",
+        "operationId": "list_labels_api_v1_connections__connection_id__labels_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Labels Api V1 Connections  Connection Id  Labels Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Labels",
         "tags": [
           "connections"
         ]
