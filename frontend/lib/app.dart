@@ -23,6 +23,7 @@ import 'features/review/review_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/week/week_screen.dart';
+import 'features/weekly/weekly_screen.dart';
 import 'features/year/year_screen.dart';
 
 /// Notifies the router whenever the sign-in state changes.
@@ -83,7 +84,20 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/', builder: (_, __) => const PlannerScreen()),
       GoRoute(path: '/daily', builder: (_, __) => const DailyScreen()),
       GoRoute(path: '/calendar', redirect: (_, __) => '/'),
-      GoRoute(path: '/week', builder: (_, __) => const WeekScreen()),
+      GoRoute(
+        path: '/week',
+        builder: (_, s) => WeekScreen(
+            initialDate:
+                DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
+        routes: [
+          GoRoute(
+            path: 'plan',
+            builder: (_, s) => WeeklyPlanningScreen(
+                initialDate:
+                    DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
+          ),
+        ],
+      ),
       GoRoute(path: '/month', builder: (_, __) => const MonthScreen()),
       GoRoute(path: '/year', builder: (_, __) => const YearScreen()),
       GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),

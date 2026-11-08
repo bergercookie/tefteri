@@ -29,6 +29,7 @@ class PeriodPage extends ConsumerStatefulWidget {
     required this.onReload,
     required this.onShift,
     required this.onToday,
+    this.banner,
     super.key,
   });
 
@@ -49,6 +50,9 @@ class PeriodPage extends ConsumerStatefulWidget {
 
   /// Moves to the period that holds today (the Today button).
   final VoidCallback onToday;
+
+  /// A widget above the lists, such as the weekly planning card.
+  final Widget? banner;
 
   @override
   ConsumerState<PeriodPage> createState() => _PeriodPageState();
@@ -175,6 +179,10 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     return ListView(
       padding: const EdgeInsets.all(8),
       children: [
+        if (widget.banner != null) ...[
+          widget.banner!,
+          const SizedBox(height: 8),
+        ],
         Text('Goals', style: heading),
         if (v.goals.isEmpty)
           const Text('No goals for this period.', key: Key('no-goals')),
@@ -207,11 +215,16 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     return allDay ? '${dateKey(l)} - All day' : '${dateKey(l)} ${hhmm(l)}';
   }
 
+  /// A task has a day when it has a due date or a planned start.
+  bool _hasDay(PlanTask t) => t.isScheduled || t.scheduledStart != null;
+
   Widget _taskTile(PlanTask t, PeriodView v, Map<String, String> titles) {
     final goal = t.goalId == null ? null : titles[t.goalId];
-    final time = t.scheduledStart == null
-        ? 'Not scheduled'
-        : 'Planned ${_when(t.scheduledStart, false)}';
+    final time = t.scheduledStart != null
+        ? 'Planned ${_when(t.scheduledStart, false)}'
+        : t.dueAt != null
+            ? 'Planned ${_when(t.dueAt, true)}'
+            : 'Not scheduled';
     return ListTile(
       key: Key('task-${t.id}'),
       dense: true,
@@ -239,9 +252,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
             if (!t.done)
               PopupMenuItem(
                   value: 'schedule',
-                  child: Text(
-                      t.scheduledStart == null ? 'Schedule' : 'Change time')),
-            if (t.scheduledStart != null)
+                  child: Text(_hasDay(t) ? 'Change time' : 'Schedule')),
+            if (_hasDay(t))
               const PopupMenuItem(
                   value: 'unschedule', child: Text('Unschedule')),
             if (v.goals.isNotEmpty)
