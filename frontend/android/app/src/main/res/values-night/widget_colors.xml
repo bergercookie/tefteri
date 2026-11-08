@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same, in the dark theme ("midnight ink"). -->
+<resources>
+    <color name="widget_paper">#FF14171F</color>
+    <color name="widget_rule">#FF2C3242</color>
+    <color name="widget_ink">#FFE8E6DF</color>
+    <color name="widget_accent">#FF9DB6E8</color>
+    <color name="widget_pressed">#339DB6E8</color>
+</resources>
