@@ -23,8 +23,15 @@ already has the current commit. Otherwise it does these steps:
 
 - `just release::nightly-versions` computes the version.
 - `just release::nightly-image` pushes the image with the tags `nightly` and the version.
-- `just release::nightly-clients` and `just release::nightly-publish` replace the `nightly` pre-release on
-  GitHub with new packages.
+- `just release::nightly-clients` builds the packages.
+- `just release::nightly-publish` publishes them as two pre-releases on GitHub: one named
+  `nightly-<version>` that stays, and `nightly`, which it replaces. The update check of the app
+  reads `nightly`, so it always holds the newest build.
+- `just release::nightly-prune` then deletes the pre-releases `nightly-<version>` except the newest
+  five. To keep another number, pass it: `just release::nightly-publish <version> 10`. It never
+  touches `nightly` or the releases `vX.Y.Z`.
+
+The container images are not pruned. Their tags give the post number of the next nightly.
 
 ## Version strings
 
