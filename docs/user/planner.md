@@ -79,6 +79,11 @@ want to discard the change.
 
 If you choose a calendar entry, the pop-up shows the time and the context of the entry.
 
+## Find text with the browser
+
+In a web browser, press Ctrl+F to find text on the page, for example the title of a task. The
+browser finds the text in the task list, on the calendar and in all other views.
+
 ## Find a task
 
 Use the filters at the top of the task list. Each filter shows how many open tasks it holds.
