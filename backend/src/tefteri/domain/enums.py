@@ -55,3 +55,4 @@ class Capability(StrEnum):
     TASK_TIME = "task_time"
     RECURRING = "recurring"
     NOTE_APPEND = "note_append"
+    SUBPROJECTS = "subprojects"

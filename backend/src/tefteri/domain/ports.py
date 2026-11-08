@@ -40,6 +40,10 @@ class Backend(Protocol):
 class TaskBackend(Backend, Protocol):
     """Task management application."""
 
+    async def create_container(self, name: str, parent: Container | None) -> Container:
+        """Create a project, nested under ``parent`` when given (needs ``SUBPROJECTS``)."""
+        ...
+
     async def list_tasks(self, container: Container, since: str | None) -> TaskPage:
         """List tasks of a container, optionally only changes since a version."""
         ...

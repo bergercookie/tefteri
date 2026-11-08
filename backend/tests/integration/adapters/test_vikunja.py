@@ -86,6 +86,40 @@ async def test_lists_projects_and_tasks_with_auth_header(backend: VikunjaTaskBac
 
 
 @respx.mock
+async def test_saved_filters_are_not_containers(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/projects").respond(
+        json=[{"id": 2, "title": "Work"}, {"id": -2, "title": "My Open Tasks"}]
+    )
+    assert await backend.list_containers() == [Container("2", "Work")]
+
+
+@respx.mock
+async def test_subprojects_name_their_parent_and_can_be_created(
+    backend: VikunjaTaskBackend,
+) -> None:
+    respx.get(f"{BASE}/projects").respond(
+        json=[
+            {"id": 2, "title": "Work", "parent_project_id": 0},
+            {"id": 5, "title": "Launch", "parent_project_id": 2},
+        ]
+    )
+    assert await backend.list_containers() == [
+        Container("2", "Work"),
+        Container("5", "Launch", "2"),
+    ]
+    create = respx.put(f"{BASE}/projects")
+    create.side_effect = [
+        httpx.Response(201, json={"id": 9, "title": "Docs", "parent_project_id": 2}),
+        httpx.Response(201, json={"id": 10, "title": "Top"}),
+    ]
+    made = await backend.create_container("Docs", Container("2", "Work"))
+    assert made == Container("9", "Docs", "2")
+    assert json.loads(create.calls[0].request.content) == {"title": "Docs", "parent_project_id": 2}
+    assert await backend.create_container("Top", None) == Container("10", "Top")
+    assert json.loads(create.calls[1].request.content) == {"title": "Top"}
+
+
+@respx.mock
 async def test_pagination(backend: VikunjaTaskBackend) -> None:
     first = [task_json(id=i) for i in range(50)]
     route = respx.get(f"{BASE}/projects/2/tasks")

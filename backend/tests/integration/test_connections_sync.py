@@ -8,7 +8,9 @@ import respx
 from httpx import AsyncClient
 
 from tefteri.config import Settings
+from tefteri.domain.entities import Container
 from tefteri.main import create_app
+from tests.conftest import connect_all
 from tests.fakes.world import FakeWorld
 
 V1 = "/api/v1"
@@ -175,3 +177,18 @@ async def test_google_callback_returns_to_the_web_client(  # type: ignore[no-unt
                 f"{V1}/connections/google/callback", params={"code": "c", "state": state}
             )
         assert cb.status_code == 303 and cb.headers["location"] == "/#/settings"
+
+
+async def test_a_container_that_the_app_stops_listing_is_forgotten(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await connect_all(api)
+    backend = world.tasks["default"]
+    backend.containers.append(Container("p9", "Old filter"))
+    await api.post(f"{V1}/sync")
+    listed = await api.get(f"{V1}/connections/{ids['vikunja']}/containers")
+    assert {c["name"] for c in listed.json()} == {"Inbox", "Old filter"}
+    backend.containers = [c for c in backend.containers if c.remote_id != "p9"]
+    await api.post(f"{V1}/sync")
+    listed = await api.get(f"{V1}/connections/{ids['vikunja']}/containers")
+    assert {c["name"] for c in listed.json()} == {"Inbox"}

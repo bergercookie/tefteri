@@ -258,3 +258,49 @@ async def test_a_move_after_a_change_in_vikunja_is_a_conflict_and_changes_nothin
     assert moved.status_code == 409 and moved.json()["code"] == "remote_conflict"
     assert _due(await real.get(raw["id"])) == _at(4, 9)  # Vikunja was not changed
     assert _cached_due((await tefteri.get(f"{V1}/tasks/{mine['id']}")).json()) == _at(4, 9)
+
+
+# --- weekly planning --------------------------------------------------------------------
+
+
+async def test_weekly_planning_follows_a_new_subproject_in_vikunja(
+    tefteri: AsyncClient, real: RealVikunja
+) -> None:
+    """A subproject made by tefteri is a real subproject, and tasks added in Vikunja show up."""
+    await _sync(tefteri)
+    week = "2030-03-04"
+    parent = next(
+        c
+        for c in (await tefteri.get(f"{V1}/weekly/{week}/candidates")).json()
+        if c["name"] == "Inbox"
+    )
+    name = _title("Launch")
+    made = await tefteri.post(
+        f"{V1}/weekly/{week}/subprojects", json={"parent_id": parent["container_id"], "name": name}
+    )
+    assert made.status_code == 201, made.text
+    project = made.json()["plan"]["projects"][0]
+    assert project["name"] == name and project["open_tasks"] == 0
+    remote = next(
+        p
+        for p in (await real.client.get(f"{real.base}/projects", headers=real.headers)).json()
+        if p["title"] == name
+    )
+    assert str(remote["parent_project_id"]) == await real.inbox()
+    assert project["url"].endswith(f"/projects/{remote['id']}")
+    for n in (1, 2, 3):
+        r = await real.client.put(
+            f"{real.base}/projects/{remote['id']}/tasks",
+            headers=real.headers,
+            json={"title": f"{name} task {n}"},
+        )
+        assert r.status_code == 201, r.text
+    refreshed = (await tefteri.post(f"{V1}/weekly/{week}/refresh")).json()
+    assert refreshed["plan"]["projects"][0]["open_tasks"] == 3
+    spread = (await tefteri.post(f"{V1}/weekly/{week}/spread")).json()
+    days = [t["planned_day"] for t in spread["plan"]["projects"][0]["tasks"]]
+    assert None not in days and len(set(days)) == 3
+    again = (await tefteri.post(f"{V1}/weekly/{week}/refresh")).json()
+    assert [t["planned_day"] for t in again["plan"]["projects"][0]["tasks"]] == days
+    committed = (await tefteri.post(f"{V1}/weekly/{week}/commit")).json()
+    assert committed["plan"]["status"] == "committed"
