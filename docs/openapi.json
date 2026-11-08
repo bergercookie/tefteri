@@ -1463,6 +1463,20 @@
         "title": "NoteOut",
         "type": "object"
       },
+      "ParkedIn": {
+        "description": "Set a task aside, or put it back.",
+        "properties": {
+          "parked": {
+            "title": "Parked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "parked"
+        ],
+        "title": "ParkedIn",
+        "type": "object"
+      },
       "PasswordChange": {
         "description": "Current and new password.",
         "properties": {
@@ -1684,6 +1698,10 @@
             "title": "Open Tasks",
             "type": "integer"
           },
+          "parked_tasks": {
+            "title": "Parked Tasks",
+            "type": "integer"
+          },
           "scheduled_tasks": {
             "title": "Scheduled Tasks",
             "type": "integer"
@@ -1716,6 +1734,7 @@
           "open_tasks",
           "done_tasks",
           "scheduled_tasks",
+          "parked_tasks",
           "tasks",
           "committed_tasks"
         ],
@@ -2637,6 +2656,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "parked": {
+            "default": false,
+            "title": "Parked",
+            "type": "boolean"
           },
           "planned_day": {
             "anyOf": [
@@ -6116,6 +6140,70 @@
           }
         },
         "summary": "Create Subproject",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/tasks/{task_id}/parked": {
+      "put": {
+        "description": "Set a task aside for this plan, or put it back. The task app is not touched.",
+        "operationId": "park_task_api_v1_weekly__day__tasks__task_id__parked_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParkedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Park Task",
         "tags": [
           "weekly planning"
         ]

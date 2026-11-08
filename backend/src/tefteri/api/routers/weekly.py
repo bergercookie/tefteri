@@ -43,6 +43,8 @@ class WeeklyTaskOut(BaseModel):
     planned_day: date | None
     """The day in the planned week, or ``None`` when the task has no day in that week."""
     done: bool = False
+    parked: bool = False
+    """The user set the task aside for this plan."""
     url: str | None = None
 
     @classmethod
@@ -54,6 +56,7 @@ class WeeklyTaskOut(BaseModel):
             due_day=v.due_day,
             planned_day=v.planned_day,
             done=v.task.status == "done",
+            parked=v.parked,
             url=f"{base}/tasks/{v.task.remote_id}" if base else None,
         )
 
@@ -69,7 +72,9 @@ class ProjectOut(BaseModel):
     open_tasks: int
     done_tasks: int
     scheduled_tasks: int
+    parked_tasks: int
     tasks: list[WeeklyTaskOut]
+    """The open tasks, parked ones too (they have ``parked`` set)."""
     committed_tasks: list[WeeklyTaskOut]
     """The tasks planned at the commit, with their state now. Empty before the commit."""
 
@@ -212,9 +217,10 @@ def _project_out(v: ProjectView) -> ProjectOut:
         name=v.container.name if v.container else v.row.name,
         created_here=v.row.created_here,
         url=f"{base}/projects/{v.container.remote_id}" if base and v.container else None,
-        open_tasks=len(v.open_tasks),
+        open_tasks=sum(1 for t in v.open_tasks if not t.parked),
         done_tasks=v.done_tasks,
-        scheduled_tasks=sum(1 for t in v.open_tasks if t.planned_day is not None),
+        scheduled_tasks=sum(1 for t in v.open_tasks if t.planned_day is not None and not t.parked),
+        parked_tasks=sum(1 for t in v.open_tasks if t.parked),
         tasks=[WeeklyTaskOut.of(t, base) for t in v.open_tasks],
         committed_tasks=[WeeklyTaskOut.of(t, base) for t in v.committed],
     )
@@ -406,6 +412,24 @@ async def create_subproject(
     service = _service(request)
     plan = await service.start(db, user.id, week)
     await service.create_subproject(db, user.id, plan, body.parent_id, body.name)
+    return await _state(request, db, user.id, user.timezone, week)
+
+
+class ParkedIn(BaseModel):
+    """Set a task aside, or put it back."""
+
+    parked: bool
+
+
+@router.put("/{day}/tasks/{task_id}/parked")
+async def park_task(
+    day: date, task_id: uuid.UUID, body: ParkedIn, request: Request, db: Db, user: CurrentUser
+) -> WeeklyStateOut:
+    """Set a task aside for this plan, or put it back. The task app is not touched."""
+    week = normalize_week(day)
+    await _service(request).set_parked(
+        db, user.id, await _draft(request, db, user.id, week), task_id, body.parked
+    )
     return await _state(request, db, user.id, user.timezone, week)
 
 

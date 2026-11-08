@@ -62,6 +62,8 @@ class WeeklyPlanProject(IdMixin, Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     created_here: Mapped[bool] = mapped_column(Boolean, default=False)
     committed_task_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    parked_task_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    """Tasks set aside for this week's plan: the spread and the commit leave them out."""
     outcome: Mapped[str | None] = mapped_column(String(12), nullable=True)  # done | not_done
     leftover_action: Mapped[str | None] = mapped_column(String(8), nullable=True)  # carry|backlog
     reviewed_committed: Mapped[int | None] = mapped_column(Integer, nullable=True)
