@@ -63,6 +63,8 @@ class FakeVikunja(FakeHttpServer):
         api = base_url + "/api/v1"
         self.route("GET", f"{api}/projects", self._list_projects)
         self.route("PUT", f"{api}/projects", self._create_project)
+        self.route("GET", f"{api}/projects/{{project_id}}", self._get_project)
+        self.route("POST", f"{api}/projects/{{project_id}}", self._update_project)
         self.route("GET", f"{api}/projects/{{project_id}}/tasks", self._list_tasks)
         self.route("PUT", f"{api}/projects/{{project_id}}/tasks", self._create_task)
         self.route("GET", f"{api}/tasks/{{task_id}}", self._get_task)
@@ -119,7 +121,35 @@ class FakeVikunja(FakeHttpServer):
         return out
 
     def _list_projects(self, request: httpx.Request) -> httpx.Response:  # noqa: ARG002
-        return json_response(200, list(self.projects.values()))
+        # Like Vikunja, archived projects are left out unless asked for.
+        return json_response(200, [p for p in self.projects.values() if not p["is_archived"]])
+
+    def _get_project(self, request: httpx.Request, project_id: str) -> httpx.Response:  # noqa: ARG002
+        project = self.projects.get(int(project_id))
+        if project is None:
+            return self._error(404, 3001, "The project does not exist.")
+        return json_response(200, project)
+
+    def _update_project(self, request: httpx.Request, project_id: str) -> httpx.Response:
+        project = self.projects.get(int(project_id))
+        if project is None:
+            return self._error(404, 3001, "The project does not exist.")
+        body = json.loads(request.content)
+        if not str(body.get("title", "")).strip():
+            return self._invalid("title")
+        project["title"] = str(body["title"])
+        project["is_archived"] = bool(body.get("is_archived", False))
+        project["updated"] = _render(self.now)
+        if project["is_archived"]:
+            # Archiving a project archives the projects inside it.
+            stack = [project["id"]]
+            while stack:
+                parent = stack.pop()
+                for child in self.projects.values():
+                    if child["parent_project_id"] == parent and not child["is_archived"]:
+                        child["is_archived"] = True
+                        stack.append(child["id"])
+        return json_response(200, project)
 
     def _create_project(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)

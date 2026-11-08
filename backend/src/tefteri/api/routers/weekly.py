@@ -149,6 +149,7 @@ class AnswerIn(BaseModel):
     plan_project_id: uuid.UUID
     finished_anyway: bool = False
     leftover: str = "backlog"
+    archive: bool = False
 
 
 class ReviewIn(BaseModel):
@@ -310,7 +311,10 @@ async def review(
         user.id,
         plan_id,
         user.timezone,
-        [Answer(a.plan_project_id, a.finished_anyway, a.leftover) for a in body.projects],
+        [
+            Answer(a.plan_project_id, a.finished_anyway, a.leftover, a.archive)
+            for a in body.projects
+        ],
         body.reflection,
         _now(request),
     )

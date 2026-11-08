@@ -40,6 +40,7 @@ from tefteri.services.connections import AdapterRegistry, ConnectionService
 from tefteri.services.goals import GoalService
 from tefteri.services.google_oauth import GoogleOAuth
 from tefteri.services.notes import NoteService
+from tefteri.services.projects import ProjectService
 from tefteri.services.reviews import ReviewService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
@@ -113,7 +114,11 @@ def create_app(
     app.state.sync_service = sync_service
     task_service = TaskService(connection_service)
     app.state.task_service = task_service
-    app.state.weekly_service = WeeklyService(task_service, connection_service, sync_service)
+    project_service = ProjectService(connection_service)
+    app.state.project_service = project_service
+    app.state.weekly_service = WeeklyService(
+        task_service, connection_service, sync_service, project_service
+    )
     app.state.goal_service = GoalService(task_service)
     app.state.calendar_service = CalendarService(connection_service)
     note_service = NoteService(connection_service)

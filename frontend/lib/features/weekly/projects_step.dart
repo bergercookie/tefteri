@@ -58,6 +58,36 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
     ref.invalidate(weeklyCandidatesProvider);
   }
 
+  Future<void> _archive(WeeklyCandidate c) async {
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('archive-confirm'),
+        title: Text('Archive "${c.name}"?'),
+        content: const Text(
+            'The project is archived in your task app, with the projects '
+            'inside it. Its tasks leave tefteri. You can restore the project '
+            'in your task app.'),
+        actions: [
+          TextButton(
+              key: const Key('archive-cancel'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              key: const Key('archive-yes'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Archive')),
+        ],
+      ),
+    );
+    if (sure != true) return;
+    await widget.actions.run((api) async {
+      await api.archiveProject(c.connectionId, c.containerId);
+      return api.state(widget.actions.week);
+    });
+    ref.invalidate(weeklyCandidatesProvider);
+  }
+
   Future<void> _newSubproject(
       List<WeeklyCandidate> all, String? parentId) async {
     final result = await showDialog<({String parent, String name})>(
@@ -258,6 +288,12 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            key: Key('archive-${c.containerId}'),
+            tooltip: 'Archive ${c.name}',
+            icon: const Icon(Icons.archive_outlined),
+            onPressed: () => _archive(c),
           ),
           IconButton(
             key: Key('sub-${c.containerId}'),

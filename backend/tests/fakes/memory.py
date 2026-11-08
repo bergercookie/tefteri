@@ -79,6 +79,7 @@ class FakeTaskBackend(_FakeBase):
         """Start empty."""
         super().__init__(containers)
         self.tasks: dict[str, RemoteTask] = {}
+        self.archived: list[Container] = []
 
     async def create_container(self, name: str, parent: Container | None) -> Container:
         """Create a project (a subproject of ``parent`` when given)."""
@@ -87,6 +88,21 @@ class FakeTaskBackend(_FakeBase):
         created = Container(self._new_id(), name, parent.remote_id if parent else None)
         self.containers.append(created)
         return created
+
+    async def archive_container(self, container: Container) -> None:
+        """Archive a project: the app stops listing it (and its subprojects)."""
+        self._guard()
+        self._require(Capability.ARCHIVE_PROJECTS)
+        gone = {container.remote_id}
+        grew = True
+        while grew:
+            grew = False
+            for c in self.containers:
+                if c.parent_id in gone and c.remote_id not in gone:
+                    gone.add(c.remote_id)
+                    grew = True
+        self.archived.extend(c for c in self.containers if c.remote_id in gone)
+        self.containers = [c for c in self.containers if c.remote_id not in gone]
 
     async def list_tasks(self, container: Container, since: str | None) -> TaskPage:  # noqa: ARG002
         """List the tasks of a container."""

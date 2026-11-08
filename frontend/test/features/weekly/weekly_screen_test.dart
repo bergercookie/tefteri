@@ -366,6 +366,97 @@ void main() {
     }
   });
 
+  group('archive', () {
+    testWidgets('a project is archived after a confirmation', (tester) async {
+      final (api, server) = await _pump(tester);
+      await _tap(tester, 'check-projects');
+      await _tap(tester, 'archive-p3');
+      expect(find.byKey(const Key('archive-confirm')), findsOneWidget);
+      expect(find.text('Archive "Taxes"?'), findsOneWidget);
+      // Nothing happens until the user agrees.
+      expect(api.where('POST /connections/c1/containers/p3/archive'), isEmpty);
+      await _tap(tester, 'archive-cancel');
+      expect(find.byKey(const Key('candidate-p3')), findsOneWidget);
+      await _tap(tester, 'archive-p3');
+      await _tap(tester, 'archive-yes');
+      expect(api.where('POST /connections/c1/containers/p3/archive'),
+          hasLength(1));
+      expect(server.projects.any((p) => p['id'] == 'p3'), isFalse);
+      expect(find.byKey(const Key('candidate-p3')), findsNothing);
+      expect(find.byKey(const Key('candidate-p1')), findsOneWidget);
+    });
+
+    testWidgets('archiving a chosen project takes it out of the week',
+        (tester) async {
+      final s = WeeklyServer()..chosen.add('p1');
+      await _pump(tester, server: s);
+      await _tap(tester, 'check-projects');
+      expect(find.byKey(const Key('chosen-pp-p1')), findsOneWidget);
+      await _tap(tester, 'archive-p1');
+      await _tap(tester, 'archive-yes');
+      expect(find.byKey(const Key('chosen-pp-p1')), findsNothing);
+      expect(find.byKey(const Key('candidate-p1')), findsNothing);
+    });
+
+    testWidgets('a refusal is shown and the project stays', (tester) async {
+      final s = WeeklyServer();
+      final api = FakeApi({
+        ...s.allRoutes(),
+        'POST /connections/c1/containers/p3/archive': const ApiFailure(
+            422,
+            '"Taxes" is part of a plan that you have not looked back at yet.',
+            'invalid'),
+      });
+      await pumpWithApi(tester, api, WeeklyPlanningScreen(initialDate: _anyDay),
+          overrides: [weeklyPollIntervalProvider.overrideWithValue(null)]);
+      await _tap(tester, 'check-projects');
+      await _tap(tester, 'archive-p3');
+      await _tap(tester, 'archive-yes');
+      expect(
+          find.textContaining('have not looked back at yet'), findsOneWidget);
+      expect(find.byKey(const Key('candidate-p3')), findsOneWidget);
+    });
+
+    testWidgets('the look-back can archive a project when it is saved',
+        (tester) async {
+      final s = WeeklyServer(lookBack: sampleLookBack());
+      final api = FakeApi({
+        ...s.allRoutes(),
+        'POST /weekly/reviews/old1': {
+          'entries': <Object?>[],
+          'totals': {
+            'weeks': 0,
+            'committed_projects': 0,
+            'done_projects': 0,
+            'committed_tasks': 0,
+            'done_tasks': 0,
+          },
+        },
+      });
+      await pumpWithApi(tester, api, WeeklyPlanningScreen(initialDate: _anyDay),
+          overrides: [weeklyPollIntervalProvider.overrideWithValue(null)]);
+      // Off by default, and offered for a finished project too.
+      expect(
+          tester
+              .widget<SwitchListTile>(find.byKey(const Key('archive-op1')))
+              .value,
+          isFalse);
+      await _tap(tester, 'archive-op1');
+      expect(
+          tester
+              .widget<SwitchListTile>(find.byKey(const Key('archive-op1')))
+              .value,
+          isTrue);
+      await _tap(tester, 'save-look-back');
+      final body = api.where('POST /weekly/reviews/old1').single.data! as Map;
+      final answers = body['projects'] as List;
+      expect((answers[0] as Map)['archive'], isTrue);
+      expect((answers[1] as Map)['archive'], isFalse);
+      // Archiving happens on the server; nothing is archived by this tap alone.
+      expect(api.where('POST /connections/c1/containers/op1/archive'), isEmpty);
+    });
+  });
+
   group('look back', () {
     testWidgets('asks about each project and shows the counters',
         (tester) async {
@@ -434,12 +525,14 @@ void main() {
         {
           'plan_project_id': 'op1',
           'finished_anyway': false,
-          'leftover': 'carry'
+          'leftover': 'carry',
+          'archive': false,
         },
         {
           'plan_project_id': 'op2',
           'finished_anyway': true,
-          'leftover': 'backlog'
+          'leftover': 'backlog',
+          'archive': false,
         },
       ]);
       // The end of the look-back: the earlier weeks with two counters each.

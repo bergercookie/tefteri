@@ -16,6 +16,7 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.domain.enums import Context, DefaultContext
 from tefteri.services.connections import ConnectionService, UnknownProvider
 from tefteri.services.google_oauth import GoogleOAuth, InvalidState
+from tefteri.services.projects import ProjectService
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -239,6 +240,24 @@ async def list_containers(
     return [
         ContainerOut(id=r.id, remote_id=r.remote_id, name=r.name, context=r.context) for r in rows
     ]
+
+
+@router.post("/{connection_id}/containers/{container_id}/archive", status_code=204)
+async def archive_container(
+    connection_id: uuid.UUID,
+    container_id: uuid.UUID,
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+    service: ConnectionService = Service,
+) -> None:
+    """Archive a project in the task app. The app can restore it; tefteri forgets it."""
+    await _own(service, db, user, connection_id)
+    row = await db.get(SourceContainer, container_id)
+    if row is None or row.connection_id != connection_id or row.user_id != user.id:
+        raise ApiError(404, "not_found", "Container not found")
+    projects: ProjectService = request.app.state.project_service
+    await projects.archive(db, user.id, container_id)
 
 
 class ContainerPatch(BaseModel):

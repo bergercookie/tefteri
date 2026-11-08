@@ -325,6 +325,7 @@ class WeeklyCandidate {
   /// Creates a candidate.
   const WeeklyCandidate({
     required this.containerId,
+    this.connectionId = '',
     required this.connectionName,
     required this.name,
     required this.path,
@@ -336,6 +337,7 @@ class WeeklyCandidate {
   /// Parses a candidate JSON object.
   factory WeeklyCandidate.fromJson(Map<String, dynamic> j) => WeeklyCandidate(
         containerId: '${j['container_id']}',
+        connectionId: '${j['connection_id'] ?? ''}',
         connectionName: '${j['connection_name'] ?? ''}',
         name: '${j['name'] ?? ''}',
         path: '${j['path'] ?? j['name'] ?? ''}',
@@ -346,6 +348,9 @@ class WeeklyCandidate {
 
   /// Id of the project in tefteri.
   final String containerId;
+
+  /// Id of the connection that holds the project.
+  final String connectionId;
 
   /// Name of the task app connection.
   final String connectionName;
@@ -486,6 +491,7 @@ class LookBackAnswer {
     required this.projectId,
     this.finishedAnyway = false,
     this.leftover = 'carry',
+    this.archive = false,
   });
 
   /// Id of the project in its plan.
@@ -497,10 +503,14 @@ class LookBackAnswer {
   /// `carry` or `backlog`.
   final String leftover;
 
+  /// Archive the project in the task app when the look-back is saved.
+  final bool archive;
+
   /// The JSON body of the review request.
   Map<String, Object?> toJson() => {
         'plan_project_id': projectId,
         'finished_anyway': finishedAnyway,
         'leftover': leftover,
+        'archive': archive,
       };
 }
