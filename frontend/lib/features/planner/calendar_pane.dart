@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
@@ -906,18 +907,29 @@ class _DayHeader extends StatelessWidget {
 
 /// Opens the details pop-up of [item] when the user taps [child]: the task for
 /// a task block, the event for an event.
-class _OpenDetails extends StatelessWidget {
+///
+/// Ctrl and a right click on a task block mark the task as done. A task that
+/// is done stays as it is (no second click reopens it by mistake), and events
+/// have nothing to complete.
+class _OpenDetails extends ConsumerWidget {
   const _OpenDetails({required this.item, required this.child});
 
   final CalendarItem item;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context, WidgetRef ref) => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => item.isTask
             ? showTaskDetails(context, taskId: item.id, title: item.title)
             : showEventDetails(context, item),
+        onSecondaryTapUp: (_) {
+          if (item.isTask &&
+              !item.isDone &&
+              HardwareKeyboard.instance.isControlPressed) {
+            ref.read(plannerActionsProvider).complete(item.id);
+          }
+        },
         child: child,
       );
 }

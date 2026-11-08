@@ -24,6 +24,14 @@ To move by one week, choose the arrows next to the Today button. You can also pr
 The arrow keys do not work while you type in the search box.
 Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
 
+## Mark a task as done from the calendar
+
+Hold Ctrl and click a task on the calendar with the right mouse button. Tefteri marks the task
+as done in your task app. This works for blocks and for tasks in the all day row.
+
+A task that is done stays done: the same click does nothing on it. To reopen a task, open it
+and choose Mark not done. A click with the right button alone does nothing.
+
 ## See the project of a task
 
 A task on the calendar has a small dark label with the name of its project. This shows you
