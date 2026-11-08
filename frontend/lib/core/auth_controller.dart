@@ -56,15 +56,30 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   /// Resumes an earlier session. On the web the server's HttpOnly session
-  /// cookie survives a page reload; when it is still valid the user stays
-  /// signed in. Any failure leaves the user signed out.
+  /// cookie survives a page reload; the other clients send the token that
+  /// they saved on the device. When the server accepts the session, the user
+  /// stays signed in.
+  ///
+  /// When the server refuses it (it expired), the saved token is dropped and
+  /// the user signs in again. When the server cannot be reached, a saved token
+  /// is kept and the user stays signed in: coming back to the app on a bad
+  /// connection must not sign anyone out. The screens then show their own
+  /// "cannot reach the server" message, with a way to try again.
   Future<void> restore() async {
+    final saved = _ref.read(tokenStoreProvider);
     state = const AuthState(restoring: true);
     try {
       final r =
           await _ref.read(dioProvider).get<Map<String, dynamic>>('/auth/me');
       state = AuthState(signedIn: true, isAdmin: r.data?['is_admin'] == true);
-    } on DioException {
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final refused = status == 401 || status == 403;
+      if (saved != null && !refused) {
+        state = const AuthState(signedIn: true);
+        return;
+      }
+      if (refused) _ref.read(tokenStoreProvider.notifier).set(null);
       state = const AuthState();
     }
   }
