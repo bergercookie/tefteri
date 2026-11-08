@@ -62,21 +62,22 @@ class FakeVikunja(FakeHttpServer):
         self.add_project("Inbox")
         api = base_url + "/api/v1"
         self.route("GET", f"{api}/projects", self._list_projects)
+        self.route("PUT", f"{api}/projects", self._create_project)
         self.route("GET", f"{api}/projects/{{project_id}}/tasks", self._list_tasks)
         self.route("PUT", f"{api}/projects/{{project_id}}/tasks", self._create_task)
         self.route("GET", f"{api}/tasks/{{task_id}}", self._get_task)
         self.route("POST", f"{api}/tasks/{{task_id}}", self._update_task)
         self.route("DELETE", f"{api}/tasks/{{task_id}}", self._delete_task)
 
-    def add_project(self, title: str) -> int:
-        """Create a project directly in the app and return its id."""
+    def add_project(self, title: str, parent_id: int = 0) -> int:
+        """Create a project (a subproject of ``parent_id`` when given) in the app; return its id."""
         project_id = len(self.projects) + 1
         stamp = _render(self.now)
         self.projects[project_id] = {
             "id": project_id,
             "title": title,
             "description": "",
-            "parent_project_id": 0,
+            "parent_project_id": parent_id,
             "is_archived": False,
             "created": stamp,
             "updated": stamp,
@@ -119,6 +120,16 @@ class FakeVikunja(FakeHttpServer):
 
     def _list_projects(self, request: httpx.Request) -> httpx.Response:  # noqa: ARG002
         return json_response(200, list(self.projects.values()))
+
+    def _create_project(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if not str(body.get("title", "")).strip():
+            return self._invalid("title")
+        parent_id = int(body.get("parent_project_id", 0) or 0)
+        if parent_id and parent_id not in self.projects:
+            return self._error(404, 3001, "The project does not exist.")
+        project_id = self.add_project(str(body["title"]), parent_id)
+        return json_response(201, self.projects[project_id])
 
     def _list_tasks(self, request: httpx.Request, project_id: str) -> httpx.Response:
         if int(project_id) not in self.projects:

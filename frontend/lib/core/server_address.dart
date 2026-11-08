@@ -39,8 +39,7 @@ class ServerAddress extends StateNotifier<String?> {
   /// Remembers [address] for this run and the next ones.
   Future<void> set(String address) async {
     state = address;
-    await (await SharedPreferences.getInstance())
-        .setString(_prefsKey, address);
+    await (await SharedPreferences.getInstance()).setString(_prefsKey, address);
   }
 }
 

@@ -26,6 +26,7 @@ from tefteri.api.routers import sync as sync_router
 from tefteri.api.routers import tasks as tasks_router
 from tefteri.api.routers import users as users_router
 from tefteri.api.routers import views as views_router
+from tefteri.api.routers import weekly as weekly_router
 from tefteri.auth.service import AuthService
 from tefteri.auth.throttle import LoginThrottle
 from tefteri.config import Settings
@@ -43,6 +44,7 @@ from tefteri.services.reviews import ReviewService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 from tefteri.services.users import UserService
+from tefteri.services.weekly import WeeklyService
 
 
 def default_registry(cfg: Settings, http: httpx.AsyncClient) -> AdapterRegistry:
@@ -107,9 +109,11 @@ def create_app(
     app.state.session_factory = factory
     app.state.auth_service = auth_service
     app.state.connection_service = connection_service
-    app.state.sync_service = SyncService(connection_service)
+    sync_service = SyncService(connection_service)
+    app.state.sync_service = sync_service
     task_service = TaskService(connection_service)
     app.state.task_service = task_service
+    app.state.weekly_service = WeeklyService(task_service, connection_service, sync_service)
     app.state.goal_service = GoalService(task_service)
     app.state.calendar_service = CalendarService(connection_service)
     note_service = NoteService(connection_service)
@@ -149,6 +153,7 @@ def create_app(
         conflicts_router,
         planning_router,
         reviews_router,
+        weekly_router,
         users_router,
         settings_router,
     ):
