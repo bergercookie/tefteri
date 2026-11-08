@@ -60,6 +60,17 @@ class WeeklyApi {
       _dio.post<Object?>(
           '/connections/$connectionId/containers/$containerId/archive');
 
+  /// `PUT /weekly/{week}/tasks/{id}/parked`: sets a task aside, or puts it back.
+  Future<WeeklyState> parkTask(String week, String taskId, bool parked) async =>
+      _state(await _dio.put<Object?>('/weekly/$week/tasks/$taskId/parked',
+          data: {'parked': parked}));
+
+  /// Marks a task done in the task app, then reads the week again.
+  Future<WeeklyState> completeTask(String week, String taskId) async {
+    await _dio.post<Object?>('/tasks/$taskId/complete');
+    return state(week);
+  }
+
   /// `POST /weekly/{week}/spread`.
   Future<WeeklyState> spread(String week) async =>
       _state(await _dio.post<Object?>('/weekly/$week/spread'));

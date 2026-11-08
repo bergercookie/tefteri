@@ -48,6 +48,8 @@ class TaskView:
     due_day: date | None
     planned_day: date | None
     """``due_day`` when it lies in the week of the plan, else ``None``."""
+    parked: bool = False
+    """The user set the task aside for this plan."""
 
 
 @dataclass
@@ -194,10 +196,11 @@ class WeeklyService:
             view = ProjectView(row, container, connection)
             if container is not None:
                 promised = set(row.committed_task_ids) if plan.status == "committed" else set()
+                parked = set(row.parked_task_ids)
                 for t in await self._container_tasks(db, user_id, container.id):
                     day = due_day(t, tz)
                     in_week = day is not None and plan.week_start <= day < end
-                    tv = TaskView(t, day, day if in_week else None)
+                    tv = TaskView(t, day, day if in_week else None, str(t.id) in parked)
                     if str(t.id) in promised:
                         view.committed.append(tv)
                     if t.status == "done":
@@ -452,18 +455,41 @@ class WeeklyService:
         load = {d: 0 for d in eligible}
         for v in views:
             for t in v.open_tasks:
-                if t.planned_day in load:
+                if not t.parked and t.planned_day in load:
                     load[t.planned_day] += 1
         count = 0
         for v in views:
             for t in v.open_tasks:
-                if t.planned_day is not None:
+                if t.planned_day is not None or t.parked:
                     continue
                 day = min(eligible, key=lambda d: (load[d], d))
                 await self._tasks.schedule_date(db, user_id, t.task, day)
                 load[day] += 1
                 count += 1
         return count
+
+    async def set_parked(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        plan: WeeklyPlan,
+        task_id: uuid.UUID,
+        parked: bool,
+    ) -> None:
+        """Set a task of the plan aside (or put it back). The task app is not touched."""
+        self._editable(plan)
+        key = str(task_id)
+        for row in await self._rows(db, plan):
+            if row.container_id is None:
+                continue
+            ids = {str(t.id) for t in await self._container_tasks(db, user_id, row.container_id)}
+            if key not in ids:
+                continue
+            current = [i for i in row.parked_task_ids if i != key]
+            row.parked_task_ids = [*current, key] if parked else current
+            await db.flush()
+            return
+        raise NotFound("This task is not in a project of the plan.")
 
     # -- commit ------------------------------------------------------------------------------
 
@@ -476,7 +502,7 @@ class WeeklyService:
             raise Invalid("Choose at least one project before you finish.")
         for v in views:
             v.row.committed_task_ids = [
-                str(t.task.id) for t in v.open_tasks if t.planned_day is not None
+                str(t.task.id) for t in v.open_tasks if t.planned_day is not None and not t.parked
             ]
         plan.status = "committed"
         plan.committed_at = now

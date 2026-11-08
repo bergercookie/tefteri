@@ -26,6 +26,12 @@ class WeeklyServer {
   /// Ids of committed tasks that are done by now.
   final Set<String> doneTasks = {};
 
+  /// Ids of the tasks that were set aside.
+  final Set<String> parked = {};
+
+  /// Ids of the tasks marked done from the planning page.
+  final Set<String> completedHere = {};
+
   /// Ids of the projects chosen for the week, in order.
   final List<String> chosen = [];
 
@@ -66,6 +72,7 @@ class WeeklyServer {
       'title': t['title'],
       'due_day': day,
       'planned_day': day,
+      'parked': parked.contains(t['id']),
       'url': null,
     };
   }
@@ -73,17 +80,23 @@ class WeeklyServer {
   Map<String, Object?> _planProject(String id) {
     final p = projects.firstWhere((p) => p['id'] == id);
     final tasks = [
-      for (final t in p['tasks']! as List) _task(t as Map<String, Object?>)
+      for (final t in p['tasks']! as List)
+        if (!completedHere.contains((t as Map)['id']))
+          _task(t as Map<String, Object?>)
     ];
+    final active = tasks.where((t) => t['parked'] != true).toList();
     return {
       'id': 'pp-$id',
       'container_id': id,
       'name': p['name'],
       'created_here': p['created_here'] == true,
       'url': 'http://vikunja.test/projects/$id',
-      'open_tasks': tasks.length,
-      'done_tasks': 0,
-      'scheduled_tasks': tasks.where((t) => t['planned_day'] != null).length,
+      'open_tasks': active.length,
+      'done_tasks': (p['tasks']! as List)
+          .where((t) => completedHere.contains((t as Map)['id']))
+          .length,
+      'parked_tasks': tasks.length - active.length,
+      'scheduled_tasks': active.where((t) => t['planned_day'] != null).length,
       'tasks': tasks,
       'committed_tasks': status == 'committed'
           ? [
@@ -180,6 +193,7 @@ class WeeklyServer {
             for (final t in projects.firstWhere((p) => p['id'] == id)['tasks']!
                 as List) {
               final tid = (t as Map)['id'] as String;
+              if (parked.contains(tid) || completedHere.contains(tid)) continue;
               days.putIfAbsent(tid, () => '2030-03-0${5 + n++ % 5}');
             }
           }
@@ -214,6 +228,20 @@ class WeeklyServer {
       };
       for (final t in p['tasks']! as List) {
         final id = (t as Map)['id'] as String;
+        r['PUT /weekly/$weekKey/tasks/$id/parked'] = (RequestOptions o) {
+          if ((o.data as Map)['parked'] == true) {
+            parked.add(id);
+          } else {
+            parked.remove(id);
+          }
+          return state();
+        };
+        r['POST /tasks/$id/complete'] = (RequestOptions o) {
+          completedHere.add(id);
+          return taskJson(id, 'x');
+        };
+        r['GET /tasks/$id'] =
+            (RequestOptions o) => taskJson(id, '${t['title']}');
         r['PUT /tasks/$id/schedule'] = (RequestOptions o) {
           days[id] = (o.data as Map)['date'] as String;
           return taskJson(id, 'x');

@@ -110,6 +110,24 @@ Monday to Friday, so that no day gets too many. It never uses a day that has pas
 
 A task shows Was due and a date when its old day was in another week.
 
+### Finish, change or park a task
+
+Each task has these controls:
+
+- To mark a task as done, choose the circle at the left of the task. Tefteri marks the task as done
+  in your task app and takes it off the list.
+- To change a task, choose its title. The same pop-up as in the planner opens. Change the title,
+  the description or the day, and then choose Save.
+- To set a task aside, choose the box icon at the right of the title (Park for later).
+
+A parked task is not part of this plan. Tefteri does not give it a day when you choose Spread the
+rest evenly, does not count it, and leaves it out when you commit the plan. Your task app does not
+change.
+
+Tefteri shows all parked tasks at the end of the page, in the section Parked. The section starts
+closed. Choose it to open it. To bring a task back, choose Put back. You cannot park or put back a
+task while the plan is committed. Choose Change the plan first.
+
 ## Step 4: check the plan and commit
 
 The last step shows all the tasks of the week, grouped by project, with the total number of
