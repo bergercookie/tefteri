@@ -17,7 +17,6 @@ V1 = "/api/v1"
 NEW = {
     "provider": "vikunja",
     "display_name": "My Vikunja",
-    "default_context": "work",
     "settings": {"base_url": "https://v.test"},
     "credentials": {"token": "super-secret"},
 }
@@ -27,7 +26,7 @@ async def test_create_list_update_delete_never_returns_credentials(api: AsyncCli
     created = await api.post(f"{V1}/connections", json=NEW)
     assert created.status_code == 201
     body = created.json()
-    assert body["kind"] == "tasks" and body["default_context"] == "work"
+    assert body["kind"] == "tasks"
     assert "super-secret" not in created.text and "credentials" not in body
 
     listed = (await api.get(f"{V1}/connections")).json()
@@ -192,3 +191,10 @@ async def test_a_container_that_the_app_stops_listing_is_forgotten(
     await api.post(f"{V1}/sync")
     listed = await api.get(f"{V1}/connections/{ids['vikunja']}/containers")
     assert {c["name"] for c in listed.json()} == {"Inbox"}
+
+
+async def test_old_clients_may_still_send_the_removed_context_fields(api: AsyncClient) -> None:
+    r = await api.post(f"{V1}/connections", json={**NEW, "default_context": "work"})
+    assert r.status_code == 201
+    assert "default_context" not in r.json()
+    assert (await api.get(f"{V1}/tasks", params={"context": "work"})).status_code == 200

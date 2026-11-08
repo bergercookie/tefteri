@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.db.models.weekly import WeeklyPlan
-from tefteri.services.context import ContextFilter
 from tefteri.services.errors import NotFound
 from tefteri.services.weekly import (
     MAX_PROJECTS,
@@ -339,10 +338,9 @@ async def candidates(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> list[CandidateOut]:
     """List the projects the user can pick, projects with carried-over tasks first."""
-    found = await _service(request).candidates(db, user.id, normalize_week(day), context)
+    found = await _service(request).candidates(db, user.id, normalize_week(day))
     return [
         CandidateOut(
             container_id=c.container.id,

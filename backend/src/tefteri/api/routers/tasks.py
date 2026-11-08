@@ -13,9 +13,7 @@ from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
-from tefteri.domain.enums import Context
 from tefteri.services import task_filters
-from tefteri.services.context import ContextFilter, load_maps
 from tefteri.services.goals import GoalService
 from tefteri.services.task_filters import DueFilter
 from tefteri.services.tasks import UNSET, TaskService
@@ -39,7 +37,6 @@ def _goals(request: Request) -> GoalService:
 
 async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
     """Return one task with its project name and the link that opens it in its app."""
-    maps = await load_maps(db, user_id)
     project: str | None = None
     if task.container_id is not None:
         container = await db.get(SourceContainer, task.container_id)
@@ -50,7 +47,7 @@ async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
         base = str(connection.settings.get("base_url", "")).rstrip("/")
         if base:
             url = f"{base}/tasks/{task.remote_id}"
-    return TaskOut.of(task, maps, project=project, url=url)
+    return TaskOut.of(task, project=project, url=url)
 
 
 class TaskIn(BaseModel):
@@ -67,12 +64,11 @@ class TaskIn(BaseModel):
 
 
 class TaskPatch(BaseModel):
-    """Partial task update; send ``context: null`` to remove the label."""
+    """Partial task update."""
 
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     due_at: datetime | None = None
-    context: Context | None = None
     goal_id: uuid.UUID | None = None
 
 
@@ -119,7 +115,6 @@ async def list_tasks(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
     status: str | None = None,
     from_: Annotated[datetime | None, Query(alias="from")] = None,
     to: datetime | None = None,
@@ -152,13 +147,10 @@ async def list_tasks(
     if due is not None and not searching:
         # The same rule as ``task_filters.matches``, done in the database (kept in step by tests).
         query = query.where(task_filters.sql_condition(due, now, user.timezone))
-    maps = await load_maps(db, user.id)
     needle = (q or "").strip().casefold()
     out = []
     for t in (await db.execute(query)).scalars():
         if unscheduled and t.due_at is not None:
-            continue
-        if not maps.matches(context, t.context, t.container_id, t.connection_id):
             continue
         if searching and needle not in t.title.casefold():
             continue
@@ -167,7 +159,7 @@ async def list_tasks(
             continue
         if to and (when is None or aware(when) >= aware(to)):
             continue
-        out.append(TaskOut.of(t, maps))
+        out.append(TaskOut.of(t))
     return out
 
 
@@ -176,18 +168,12 @@ async def task_counts(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> dict[str, int]:
     """Count the user's open tasks for each planner filter (the badges of the filter chips)."""
-    maps = await load_maps(db, user.id)
     rows = (
         await db.execute(select(Task).where(Task.user_id == user.id, Task.status == "open"))
     ).scalars()
-    pairs = [
-        (_opt_aware(t.due_at), t.all_day)
-        for t in rows
-        if maps.matches(context, t.context, t.container_id, t.connection_id)
-    ]
+    pairs = [(_opt_aware(t.due_at), t.all_day) for t in rows]
     return task_filters.counts(pairs, _now(request), user.timezone)
 
 
@@ -223,11 +209,10 @@ async def update_task(
     service = _tasks(request)
     task = await service.get(db, user.id, task_id)
     fields: dict[str, Any] = body.model_dump(exclude_unset=True)
-    context: object = fields.pop("context") if "context" in fields else UNSET
     goal_id: object = fields.pop("goal_id") if "goal_id" in fields else UNSET
     if goal_id not in (UNSET, None):
         await _goals(request).get(db, user.id, uuid.UUID(str(goal_id)))  # must be the user's goal
-    await service.update(db, user.id, task, context=context, goal_id=goal_id, **fields)
+    await service.update(db, user.id, task, goal_id=goal_id, **fields)
     return await _out(db, user.id, task)
 
 
@@ -270,8 +255,7 @@ async def schedule_task(
     else:
         assert body.date is not None  # noqa: S101 - checked by the model validator
         task, found = await service.schedule_date(db, user.id, task, body.date)
-    maps = await load_maps(db, user.id)
-    return ScheduleOut(task=TaskOut.of(task, maps), overlaps=[EntryOut.of(e, maps) for e in found])
+    return ScheduleOut(task=TaskOut.of(task), overlaps=[EntryOut.of(e) for e in found])
 
 
 @router.delete("/{task_id}/schedule")

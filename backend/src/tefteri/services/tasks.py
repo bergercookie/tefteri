@@ -14,7 +14,7 @@ from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
 from tefteri.db.repositories.items import TaskRepository
 from tefteri.domain.entities import RemoteTask, TaskDraft, TaskPatch
-from tefteri.domain.enums import Capability, ConnectionKind, Context, SyncState
+from tefteri.domain.enums import Capability, ConnectionKind, SyncState
 from tefteri.domain.errors import NotSupported
 from tefteri.domain.planning_time import (
     all_day_due,
@@ -122,14 +122,11 @@ class TaskService:
         title: str | None = None,
         description: str | None = None,
         due_at: datetime | None = None,
-        context: object = UNSET,
         goal_id: object = UNSET,
     ) -> Task:
-        """Change a task. Remote fields go to the app first; ``context``, ``goal_id`` stay local."""
+        """Change a task. Remote fields go to the app first; ``goal_id`` stays local."""
         if goal_id is not UNSET:
             task.goal_id = None if goal_id is None else uuid.UUID(str(goal_id))
-        if context is not UNSET:
-            task.context = None if context is None else Context(str(context)).value
         if title is not None or description is not None or due_at is not None:
             connection = await self._connection_of(db, user_id, task)
             try:

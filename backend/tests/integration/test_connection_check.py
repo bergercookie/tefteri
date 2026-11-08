@@ -29,7 +29,6 @@ async def _create(c: AsyncClient, provider: str = "trilium", **settings: str) ->
         json={
             "provider": provider,
             "display_name": "Notes",
-            "default_context": "life",
             "settings": settings,
             "credentials": {"token": "t"},
         },

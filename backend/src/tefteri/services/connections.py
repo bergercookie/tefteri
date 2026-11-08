@@ -11,7 +11,7 @@ from tefteri.db.models.connection import Connection
 from tefteri.db.models.user import User
 from tefteri.db.repositories.connections import ConnectionRepository
 from tefteri.domain.entities import ConnectionHealth
-from tefteri.domain.enums import ConnectionKind, ConnectionStatus, DefaultContext
+from tefteri.domain.enums import ConnectionKind, ConnectionStatus
 from tefteri.domain.ports import Backend
 from tefteri.security.crypto import TokenCipher
 
@@ -126,7 +126,6 @@ class ConnectionService:
         *,
         provider: str,
         display_name: str,
-        default_context: DefaultContext,
         settings: dict[str, Any],
         credentials: dict[str, Any],
     ) -> Connection:
@@ -136,7 +135,6 @@ class ConnectionService:
             kind=kind.value,
             provider=provider,
             display_name=display_name,
-            default_context=default_context.value,
             settings=settings,
             encrypted_credentials=self._cipher.encrypt(json.dumps(credentials)),
             status=ConnectionStatus.OK.value,
@@ -149,15 +147,12 @@ class ConnectionService:
         connection: Connection,
         *,
         display_name: str | None = None,
-        default_context: DefaultContext | None = None,
         settings: dict[str, Any] | None = None,
         credentials: dict[str, Any] | None = None,
     ) -> Connection:
         """Change a connection; new credentials reset a ``needs_attention`` status."""
         if display_name is not None:
             connection.display_name = display_name
-        if default_context is not None:
-            connection.default_context = default_context.value
         if settings is not None:
             connection.settings = settings
         if credentials is not None:

@@ -18,7 +18,6 @@ from tefteri.domain.errors import NotSupported
 from tefteri.domain.periods import PeriodType, period_start
 from tefteri.domain.ports import TaskBackend
 from tefteri.services.connections import ConnectionService
-from tefteri.services.context import ContextFilter, load_maps
 from tefteri.services.errors import Invalid, NotFound, guard
 from tefteri.services.projects import ProjectService
 from tefteri.services.sync import SyncService
@@ -234,12 +233,10 @@ class WeeklyService:
         db: AsyncSession,
         user_id: uuid.UUID,
         week: date,
-        context: ContextFilter,
     ) -> list[Candidate]:
         """List the projects of the task apps, carried-over ones first."""
         plan = await self.find(db, user_id, week)
         chosen = {r.container_id for r in await self._rows(db, plan)} if plan else set()
-        maps = await load_maps(db, user_id)
         connections = {
             c.id: c
             for c in (
@@ -276,7 +273,7 @@ class WeeklyService:
         out = []
         for c in containers:
             connection = connections.get(c.connection_id)
-            if connection is None or not maps.matches(context, None, c.id, c.connection_id):
+            if connection is None:
                 continue
             names = [c.name]
             parent = by_remote.get((c.connection_id, c.parent_remote_id or ""))
@@ -408,7 +405,6 @@ class WeeklyService:
             remote_id=remote.remote_id,
             name=remote.name,
             parent_remote_id=remote.parent_id or parent.remote_id,
-            context=parent.context,
         )
         db.add(container)
         await db.flush()
