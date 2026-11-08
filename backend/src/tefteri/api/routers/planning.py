@@ -18,6 +18,7 @@ from tefteri.domain.enums import Context
 from tefteri.domain.periods import PeriodType, period_end, period_start
 from tefteri.domain.timeutil import day_bounds, overlaps
 from tefteri.services.context import ContextFilter, load_maps
+from tefteri.services.errors import Invalid
 from tefteri.services.goals import ChildGoal, ChildTask, GoalService
 
 router = APIRouter(tags=["planning"])
@@ -37,6 +38,7 @@ class GoalOut(BaseModel):
     period_start: date
     title: str
     description: str
+    criteria: str
     context: str
     status: str
     progress: float
@@ -51,6 +53,7 @@ class GoalOut(BaseModel):
             period_start=g.period_start,
             title=g.title,
             description=g.description,
+            criteria=g.criteria,
             context=g.context,
             status=g.status,
             progress=round(progress.get(g.id, 0.0), 4),
@@ -65,6 +68,17 @@ class GoalIn(BaseModel):
     period_start: date
     title: str = Field(min_length=1, max_length=500)
     description: str = ""
+    criteria: str = ""
+    context: Context = Context.LIFE
+
+
+class GoalsIn(BaseModel):
+    """Data to create several goals of one period at once."""
+
+    parent_id: uuid.UUID | None = None
+    period_type: PeriodType
+    period_start: date
+    titles: list[Annotated[str, Field(max_length=500)]] = Field(max_length=100)
     context: Context = Context.LIFE
 
 
@@ -73,6 +87,7 @@ class GoalPatch(BaseModel):
 
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
+    criteria: str | None = None
     status: Literal["active", "done", "dropped"] | None = None
     context: Context | None = None
 
@@ -171,6 +186,26 @@ async def create_goal(body: GoalIn, request: Request, db: Db, user: CurrentUser)
     service = _goals(request)
     goal = await service.create(db, user.id, **body.model_dump())
     return GoalOut.of(goal, await service.progress(db, user.id))
+
+
+@router.post("/goals/bulk", status_code=201)
+async def create_goals(body: GoalsIn, request: Request, db: Db, user: CurrentUser) -> list[GoalOut]:
+    """Create one goal per title. Blank titles are skipped. All goals are created, or none."""
+    titles = [t.strip() for t in body.titles if t.strip()]
+    if not titles:
+        raise Invalid("Give at least one goal title.")
+    service = _goals(request)
+    goals = await service.create_many(
+        db,
+        user.id,
+        period_type=body.period_type,
+        period_start=body.period_start,
+        titles=titles,
+        context=body.context,
+        parent_id=body.parent_id,
+    )
+    progress = await service.progress(db, user.id)
+    return [GoalOut.of(g, progress) for g in goals]
 
 
 @router.patch("/goals/{goal_id}")

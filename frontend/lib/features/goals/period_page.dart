@@ -14,6 +14,7 @@ import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
 import '../planner/schedule_dialog.dart';
+import 'goal_providers.dart';
 import 'goal_widgets.dart';
 import 'periods.dart';
 
@@ -188,7 +189,11 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         Text('Goals', style: heading),
         if (v.goals.isEmpty)
           const Text('No goals for this period.', key: Key('no-goals')),
-        for (final g in v.goals) GoalTile(goal: g),
+        for (final g in v.goals)
+          if (v.periodType == 'year')
+            _YearGoal(goal: g, onChanged: widget.onReload)
+          else
+            GoalTile(goal: g, onChanged: widget.onReload),
         const SizedBox(height: 8),
         if (v.periodType != 'year') ...[
           Text('Events', style: heading),
@@ -204,9 +209,12 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
             ),
           const SizedBox(height: 8),
         ],
-        Text('Tasks', style: heading),
-        if (v.tasks.isEmpty) const Text('No tasks.', key: Key('no-tasks')),
-        for (final t in v.tasks) _taskTile(t, v, titles),
+        // The month and year views show goals, not single tasks.
+        if (v.periodType == 'week') ...[
+          Text('Tasks', style: heading),
+          if (v.tasks.isEmpty) const Text('No tasks.', key: Key('no-tasks')),
+          for (final t in v.tasks) _taskTile(t, v, titles),
+        ],
       ],
     );
   }
@@ -272,6 +280,37 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           ],
         ),
       ]),
+    );
+  }
+}
+
+/// An annual goal with its monthly goals below it.
+class _YearGoal extends ConsumerWidget {
+  const _YearGoal({required this.goal, required this.onChanged});
+
+  final PlanGoal goal;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    void changed() {
+      ref.invalidate(childGoalsProvider(goal.id));
+      onChanged();
+    }
+
+    final kids = ref.watch(childGoalsProvider(goal.id)).valueOrNull ?? const [];
+    final sorted = [...kids]
+      ..sort((a, b) => a.periodStart.compareTo(b.periodStart));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GoalTile(goal: goal, onChanged: changed),
+        for (final k in sorted)
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: GoalTile(goal: k, onChanged: changed),
+          ),
+      ],
     );
   }
 }

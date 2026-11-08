@@ -58,9 +58,9 @@ def test_planned_versus_completed_and_carried_over() -> None:
     shoes = task("Buy shoes", g=run, done=True)
     km = task("Run 25 km", g=run)
     result = review([run, read], [shoes, km])
-    assert result.planned_count == 4
-    assert result.completed_count == 2
-    assert set(result.carried_over) == {str(run.id), str(km.id)}
+    assert result.planned_count == 2  # single tasks are not part of a review
+    assert result.completed_count == 1
+    assert set(result.carried_over) == {str(run.id)}
     by_title = {i.title: i for i in result.items}
     assert by_title["Read 2 books"].completed and not by_title["Run 100 km"].completed
 
@@ -68,26 +68,19 @@ def test_planned_versus_completed_and_carried_over() -> None:
 def test_goal_with_full_progress_counts_as_completed() -> None:
     run = goal("Run 100 km")
     result = review([run], [task("a", g=run, done=True), task("b", g=run, done=True)])
-    assert result.completed_count == result.planned_count == 3
+    assert result.completed_count == result.planned_count == 1
     assert result.carried_over == []
 
 
-def test_tasks_of_smaller_goals_and_tasks_due_in_the_period_count() -> None:
+def test_single_tasks_are_not_listed_but_smaller_goals_are_not_planned_either() -> None:
     month = goal("Month")
     week = goal("Week", parent=month, period_type="week", start=date(2026, 11, 2))
     of_week = task("Of the week", g=week)
     due_inside = task("Due in Nov", due=datetime(2026, 11, 30, 12, tzinfo=UTC), done=True)
-    due_after = task("Due in Dec", due=datetime(2026, 12, 1, 12, tzinfo=UTC))
-    result = review([month, week], [of_week, due_inside, due_after])
-    titles = {i.title for i in result.items}
-    assert titles == {"Month", "Of the week", "Due in Nov"}  # the week goal is not a month goal
-
-
-def test_period_edges_use_the_users_time_zone() -> None:
-    # 23:30 UTC on 31 Oct is already 1 Nov in Athens (UTC+2).
-    edge = task("Edge", due=datetime(2026, 10, 31, 23, 30, tzinfo=UTC))
-    assert review([], [edge], "Europe/Athens").planned_count == 1
-    assert review([], [edge], "UTC").planned_count == 0
+    result = review([month, week], [of_week, due_inside])
+    # Only the goals of the period itself count; the week goal is not a month goal.
+    assert {i.title for i in result.items} == {"Month"}
+    assert {i.type for i in result.items} == {"goal"}
 
 
 def test_dropped_goals_and_deleted_tasks_do_not_count() -> None:

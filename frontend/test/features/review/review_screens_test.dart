@@ -121,7 +121,7 @@ void main() {
       final api = FakeApi({'GET /plans/p1/review': _review()});
       await pumpWithApi(tester, api, const ReviewScreen(planId: 'p1'));
       expect(find.text('October'), findsOneWidget);
-      expect(find.text('1 of 3 planned items done'), findsOneWidget);
+      expect(find.text('1 of 3 planned goals done'), findsOneWidget);
       expect(
           tester
               .widget<LinearProgressIndicator>(
