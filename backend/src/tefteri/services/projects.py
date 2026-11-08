@@ -24,6 +24,16 @@ class ProjectService:
         """Use ``connections`` to reach each task app."""
         self._connections = connections
 
+    async def labels(
+        self, db: AsyncSession, user_id: uuid.UUID, connection_id: uuid.UUID
+    ) -> list[str]:
+        """Return the names of the labels in the task app of a connection."""
+        connection = await self._connections.get(db, user_id, connection_id)
+        if connection is None or connection.kind != ConnectionKind.TASKS.value:
+            raise NotFound
+        backend = cast(TaskBackend, await self._connections.backend_of_owner(db, connection))
+        return await guard(connection, backend.list_labels())
+
     async def archive(self, db: AsyncSession, user_id: uuid.UUID, container_id: uuid.UUID) -> str:
         """Archive a project in the task app, then forget it here. Returns its name.
 

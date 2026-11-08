@@ -44,6 +44,10 @@ class TaskBackend(Backend, Protocol):
         """Create a project, nested under ``parent`` when given (needs ``SUBPROJECTS``)."""
         ...
 
+    async def list_labels(self) -> list[str]:
+        """List the names of the labels that exist in the app."""
+        ...
+
     async def archive_container(self, container: Container) -> None:
         """Archive a project (needs ``ARCHIVE_PROJECTS``). The app can restore it."""
         ...

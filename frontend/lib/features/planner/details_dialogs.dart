@@ -9,6 +9,7 @@ import '../../core/open_url.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
+import 'picker_field.dart';
 import 'planner_providers.dart';
 
 /// Loads one task from the server, by id.
@@ -379,7 +380,7 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
             children: [
               Expanded(
                 flex: 5,
-                child: _PickerField(
+                child: PickerField(
                   fieldKey: const ValueKey('task-edit-date'),
                   clearKey: const Key('task-edit-date-clear'),
                   label: 'Day',
@@ -397,7 +398,7 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
               const SizedBox(width: Space.sm),
               Expanded(
                 flex: 4,
-                child: _PickerField(
+                child: PickerField(
                   fieldKey: const ValueKey('task-edit-time'),
                   clearKey: const Key('task-edit-time-clear'),
                   label: 'Starts at',
@@ -464,58 +465,6 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
     final effective = task.effectiveContext ?? 'work';
     final name = effective == 'life' ? 'Life' : 'Work';
     return task.context == null ? '$name (no label, follows the app)' : name;
-  }
-}
-
-/// A read-only looking field that opens a picker when tapped, with a button
-/// that clears it.
-class _PickerField extends StatelessWidget {
-  const _PickerField({
-    required this.fieldKey,
-    required this.clearKey,
-    required this.label,
-    required this.value,
-    required this.empty,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  final ValueKey<String> fieldKey;
-  final Key clearKey;
-  final String label;
-  final String? value;
-  final String empty;
-  final VoidCallback? onTap;
-  final VoidCallback? onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    return InkWell(
-      key: fieldKey,
-      borderRadius: BorderRadius.circular(Corner.md),
-      onTap: onTap,
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          suffixIcon: onClear == null
-              ? null
-              : IconButton(
-                  key: clearKey,
-                  tooltip: 'Clear',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.close, size: 16),
-                  onPressed: onClear,
-                ),
-        ),
-        child: Text(value ?? empty,
-            key: Key('${fieldKey.value}-value'),
-            style:
-                text.bodyMedium?.copyWith(color: value == null ? muted : null),
-            overflow: TextOverflow.ellipsis),
-      ),
-    );
   }
 }
 

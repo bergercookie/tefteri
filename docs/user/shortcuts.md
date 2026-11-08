@@ -33,6 +33,7 @@ The menu also shows the key next to each view.
 | --- | --- |
 | Left arrow | In the planner: show the week before |
 | Right arrow | In the planner: show the week after |
+| N | Create a new task (opens the New task dialog) |
 | S | Sync all connections |
 | F5 | Sync all connections, also while you type |
 | 1 | Show all items |

@@ -59,6 +59,12 @@ class SyncIntent extends Intent {
   final bool plain;
 }
 
+/// Opens the pop-up that creates a task.
+class NewTaskIntent extends Intent {
+  /// Creates the intent.
+  const NewTaskIntent();
+}
+
 /// Sets the global all/life/work filter.
 class SetContextIntent extends Intent {
   /// Creates the intent.
@@ -123,6 +129,12 @@ final List<AppShortcut> appShortcuts = [
     description: 'Sync all connections',
     activator: CharacterActivator('s'),
     intent: SyncIntent(plain: true),
+  ),
+  const AppShortcut(
+    keys: 'N',
+    description: 'Create a new task',
+    activator: CharacterActivator('n'),
+    intent: NewTaskIntent(),
   ),
   const AppShortcut(
     keys: 'F5',
