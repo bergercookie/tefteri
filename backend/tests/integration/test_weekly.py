@@ -311,3 +311,40 @@ async def test_review_of_unknown_or_uncommitted_week_is_refused(
         },
     )
     assert bad.status_code == 422
+
+
+async def test_a_parked_task_is_left_out_of_the_spread_and_the_commit(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await _setup(api, world)
+    state = await _add(api, FUTURE, ids["Website"])
+    project = state["plan"]["projects"][0]
+    parked_id = project["tasks"][0]["id"]
+    parked = await api.put(f"{V1}/weekly/{FUTURE}/tasks/{parked_id}/parked", json={"parked": True})
+    assert parked.status_code == 200, parked.text
+    project = parked.json()["plan"]["projects"][0]
+    assert project["open_tasks"] == 1 and project["parked_tasks"] == 1
+    assert [t["parked"] for t in project["tasks"] if t["id"] == parked_id] == [True]
+
+    spread = (await api.post(f"{V1}/weekly/{FUTURE}/spread")).json()["plan"]["projects"][0]
+    by_id = {t["id"]: t for t in spread["tasks"]}
+    assert by_id[parked_id]["planned_day"] is None
+    assert spread["scheduled_tasks"] == 1
+
+    committed = (await api.post(f"{V1}/weekly/{FUTURE}/commit")).json()["plan"]["projects"][0]
+    assert [t["id"] for t in committed["committed_tasks"]] == [
+        t["id"] for t in spread["tasks"] if not t["parked"]
+    ]
+
+    await api.post(f"{V1}/weekly/{FUTURE}/reopen")
+    back = await api.put(f"{V1}/weekly/{FUTURE}/tasks/{parked_id}/parked", json={"parked": False})
+    project = back.json()["plan"]["projects"][0]
+    assert project["open_tasks"] == 2 and project["parked_tasks"] == 0
+
+
+async def test_only_a_task_of_the_plan_can_be_parked(api: AsyncClient, world: FakeWorld) -> None:
+    ids = await _setup(api, world)
+    await _add(api, FUTURE, ids["Website"])
+    other = next(t for t in (await api.get(f"{V1}/tasks")).json() if t["title"] == "p3 task 1")
+    r = await api.put(f"{V1}/weekly/{FUTURE}/tasks/{other['id']}/parked", json={"parked": True})
+    assert r.status_code == 404, r.text
