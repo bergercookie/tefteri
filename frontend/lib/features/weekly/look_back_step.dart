@@ -3,6 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
+
+import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/theme.dart';
@@ -199,7 +201,8 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
     final answer = _answer(p);
     final left = p.leftover.length;
     final ratio = p.committed == 0 ? 0.0 : p.done / p.committed;
-    return Card(
+    return ProjectCard(
+      name: p.name,
       key: Key('look-project-${p.id}'),
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),
