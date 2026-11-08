@@ -43,7 +43,20 @@ nightly-image image pep440 flutter:
 nightly-clients image flutter:
     TEFTERI_VERSION="{{ image }}" TEFTERI_FLUTTER_VERSION="{{ flutter }}" just packaging::deb packaging::appimage packaging::apk
 
-# Replace the rolling `nightly` pre-release with the packages in dist/.
-nightly-publish image:
+# Publish the nightly packages. Every build gets its own pre-release `nightly-<version>`, and only
+# the newest `keep` of them stay. The pre-release `nightly` always holds the newest build: the
+# update check of the app reads it, so it is replaced each time.
+nightly-publish image keep="5":
+    gh release create "nightly-{{ image }}" ../dist/* --prerelease --target "$(git rev-parse HEAD)" --title "Nightly {{ image }}" --notes "Nightly build {{ image }} of commit $(git rev-parse --short HEAD)."
     gh release delete nightly --cleanup-tag --yes || true
     gh release create nightly ../dist/* --prerelease --target "$(git rev-parse HEAD)" --title "Nightly {{ image }}" --notes "Nightly build {{ image }} of commit $(git rev-parse --short HEAD)."
+    just release::nightly-prune "{{ keep }}"
+
+# Delete the pre-releases `nightly-<version>` (and their tags) except the newest `keep`.
+nightly-prune keep="5":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    old=$(gh release list --limit 200 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("nightly-"))] | sort_by(.createdAt) | reverse | .[{{ keep }}:] | .[].tagName')
+    for tag in ${old}; do
+        gh release delete "${tag}" --cleanup-tag --yes
+    done
