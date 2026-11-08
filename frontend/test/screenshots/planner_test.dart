@@ -124,7 +124,7 @@ void main() {
     await gesture.moveBy(const Offset(24, 0));
     await tester.pump();
     await gesture.moveTo(to);
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await saveScreenshot('planner-drag');
     await gesture.up();
     for (var i = 0; i < 5; i++) {
