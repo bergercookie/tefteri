@@ -157,6 +157,13 @@ class PlanningApi {
       _dio.post<Object?>('/tasks',
           data: {'connection_id': connectionId, 'title': title});
 
+  /// `PATCH /tasks/{id}` with a new [title] and [description]. The server
+  /// writes them to the task app first; a failure changes nothing.
+  Future<void> updateTask(String id,
+          {required String title, required String description}) =>
+      _dio.patch<Object?>('/tasks/$id',
+          data: {'title': title, 'description': description});
+
   /// `POST /tasks/{id}/complete`.
   Future<void> completeTask(String id) =>
       _dio.post<Object?>('/tasks/$id/complete');
