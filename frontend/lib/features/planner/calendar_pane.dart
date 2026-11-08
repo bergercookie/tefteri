@@ -54,6 +54,7 @@ class CalendarPane extends ConsumerStatefulWidget {
 
 class _CalendarPaneState extends ConsumerState<CalendarPane> {
   late final ScrollController _scroll;
+  final _gridKey = GlobalKey();
   Timer? _tick;
   late DateTime _now;
 
@@ -87,6 +88,24 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  /// Scrolls the grid while a task is dragged near its top or bottom edge, so
+  /// that every hour can be reached without letting go.
+  void _autoScroll(Offset pointer) {
+    final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !_scroll.hasClients) return;
+    final y = box.globalToLocal(pointer).dy;
+    const edge = 48.0;
+    const step = 14.0;
+    final delta = y < edge
+        ? -step
+        : y > box.size.height - edge
+            ? step
+            : 0.0;
+    if (delta == 0) return;
+    _scroll.jumpTo(
+        (_scroll.offset + delta).clamp(0.0, _scroll.position.maxScrollExtent));
   }
 
   @override
@@ -207,43 +226,48 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
         const SizedBox(height: Space.xs),
         const Divider(height: 1),
         Expanded(
-          child: SingleChildScrollView(
-            key: const Key('time-grid'),
-            controller: _scroll,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: _gutterWidth,
-                  child: Column(
-                    children: [
-                      for (var h = 0; h < 24; h++)
-                        SizedBox(
-                          height: hourHeight,
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: Text('${h.toString().padLeft(2, '0')}:00',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant)),
+          child: KeyedSubtree(
+            key: _gridKey,
+            child: SingleChildScrollView(
+              key: const Key('time-grid'),
+              controller: _scroll,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: _gutterWidth,
+                    child: Column(
+                      children: [
+                        for (var h = 0; h < 24; h++)
+                          SizedBox(
+                            height: hourHeight,
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: Text('${h.toString().padLeft(2, '0')}:00',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant)),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                for (final d in days)
-                  Expanded(
-                      child: _DayColumn(
-                    day: d,
-                    items: _itemsOnDay(all, d, allDay: false),
-                    pending: pending,
-                    now: _sameDay(d, _now) ? _now : null,
-                  )),
-              ],
+                  for (final d in days)
+                    Expanded(
+                        child: _DayColumn(
+                      day: d,
+                      items: _itemsOnDay(all, d, allDay: false),
+                      pending: pending,
+                      now: _sameDay(d, _now) ? _now : null,
+                      scroll: _scroll,
+                      onDragNearEdge: _autoScroll,
+                    )),
+                ],
+              ),
             ),
           ),
         ),
@@ -275,24 +299,41 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
         if (id == null) return;
         ref.read(plannerActionsProvider).scheduleOnDate(id, day);
       },
-      builder: (context, candidates, _) => Container(
-        constraints: const BoxConstraints(minHeight: 28),
-        margin: const EdgeInsets.all(1),
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: candidates.isEmpty
-              ? null
-              : Theme.of(context).colorScheme.primaryContainer,
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final i in items)
-              _AllDayChip(item: i, pending: pending == i.id),
-          ],
-        ),
-      ),
+      builder: (context, candidates, _) {
+        final colors = context.tefteri;
+        final hover = candidates.isNotEmpty;
+        final dragging = ref.watch(dragActiveProvider);
+        return Container(
+          constraints: const BoxConstraints(minHeight: 28),
+          margin: const EdgeInsets.all(1),
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: hover
+                ? colors.taskContainer
+                : dragging
+                    ? _veilColor(context)
+                    : null,
+            border: Border.all(
+                color: hover ? colors.task : Theme.of(context).dividerColor,
+                width: hover ? 2 : 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (hover)
+                Text('All day',
+                    key: const Key('drop-preview-allday'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelMedium
+                        ?.copyWith(color: colors.task)),
+              for (final i in items)
+                _AllDayChip(item: i, pending: pending == i.id),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -301,6 +342,20 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
 String? _taskIdOf(Object data) {
   if (data is PlanTask) return data.id;
   if (data is CalendarItem && data.isTask) return data.id;
+  return null;
+}
+
+/// The grey wash over the calendar during a drag. It fades the blocks and
+/// tints the empty hours, so the whole calendar reads as "not the target".
+Color _veilColor(BuildContext context) => Color.alphaBlend(
+      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.14),
+      context.tefteri.paper.withValues(alpha: 0.5),
+    );
+
+/// Title of a dragged task row or task block; null for others.
+String? _titleOf(Object data) {
+  if (data is PlanTask) return data.title;
+  if (data is CalendarItem && data.isTask) return data.title;
   return null;
 }
 
@@ -358,12 +413,14 @@ class _AllDayChip extends StatelessWidget {
   }
 }
 
-class _DayColumn extends ConsumerWidget {
+class _DayColumn extends ConsumerStatefulWidget {
   const _DayColumn({
     required this.day,
     required this.items,
     required this.pending,
     required this.now,
+    required this.scroll,
+    required this.onDragNearEdge,
   });
 
   final DateTime day;
@@ -373,9 +430,79 @@ class _DayColumn extends ConsumerWidget {
   /// The current time when [day] is today; null on other days.
   final DateTime? now;
 
+  /// The scroll controller of the grid. The preview follows its scrolling.
+  final ScrollController scroll;
+
+  /// Told where the pointer is (global) while a task is dragged over the
+  /// column, so that the grid can scroll near its edges.
+  final void Function(Offset pointer) onDragNearEdge;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final boxKey = GlobalKey();
+  ConsumerState<_DayColumn> createState() => _DayColumnState();
+}
+
+class _DayColumnState extends ConsumerState<_DayColumn> {
+  /// Stays the same across rebuilds, so that the drop preview can animate.
+  final _boxKey = GlobalKey();
+
+  /// The global pointer position while a task is held over this column.
+  Offset? _pointer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    widget.scroll.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  /// The grid moved under a pointer that did not: the slot under it changed,
+  /// and a drop now would use the new one, so the preview must too.
+  void _onScroll() {
+    if (_pointer == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pointer = _pointer;
+      final current = ref.read(dropPreviewProvider);
+      if (!mounted ||
+          pointer == null ||
+          current == null ||
+          current.day != day) {
+        return;
+      }
+      final next = DropPreview(
+          day: day, title: current.title, startMinutes: _minutesAt(pointer));
+      if (next != current) ref.read(dropPreviewProvider.notifier).state = next;
+    });
+  }
+
+  DateTime get day => widget.day;
+  List<CalendarItem> get items => widget.items;
+  String? get pending => widget.pending;
+  DateTime? get now => widget.now;
+
+  /// Where a drop at the global point [pointer] would put the block.
+  int _minutesAt(Offset pointer) {
+    final box = _boxKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return 0;
+    return snapMinutes(offsetToMinutes(box.globalToLocal(pointer).dy));
+  }
+
+  void _clearPreview() {
+    final now = ref.read(dropPreviewProvider);
+    if (now != null && now.day == day) {
+      ref.read(dropPreviewProvider.notifier).state = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final boxKey = _boxKey;
+    final dragging = ref.watch(dragActiveProvider);
+    final preview = ref.watch(dropPreviewProvider);
     final dayStart = day;
     final dayEnd = DateTime(day.year, day.month, day.day + 1);
     // Minutes after midnight of the part of each item that lies on this day.
@@ -391,9 +518,26 @@ class _DayColumn extends ConsumerWidget {
     final layout = layoutOverlaps(spans);
     return DragTarget<Object>(
       onWillAcceptWithDetails: (d) => _taskIdOf(d.data) != null,
+      onMove: (d) {
+        final title = _titleOf(d.data);
+        if (title == null) return;
+        _pointer = d.offset;
+        final next = DropPreview(
+            day: day, title: title, startMinutes: _minutesAt(d.offset));
+        if (ref.read(dropPreviewProvider) != next) {
+          ref.read(dropPreviewProvider.notifier).state = next;
+        }
+        widget.onDragNearEdge(d.offset);
+      },
+      onLeave: (_) {
+        _pointer = null;
+        _clearPreview();
+      },
       onAcceptWithDetails: (d) {
         final id = _taskIdOf(d.data);
         final box = boxKey.currentContext?.findRenderObject() as RenderBox?;
+        _pointer = null;
+        ref.read(dropPreviewProvider.notifier).state = null;
         if (id == null || box == null) return;
         final local = box.globalToLocal(d.offset);
         ref
@@ -443,6 +587,75 @@ class _DayColumn extends ConsumerWidget {
               for (var n = 0; n < items.length; n++)
                 _block(context, items[n], spans[n], layout[n], c.maxWidth),
               if (now != null) _nowLine(context, now!),
+              // While a task is dragged, everything fades back, and only the
+              // slot under the pointer shows where the task would land.
+              _scrim(context, dragging),
+              if (dragging && preview != null && preview.day == day)
+                _previewBlock(context, preview),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A veil over the column that fades in during a drag. It takes no pointer
+  /// events, so the drop still reaches the column.
+  Widget _scrim(BuildContext context, bool dragging) => Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedOpacity(
+            key: Key('drag-scrim-${dateKey(day)}'),
+            opacity: dragging ? 1 : 0,
+            duration: Motion.of(context, Motion.quick),
+            child: ColoredBox(color: _veilColor(context)),
+          ),
+        ),
+      );
+
+  /// The one-hour block where the dragged task would land, with its times.
+  Widget _previewBlock(BuildContext context, DropPreview p) {
+    final colors = context.tefteri;
+    final text = Theme.of(context).textTheme;
+    final start = p.startMinutes ?? 0;
+    final end = start + 60;
+    final height =
+        minutesToOffset((end > minutesPerDay ? minutesPerDay : end) - start);
+    String hm(int m) =>
+        '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+    return AnimatedPositioned(
+      key: const Key('drop-preview'),
+      duration: Motion.of(context, Motion.quick),
+      curve: Motion.enter,
+      top: minutesToOffset(start),
+      left: 1,
+      right: 1,
+      height: height,
+      child: IgnorePointer(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: colors.taskContainer,
+            borderRadius: BorderRadius.circular(Corner.sm),
+            border: Border.all(color: colors.task, width: 2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Scales down in a narrow column, so that the end time shows too.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                    '${hm(start)} - ${hm(end > minutesPerDay ? minutesPerDay : end)}',
+                    key: const Key('drop-preview-time'),
+                    maxLines: 1,
+                    style: text.labelMedium?.copyWith(color: colors.task)),
+              ),
+              if (height >= 36)
+                Text(p.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.labelSmall),
             ],
           ),
         ),

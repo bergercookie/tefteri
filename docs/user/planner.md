@@ -24,13 +24,30 @@ To move by one week, choose the arrows next to the Today button. You can also pr
 The arrow keys do not work while you type in the search box.
 Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
 
-## See the details of a task
+## See and change a task
 
-Choose a task in the list, or a task block on the calendar. A pop-up shows the details of the task:
-the status, the due date, the time on the calendar, the context and the description.
-Choose Close to close the pop-up.
+Choose a task in the list, or a task block on the calendar. A pop-up shows the task. You can
+change these fields:
 
-![The details pop-up of the task Update the road map. It shows the status, the due date, the time on the calendar, the context and the description.](../images/planner-task-details.png)
+- The title.
+- The description.
+- The day. To remove the day, choose the cross in the field.
+- The start time. Without a start time, the task is all day. With a start time, the task is a
+  block of one hour. The due date in your task app is the end of that hour.
+
+The pop-up also shows the status, the time on the calendar, the context and the project.
+
+1. Change the fields.
+2. Choose Save.
+
+Tefteri writes the changes to your task app. Tefteri closes the pop-up when the task app accepts
+them. If the task app does not accept a change, the pop-up stays open and shows the reason. Your
+changes stay in the fields, so you can try again.
+
+Save is off until you change something. If you choose Cancel after a change, tefteri asks if you
+want to discard the change.
+
+![The pop-up of the task Update the road map. It shows the title, the day, the start time and the description as fields that you can change, and the Save button.](../images/planner-task-details.png)
 
 If you choose a calendar entry, the pop-up shows the time and the context of the entry.
 
@@ -68,7 +85,12 @@ When you point at a task with the mouse, the task lifts, gets an outline and sho
 
 Tefteri saves the time at once. The task shows as a block on the calendar.
 
-![A task is dragged over the calendar. Thursday is colored to show where the task will go.](../images/planner-drag.png)
+While you drag, the calendar turns grey. Only the place where the task will go stays clear. It
+shows the start time and the end time of the block. The block moves from slot to slot when you
+move the pointer. If you drag near the top or the bottom of the calendar, the calendar scrolls.
+To plan only the day, drag the task to the all day row. The row then says All day.
+
+![A task is dragged over the calendar. The calendar is grey. The block from 13:30 to 14:30 on Thursday is clear and shows where the task will go.](../images/planner-drag.png)
 
 The block starts at the time slot where you drop the task. Time slots are 15 minutes long.
 A block is one hour long. Your task app gets the due date and time of the task. The due time is one hour after the start of the block.
