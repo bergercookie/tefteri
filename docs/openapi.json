@@ -141,6 +141,17 @@
             "title": "Id",
             "type": "string"
           },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
           "start": {
             "format": "date-time",
             "title": "Start",

@@ -11,6 +11,7 @@ from sqlalchemy import select
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.schemas import CalendarItemOut, EntryOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
+from tefteri.db.models.connection import SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.domain.enums import Context
 from tefteri.domain.timeutil import overlaps
@@ -71,6 +72,12 @@ async def list_calendar(
         if not maps.matches(context, e.context, e.container_id, e.connection_id):
             continue
         items.append(CalendarItemOut.of_entry(e, maps))
+    projects = {
+        c.id: c.name
+        for c in (
+            await db.execute(select(SourceContainer).where(SourceContainer.user_id == user.id))
+        ).scalars()
+    }
     tasks = (
         await db.execute(select(Task).where(Task.user_id == user.id, Task.due_at.is_not(None)))
     ).scalars()
@@ -79,7 +86,8 @@ async def list_calendar(
             continue
         if not maps.matches(context, t.context, t.container_id, t.connection_id):
             continue
-        items.append(CalendarItemOut.of_task(t, maps, user.timezone))
+        project = projects.get(t.container_id) if t.container_id else None
+        items.append(CalendarItemOut.of_task(t, maps, user.timezone, project))
     if from_ or to:
         low = aware(from_) if from_ else datetime.min.replace(tzinfo=UTC)
         high = aware(to) if to else datetime.max.replace(tzinfo=UTC)

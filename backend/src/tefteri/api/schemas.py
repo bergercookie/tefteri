@@ -140,6 +140,8 @@ class CalendarItemOut(BaseModel):
     effective_context: str
     status: str | None = None
     clipped_start: bool = False
+    project: str | None = None
+    """For a task: the name of its project in the task app."""
 
     @classmethod
     def of_entry(cls, e: CalendarEntry, maps: ContextMaps) -> "CalendarItemOut":
@@ -157,7 +159,9 @@ class CalendarItemOut(BaseModel):
         )
 
     @classmethod
-    def of_task(cls, t: Task, maps: ContextMaps, tz_name: str) -> "CalendarItemOut":
+    def of_task(
+        cls, t: Task, maps: ContextMaps, tz_name: str, project: str | None = None
+    ) -> "CalendarItemOut":
         """Build from a task with a due date (``due_at`` must be set).
 
         A timed task becomes the block that ends at its due time. An all-day task covers its
@@ -183,6 +187,7 @@ class CalendarItemOut(BaseModel):
             effective_context=maps.effective(t.context, t.container_id, t.connection_id)[0].value,
             status=t.status,
             clipped_start=clipped,
+            project=project,
         )
 
 
