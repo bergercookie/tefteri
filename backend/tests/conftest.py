@@ -69,7 +69,7 @@ async def api(
 V1 = "/api/v1"
 
 
-async def connect_all(api: AsyncClient, default_context: str = "life") -> dict[str, str]:
+async def connect_all(api: AsyncClient) -> dict[str, str]:
     """Create one connection of each kind (fake backends) and return their ids by provider."""
     ids: dict[str, str] = {}
     for provider in ("vikunja", "google_calendar", "trilium"):
@@ -78,7 +78,6 @@ async def connect_all(api: AsyncClient, default_context: str = "life") -> dict[s
             json={
                 "provider": provider,
                 "display_name": provider,
-                "default_context": default_context,
                 "settings": {},
                 "credentials": {"token": "t"},
             },

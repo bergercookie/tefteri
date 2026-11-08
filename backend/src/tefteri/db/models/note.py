@@ -27,6 +27,5 @@ class Note(IdMixin, Base):
     title: Mapped[str] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text, default="")
     note_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    context: Mapped[str | None] = mapped_column(String(8), nullable=True)
     remote_version: Mapped[str] = mapped_column(String(255), default="")
     sync_state: Mapped[str] = mapped_column(String(20), default=SyncState.SYNCED.value)

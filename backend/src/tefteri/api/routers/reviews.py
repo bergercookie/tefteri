@@ -14,7 +14,6 @@ from tefteri.db.models.goal import Plan
 from tefteri.db.models.note import Note
 from tefteri.db.models.review import PeriodReview
 from tefteri.domain.periods import PeriodType, period_end
-from tefteri.services.context import load_maps
 from tefteri.services.goals import GoalService
 from tefteri.services.reviews import ReviewService
 
@@ -112,7 +111,7 @@ async def _out(
         completed_count=sum(1 for i in items if i["completed"]),
         items=[ReviewItemOut.model_validate(i) for i in items],
         carried_over=[uuid.UUID(i) for i in review.carried_over if i in ids],
-        retrospective=NoteOut.of(note, await load_maps(db, user_id)) if note else None,
+        retrospective=NoteOut.of(note) if note else None,
     )
 
 

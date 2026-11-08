@@ -154,20 +154,6 @@ async def test_delete_with_unreachable_task_app_changes_nothing(
     assert len((await api.get(f"{V1}/goals")).json()) == 1
 
 
-async def test_context_filter_applies_to_goals_and_views(api: AsyncClient) -> None:
-    await _goal(api, title="Life goal", context="life")
-    await _goal(api, title="Work goal", context="work")
-    for kind, path in (("year", "views/year/2026"), ("month", None), ("week", None)):
-        if path is None:
-            continue
-        work = (await api.get(f"{V1}/{path}", params={"context": "work"})).json()
-        life = (await api.get(f"{V1}/{path}", params={"context": "life"})).json()
-        assert [g["title"] for g in work["goals"]] == ["Work goal"], kind
-        assert [g["title"] for g in life["goals"]] == ["Life goal"]
-    listed = (await api.get(f"{V1}/goals", params={"context": "work"})).json()
-    assert [g["title"] for g in listed] == ["Work goal"]
-
-
 async def test_update_status_plans_and_month_year_views(api: AsyncClient) -> None:
     goal = await _goal(api)
     done = await api.patch(f"{V1}/goals/{goal['id']}", json={"status": "done"})

@@ -13,7 +13,6 @@ from sqlalchemy import select
 from tefteri.api.deps import CurrentUser, Db, SettingsDep
 from tefteri.api.errors import ApiError
 from tefteri.db.models.connection import Connection, SourceContainer
-from tefteri.domain.enums import Context, DefaultContext
 from tefteri.services.connections import ConnectionService, UnknownProvider
 from tefteri.services.google_oauth import GoogleOAuth, InvalidState
 from tefteri.services.projects import ProjectService
@@ -42,7 +41,6 @@ class ConnectionIn(BaseModel):
 
     provider: str
     display_name: str = Field(min_length=1, max_length=150)
-    default_context: DefaultContext = DefaultContext.LIFE
     settings: dict[str, Any] = Field(default_factory=dict)
     credentials: dict[str, Any] = Field(default_factory=dict)
 
@@ -51,7 +49,6 @@ class ConnectionPatch(BaseModel):
     """Partial connection update."""
 
     display_name: str | None = Field(default=None, min_length=1, max_length=150)
-    default_context: DefaultContext | None = None
     settings: dict[str, Any] | None = None
     credentials: dict[str, Any] | None = None
 
@@ -63,7 +60,6 @@ class ConnectionOut(BaseModel):
     kind: str
     provider: str
     display_name: str
-    default_context: str
     settings: dict[str, Any]
     status: str
     last_sync_at: datetime | None
@@ -77,7 +73,6 @@ class ConnectionOut(BaseModel):
             kind=c.kind,
             provider=c.provider,
             display_name=c.display_name,
-            default_context=c.default_context,
             settings=c.settings,
             status=c.status,
             last_sync_at=c.last_sync_at,
@@ -112,7 +107,6 @@ class ContainerOut(BaseModel):
     id: uuid.UUID
     remote_id: str
     name: str
-    context: str | None
     parent_remote_id: str | None = None
 
 
@@ -142,7 +136,6 @@ async def create_connection(
             user.id,
             provider=body.provider,
             display_name=body.display_name,
-            default_context=body.default_context,
             settings=body.settings,
             credentials=body.credentials,
         )
@@ -157,16 +150,13 @@ async def google_authorize(
     user: CurrentUser,
     settings: SettingsDep,
     display_name: str = "Google Calendar",
-    default_context: DefaultContext = DefaultContext.LIFE,
 ) -> dict[str, str]:
     """Return the Google consent URL for adding one more Google account."""
     oauth: GoogleOAuth | None = request.app.state.google_oauth
     if oauth is None:
         raise ApiError(503, "google_not_configured", "Google sign-in is not configured")
     redirect = _callback_url(request, settings.public_url)
-    url = oauth.authorize_url(
-        user.id, redirect, {"name": display_name, "context": default_context.value}
-    )
+    url = oauth.authorize_url(user.id, redirect, {"name": display_name})
     return {"url": url}
 
 
@@ -202,7 +192,6 @@ async def google_callback(
         uuid.UUID(data["user_id"]),
         provider="google_calendar",
         display_name=data["name"],
-        default_context=DefaultContext(data["context"]),
         settings={},
         credentials={"refresh_token": refresh_token},
     )
@@ -230,7 +219,6 @@ async def update_connection(
         db,
         connection,
         display_name=body.display_name,
-        default_context=body.default_context,
         settings=body.settings,
         credentials=body.credentials,
     )
@@ -264,7 +252,6 @@ async def list_containers(
             id=r.id,
             remote_id=r.remote_id,
             name=r.name,
-            context=r.context,
             parent_remote_id=r.parent_remote_id,
         )
         for r in rows
@@ -301,42 +288,3 @@ async def archive_container(
         raise ApiError(404, "not_found", "Container not found")
     projects: ProjectService = request.app.state.project_service
     await projects.archive(db, user.id, container_id)
-
-
-class ContainerPatch(BaseModel):
-    """Label a whole container; ``context: null`` removes the label."""
-
-    context: Context | None
-
-
-@router.patch("/{connection_id}/containers/{container_id}")
-async def update_container(
-    connection_id: uuid.UUID,
-    container_id: uuid.UUID,
-    body: ContainerPatch,
-    db: Db,
-    user: CurrentUser,
-    service: ConnectionService = Service,
-) -> ContainerOut:
-    """Label a project, calendar or folder as work or life."""
-    await _own(service, db, user, connection_id)
-    row = (
-        await db.execute(
-            select(SourceContainer).where(
-                SourceContainer.id == container_id,
-                SourceContainer.connection_id == connection_id,
-                SourceContainer.user_id == user.id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise ApiError(404, "not_found", "Container not found")
-    row.context = body.context.value if body.context else None
-    await db.flush()
-    return ContainerOut(
-        id=row.id,
-        remote_id=row.remote_id,
-        name=row.name,
-        context=row.context,
-        parent_remote_id=row.parent_remote_id,
-    )

@@ -121,21 +121,6 @@
             "title": "Connection Id",
             "type": "string"
           },
-          "context": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context"
-          },
-          "effective_context": {
-            "title": "Effective Context",
-            "type": "string"
-          },
           "end": {
             "format": "date-time",
             "title": "End",
@@ -193,9 +178,7 @@
           "title",
           "start",
           "end",
-          "all_day",
-          "context",
-          "effective_context"
+          "all_day"
         ],
         "title": "CalendarItemOut",
         "type": "object"
@@ -401,10 +384,6 @@
             "title": "Credentials",
             "type": "object"
           },
-          "default_context": {
-            "$ref": "#/components/schemas/DefaultContext",
-            "default": "life"
-          },
           "display_name": {
             "maxLength": 150,
             "minLength": 1,
@@ -431,10 +410,6 @@
       "ConnectionOut": {
         "description": "A connection as shown to the client. Credentials are never returned.",
         "properties": {
-          "default_context": {
-            "title": "Default Context",
-            "type": "string"
-          },
           "display_name": {
             "title": "Display Name",
             "type": "string"
@@ -490,7 +465,6 @@
           "kind",
           "provider",
           "display_name",
-          "default_context",
           "settings",
           "status",
           "last_sync_at",
@@ -513,16 +487,6 @@
               }
             ],
             "title": "Credentials"
-          },
-          "default_context": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DefaultContext"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "display_name": {
             "anyOf": [
@@ -556,17 +520,6 @@
       "ContainerOut": {
         "description": "A project, calendar or note subtree.",
         "properties": {
-          "context": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -595,50 +548,10 @@
         "required": [
           "id",
           "remote_id",
-          "name",
-          "context"
+          "name"
         ],
         "title": "ContainerOut",
         "type": "object"
-      },
-      "ContainerPatch": {
-        "description": "Label a whole container; ``context: null`` removes the label.",
-        "properties": {
-          "context": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Context"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "context"
-        ],
-        "title": "ContainerPatch",
-        "type": "object"
-      },
-      "Context": {
-        "description": "Work/life label of an item.",
-        "enum": [
-          "work",
-          "life"
-        ],
-        "title": "Context",
-        "type": "string"
-      },
-      "ContextFilter": {
-        "description": "The all/life/work switch.",
-        "enum": [
-          "all",
-          "life",
-          "work"
-        ],
-        "title": "ContextFilter",
-        "type": "string"
       },
       "DayView": {
         "description": "Aggregated data for the daily view.",
@@ -680,16 +593,6 @@
         ],
         "title": "DayView",
         "type": "object"
-      },
-      "DefaultContext": {
-        "description": "Context of a connection's unlabelled items: one context, or both.",
-        "enum": [
-          "work",
-          "life",
-          "both"
-        ],
-        "title": "DefaultContext",
-        "type": "string"
       },
       "DueFilter": {
         "description": "The filters offered at the top of the task view.",
@@ -772,21 +675,6 @@
             "title": "Connection Id",
             "type": "string"
           },
-          "context": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context"
-          },
-          "effective_context": {
-            "title": "Effective Context",
-            "type": "string"
-          },
           "end": {
             "format": "date-time",
             "title": "End",
@@ -823,26 +711,14 @@
           "end",
           "all_day",
           "location",
-          "context",
-          "effective_context",
           "sync_state"
         ],
         "title": "EntryOut",
         "type": "object"
       },
       "EntryPatch": {
-        "description": "Partial entry update; send ``context: null`` to remove the label.",
+        "description": "Partial entry update.",
         "properties": {
-          "context": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Context"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "end": {
             "anyOf": [
               {
@@ -898,10 +774,6 @@
       "GoalIn": {
         "description": "Data to create a goal.",
         "properties": {
-          "context": {
-            "$ref": "#/components/schemas/Context",
-            "default": "life"
-          },
           "criteria": {
             "default": "",
             "title": "Criteria",
@@ -950,10 +822,6 @@
       "GoalOut": {
         "description": "A goal with its computed progress.",
         "properties": {
-          "context": {
-            "title": "Context",
-            "type": "string"
-          },
           "criteria": {
             "title": "Criteria",
             "type": "string"
@@ -1009,7 +877,6 @@
           "title",
           "description",
           "criteria",
-          "context",
           "status",
           "progress"
         ],
@@ -1019,16 +886,6 @@
       "GoalPatch": {
         "description": "Partial goal update.",
         "properties": {
-          "context": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Context"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "criteria": {
             "anyOf": [
               {
@@ -1087,10 +944,6 @@
       "GoalsIn": {
         "description": "Data to create several goals of one period at once.",
         "properties": {
-          "context": {
-            "$ref": "#/components/schemas/Context",
-            "default": "life"
-          },
           "parent_id": {
             "anyOf": [
               {
@@ -1471,21 +1324,6 @@
             "title": "Connection Id",
             "type": "string"
           },
-          "context": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context"
-          },
-          "effective_context": {
-            "title": "Effective Context",
-            "type": "string"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1522,8 +1360,6 @@
           "title",
           "body",
           "note_date",
-          "context",
-          "effective_context",
           "sync_state"
         ],
         "title": "NoteOut",
@@ -2302,17 +2138,6 @@
             "title": "Connection Id",
             "type": "string"
           },
-          "context": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context"
-          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -2328,10 +2153,6 @@
               }
             ],
             "title": "Due At"
-          },
-          "effective_context": {
-            "title": "Effective Context",
-            "type": "string"
           },
           "goal_id": {
             "anyOf": [
@@ -2426,26 +2247,14 @@
           "due_at",
           "scheduled_start",
           "scheduled_end",
-          "context",
-          "effective_context",
           "sync_state"
         ],
         "title": "TaskOut",
         "type": "object"
       },
       "TaskPatch": {
-        "description": "Partial task update; send ``context: null`` to remove the label.",
+        "description": "Partial task update.",
         "properties": {
-          "context": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Context"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "description": {
             "anyOf": [
               {
@@ -3042,15 +2851,6 @@
               ],
               "title": "To"
             }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
-            }
           }
         ],
         "responses": {
@@ -3164,7 +2964,7 @@
         ]
       },
       "patch": {
-        "description": "Change an event in the calendar app (and its label in tefteri).",
+        "description": "Change an event in the calendar app.",
         "operationId": "update_entry_api_v1_calendar_entries__entry_id__patch",
         "parameters": [
           {
@@ -3368,15 +3168,6 @@
               "default": "Google Calendar",
               "title": "Display Name",
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "default_context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/DefaultContext",
-              "default": "life"
             }
           }
         ],
@@ -3648,70 +3439,6 @@
         ]
       }
     },
-    "/api/v1/connections/{connection_id}/containers/{container_id}": {
-      "patch": {
-        "description": "Label a project, calendar or folder as work or life.",
-        "operationId": "update_container_api_v1_connections__connection_id__containers__container_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "connection_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Connection Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "container_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Container Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ContainerPatch"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ContainerOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Container",
-        "tags": [
-          "connections"
-        ]
-      }
-    },
     "/api/v1/connections/{connection_id}/containers/{container_id}/archive": {
       "post": {
         "description": "Archive a project in the task app. The app can restore it; tefteri forgets it.",
@@ -3904,15 +3631,6 @@
                 }
               ],
               "title": "Parent Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
             }
           }
         ],
@@ -4257,15 +3975,6 @@
         "description": "List the user's notes from the cache.",
         "operationId": "list_notes_api_v1_notes_get",
         "parameters": [
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
-            }
-          },
           {
             "in": "query",
             "name": "kind",
@@ -4733,15 +4442,6 @@
         "parameters": [
           {
             "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
-            }
-          },
-          {
-            "in": "query",
             "name": "status",
             "required": false,
             "schema": {
@@ -4930,17 +4630,6 @@
       "get": {
         "description": "Count the user's open tasks for each planner filter (the badges of the filter chips).",
         "operationId": "task_counts_api_v1_tasks_counts_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -4955,16 +4644,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Task Counts",
@@ -5457,15 +5136,6 @@
               "title": "Day",
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
-            }
           }
         ],
         "responses": {
@@ -5509,15 +5179,6 @@
               "format": "date",
               "title": "Day",
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
             }
           }
         ],
@@ -5563,15 +5224,6 @@
               "title": "Day",
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
-            }
           }
         ],
         "responses": {
@@ -5614,15 +5266,6 @@
             "schema": {
               "title": "Year",
               "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
             }
           }
         ],
@@ -5787,15 +5430,6 @@
               "format": "date",
               "title": "Day",
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "context",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ContextFilter",
-              "default": "all"
             }
           }
         ],

@@ -1,4 +1,4 @@
-"""Response models for cached items. ``effective_context`` is resolved per item."""
+"""Response models for cached items."""
 
 import uuid
 from datetime import UTC, datetime
@@ -12,7 +12,6 @@ from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
 from tefteri.domain.planning_time import block_for
 from tefteri.domain.timeutil import day_bounds
-from tefteri.services.context import ContextMaps
 
 
 class TaskOut(BaseModel):
@@ -26,8 +25,6 @@ class TaskOut(BaseModel):
     due_at: datetime | None
     scheduled_start: datetime | None
     scheduled_end: datetime | None
-    context: str | None
-    effective_context: str
     sync_state: str
     goal_id: uuid.UUID | None = None
     project: str | None = None
@@ -38,7 +35,6 @@ class TaskOut(BaseModel):
     def of(
         cls,
         t: Task,
-        maps: ContextMaps,
         project: str | None = None,
         url: str | None = None,
     ) -> "TaskOut":
@@ -56,8 +52,6 @@ class TaskOut(BaseModel):
             due_at=t.due_at,
             scheduled_start=t.scheduled_start,
             scheduled_end=t.scheduled_end,
-            context=t.context,
-            effective_context=maps.effective(t.context, t.container_id, t.connection_id)[0].value,
             sync_state=t.sync_state,
             goal_id=t.goal_id,
             project=project,
@@ -76,12 +70,10 @@ class EntryOut(BaseModel):
     end: datetime
     all_day: bool
     location: str
-    context: str | None
-    effective_context: str
     sync_state: str
 
     @classmethod
-    def of(cls, e: CalendarEntry, maps: ContextMaps) -> "EntryOut":
+    def of(cls, e: CalendarEntry) -> "EntryOut":
         """Build from the ORM row."""
         return cls(
             id=e.id,
@@ -91,8 +83,6 @@ class EntryOut(BaseModel):
             end=e.end,
             all_day=e.all_day,
             location=e.location,
-            context=e.context,
-            effective_context=maps.effective(e.context, e.container_id, e.connection_id)[0].value,
             sync_state=e.sync_state,
         )
 
@@ -106,12 +96,10 @@ class NoteOut(BaseModel):
     title: str
     body: str
     note_date: str | None
-    context: str | None
-    effective_context: str
     sync_state: str
 
     @classmethod
-    def of(cls, n: Note, maps: ContextMaps) -> "NoteOut":
+    def of(cls, n: Note) -> "NoteOut":
         """Build from the ORM row."""
         return cls(
             id=n.id,
@@ -120,8 +108,6 @@ class NoteOut(BaseModel):
             title=n.title,
             body=n.body,
             note_date=n.note_date.isoformat() if n.note_date else None,
-            context=n.context,
-            effective_context=maps.effective(n.context, None, n.connection_id)[0].value,
             sync_state=n.sync_state,
         )
 
@@ -136,15 +122,13 @@ class CalendarItemOut(BaseModel):
     start: datetime
     end: datetime
     all_day: bool
-    context: str | None
-    effective_context: str
     status: str | None = None
     clipped_start: bool = False
     project: str | None = None
     """For a task: the name of its project in the task app."""
 
     @classmethod
-    def of_entry(cls, e: CalendarEntry, maps: ContextMaps) -> "CalendarItemOut":
+    def of_entry(cls, e: CalendarEntry) -> "CalendarItemOut":
         """Build from an entry."""
         return cls(
             type="entry",
@@ -154,14 +138,10 @@ class CalendarItemOut(BaseModel):
             start=e.start,
             end=e.end,
             all_day=e.all_day,
-            context=e.context,
-            effective_context=maps.effective(e.context, e.container_id, e.connection_id)[0].value,
         )
 
     @classmethod
-    def of_task(
-        cls, t: Task, maps: ContextMaps, tz_name: str, project: str | None = None
-    ) -> "CalendarItemOut":
+    def of_task(cls, t: Task, tz_name: str, project: str | None = None) -> "CalendarItemOut":
         """Build from a task with a due date (``due_at`` must be set).
 
         A timed task becomes the block that ends at its due time. An all-day task covers its
@@ -183,8 +163,6 @@ class CalendarItemOut(BaseModel):
             start=start,
             end=end,
             all_day=t.all_day,
-            context=t.context,
-            effective_context=maps.effective(t.context, t.container_id, t.connection_id)[0].value,
             status=t.status,
             clipped_start=clipped,
             project=project,
