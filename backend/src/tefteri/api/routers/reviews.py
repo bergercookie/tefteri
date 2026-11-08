@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Request
@@ -88,10 +89,17 @@ def _ended(plan: Plan, tz: str) -> tuple[date, bool]:
     return end, end <= datetime.now(ZoneInfo(tz)).date()
 
 
+def _goal_items(review: PeriodReview) -> list[dict[str, Any]]:
+    """The goals of a stored review. Reviews made before goals-only ones also hold tasks."""
+    return [i for i in review.items if i.get("type") == "goal"]
+
+
 async def _out(
     db: Db, user_id: uuid.UUID, tz: str, plan: Plan, review: PeriodReview, note: Note | None
 ) -> ReviewOut:
     end, ended = _ended(plan, tz)
+    items = _goal_items(review)
+    ids = {i["id"] for i in items}
     return ReviewOut(
         plan_id=plan.id,
         plan_title=plan.title,
@@ -100,10 +108,10 @@ async def _out(
         period_end=end,
         period_ended=ended,
         generated_at=review.generated_at,
-        planned_count=review.planned_count,
-        completed_count=review.completed_count,
-        items=[ReviewItemOut.model_validate(i) for i in review.items],
-        carried_over=[uuid.UUID(i) for i in review.carried_over],
+        planned_count=len(items),
+        completed_count=sum(1 for i in items if i["completed"]),
+        items=[ReviewItemOut.model_validate(i) for i in items],
+        carried_over=[uuid.UUID(i) for i in review.carried_over if i in ids],
         retrospective=NoteOut.of(note, await load_maps(db, user_id)) if note else None,
     )
 
@@ -149,8 +157,8 @@ async def plan_history(request: Request, db: Db, user: CurrentUser) -> list[Plan
                 period_ended=ended,
                 review=ReviewSummaryOut(
                     generated_at=review.generated_at,
-                    planned_count=review.planned_count,
-                    completed_count=review.completed_count,
+                    planned_count=len(_goal_items(review)),
+                    completed_count=sum(1 for i in _goal_items(review) if i["completed"]),
                     has_retrospective=review.retrospective_note_id is not None,
                 )
                 if review

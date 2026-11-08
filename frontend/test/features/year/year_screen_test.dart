@@ -29,7 +29,9 @@ void main() {
     expect(find.text('Run a marathon'), findsOneWidget);
     expect(find.text('75%'), findsOneWidget);
     expect(find.text('100%'), findsOneWidget);
-    expect(find.text('Book race'), findsOneWidget);
+    // Single tasks are not listed in the year view.
+    expect(find.text('Book race'), findsNothing);
+    expect(find.text('Tasks'), findsNothing);
     expect(find.text('Events'), findsNothing);
     expect(api.where(_path).first.query['context'], 'all');
   });
@@ -44,24 +46,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.where('GET /views/year/2027'), hasLength(1));
     expect(find.text('2027'), findsOneWidget);
-  });
-
-  testWidgets('a task can be scheduled from the year view', (tester) async {
-    final api = FakeApi({
-      _path: _year(),
-      'PUT /tasks/t1/schedule': taskJson('t1', 'x'),
-    });
-    await _pump(tester, api);
-    await tester.tap(find.byKey(const Key('task-menu-t1')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Schedule'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('schedule-confirm')));
-    await tester.pumpAndSettle();
-    final put = api.where('PUT /tasks/t1/schedule').single;
-    final data = put.data! as Map;
-    expect(data['start'], isNotNull);
-    expect(data.containsKey('end'), isFalse); // the server derives the due date
-    expect(DateTime.parse('${data['start']}').toLocal().year, 2026);
   });
 }

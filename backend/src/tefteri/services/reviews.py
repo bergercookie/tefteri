@@ -2,8 +2,7 @@
 
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, date, datetime
-from zoneinfo import ZoneInfo
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +13,7 @@ from tefteri.db.models.note import Note
 from tefteri.db.models.review import PeriodReview
 from tefteri.db.models.task import Task
 from tefteri.db.repositories.items import NoteRepository
-from tefteri.domain.periods import PeriodType, period_end
+from tefteri.domain.periods import PeriodType
 from tefteri.services.goals import compute_progress
 from tefteri.services.notes import NoteService
 
@@ -39,48 +38,26 @@ class ReviewSummary:
     carried_over: list[str]
 
 
-def _local_day(value: datetime, tz: str) -> date:
-    aware = value if value.tzinfo else value.replace(tzinfo=UTC)
-    return aware.astimezone(ZoneInfo(tz)).date()
-
-
 def compute_review(
     period_type: PeriodType, start: date, goals: list[Goal], tasks: list[Task], tz: str
 ) -> ReviewSummary:
     """Return what was planned for a period and what of it was completed.
 
     Planned goals are the period's own goals, except dropped ones. A goal counts as completed
-    when its status is ``done`` or its computed progress is 1. Planned tasks are the tasks linked
-    to those goals or to their smaller goals, and the tasks due or scheduled inside the period
-    (in the user's time zone ``tz``); tasks deleted in the app do not count. Carried over are the
-    planned items that were not completed.
+    when its status is ``done`` or its computed progress is 1. Single tasks are not part of a
+    review: they only feed the progress of their goals. Carried over are the goals that were not
+    completed. ``tz`` stays for callers; it no longer changes the result.
     """
-    end = period_end(period_type, start)
     progress = compute_progress(goals, tasks)
     own = [
         g
         for g in goals
         if g.period_type == period_type.value and g.period_start == start and g.status != "dropped"
     ]
-    tree = {g.id for g in own}
-    grew = True
-    while grew:
-        grew = False
-        for g in goals:
-            if g.parent_id in tree and g.id not in tree and g.status != "dropped":
-                tree.add(g.id)
-                grew = True
     items = [
         ReviewItem("goal", str(g.id), g.title, g.status == "done" or progress[g.id] >= 1.0)
         for g in sorted(own, key=lambda g: g.title)
     ]
-    for t in sorted(tasks, key=lambda t: t.title):
-        if t.sync_state == "deleted_remotely":
-            continue
-        when = t.due_at
-        in_period = when is not None and start <= _local_day(when, tz) < end
-        if t.goal_id in tree or in_period:
-            items.append(ReviewItem("task", str(t.id), t.title, t.status == "done"))
     return ReviewSummary(
         planned_count=len(items),
         completed_count=sum(1 for i in items if i.completed),

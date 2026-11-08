@@ -52,8 +52,10 @@ async def test_review_shows_planned_completed_and_carried_over(api: AsyncClient)
     assert r.status_code == 200, r.text
     review = r.json()
     assert review["period_ended"] is True and review["period_end"] == "2026-11-01"
-    assert (review["planned_count"], review["completed_count"]) == (4, 2)
-    assert set(review["carried_over"]) == {ids["run"], ids["open_task"]}
+    # Single tasks are not part of a review: only the goals count.
+    assert (review["planned_count"], review["completed_count"]) == (2, 1)
+    assert {i["type"] for i in review["items"]} == {"goal"}
+    assert set(review["carried_over"]) == {ids["run"]}
     assert review["retrospective"] is None
 
 
@@ -62,9 +64,9 @@ async def test_review_is_a_snapshot_until_refreshed(api: AsyncClient) -> None:
     first = (await api.get(f"{V1}/plans/{ids['plan']}/review")).json()
     await api.post(f"{V1}/tasks/{ids['open_task']}/complete")
     again = (await api.get(f"{V1}/plans/{ids['plan']}/review")).json()
-    assert again["completed_count"] == first["completed_count"] == 2
+    assert again["completed_count"] == first["completed_count"] == 1
     fresh = (await api.get(f"{V1}/plans/{ids['plan']}/review", params={"refresh": True})).json()
-    assert fresh["completed_count"] == 4 and fresh["carried_over"] == []
+    assert fresh["completed_count"] == 2 and fresh["carried_over"] == []
 
 
 async def test_retrospective_is_written_to_the_note_app(api: AsyncClient, world: FakeWorld) -> None:
@@ -111,7 +113,7 @@ async def test_plan_history_lists_plans_with_their_reviews(api: AsyncClient) -> 
     history = (await api.get(f"{V1}/reviews/history")).json()
     assert [h["title"] for h in history] == ["Next year", "October"]
     assert history[0]["review"] is None and history[0]["period_ended"] is False
-    assert history[1]["review"]["planned_count"] == 4
+    assert history[1]["review"]["planned_count"] == 2
     assert history[1]["review"]["has_retrospective"] is True
 
 

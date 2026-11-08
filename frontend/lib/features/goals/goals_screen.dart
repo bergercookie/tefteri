@@ -14,6 +14,7 @@ import '../../theme/theme.dart';
 import '../settings/connection_models.dart';
 import '../settings/sync_controller.dart';
 import 'breakdown_dialog.dart';
+import 'goal_dialog.dart';
 import 'goal_providers.dart';
 import 'goal_widgets.dart';
 import 'periods.dart';
@@ -91,6 +92,14 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
     if (ok) _titleCtl.clear();
   }
 
+  Future<void> _addSeveral() async {
+    final titles = await showBulkGoalsDialog(context,
+        periodLabel: periodLabel(_type, dateKey(_start)));
+    if (titles == null || titles.isEmpty) return;
+    await _run(() => ref.read(planningApiProvider).createGoals(
+        periodType: _type, periodStart: dateKey(_start), titles: titles));
+  }
+
   Future<void> _breakdown(PlanGoal goal) async {
     final List<Connection> all;
     try {
@@ -111,84 +120,70 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
         .breakdownGoal(goal.id, req.goals, req.tasks));
   }
 
-  Future<void> _delete(PlanGoal goal) async {
-    final choice = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete "${goal.title}"?'),
-        content: const Text('Child goals are deleted too. '
-            'What should happen to the linked tasks?'),
-        actions: [
-          TextButton(
-            key: const Key('delete-cancel'),
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            key: const Key('delete-keep-tasks'),
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep tasks'),
-          ),
-          FilledButton(
-            key: const Key('delete-remove-tasks'),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete tasks'),
-          ),
-        ],
-      ),
-    );
-    if (choice == null) return;
-    await _run(() =>
-        ref.read(planningApiProvider).deleteGoal(goal.id, deleteTasks: choice));
-  }
+  /// The menu holds what needs a task app: breaking a goal down into tasks.
+  /// Completing, dropping and deleting a goal are in its pop-up.
+  Widget? _menu(PlanGoal g) => g.periodType == 'week'
+      ? null
+      : PopupMenuButton<String>(
+          key: Key('goal-menu-${g.id}'),
+          onSelected: (v) {
+            if (v == 'breakdown') _breakdown(g);
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'breakdown', child: Text('Break down')),
+          ],
+        );
 
-  Widget _menu(PlanGoal g) => PopupMenuButton<String>(
-        key: Key('goal-menu-${g.id}'),
-        onSelected: (v) {
-          switch (v) {
-            case 'breakdown':
-              _breakdown(g);
-            case 'done':
-              _run(() =>
-                  ref.read(planningApiProvider).setGoalStatus(g.id, 'done'));
-            case 'active':
-              _run(() =>
-                  ref.read(planningApiProvider).setGoalStatus(g.id, 'active'));
-            case 'drop':
-              _run(() =>
-                  ref.read(planningApiProvider).setGoalStatus(g.id, 'dropped'));
-            case 'delete':
-              _delete(g);
-          }
-        },
-        itemBuilder: (_) => [
-          if (g.periodType != 'week')
-            const PopupMenuItem(value: 'breakdown', child: Text('Break down')),
-          if (g.status != 'done')
-            const PopupMenuItem(value: 'done', child: Text('Mark done')),
-          if (g.status != 'active')
-            const PopupMenuItem(value: 'active', child: Text('Reopen')),
-          if (g.status != 'dropped')
-            const PopupMenuItem(value: 'drop', child: Text('Drop')),
-          const PopupMenuItem(value: 'delete', child: Text('Delete')),
-        ],
-      );
-
-  Widget _node(PlanGoal g, int depth) {
+  Widget _node(PlanGoal g, int depth, String number) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: EdgeInsets.only(left: 16.0 * depth),
-          child: GoalTile(goal: g, trailing: _menu(g)),
+          child: GoalTile(
+              goal: g, number: number, trailing: _menu(g), onChanged: _reload),
         ),
         if (g.periodType != 'week')
           ref.watch(childGoalsProvider(g.id)).maybeWhen(
-                data: (kids) => Column(
-                    children: [for (final k in kids) _node(k, depth + 1)]),
+                data: (kids) => Column(children: [
+                  for (var i = 0; i < kids.length; i++)
+                    _node(kids[i], depth + 1, '$number.${i + 1}'),
+                ]),
                 orElse: () => const SizedBox.shrink(),
               ),
       ],
+    );
+  }
+
+  /// How many goals the list holds at all levels below [goals]. Null while
+  /// some child goals still load.
+  int? _subgoals(List<PlanGoal> goals) {
+    var total = 0;
+    for (final g in goals) {
+      if (g.periodType == 'week') continue;
+      final kids = ref.watch(childGoalsProvider(g.id)).valueOrNull;
+      if (kids == null) return null;
+      total += kids.length;
+      final deeper = _subgoals(kids);
+      if (deeper == null) return null;
+      total += deeper;
+    }
+    return total;
+  }
+
+  Widget _totals(List<PlanGoal> list) {
+    final subgoals = _subgoals(list);
+    final goals = list.length == 1 ? '1 goal' : '${list.length} goals';
+    final subs = subgoals == null
+        ? ''
+        : subgoals == 1
+            ? ', 1 subgoal'
+            : ', $subgoals subgoals';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text('$goals$subs',
+          key: const Key('goal-totals'),
+          style: Theme.of(context).textTheme.titleSmall),
     );
   }
 
@@ -252,6 +247,12 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 icon: const Icon(Icons.add),
                 onPressed: _add,
               ),
+              IconButton(
+                key: const Key('goal-bulk-open'),
+                tooltip: 'Add several goals, one on each line',
+                icon: const Icon(Icons.playlist_add),
+                onPressed: _addSeveral,
+              ),
             ]),
           ),
           Expanded(
@@ -278,7 +279,9 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                         icon: Icons.flag_outlined,
                         message: 'No goals for this period.',
                         messageKey: Key('no-goals')),
-                  for (final g in list) _node(g, 0),
+                  if (list.isNotEmpty) _totals(list),
+                  for (var i = 0; i < list.length; i++)
+                    _node(list[i], 0, '${i + 1}'),
                 ],
               ),
             ),

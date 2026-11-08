@@ -6,16 +6,13 @@ can also write a retrospective. Tefteri keeps your plans after the period ends.
 
 ## What a review shows
 
-The review counts these items as planned:
+The review counts the goals of the period as planned. Tefteri does not count dropped goals. The
+review does not list single tasks.
 
-- The goals of the period. Tefteri does not count dropped goals.
-- The tasks that belong to these goals or to their smaller goals.
-- The tasks with a due date or a planned time inside the period.
+A goal is complete when you mark it complete, or when you complete all its smaller goals and
+tasks. The tasks of a goal only change its progress.
 
-A goal is complete when you mark it done, or when you complete all its smaller goals and tasks.
-A task is complete when your task app shows it as done.
-
-Tefteri carries over the items that are not complete. The review lists them in a separate
+Tefteri carries over the goals that are not complete. The review lists them in a separate
 section. Use this list when you plan the next period.
 
 ## Add a plan
@@ -34,14 +31,14 @@ period. Refer to [Plan goals](planning-goals.md).
 
 1. Open the menu and choose Reviews.
 2. Choose the plan.
-3. Read the number of completed items and the progress bar.
-4. Read the Planned list. A green check mark shows a completed item.
+3. Read the number of completed goals and the progress bar.
+4. Read the Planned list. A green check mark shows a completed goal.
 5. Read the Carried over list.
 
-![The review of the plan October: get back in shape. It shows 3 of 5 planned items done, the planned goals and tasks, the 2 carried-over items and the retrospective.](../images/review.png)
+![The review of the plan October: get back in shape. It shows the planned goals, the goals that are carried over and the retrospective.](../images/review.png)
 
 Tefteri keeps the review as it was when you opened it the first time. Later changes to goals
-and tasks do not change the review. To count the items again, choose Update review.
+do not change the review. To count the goals again, choose Update review.
 
 ## Save a retrospective to your notes app
 
