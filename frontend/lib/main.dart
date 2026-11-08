@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
@@ -14,6 +15,10 @@ import 'core/server_address.dart';
 /// resuming an earlier session.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // On the web the app is drawn on a canvas, so the browser finds no text on
+  // the page. The accessibility tree holds the text as real elements: it lets
+  // Ctrl+F find task titles, and screen readers read the page.
+  if (kIsWeb) SemanticsBinding.instance.ensureSemantics();
   final server = await ServerAddress.load();
   // The token of an earlier run: Android can end the app's process while it is
   // in the background, and the user must not have to sign in again.
