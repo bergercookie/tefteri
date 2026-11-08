@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.connection import Connection
 from tefteri.db.models.user import User
 from tefteri.db.repositories.connections import ConnectionRepository
+from tefteri.domain.entities import ConnectionHealth
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus, DefaultContext
 from tefteri.domain.ports import Backend
 from tefteri.security.crypto import TokenCipher
@@ -86,6 +87,27 @@ class ConnectionService:
         """Build the backend for ``connection`` using its owner's time zone."""
         owner = await db.get(User, connection.user_id)
         return self.backend_for(connection, owner.timezone if owner else "UTC")
+
+    async def check(self, db: AsyncSession, connection: Connection) -> ConnectionHealth:
+        """Ask the app whether the address and the credentials work, and store the status.
+
+        Never raises: a connection with missing settings or a failing adapter gives an
+        ``error`` health with a message.
+        """
+        try:
+            backend = await self.backend_of_owner(db, connection)
+            health = await backend.check_connection()
+        except KeyError as exc:
+            health = ConnectionHealth(
+                ConnectionStatus.ERROR, "error", f"The setting {exc} is missing."
+            )
+        except Exception as exc:  # noqa: BLE001 - any adapter failure is a result, not a crash
+            health = ConnectionHealth(
+                ConnectionStatus.ERROR, "error", str(exc) or type(exc).__name__
+            )
+        connection.status = health.status.value
+        await db.flush()
+        return health
 
     async def list(self, db: AsyncSession, user_id: uuid.UUID) -> Sequence[Connection]:
         """List the user's connections."""
