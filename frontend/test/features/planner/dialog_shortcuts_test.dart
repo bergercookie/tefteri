@@ -24,13 +24,7 @@ Future<ProviderContainer> _app(WidgetTester tester) async {
   final api = plannerApi(extra: {
     'GET /connections': [connectionJson('c1', 'tasks', 'Home tasks')],
     'GET /connections/c1/containers': [
-      {
-        'id': 'k1',
-        'remote_id': '1',
-        'name': 'Inbox',
-        'context': null,
-        'parent_remote_id': null
-      },
+      {'id': 'k1', 'remote_id': '1', 'name': 'Inbox', 'parent_remote_id': null},
     ],
     'GET /connections/c1/labels': ['Urgent'],
     'GET /sync/status': {'last_sync_at': null, 'results': <Object?>[]},

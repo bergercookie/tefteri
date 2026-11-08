@@ -37,13 +37,7 @@ Future<void> _pump(WidgetTester tester, {bool signedIn = true}) async {
   final api = FakeApi({
     'GET /connections': [connectionJson('c1', 'tasks', 'Home tasks')],
     'GET /connections/c1/containers': [
-      {
-        'id': 'k1',
-        'remote_id': '1',
-        'name': 'Inbox',
-        'context': null,
-        'parent_remote_id': null
-      },
+      {'id': 'k1', 'remote_id': '1', 'name': 'Inbox', 'parent_remote_id': null},
     ],
     'GET /connections/c1/labels': <Object?>[],
   });

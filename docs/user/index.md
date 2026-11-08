@@ -17,6 +17,5 @@ weekly-planning
 reviews-and-retrospectives
 shortcuts
 conflicts
-work-and-life
 troubleshooting
 ```

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
@@ -262,7 +261,6 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
       leading: const Icon(Icons.event),
       title: Text(e.title),
       subtitle: Text('$time$place${_syncNote(e.syncState)}'),
-      trailing: ContextMarker(itemContext: e.context),
     );
   }
 
@@ -288,7 +286,6 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ContextMarker(itemContext: t.context),
             IconButton(
               key: Key('delete-${t.id}'),
               tooltip: 'Delete task',

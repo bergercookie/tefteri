@@ -8,7 +8,6 @@ import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
@@ -205,7 +204,6 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
               leading: const Icon(Icons.event),
               title: Text(e.title),
               subtitle: Text(_when(e.start, e.allDay)),
-              trailing: ContextMarker(itemContext: e.context),
             ),
           const SizedBox(height: 8),
         ],
@@ -249,7 +247,6 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         ],
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        ContextMarker(itemContext: t.context),
         PopupMenuButton<String>(
           key: Key('task-menu-${t.id}'),
           onSelected: (value) {

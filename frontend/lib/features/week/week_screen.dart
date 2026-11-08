@@ -4,18 +4,15 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../goals/period_page.dart';
 import '../goals/periods.dart';
 import '../weekly/weekly_card.dart';
 
-/// Loads the week view for a `YYYY-MM-DD` key (any day of the week);
-/// reloads when the global context filter changes.
+/// Loads the week view for a `YYYY-MM-DD` key (any day of the week).
 final weekViewProvider = FutureProvider.family<PeriodView, String>((ref, date) {
-  final filter = ref.watch(contextFilterProvider);
-  return ref.watch(planningApiProvider).weekView(date, filter);
+  return ref.watch(planningApiProvider).weekView(date);
 });
 
 /// Shows one week (Monday to Sunday).

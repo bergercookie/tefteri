@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tefteri/app.dart';
 import 'package:tefteri/core/auth_controller.dart';
-import 'package:tefteri/core/context_filter.dart';
 import 'package:tefteri/core/shortcuts/app_shortcuts.dart';
 import 'package:tefteri/core/shortcuts/keymap.dart';
 import 'package:tefteri/features/settings/sync_controller.dart';
@@ -134,7 +133,6 @@ void main() {
       await _press(tester, c);
     }
     expect(find.text('page:/week'), findsOneWidget);
-    expect(container.read(contextFilterProvider), ContextFilter.all);
     expect(find.byKey(const Key('shortcut-help')), findsNothing);
 
     // Esc leaves the field; then the same key opens the view.
@@ -142,16 +140,6 @@ void main() {
     await tester.pumpAndSettle();
     await _press(tester, 'm');
     expect(find.text('page:/month'), findsOneWidget);
-  });
-
-  testWidgets('digits switch the work/life filter', (tester) async {
-    final (_, container) = await _pump(tester);
-    await _press(tester, '3');
-    expect(container.read(contextFilterProvider), ContextFilter.work);
-    await _press(tester, '2');
-    expect(container.read(contextFilterProvider), ContextFilter.life);
-    await _press(tester, '1');
-    expect(container.read(contextFilterProvider), ContextFilter.all);
   });
 
   testWidgets('S syncs and does not open Connections', (tester) async {
@@ -199,13 +187,11 @@ void main() {
   });
 
   testWidgets('shortcuts do nothing while signed out', (tester) async {
-    final (_, container) = await _pump(tester, signedIn: false);
+    final (_, _) = await _pump(tester, signedIn: false);
     await _press(tester, 'w');
-    await _press(tester, '3');
     await tester.sendKeyEvent(LogicalKeyboardKey.f5);
     await tester.pumpAndSettle();
     expect(find.text('page:/'), findsOneWidget);
-    expect(container.read(contextFilterProvider), ContextFilter.all);
     expect(_sync.calls, 0);
   });
 }

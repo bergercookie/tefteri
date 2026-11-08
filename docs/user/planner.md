@@ -14,7 +14,6 @@ Task blocks have a colored outline and a check mark. Calendar entries have no ou
 A red dot and a red line show the current time in the column of the current day. The line moves while you work.
 A task with a date and no time shows in the row called all day.
 
-The work and life switch and the sync button work for both columns. When you choose work, both columns show work items only.
 When you sync, both columns update.
 
 ## Move to today
@@ -63,7 +62,7 @@ change these fields:
 - The start time. Without a start time, the task is all day. With a start time, the task is a
   block of one hour. The due date in your task app is the end of that hour.
 
-The pop-up also shows the status, the time on the calendar, the context and the project.
+The pop-up also shows the status, the time on the calendar and the project.
 
 1. Change the fields.
 2. Choose Save.
@@ -77,7 +76,7 @@ want to discard the change.
 
 ![The pop-up of the task Update the road map. It shows the title, the day, the start time and the description as fields that you can change, and the Save button.](../images/planner-task-details.png)
 
-If you choose a calendar entry, the pop-up shows the time and the context of the entry.
+If you choose a calendar entry, the pop-up shows the time of the entry.
 
 ## Find text with the browser
 

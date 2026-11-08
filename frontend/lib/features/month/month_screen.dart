@@ -4,18 +4,15 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../goals/period_page.dart';
 import '../goals/periods.dart';
 
-/// Loads the month view for a `YYYY-MM-DD` key (any day of the month);
-/// reloads when the global context filter changes.
+/// Loads the month view for a `YYYY-MM-DD` key (any day of the month).
 final monthViewProvider =
     FutureProvider.family<PeriodView, String>((ref, date) {
-  final filter = ref.watch(contextFilterProvider);
-  return ref.watch(planningApiProvider).monthView(date, filter);
+  return ref.watch(planningApiProvider).monthView(date);
 });
 
 /// Shows one calendar month.

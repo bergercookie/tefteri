@@ -44,7 +44,6 @@ final _review = {
   'carried_over': ['g2', 't2'],
   'retrospective': noteJson('n7', 'Retrospective: October: get back in shape',
       kind: 'retrospective',
-      context: null,
       body: 'Reading went well. Running stopped after the second week.\n'
           'Next month: run in the morning, before work.'),
 };

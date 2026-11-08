@@ -7,8 +7,6 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../context_filter.dart';
-
 /// A screen that the drawer and the keyboard can open.
 @immutable
 class AppView {
@@ -63,15 +61,6 @@ class SyncIntent extends Intent {
 class NewTaskIntent extends Intent {
   /// Creates the intent.
   const NewTaskIntent();
-}
-
-/// Sets the global all/life/work filter.
-class SetContextIntent extends Intent {
-  /// Creates the intent.
-  const SetContextIntent(this.filter);
-
-  /// New filter value.
-  final ContextFilter filter;
 }
 
 /// Opens the shortcut help overlay.
@@ -142,17 +131,6 @@ final List<AppShortcut> appShortcuts = [
     activator: SingleActivator(LogicalKeyboardKey.f5),
     intent: SyncIntent(),
   ),
-  for (final (i, f) in ContextFilter.values.indexed)
-    AppShortcut(
-      keys: '${i + 1}',
-      description: 'Show ${switch (f) {
-        ContextFilter.all => 'all items',
-        ContextFilter.life => 'life items only',
-        ContextFilter.work => 'work items only',
-      }}',
-      activator: CharacterActivator('${i + 1}'),
-      intent: SetContextIntent(f),
-    ),
   const AppShortcut(
     keys: '?',
     description: 'Show this list of shortcuts',

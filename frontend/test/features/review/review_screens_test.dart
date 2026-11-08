@@ -36,8 +36,6 @@ Map<String, Object?> _note(String body) => {
       'title': 'Retrospective: October',
       'body': body,
       'note_date': null,
-      'context': null,
-      'effective_context': 'life',
       'sync_state': 'synced',
     };
 

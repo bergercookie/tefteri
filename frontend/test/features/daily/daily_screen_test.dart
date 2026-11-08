@@ -17,14 +17,12 @@ Map<String, Object?> _day() => {
           'end': '2026-11-01T09:30:00Z',
           'all_day': false,
           'location': 'Room 4',
-          'context': 'work',
-          'effective_context': 'work',
           'sync_state': 'synced',
         },
       ],
       'tasks': [
         taskJson('t1', 'Write report'),
-        taskJson('t2', 'Buy milk', context: null),
+        taskJson('t2', 'Buy milk'),
         taskJson('t3', 'Old task', status: 'done'),
       ],
       'note': {
@@ -34,8 +32,6 @@ Map<String, Object?> _day() => {
         'title': 'Daily',
         'body': 'Plan: focus.',
         'note_date': '2026-11-01',
-        'context': null,
-        'effective_context': 'life',
         'sync_state': 'synced',
       },
     };
@@ -61,9 +57,6 @@ void main() {
     expect(find.text('Write report'), findsOneWidget);
     expect(find.text('Buy milk'), findsOneWidget);
     expect(find.text('Plan: focus.'), findsOneWidget);
-    // Only the task with no context gets the marker.
-    expect(find.byKey(const Key('unclassified-marker')), findsOneWidget);
-    expect(api.where(_path).first.query['context'], 'all');
   });
 
   testWidgets('complete calls the API and reloads', (tester) async {
