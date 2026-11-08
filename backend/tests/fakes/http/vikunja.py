@@ -58,11 +58,15 @@ class FakeVikunja(FakeHttpServer):
         self.token = token
         self.projects: dict[int, dict[str, Any]] = {}
         self.tasks: dict[int, dict[str, Any]] = {}
+        self.labels: dict[int, dict[str, Any]] = {}
         self._next_id = 1
         self.add_project("Inbox")
         api = base_url + "/api/v1"
         self.route("GET", f"{api}/projects", self._list_projects)
         self.route("PUT", f"{api}/projects", self._create_project)
+        self.route("GET", f"{api}/labels", self._list_labels)
+        self.route("PUT", f"{api}/labels", self._create_label)
+        self.route("POST", f"{api}/tasks/{{task_id}}/labels/bulk", self._bulk_labels)
         self.route("GET", f"{api}/projects/{{project_id}}", self._get_project)
         self.route("POST", f"{api}/projects/{{project_id}}", self._update_project)
         self.route("GET", f"{api}/projects/{{project_id}}/tasks", self._list_tasks)
@@ -123,6 +127,31 @@ class FakeVikunja(FakeHttpServer):
     def _list_projects(self, request: httpx.Request) -> httpx.Response:  # noqa: ARG002
         # Like Vikunja, archived projects are left out unless asked for.
         return json_response(200, [p for p in self.projects.values() if not p["is_archived"]])
+
+    def _list_labels(self, request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params.get("page", "1"))
+        per_page = int(request.url.params.get("per_page", "50"))
+        labels = sorted(self.labels.values(), key=lambda label: label["id"])
+        return json_response(200, labels[(page - 1) * per_page : page * per_page])
+
+    def _create_label(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if not str(body.get("title", "")).strip():
+            return self._invalid("title")
+        label_id = len(self.labels) + 1
+        label = {"id": label_id, "title": str(body["title"]), "hex_color": "e8e8e8"}
+        self.labels[label_id] = label
+        return json_response(201, label)
+
+    def _bulk_labels(self, request: httpx.Request, task_id: str) -> httpx.Response:
+        task = self.tasks.get(int(task_id))
+        if task is None:
+            return self._error(404, 4002, "The task does not exist.")
+        wanted = [int(label["id"]) for label in json.loads(request.content).get("labels", [])]
+        if any(i not in self.labels for i in wanted):
+            return self._error(404, 10002, "The label does not exist.")
+        task["labels"] = [self.labels[i] for i in wanted]
+        return json_response(200, {"labels": task["labels"]})
 
     def _get_project(self, request: httpx.Request, project_id: str) -> httpx.Response:  # noqa: ARG002
         project = self.projects.get(int(project_id))

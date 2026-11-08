@@ -113,6 +113,7 @@ class ContainerOut(BaseModel):
     remote_id: str
     name: str
     context: str | None
+    parent_remote_id: str | None = None
 
 
 async def _own(service: ConnectionService, db: Db, user: CurrentUser, cid: uuid.UUID) -> Connection:
@@ -259,8 +260,29 @@ async def list_containers(
         )
     ).scalars()
     return [
-        ContainerOut(id=r.id, remote_id=r.remote_id, name=r.name, context=r.context) for r in rows
+        ContainerOut(
+            id=r.id,
+            remote_id=r.remote_id,
+            name=r.name,
+            context=r.context,
+            parent_remote_id=r.parent_remote_id,
+        )
+        for r in rows
     ]
+
+
+@router.get("/{connection_id}/labels")
+async def list_labels(
+    connection_id: uuid.UUID,
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+    service: ConnectionService = Service,
+) -> list[str]:
+    """List the labels that exist in the task app, for suggestions."""
+    await _own(service, db, user, connection_id)
+    projects: ProjectService = request.app.state.project_service
+    return await projects.labels(db, user.id, connection_id)
 
 
 @router.post("/{connection_id}/containers/{container_id}/archive", status_code=204)
@@ -311,4 +333,10 @@ async def update_container(
         raise ApiError(404, "not_found", "Container not found")
     row.context = body.context.value if body.context else None
     await db.flush()
-    return ContainerOut(id=row.id, remote_id=row.remote_id, name=row.name, context=row.context)
+    return ContainerOut(
+        id=row.id,
+        remote_id=row.remote_id,
+        name=row.name,
+        context=row.context,
+        parent_remote_id=row.parent_remote_id,
+    )

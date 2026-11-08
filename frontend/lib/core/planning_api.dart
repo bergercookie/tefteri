@@ -151,11 +151,29 @@ class PlanningApi {
     return UserSettings.fromJson(r.data! as Map<String, dynamic>);
   }
 
-  /// `POST /tasks`.
-  Future<void> createTask(
-          {required String connectionId, required String title}) =>
-      _dio.post<Object?>('/tasks',
-          data: {'connection_id': connectionId, 'title': title});
+  /// `POST /tasks`. With a [containerId] the task goes into that project,
+  /// else into the first one; unknown [labels] are created in the task app.
+  /// Answers the new task.
+  Future<PlanTask> createTask({
+    required String connectionId,
+    required String title,
+    String? containerId,
+    List<String> labels = const [],
+  }) async {
+    final r = await _dio.post<Object?>('/tasks', data: {
+      'connection_id': connectionId,
+      'title': title,
+      if (containerId != null) 'container_id': containerId,
+      if (labels.isNotEmpty) 'labels': labels,
+    });
+    return PlanTask.fromJson(r.data! as Map<String, dynamic>);
+  }
+
+  /// `GET /connections/{id}/labels`: the labels that exist in the task app.
+  Future<List<String>> labels(String connectionId) async {
+    final r = await _dio.get<Object?>('/connections/$connectionId/labels');
+    return [for (final l in (r.data as List? ?? const [])) '$l'];
+  }
 
   /// `PATCH /tasks/{id}` with a new [title] and [description]. The server
   /// writes them to the task app first; a failure changes nothing.
