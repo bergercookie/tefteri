@@ -11,6 +11,7 @@ from sqlalchemy import select
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
+from tefteri.db.models.connection import SourceContainer
 from tefteri.db.models.goal import Goal, Plan
 from tefteri.db.models.task import Task
 from tefteri.domain.enums import Context
@@ -277,13 +278,20 @@ async def _period_view(
         for g in await service.all(db, user_id)
         if g.period_type == kind.value and g.period_start == start and _matches(context, g)
     ]
+    projects = {
+        c.id: c.name
+        for c in (
+            await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
+        ).scalars()
+    }
     tasks = []
     for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars():
         when = t.due_at
         if t.sync_state == "deleted_remotely" or when is None or not low <= aware(when) < high:
             continue
         if maps.matches(context, t.context, t.container_id, t.connection_id):
-            tasks.append(TaskOut.of(t, maps))
+            project = projects.get(t.container_id) if t.container_id else None
+            tasks.append(TaskOut.of(t, maps, project=project))
     entries: list[EntryOut] = []
     if kind is not PeriodType.YEAR:
         for e in (

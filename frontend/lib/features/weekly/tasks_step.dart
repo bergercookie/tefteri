@@ -2,6 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
+
+import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_models.dart';
@@ -210,7 +212,8 @@ class _ProjectTasks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return Card(
+    return ProjectCard(
+      name: project.name,
       key: Key('tasks-of-${project.id}'),
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),

@@ -94,6 +94,12 @@ app.
 Tefteri refuses to archive a project that is in a committed plan with no look-back yet. The
 look-back counts the tasks of that project. Look back first, and then archive the project.
 
+## Tell projects apart
+
+Tefteri groups the tasks by project. Each project has a card, and each card has a stripe in the
+color of the project. A project keeps its color in every view. In the Week view, each task shows
+a dot in the color of its project, with the name of the project next to it.
+
 ## Step 3: give every task a day
 
 For each task of your projects, choose a day. Choose the same day again to remove it. The strip at

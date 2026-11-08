@@ -3,6 +3,8 @@ library;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
@@ -230,7 +232,14 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
       dense: true,
       leading: Icon(t.done ? Icons.check_circle : Icons.task_alt),
       title: Text(t.title),
-      subtitle: Text(goal == null ? time : '$time - Goal: $goal'),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (t.project != null && t.project!.isNotEmpty)
+            ProjectChip(name: t.project!),
+          Text(goal == null ? time : '$time - Goal: $goal'),
+        ],
+      ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         ContextMarker(itemContext: t.context),
         PopupMenuButton<String>(

@@ -22,6 +22,7 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
     required this.done,
     required this.weekend,
     required this.today,
+    required this.projects,
   });
 
   /// Page background, the color of the notebook paper.
@@ -57,6 +58,20 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
   /// Tint of today's column.
   final Color today;
 
+  /// Accents that tell projects apart, in a fixed order. They are muted, so
+  /// that they sit well on paper, and each one reads on the page color.
+  final List<Color> projects;
+
+  /// The accent of the project called [name]. The same name always gets the
+  /// same accent, in every view.
+  Color projectColor(String name) {
+    var h = 0;
+    for (final c in name.trim().toLowerCase().codeUnits) {
+      h = (h * 31 + c) & 0x7fffffff;
+    }
+    return projects[h % projects.length];
+  }
+
   /// The light palette.
   static const light = TefteriColors(
     paper: Color(0xFFF6F1E7),
@@ -70,6 +85,16 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
     done: Color(0xFF5B7553),
     weekend: Color(0x0F8A7B5A),
     today: Color(0x1F5B86C9),
+    projects: [
+      Color(0xFF2F6F8F),
+      Color(0xFFB5532F),
+      Color(0xFF5B7553),
+      Color(0xFF8A5A9E),
+      Color(0xFFB08A2E),
+      Color(0xFF3F7F7A),
+      Color(0xFFA64B64),
+      Color(0xFF6A6F9C),
+    ],
   );
 
   /// The dark palette ("midnight ink").
@@ -85,6 +110,16 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
     done: Color(0xFF9DBA94),
     weekend: Color(0x0FFFFFFF),
     today: Color(0x229DB6E8),
+    projects: [
+      Color(0xFF7DB5D0),
+      Color(0xFFE39A78),
+      Color(0xFF9DBA94),
+      Color(0xFFC59AD8),
+      Color(0xFFE0C068),
+      Color(0xFF7FC4BE),
+      Color(0xFFE08DA4),
+      Color(0xFF9EA4D6),
+    ],
   );
 
   @override
@@ -100,6 +135,7 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
     Color? done,
     Color? weekend,
     Color? today,
+    List<Color>? projects,
   }) =>
       TefteriColors(
         paper: paper ?? this.paper,
@@ -113,6 +149,7 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
         done: done ?? this.done,
         weekend: weekend ?? this.weekend,
         today: today ?? this.today,
+        projects: projects ?? this.projects,
       );
 
   @override
@@ -131,6 +168,10 @@ class TefteriColors extends ThemeExtension<TefteriColors> {
       done: l(done, other.done),
       weekend: l(weekend, other.weekend),
       today: l(today, other.today),
+      projects: [
+        for (var i = 0; i < projects.length; i++)
+          l(projects[i], other.projects[i % other.projects.length]),
+      ],
     );
   }
 }
