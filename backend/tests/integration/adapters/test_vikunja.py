@@ -120,6 +120,33 @@ async def test_subprojects_name_their_parent_and_can_be_created(
 
 
 @respx.mock
+async def test_archive_sets_the_flag_and_checks_that_it_stuck(
+    backend: VikunjaTaskBackend,
+) -> None:
+    project = {"id": 2, "title": "Work", "is_archived": False}
+    reads = respx.get(f"{BASE}/projects/2")
+    reads.side_effect = [
+        httpx.Response(200, json=project),
+        httpx.Response(200, json={**project, "is_archived": True}),
+    ]
+    write = respx.post(f"{BASE}/projects/2").respond(json={**project, "is_archived": True})
+    await backend.archive_container(Container("2", "Work"))
+    assert json.loads(write.calls[0].request.content)["is_archived"] is True
+    assert json.loads(write.calls[0].request.content)["title"] == "Work"  # nothing else changes
+
+
+@respx.mock
+async def test_archive_that_vikunja_did_not_keep_is_an_error(
+    backend: VikunjaTaskBackend,
+) -> None:
+    project = {"id": 2, "title": "Work", "is_archived": False}
+    respx.get(f"{BASE}/projects/2").respond(json=project)
+    respx.post(f"{BASE}/projects/2").respond(json=project)
+    with pytest.raises(NotSaved):
+        await backend.archive_container(Container("2", "Work"))
+
+
+@respx.mock
 async def test_pagination(backend: VikunjaTaskBackend) -> None:
     first = [task_json(id=i) for i in range(50)]
     route = respx.get(f"{BASE}/projects/2/tasks")

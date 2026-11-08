@@ -49,11 +49,13 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
   LookBackAnswer _answer(LookBackProject p) =>
       _answers[p.id] ?? LookBackAnswer(projectId: p.id);
 
-  void _set(LookBackProject p, {bool? finished, String? leftover}) =>
+  void _set(LookBackProject p,
+          {bool? finished, String? leftover, bool? archive}) =>
       setState(() => _answers[p.id] = LookBackAnswer(
             projectId: p.id,
             finishedAnyway: finished ?? _answer(p).finishedAnyway,
             leftover: leftover ?? _answer(p).leftover,
+            archive: archive ?? _answer(p).archive,
           ));
 
   Future<void> _save(LookBack back) async {
@@ -287,6 +289,18 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
                     : 'Count this project as done'),
               ),
             ],
+            // Any project can be archived, a finished one most of all.
+            SwitchListTile(
+              key: Key('archive-${p.id}'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              value: answer.archive,
+              onChanged: (v) => _set(p, archive: v),
+              title: const Text('Archive the project in your task app'),
+              subtitle: const Text(
+                  'It happens when you save. You can restore it in your task '
+                  'app.'),
+            ),
           ],
         ),
       ),

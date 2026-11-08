@@ -56,3 +56,4 @@ class Capability(StrEnum):
     RECURRING = "recurring"
     NOTE_APPEND = "note_append"
     SUBPROJECTS = "subprojects"
+    ARCHIVE_PROJECTS = "archive_projects"

@@ -42,6 +42,17 @@ flowchart LR
 - The look-back writes to the task app too. The choice Back to the backlog clears the due date of
   the tasks that remain (`TaskService.unschedule`).
 
+## Archive a project
+
+`ProjectService.archive` archives a project in the task app (`TaskBackend.archive_container`,
+capability `ARCHIVE_PROJECTS`) and then forgets it. The endpoint is
+`POST /connections/{id}/containers/{id}/archive`. The look-back can ask for it with `archive` in
+the answer for a project. It happens after the counts are stored.
+
+Vikunja archives the subprojects too, so tefteri drops them too. It marks their tasks as deleted
+in the app, as the next sync would. It removes the projects from draft plans. Committed plans
+keep the name. Tefteri refuses a project that is in a committed plan with no look-back yet.
+
 ## Rules that tests keep
 
 - A week holds at most three projects (`MAX_PROJECTS`). The server checks it before it creates a

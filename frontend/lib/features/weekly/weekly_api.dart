@@ -54,6 +54,12 @@ class WeeklyApi {
       _state(await _dio.post<Object?>('/weekly/$week/subprojects',
           data: {'parent_id': parentId, 'name': name}));
 
+  /// `POST /connections/{connectionId}/containers/{containerId}/archive`:
+  /// archives the project in the task app. The task app can restore it.
+  Future<void> archiveProject(String connectionId, String containerId) =>
+      _dio.post<Object?>(
+          '/connections/$connectionId/containers/$containerId/archive');
+
   /// `POST /weekly/{week}/spread`.
   Future<WeeklyState> spread(String week) async =>
       _state(await _dio.post<Object?>('/weekly/$week/spread'));

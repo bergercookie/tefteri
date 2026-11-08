@@ -20,6 +20,7 @@ from tefteri.domain.ports import TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.context import ContextFilter, load_maps
 from tefteri.services.errors import Invalid, NotFound, guard
+from tefteri.services.projects import ProjectService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 
@@ -109,6 +110,8 @@ class Answer:
     plan_project_id: uuid.UUID
     finished_anyway: bool = False
     leftover: str = "backlog"
+    archive: bool = False
+    """Archive the project in the task app once its result is stored."""
 
 
 def normalize_week(day: date) -> date:
@@ -120,12 +123,20 @@ class WeeklyService:
     """The weekly planning workflow."""
 
     def __init__(
-        self, tasks: TaskService, connections: ConnectionService, sync: SyncService
+        self,
+        tasks: TaskService,
+        connections: ConnectionService,
+        sync: SyncService,
+        projects: ProjectService,
     ) -> None:
-        """Use ``tasks`` to write days to the task app and ``sync`` to read projects again."""
+        """Use ``tasks`` to write days to the task app and ``sync`` to read projects again.
+
+        ``projects`` archives the projects that the user finishes in the look-back.
+        """
         self._tasks = tasks
         self._connections = connections
         self._sync = sync
+        self._projects = projects
 
     # -- plans ------------------------------------------------------------------------------
 
@@ -571,6 +582,11 @@ class WeeklyService:
         plan.reviewed_at = now
         plan.reflection = reflection.strip()
         await db.flush()
+        # Archive last: the counts are stored, and the plan no longer waits for its look-back.
+        for p in back.projects:
+            wish = by_id.get(p.row.id)
+            if wish is not None and wish.archive and p.row.container_id is not None:
+                await self._projects.archive(db, user_id, p.row.container_id)
         return plan
 
     async def history(self, db: AsyncSession, user_id: uuid.UUID) -> list[HistoryEntry]:
