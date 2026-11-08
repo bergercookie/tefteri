@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 from httpx import AsyncClient
 
-from tefteri.domain.entities import TaskDraft
+from tefteri.domain.entities import Container, TaskDraft
 from tests.conftest import V1, connect_all
 from tests.fakes.world import FakeWorld
 
@@ -129,3 +129,21 @@ async def test_window_filter_and_task_and_entry_side_by_side(
         )
     ).json()
     assert later == []
+
+
+async def test_a_task_in_the_calendar_names_its_project(api: AsyncClient, world: FakeWorld) -> None:
+    backend = world.tasks["default"]
+    backend.containers.append(Container("p2", "Website"))
+    await _setup(api)
+    await backend.create_task(
+        TaskDraft("p2", "Fix form", due_at=datetime(2026, 11, 2, 15, tzinfo=UTC))
+    )
+    await backend.create_task(
+        TaskDraft("p1", "Pay rent", due_at=datetime(2026, 11, 3, 15, tzinfo=UTC))
+    )
+    await api.post(f"{V1}/sync")
+    items = await _calendar(api)
+    assert items["Fix form"]["project"] == "Website"
+    assert items["Pay rent"]["project"] == "Inbox"
+    entries = [i for i in (await api.get(f"{V1}/calendar")).json() if i["type"] == "entry"]
+    assert all(e["project"] is None for e in entries)
