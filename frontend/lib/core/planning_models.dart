@@ -270,6 +270,7 @@ class CalendarItem {
     this.connectionId,
     this.status,
     this.clippedStart = false,
+    this.project,
   });
 
   /// Parses one calendar item JSON object.
@@ -285,6 +286,7 @@ class CalendarItem {
         connectionId: j['connection_id'] as String?,
         status: j['status'] as String?,
         clippedStart: j['clipped_start'] == true,
+        project: j['project'] as String?,
       );
 
   /// `entry` or `task`.
@@ -320,6 +322,9 @@ class CalendarItem {
   /// True when a task block would start on the previous day and is cut at
   /// 00:00 ("continues from previous day").
   final bool clippedStart;
+
+  /// For a task: the name of its project in the task app.
+  final String? project;
 
   /// True when this item is a scheduled task.
   bool get isTask => type == 'task';

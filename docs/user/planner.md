@@ -24,6 +24,12 @@ To move by one week, choose the arrows next to the Today button. You can also pr
 The arrow keys do not work while you type in the search box.
 Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
 
+## See the project of a task
+
+A task on the calendar has a small dark label with the name of its project. This shows you
+where each task belongs without opening it. In a short block, the label sits next to the title.
+A long name is cut. Point at the label to read the whole name. Events have no label.
+
 ## See and change a task
 
 Choose a task in the list, or a task block on the calendar. A pop-up shows the task. You can
