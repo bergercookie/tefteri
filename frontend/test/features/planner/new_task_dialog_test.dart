@@ -12,7 +12,6 @@ Map<String, Object?> _project(String id, String remote, String name,
       'id': id,
       'remote_id': remote,
       'name': name,
-      'context': null,
       'parent_remote_id': parent,
     };
 

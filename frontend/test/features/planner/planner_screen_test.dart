@@ -21,17 +21,6 @@ void main() {
     expect(find.byKey(const Key('block-entry-e1')), findsOneWidget);
     // the default filter is Today (FR-018)
     expect(api.where('GET /tasks').first.query['due'], 'today');
-    expect(api.where('GET /calendar').first.query['context'], 'all');
-  });
-
-  testWidgets('the work/life filter reloads both columns', (tester) async {
-    final api = plannerApi();
-    await pumpPlanner(tester, api);
-    await tester.tap(find.text('work'));
-    await tester.pumpAndSettle();
-    expect(api.where('GET /tasks').last.query['context'], 'work');
-    expect(api.where('GET /calendar').last.query['context'], 'work');
-    expect(api.where('GET /tasks/counts').last.query['context'], 'work');
   });
 
   testWidgets('sync reloads both columns', (tester) async {

@@ -439,7 +439,6 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
           const SizedBox(height: Space.md),
           _Row('Status', task.done ? 'Done' : 'Open', 'status'),
           _Row('On the calendar', _onCalendar(task), 'calendar'),
-          _Row('Context', _context(task), 'context'),
           if (task.project != null) _Row('Project', task.project!, 'project'),
           if (task.labels.isNotEmpty) _LabelsRow(labels: task.labels),
           if (task.syncState == 'conflict')
@@ -459,12 +458,6 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
     final due = task.dueAt?.toLocal();
     if (due != null) return '${dateKey(due)}, all day';
     return 'Not on the calendar';
-  }
-
-  static String _context(PlanTask task) {
-    final effective = task.effectiveContext ?? 'work';
-    final name = effective == 'life' ? 'Life' : 'Work';
-    return task.context == null ? '$name (no label, follows the app)' : name;
   }
 }
 
@@ -540,7 +533,6 @@ class EventDetailsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effective = event.effectiveContext == 'life' ? 'Life' : 'Work';
     return AlertDialog(
       key: const Key('event-details'),
       title: Text(event.title, key: const Key('event-details-title')),
@@ -552,12 +544,6 @@ class EventDetailsDialog extends StatelessWidget {
           children: [
             _Row('When', _when, 'when'),
             const _Row('Type', 'Calendar event', 'type'),
-            _Row(
-                'Context',
-                event.context == null
-                    ? '$effective (no label, follows the app)'
-                    : effective,
-                'context'),
           ],
         ),
       ),

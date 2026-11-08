@@ -56,11 +56,6 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   late ConnectionProvider _provider =
       ConnectionProvider.byId(widget.initial?.provider ?? '') ??
           ConnectionProvider.vikunja;
-  late Set<String> _contexts = switch (widget.initial?.defaultContext) {
-    'both' => {'life', 'work'},
-    'work' => {'work'},
-    _ => {'life'},
-  };
   late final _name = TextEditingController(
       text: widget.initial?.displayName ?? _provider.label);
   late final _url = TextEditingController(
@@ -104,7 +99,6 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     Navigator.of(context).pop(<String, Object?>{
       if (!_editing) 'provider': _provider.id,
       'display_name': _name.text.trim(),
-      'default_context': _contexts.length == 2 ? 'both' : _contexts.single,
       if (_provider.usesToken) ...{
         // Keep other settings, for example Trilium's root note.
         'settings': {
@@ -168,21 +162,6 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   child: Text('You sign in on the Google page. Tefteri never '
                       'sees your Google password.'),
                 ),
-              const SizedBox(height: 12),
-              // Projects, calendars and notes without their own label show
-              // in the chosen contexts; select both to show them in each.
-              const Text('Show unlabelled items in'),
-              const SizedBox(height: 4),
-              SegmentedButton<String>(
-                key: const Key('new-connection-context'),
-                multiSelectionEnabled: true,
-                segments: const [
-                  ButtonSegment(value: 'life', label: Text('Life')),
-                  ButtonSegment(value: 'work', label: Text('Work')),
-                ],
-                selected: _contexts,
-                onSelectionChanged: (s) => setState(() => _contexts = s),
-              ),
             ],
           ),
         ),

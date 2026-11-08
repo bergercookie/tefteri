@@ -33,7 +33,6 @@ void main() {
     expect(find.text('Book race'), findsNothing);
     expect(find.text('Tasks'), findsNothing);
     expect(find.text('Events'), findsNothing);
-    expect(api.where(_path).first.query['context'], 'all');
   });
 
   testWidgets('next year loads the next year view', (tester) async {

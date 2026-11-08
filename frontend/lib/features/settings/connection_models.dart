@@ -40,7 +40,6 @@ class Connection {
     required this.provider,
     required this.displayName,
     required this.status,
-    this.defaultContext,
     this.settings = const {},
     this.lastSyncAt,
     this.lastSyncOutcome,
@@ -52,7 +51,6 @@ class Connection {
         kind: '${json['kind'] ?? ''}',
         provider: '${json['provider'] ?? ''}',
         displayName: '${json['display_name'] ?? ''}',
-        defaultContext: json['default_context'] as String?,
         settings: json['settings'] is Map<String, dynamic>
             ? json['settings'] as Map<String, dynamic>
             : const {},
@@ -74,9 +72,6 @@ class Connection {
 
   /// Name shown to the user.
   final String displayName;
-
-  /// Context of unlabelled items: `life`, `work` or `both`, if set.
-  final String? defaultContext;
 
   /// Provider settings, for example `base_url`. Never holds credentials.
   final Map<String, dynamic> settings;

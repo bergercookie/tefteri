@@ -155,10 +155,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
     if (body['provider'] == ConnectionProvider.googleCalendar.id) {
       await _signInWithGoogle(
         'Connect Google Calendar',
-        {
-          'display_name': body['display_name'],
-          'default_context': body['default_context'],
-        },
+        {'display_name': body['display_name']},
       );
       return;
     }
@@ -319,7 +316,6 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
     if (c.provider == ConnectionProvider.googleCalendar.id) {
       await _signInWithGoogle('Reconnect ${c.displayName}', {
         'display_name': c.displayName,
-        if (c.defaultContext != null) 'default_context': c.defaultContext,
       });
       return;
     }

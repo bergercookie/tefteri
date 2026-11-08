@@ -6,7 +6,7 @@ import 'screenshot_helper.dart';
 
 /// A calendar entry JSON object.
 Map<String, Object?> entryJson(String id, String title, DateTime start,
-        {DateTime? end, String? location, String context = 'work'}) =>
+        {DateTime? end, String? location}) =>
     {
       'id': id,
       'connection_id': 'c2',
@@ -17,17 +17,12 @@ Map<String, Object?> entryJson(String id, String title, DateTime start,
           .toIso8601String(),
       'all_day': false,
       'location': location,
-      'context': context,
-      'effective_context': context,
       'sync_state': 'synced',
     };
 
 /// A note JSON object.
 Map<String, Object?> noteJson(String id, String title,
-        {String kind = 'custom',
-        String body = '',
-        String? context = 'work',
-        List<String>? taskIds}) =>
+        {String kind = 'custom', String body = '', List<String>? taskIds}) =>
     {
       'id': id,
       'connection_id': 'c3',
@@ -35,8 +30,6 @@ Map<String, Object?> noteJson(String id, String title,
       'title': title,
       'body': body,
       'note_date': null,
-      'context': context,
-      'effective_context': context ?? 'life',
       'sync_state': 'synced',
       if (taskIds != null) 'task_ids': taskIds,
     };
@@ -46,21 +39,18 @@ final connections = [
   {
     ...connectionJson('c1', 'tasks', 'Home tasks'),
     'provider': 'vikunja',
-    'default_context': 'life',
     'last_sync_at': '2026-11-02T08:15:00Z',
     'last_sync_outcome': 'ok',
   },
   {
     ...connectionJson('c2', 'calendar', 'Work calendar'),
     'provider': 'google_calendar',
-    'default_context': 'work',
     'last_sync_at': '2026-11-02T08:15:00Z',
     'last_sync_outcome': 'ok',
   },
   {
     ...connectionJson('c3', 'notes', 'Notes'),
     'provider': 'trilium',
-    'default_context': 'life',
     'last_sync_at': '2026-11-02T08:15:00Z',
     'last_sync_outcome': 'ok',
   },
@@ -76,15 +66,14 @@ Map<String, Object?> dayView() => {
         entryJson('e1', 'Team standup', DateTime(2026, 11, 2, 9),
             location: 'Room 4'),
         entryJson('e2', 'Dentist', DateTime(2026, 11, 2, 16),
-            end: DateTime(2026, 11, 2, 17), context: 'life'),
+            end: DateTime(2026, 11, 2, 17)),
       ],
       'tasks': [
         taskJson('t1', 'Write the release notes'),
-        taskJson('t2', 'Buy a birthday present', context: null),
+        taskJson('t2', 'Buy a birthday present'),
         taskJson('t3', 'Review the test plan', status: 'done'),
       ],
       'note': noteJson('n0', '2026-11-02',
           kind: 'daily',
-          context: null,
           body: 'Focus: release notes first.\n- Ask the team about the beta.'),
     };

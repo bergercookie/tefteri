@@ -37,7 +37,6 @@ void main() {
     expect(find.text('Draft copy'), findsNothing);
     expect(find.text('Tasks'), findsNothing);
     expect(find.byKey(const Key('no-tasks')), findsNothing);
-    expect(api.where(_path).first.query['context'], 'all');
   });
 
   testWidgets('next month loads the first day of December', (tester) async {

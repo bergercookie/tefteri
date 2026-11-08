@@ -10,7 +10,6 @@ import 'package:flutter/services.dart'
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
-import '../../core/context_filter.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import '../calendar/calendar_providers.dart';
@@ -129,7 +128,6 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(contextFilterProvider);
     final items = ref.watch(calendarItemsProvider(widget.weekStart));
     final pending = ref.watch(pendingTaskProvider);
     return Column(

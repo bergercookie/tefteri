@@ -44,7 +44,7 @@ same on every machine.
 ## Shape and motion
 
 - Small, crisp radii (`Corner`), hairline outlines instead of shadows, flat
-  surfaces. Pills only for the context switch and chips.
+  surfaces. Pills only for chips.
 - Spacing scale `Space` (4, 8, 12, 16, 24, 32).
 - Motion is short (150 to 240 ms) and is skipped when the user asks for
   reduced motion (`Motion.of`). Pages fade in with a small rise.
