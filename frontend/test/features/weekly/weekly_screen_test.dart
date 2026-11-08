@@ -210,6 +210,60 @@ void main() {
     expect(find.byKey(const Key('done-tasks')), findsOneWidget);
   });
 
+  testWidgets('a task can be marked done from the planning page',
+      (tester) async {
+    final s = WeeklyServer()..chosen.add('p1');
+    final (api, _) = await _pump(tester, server: s);
+    await _tap(tester, 'check-tasks');
+    expect(find.byKey(const Key('task-p1-t1')), findsOneWidget);
+    await _tap(tester, 'task-done-p1-t1');
+    expect(api.where('POST /tasks/p1-t1/complete'), hasLength(1));
+    expect(find.byKey(const Key('task-p1-t1')), findsNothing);
+    expect(find.byKey(const Key('task-p1-t2')), findsOneWidget);
+    expect(_text('day-progress', '0 of 1 task have a day'), findsOneWidget);
+  });
+
+  testWidgets('a task can be edited from the planning page', (tester) async {
+    final s = WeeklyServer()..chosen.add('p1');
+    final (api, _) = await _pump(tester, server: s);
+    await _tap(tester, 'check-tasks');
+    await _tap(tester, 'task-edit-p1-t1');
+    expect(find.byKey(const Key('task-edit-title')), findsOneWidget);
+    expect(api.where('GET /tasks/p1-t1'), isNotEmpty);
+    // Closing the pop-up reads the week again.
+    final before = api.where('GET /weekly/$weekKey').length;
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(api.where('GET /weekly/$weekKey').length, greaterThan(before));
+  });
+
+  testWidgets('a parked task leaves the plan and can be put back',
+      (tester) async {
+    final s = WeeklyServer()..chosen.add('p1');
+    final (api, _) = await _pump(tester, server: s);
+    await _tap(tester, 'check-tasks');
+    expect(find.byKey(const Key('parked-section')), findsNothing);
+    await _tap(tester, 'task-park-p1-t1');
+    expect(api.where('PUT /weekly/$weekKey/tasks/p1-t1/parked').single.data,
+        {'parked': true});
+    // Out of the list and the counts, in the closed section at the end.
+    expect(find.byKey(const Key('task-p1-t1')), findsNothing);
+    expect(_text('day-progress', '0 of 1 task have a day'), findsOneWidget);
+    expect(find.text('Parked (1)'), findsOneWidget);
+    expect(find.byKey(const Key('parked-p1-t1')), findsNothing);
+    // The spread leaves it alone.
+    await _tap(tester, 'spread');
+    expect(s.days.containsKey('p1-t1'), isFalse);
+    // Open the section and put the task back.
+    await _tap(tester, 'parked-toggle');
+    expect(find.byKey(const Key('parked-p1-t1')), findsOneWidget);
+    await _tap(tester, 'task-unpark-p1-t1');
+    expect(api.where('PUT /weekly/$weekKey/tasks/p1-t1/parked').last.data,
+        {'parked': false});
+    expect(find.byKey(const Key('parked-section')), findsNothing);
+    expect(find.byKey(const Key('task-p1-t1')), findsOneWidget);
+  });
+
   testWidgets('a task with a stale day says when it was due', (tester) async {
     final s = WeeklyServer()..chosen.add('p2');
     s.projects[1]['tasks'] = [

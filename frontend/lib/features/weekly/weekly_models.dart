@@ -15,6 +15,7 @@ class WeeklyTask {
     this.dueDay,
     this.plannedDay,
     this.done = false,
+    this.parked = false,
     this.url,
   });
 
@@ -25,11 +26,15 @@ class WeeklyTask {
         dueDay: _day(j['due_day']),
         plannedDay: _day(j['planned_day']),
         done: j['done'] == true,
+        parked: j['parked'] == true,
         url: j['url'] as String?,
       );
 
   /// The task is finished.
   final bool done;
+
+  /// The user set the task aside for this plan.
+  final bool parked;
 
   /// Task id.
   final String id;
@@ -59,6 +64,7 @@ class WeeklyProject {
     required this.doneTasks,
     required this.scheduledTasks,
     required this.tasks,
+    this.parkedTasks = 0,
     this.committedTasks = const [],
     this.containerId,
     this.url,
@@ -74,6 +80,7 @@ class WeeklyProject {
         openTasks: (j['open_tasks'] as num? ?? 0).toInt(),
         doneTasks: (j['done_tasks'] as num? ?? 0).toInt(),
         scheduledTasks: (j['scheduled_tasks'] as num? ?? 0).toInt(),
+        parkedTasks: (j['parked_tasks'] as num? ?? 0).toInt(),
         tasks: [
           for (final t in (j['tasks'] as List? ?? const []))
             WeeklyTask.fromJson(t as Map<String, dynamic>),
@@ -107,6 +114,15 @@ class WeeklyProject {
 
   /// Open tasks that have a day in the week.
   final int scheduledTasks;
+
+  /// How many open tasks the user set aside.
+  final int parkedTasks;
+
+  /// The open tasks that are part of the plan (not parked).
+  List<WeeklyTask> get activeTasks => [
+        for (final t in tasks)
+          if (!t.parked) t
+      ];
 
   /// The open tasks.
   final List<WeeklyTask> tasks;

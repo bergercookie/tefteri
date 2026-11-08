@@ -7,6 +7,7 @@ import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_models.dart';
+import '../planner/details_dialogs.dart';
 import '../../theme/theme.dart';
 import '../week/week_screen.dart';
 import 'projects_step.dart';
@@ -103,6 +104,8 @@ class TasksStep extends ConsumerWidget {
               today: today,
               locked: locked,
               actions: actions),
+        if (plan.projects.any((p) => p.parkedTasks > 0))
+          _ParkedSection(plan: plan, locked: locked, actions: actions),
         StepFooter(
           onBack: onBack,
           nextLabel: 'Review the plan',
@@ -133,7 +136,7 @@ class _WeekStrip extends StatelessWidget {
       0,
       (a, p) =>
           a +
-          p.tasks
+          p.activeTasks
               .where((t) => t.plannedDay != null && _same(t.plannedDay!, d))
               .length);
 
@@ -225,7 +228,7 @@ class _ProjectTasks extends StatelessWidget {
                 Expanded(child: Text(project.name, style: text.titleMedium)),
                 Text(
                   project.openTasks == 0
-                      ? 'No tasks'
+                      ? (project.parkedTasks > 0 ? 'All parked' : 'No tasks')
                       : '${project.scheduledTasks} of ${project.openTasks} have a day',
                   key: Key('project-progress-${project.id}'),
                   style: text.bodySmall,
@@ -233,9 +236,9 @@ class _ProjectTasks extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Space.sm),
-            if (project.openTasks == 0)
+            if (project.openTasks == 0 && project.parkedTasks == 0)
               NoTasksNotice(project: project, actions: actions),
-            for (final t in project.tasks)
+            for (final t in project.activeTasks)
               _TaskRow(
                   task: t,
                   days: days,
@@ -276,25 +279,163 @@ class _TaskRow extends StatelessWidget {
           BoxDecoration(border: Border(top: BorderSide(color: colors.rule))),
       child: SpreadRow(
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 160, maxWidth: 360),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(task.title, style: text.bodyMedium),
-                if (stale)
-                  Text('Was due ${dayLong(task.dueDay!)}',
-                      key: Key('was-due-${task.id}'), style: text.bodySmall),
-              ],
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                key: Key('task-done-${task.id}'),
+                tooltip: 'Mark as done',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.radio_button_unchecked,
+                    color: colors.done, semanticLabel: 'Mark as done'),
+                onPressed: () => actions
+                    .run((api) => api.completeTask(actions.week, task.id)),
+              ),
+              Flexible(
+                  child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 120, maxWidth: 300),
+                child: InkWell(
+                  key: Key('task-edit-${task.id}'),
+                  borderRadius: BorderRadius.circular(Corner.md),
+                  onTap: () async {
+                    await showTaskDetails(context,
+                        taskId: task.id, title: task.title);
+                    await actions.run((api) => api.state(actions.week));
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(task.title, style: text.bodyMedium),
+                        if (stale)
+                          Text('Was due ${dayLong(task.dueDay!)}',
+                              key: Key('was-due-${task.id}'),
+                              style: text.bodySmall),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+              IconButton(
+                key: Key('task-park-${task.id}'),
+                tooltip: 'Park for later',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.inventory_2_outlined, size: 20),
+                onPressed: locked
+                    ? null
+                    : () => actions.run(
+                        (api) => api.parkTask(actions.week, task.id, true)),
+              ),
+            ],
           ),
-          _DayPicker(
-              task: task,
-              days: days,
-              today: today,
-              locked: locked,
-              actions: actions),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _DayPicker(
+                  task: task,
+                  days: days,
+                  today: today,
+                  locked: locked,
+                  actions: actions),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// The tasks the user set aside, in a section that starts closed.
+class _ParkedSection extends StatefulWidget {
+  const _ParkedSection(
+      {required this.plan, required this.locked, required this.actions});
+
+  final WeeklyPlan plan;
+  final bool locked;
+  final WeeklyActions actions;
+
+  @override
+  State<_ParkedSection> createState() => _ParkedSectionState();
+}
+
+class _ParkedSectionState extends State<_ParkedSection> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.tefteri;
+    final parked = [
+      for (final p in widget.plan.projects)
+        for (final t in p.tasks)
+          if (t.parked) (p, t),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.sm),
+      child: Card(
+        key: const Key('parked-section'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              key: const Key('parked-toggle'),
+              borderRadius: BorderRadius.circular(Corner.md),
+              onTap: () => setState(() => _open = !_open),
+              child: Padding(
+                padding: const EdgeInsets.all(Space.lg),
+                child: Row(
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, size: 20),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: Text('Parked (${parked.length})',
+                          style: text.titleMedium),
+                    ),
+                    Icon(_open ? Icons.expand_less : Icons.expand_more),
+                  ],
+                ),
+              ),
+            ),
+            if (_open) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                child: Text(
+                    'Not part of this plan. Tefteri does not give them a day '
+                    'and does not count them. Your task app keeps them.',
+                    style: text.bodySmall),
+              ),
+              for (final (project, t) in parked)
+                Container(
+                  key: Key('parked-${t.id}'),
+                  margin: const EdgeInsets.symmetric(horizontal: Space.lg),
+                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                  decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: colors.rule))),
+                  child: SpreadRow(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(t.title, style: text.bodyMedium),
+                          ProjectChip(name: project.name),
+                        ],
+                      ),
+                      TextButton(
+                        key: Key('task-unpark-${t.id}'),
+                        onPressed: widget.locked
+                            ? null
+                            : () => widget.actions.run((api) =>
+                                api.parkTask(widget.actions.week, t.id, false)),
+                        child: const Text('Put back'),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: Space.sm),
+            ],
+          ],
+        ),
       ),
     );
   }
