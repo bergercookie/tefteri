@@ -46,3 +46,5 @@ class SourceContainer(IdMixin, Base):
     remote_id: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255))
     context: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    parent_remote_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    """``remote_id`` of the project this one is nested in (a Vikunja subproject)."""

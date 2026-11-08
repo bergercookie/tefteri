@@ -104,7 +104,7 @@ class VikunjaTaskBackend:
 
     def capabilities(self) -> set[Capability]:
         """Vikunja stores the due date and time of a task, and recurrence."""
-        return {Capability.TASK_TIME, Capability.RECURRING}
+        return {Capability.TASK_TIME, Capability.RECURRING, Capability.SUBPROJECTS}
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
         # Vikunja answers 412 for invalid data and 409 for duplicates, never for a version
@@ -137,9 +137,34 @@ class VikunjaTaskBackend:
         )
 
     async def list_containers(self) -> list[Container]:
-        """List projects."""
+        """List projects. A subproject names its parent.
+
+        Vikunja also lists its saved filters here, as projects with a negative id. A filter
+        holds no tasks of its own (they belong to real projects) and cannot be written to, so
+        it is not a container.
+        """
         data = await self._call("GET", "/projects")
-        return [Container(str(p["id"]), p["title"]) for p in data]
+        return [
+            Container(
+                str(p["id"]),
+                p["title"],
+                str(p["parent_project_id"]) if p.get("parent_project_id") else None,
+            )
+            for p in data
+            if int(p["id"]) > 0
+        ]
+
+    async def create_container(self, name: str, parent: Container | None) -> Container:
+        """Create a project, as a subproject of ``parent`` when given."""
+        body: dict[str, Any] = {"title": name}
+        if parent is not None:
+            body["parent_project_id"] = int(parent.remote_id)
+        data = await self._call("PUT", "/projects", json=body)
+        return Container(
+            str(data["id"]),
+            data["title"],
+            str(data["parent_project_id"]) if data.get("parent_project_id") else None,
+        )
 
     async def check_connection(self) -> ConnectionHealth:
         """Check the token by listing projects."""

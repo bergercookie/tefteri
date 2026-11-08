@@ -9,6 +9,7 @@ import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../goals/period_page.dart';
 import '../goals/periods.dart';
+import '../weekly/weekly_card.dart';
 
 /// Loads the week view for a `YYYY-MM-DD` key (any day of the week);
 /// reloads when the global context filter changes.
@@ -45,6 +46,7 @@ class _WeekScreenState extends ConsumerState<WeekScreen> {
       title: 'Week',
       label: 'Week of $key',
       view: ref.watch(weekViewProvider(key)),
+      banner: WeeklyPlanningCard(week: _start),
       onReload: () => ref.invalidate(weekViewProvider(key)),
       onShift: (d) => setState(() =>
           _start = DateTime(_start.year, _start.month, _start.day + 7 * d)),

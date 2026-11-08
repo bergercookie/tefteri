@@ -21,6 +21,7 @@ required=(
     user/conflicts.md
     user/work-and-life.md
     user/planning-goals.md
+    user/weekly-planning.md
     user/accounts-and-sign-in.md
     user/reviews-and-retrospectives.md
     user/shortcuts.md

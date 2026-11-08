@@ -12,6 +12,8 @@ class Container:
 
     remote_id: str
     name: str
+    parent_id: str | None = None
+    """``remote_id`` of the container this one is nested in (a Vikunja subproject), if any."""
 
 
 @dataclass(frozen=True)
