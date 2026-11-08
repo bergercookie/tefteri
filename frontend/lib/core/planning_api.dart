@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api_client.dart';
-import 'context_filter.dart';
 import 'planning_models.dart';
 
 /// Wraps the planning endpoints. Failed calls throw [DioException]; nothing
@@ -16,39 +15,33 @@ class PlanningApi {
 
   final Dio _dio;
 
-  /// `GET /views/day/{date}` with the context filter.
-  Future<DayView> day(String date, ContextFilter filter) async {
-    final r = await _dio.get<Object?>('/views/day/$date',
-        queryParameters: filter.queryParameters);
+  /// `GET /views/day/{date}`.
+  Future<DayView> day(String date) async {
+    final r = await _dio.get<Object?>('/views/day/$date');
     return DayView.fromJson(r.data! as Map<String, dynamic>);
   }
 
   /// `GET /views/week/{date}` (the week that holds [date]).
-  Future<PeriodView> weekView(String date, ContextFilter filter) =>
-      _period('/views/week/$date', filter);
+  Future<PeriodView> weekView(String date) => _period('/views/week/$date');
 
   /// `GET /views/month/{date}` (the month that holds [date]).
-  Future<PeriodView> monthView(String date, ContextFilter filter) =>
-      _period('/views/month/$date', filter);
+  Future<PeriodView> monthView(String date) => _period('/views/month/$date');
 
   /// `GET /views/year/{year}`.
-  Future<PeriodView> yearView(int year, ContextFilter filter) =>
-      _period('/views/year/$year', filter);
+  Future<PeriodView> yearView(int year) => _period('/views/year/$year');
 
-  Future<PeriodView> _period(String path, ContextFilter filter) async {
-    final r =
-        await _dio.get<Object?>(path, queryParameters: filter.queryParameters);
+  Future<PeriodView> _period(String path) async {
+    final r = await _dio.get<Object?>(path);
     return PeriodView.fromJson(r.data! as Map<String, dynamic>);
   }
 
   /// `GET /goals` for one period, or for the children of [parentId].
-  Future<List<PlanGoal>> goals(ContextFilter filter,
+  Future<List<PlanGoal>> goals(
       {String? periodType, String? periodStart, String? parentId}) async {
     final r = await _dio.get<Object?>('/goals', queryParameters: {
       if (periodType != null) 'period_type': periodType,
       if (periodStart != null) 'period_start': periodStart,
       if (parentId != null) 'parent_id': parentId,
-      ...filter.queryParameters,
     });
     return [
       for (final g in (r.data as List? ?? const []))
@@ -115,13 +108,11 @@ class PlanningApi {
   Future<void> linkTaskToGoal(String id, String? goalId) =>
       _dio.patch<Object?>('/tasks/$id', data: {'goal_id': goalId});
 
-  /// `GET /calendar` for `[from, to)` with the context filter.
-  Future<List<CalendarItem>> calendar(
-      DateTime from, DateTime to, ContextFilter filter) async {
+  /// `GET /calendar` for `[from, to)`.
+  Future<List<CalendarItem>> calendar(DateTime from, DateTime to) async {
     final r = await _dio.get<Object?>('/calendar', queryParameters: {
       'from': from.toUtc().toIso8601String(),
       'to': to.toUtc().toIso8601String(),
-      ...filter.queryParameters,
     });
     return [
       for (final i in (r.data as List? ?? const []))
@@ -132,12 +123,10 @@ class PlanningApi {
   /// `GET /tasks` for the planner: open tasks by [due] filter or by title
   /// search [query]. A non-empty [query] searches all open tasks and the
   /// server ignores [due].
-  Future<List<PlanTask>> tasks(ContextFilter filter,
-      {String? due, String? query}) async {
+  Future<List<PlanTask>> tasks({String? due, String? query}) async {
     final r = await _dio.get<Object?>('/tasks', queryParameters: {
       if (due != null) 'due': due,
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-      ...filter.queryParameters,
     });
     return [
       for (final t in (r.data as List? ?? const []))
@@ -153,9 +142,8 @@ class PlanningApi {
 
   /// `GET /tasks/counts`: open tasks per planner filter, keyed by the
   /// filter's API value.
-  Future<Map<String, int>> taskCounts(ContextFilter filter) async {
-    final r = await _dio.get<Object?>('/tasks/counts',
-        queryParameters: filter.queryParameters);
+  Future<Map<String, int>> taskCounts() async {
+    final r = await _dio.get<Object?>('/tasks/counts');
     final data = r.data as Map<String, dynamic>? ?? const {};
     return {for (final e in data.entries) e.key: (e.value as num).toInt()};
   }

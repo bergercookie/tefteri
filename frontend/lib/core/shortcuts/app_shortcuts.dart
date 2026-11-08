@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import '../../features/planner/new_task_dialog.dart';
 import '../../features/settings/sync_controller.dart';
 import '../auth_controller.dart';
-import '../context_filter.dart';
 import 'keymap.dart';
 
 /// True while a text field has the keyboard focus.
@@ -73,10 +72,6 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
         actions: {
           OpenViewIntent: _KeyAction<OpenViewIntent>(
             (i) => widget.router.go(i.path),
-            (_) => _signedIn && _plainAllowed(),
-          ),
-          SetContextIntent: _KeyAction<SetContextIntent>(
-            (i) => ref.read(contextFilterProvider.notifier).state = i.filter,
             (_) => _signedIn && _plainAllowed(),
           ),
           SyncIntent: _KeyAction<SyncIntent>(

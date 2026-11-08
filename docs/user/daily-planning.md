@@ -20,7 +20,7 @@ Tefteri does not store these items. They stay in your own apps. Tefteri changes 
 3. To see a different day, choose the arrows or the date at the top.
 4. Press Sync to get the newest data.
 
-![The daily view for 2 November 2026. It shows two events, three tasks and the daily note. One task has the Unclassified marker.](../images/daily-view.png)
+![The daily view for 2 November 2026. It shows two events, three tasks and the daily note.](../images/daily-view.png)
 
 If you did not connect your apps, read [Connect your apps](connect-apps.md) first.
 

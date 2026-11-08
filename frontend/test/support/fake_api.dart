@@ -93,7 +93,6 @@ Map<String, Object?> connectionJson(String id, String kind, String name) => {
       'kind': kind,
       'provider': 'test',
       'display_name': name,
-      'default_context': null,
       'status': 'ok',
       'last_sync_at': null,
       'last_sync_outcome': null,
@@ -101,7 +100,7 @@ Map<String, Object?> connectionJson(String id, String kind, String name) => {
 
 /// A task JSON object.
 Map<String, Object?> taskJson(String id, String title,
-        {String status = 'open', String? context = 'work'}) =>
+        {String status = 'open'}) =>
     {
       'id': id,
       'connection_id': 'c1',
@@ -111,8 +110,6 @@ Map<String, Object?> taskJson(String id, String title,
       'due_at': null,
       'scheduled_start': null,
       'scheduled_end': null,
-      'context': context,
-      'effective_context': context ?? 'work',
       'sync_state': 'synced',
     };
 
@@ -133,7 +130,6 @@ Map<String, Object?> goalJson(String id, String title,
       'title': title,
       'description': description,
       'criteria': criteria,
-      'context': 'work',
       'status': status,
       'progress': progress,
     };

@@ -11,8 +11,7 @@ import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
 
-/// Loads open conflicts (`GET /conflicts`). The API has no context filter
-/// for conflicts, so all of them are shown.
+/// Loads open conflicts (`GET /conflicts`).
 final conflictsProvider = FutureProvider<List<SyncConflict>>(
     (ref) => ref.watch(planningApiProvider).conflicts());
 

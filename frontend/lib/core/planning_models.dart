@@ -31,8 +31,6 @@ class PlanTask {
     this.dueAt,
     this.scheduledStart,
     this.scheduledEnd,
-    this.context,
-    this.effectiveContext,
     this.goalId,
     this.project,
     this.labels = const [],
@@ -49,8 +47,6 @@ class PlanTask {
         dueAt: _dt(j['due_at']),
         scheduledStart: _dt(j['scheduled_start']),
         scheduledEnd: _dt(j['scheduled_end']),
-        context: j['context'] as String?,
-        effectiveContext: j['effective_context'] as String?,
         syncState: '${j['sync_state'] ?? 'synced'}',
         goalId: j['goal_id'] == null ? null : '${j['goal_id']}',
         project: j['project'] as String?,
@@ -81,12 +77,6 @@ class PlanTask {
 
   /// Planned end, if scheduled.
   final DateTime? scheduledEnd;
-
-  /// Own context (`work`, `life` or null when unclassified).
-  final String? context;
-
-  /// Context after defaults are applied.
-  final String? effectiveContext;
 
   /// `synced`, `conflict` or `deleted_remotely`.
   final String syncState;
@@ -123,8 +113,6 @@ class PlanEntry {
     this.start,
     this.end,
     this.location,
-    this.context,
-    this.effectiveContext,
   });
 
   /// Parses an entry JSON object.
@@ -136,8 +124,6 @@ class PlanEntry {
         end: _dt(j['end']),
         allDay: j['all_day'] == true,
         location: j['location'] as String?,
-        context: j['context'] as String?,
-        effectiveContext: j['effective_context'] as String?,
         syncState: '${j['sync_state'] ?? 'synced'}',
       );
 
@@ -162,12 +148,6 @@ class PlanEntry {
   /// Place, if any.
   final String? location;
 
-  /// Own context (null when unclassified).
-  final String? context;
-
-  /// Context after defaults are applied.
-  final String? effectiveContext;
-
   /// `synced`, `conflict` or `deleted_remotely`.
   final String syncState;
 }
@@ -182,7 +162,6 @@ class PlanNote {
     required this.title,
     required this.body,
     this.noteDate,
-    this.context,
   });
 
   /// Parses a note JSON object.
@@ -192,7 +171,6 @@ class PlanNote {
         title: '${j['title'] ?? ''}',
         body: '${j['body'] ?? ''}',
         noteDate: j['note_date'] as String?,
-        context: j['context'] as String?,
       );
 
   /// Note id.
@@ -209,9 +187,6 @@ class PlanNote {
 
   /// Date for daily notes (`YYYY-MM-DD`).
   final String? noteDate;
-
-  /// Own context (null when unclassified).
-  final String? context;
 }
 
 /// Response of `GET /views/day/{date}`.
@@ -265,8 +240,6 @@ class CalendarItem {
     required this.allDay,
     this.start,
     this.end,
-    this.context,
-    this.effectiveContext,
     this.connectionId,
     this.status,
     this.clippedStart = false,
@@ -281,8 +254,6 @@ class CalendarItem {
         start: _dt(j['start']),
         end: _dt(j['end']),
         allDay: j['all_day'] == true,
-        context: j['context'] as String?,
-        effectiveContext: j['effective_context'] as String?,
         connectionId: j['connection_id'] as String?,
         status: j['status'] as String?,
         clippedStart: j['clipped_start'] == true,
@@ -306,12 +277,6 @@ class CalendarItem {
 
   /// True for all-day items.
   final bool allDay;
-
-  /// Own context (null when unclassified).
-  final String? context;
-
-  /// Context after defaults are applied.
-  final String? effectiveContext;
 
   /// Owning connection id.
   final String? connectionId;
@@ -394,7 +359,6 @@ class PlanGoal {
     this.parentId,
     this.description,
     this.criteria,
-    this.context,
   });
 
   /// Parses a goal JSON object.
@@ -406,7 +370,6 @@ class PlanGoal {
         title: '${j['title'] ?? ''}',
         description: j['description'] as String?,
         criteria: j['criteria'] as String?,
-        context: j['context'] as String?,
         status: '${j['status'] ?? 'active'}',
         progress: ((j['progress'] as num?) ?? 0).toDouble().clamp(0.0, 1.0),
       );
@@ -431,9 +394,6 @@ class PlanGoal {
 
   /// What has to be true for the goal to count as complete.
   final String? criteria;
-
-  /// Own context (`work`, `life` or null).
-  final String? context;
 
   /// `active`, `done` or `dropped`.
   final String status;

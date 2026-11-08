@@ -77,7 +77,6 @@ void main() {
     final q = api.where('GET /goals').first.query;
     expect(q['period_type'], 'year');
     expect(q['period_start'], '2026-01-01');
-    expect(q['context'], 'all');
     await tester.pumpAndSettle(); // let the nested goal requests finish
   });
 

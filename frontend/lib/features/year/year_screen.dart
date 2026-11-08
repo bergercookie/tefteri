@@ -4,15 +4,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../goals/period_page.dart';
 
-/// Loads the year view; reloads when the global context filter changes.
+/// Loads the year view.
 final yearViewProvider = FutureProvider.family<PeriodView, int>((ref, year) {
-  final filter = ref.watch(contextFilterProvider);
-  return ref.watch(planningApiProvider).yearView(year, filter);
+  return ref.watch(planningApiProvider).yearView(year);
 });
 
 /// Shows one year. The server sends no events for a year.

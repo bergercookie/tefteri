@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../core/context_filter.dart';
 import '../../core/planning_models.dart';
 import 'goal_dialog.dart';
 
@@ -106,10 +105,7 @@ class GoalTile extends StatelessWidget {
           ),
         ],
       ),
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        ContextMarker(itemContext: goal.context),
-        if (trailing != null) trailing!,
-      ]),
+      trailing: trailing,
     );
   }
 }

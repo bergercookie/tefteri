@@ -26,7 +26,6 @@ Future<(FakeApi, WeeklyServer)> _pump(
         'start': DateTime(2030, 3, 5, 10).toUtc().toIso8601String(),
         'end': null,
         'all_day': false,
-        'context': 'work',
         'sync_state': 'synced',
       },
     ]),

@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/api_error.dart';
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import 'weekly_models.dart';
 
@@ -29,10 +28,8 @@ class WeeklyApi {
       _state(await _dio.post<Object?>('/weekly/$week/refresh'));
 
   /// `GET /weekly/{week}/candidates`.
-  Future<List<WeeklyCandidate>> candidates(
-      String week, ContextFilter filter) async {
-    final r = await _dio.get<Object?>('/weekly/$week/candidates',
-        queryParameters: filter.queryParameters);
+  Future<List<WeeklyCandidate>> candidates(String week) async {
+    final r = await _dio.get<Object?>('/weekly/$week/candidates');
     return [
       for (final c in (r.data as List? ?? const []))
         WeeklyCandidate.fromJson(c as Map<String, dynamic>),
@@ -187,11 +184,10 @@ final weeklyStateProvider = StateNotifierProvider.autoDispose
       ref.watch(weeklyApiProvider), ref.watch(planningApiProvider), week),
 );
 
-/// Projects the user can pick for a week, for the context filter.
+/// Projects the user can pick for a week.
 final weeklyCandidatesProvider = FutureProvider.autoDispose
     .family<List<WeeklyCandidate>, String>((ref, week) {
-  final filter = ref.watch(contextFilterProvider);
-  return ref.watch(weeklyApiProvider).candidates(week, filter);
+  return ref.watch(weeklyApiProvider).candidates(week);
 });
 
 /// The reviewed weeks.
