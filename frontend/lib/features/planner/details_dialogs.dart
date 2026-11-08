@@ -58,8 +58,69 @@ class TaskDetailsDialog extends ConsumerStatefulWidget {
 }
 
 class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
+  final _titleCtl = TextEditingController();
+  final _descriptionCtl = TextEditingController();
+
+  /// The task as the server last sent it; the edits are measured against it.
+  PlanTask? _base;
+  DateTime? _date;
+  TimeOfDay? _time;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.initial;
+    if (t != null) _load(t);
+  }
+
+  @override
+  void dispose() {
+    _titleCtl.dispose();
+    _descriptionCtl.dispose();
+    super.dispose();
+  }
+
+  /// The day and the start time of [t]: from its calendar block when it has
+  /// one, else its due date as an all-day task.
+  static (DateTime?, TimeOfDay?) _dayOf(PlanTask t) {
+    final s = t.scheduledStart?.toLocal();
+    if (s != null) {
+      return (
+        DateTime(s.year, s.month, s.day),
+        TimeOfDay(hour: s.hour, minute: s.minute)
+      );
+    }
+    final d = t.dueAt?.toLocal();
+    if (d != null) return (DateTime(d.year, d.month, d.day), null);
+    return (null, null);
+  }
+
+  /// Fills the form from [t].
+  void _load(PlanTask t) {
+    _base = t;
+    _titleCtl.text = t.title;
+    _descriptionCtl.text = t.description ?? '';
+    final (date, time) = _dayOf(t);
+    _date = date;
+    _time = time;
+  }
+
+  bool get _textChanged =>
+      _base != null &&
+      (_titleCtl.text.trim() != _base!.title ||
+          _descriptionCtl.text != (_base!.description ?? ''));
+
+  bool get _dayChanged {
+    if (_base == null) return false;
+    final (d, t) = _dayOf(_base!);
+    return d != _date || t != _time;
+  }
+
+  bool get _dirty => _textChanged || _dayChanged;
+
+  bool get _canSave => _dirty && _titleCtl.text.trim().isNotEmpty && !_busy;
 
   /// Runs [action] against the server, then reloads the task and the planner.
   Future<void> _run(Future<void> Function(PlanningApi api) action,
@@ -82,6 +143,80 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
     } else {
       ref.invalidate(taskDetailProvider(widget.taskId));
     }
+  }
+
+  /// Writes the edits to the task app: the text first, then the day.
+  Future<void> _save() async {
+    final base = _base!;
+    final title = _titleCtl.text.trim();
+    final description = _descriptionCtl.text;
+    final textChanged = _textChanged;
+    final dayChanged = _dayChanged;
+    final date = _date;
+    final time = _time;
+    await _run((api) async {
+      if (textChanged) {
+        await api.updateTask(base.id, title: title, description: description);
+      }
+      if (dayChanged) {
+        if (date == null) {
+          await api.unscheduleTask(base.id);
+        } else if (time == null) {
+          await api.scheduleTaskOnDate(base.id, date);
+        } else {
+          await api.scheduleTaskAt(
+              base.id,
+              DateTime(
+                  date.year, date.month, date.day, time.hour, time.minute));
+        }
+      }
+    }, closeAfter: true);
+  }
+
+  Future<void> _close() async {
+    if (!_dirty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('task-discard-confirm'),
+        title: const Text('Discard your changes?'),
+        content: const Text('The task keeps its old values.'),
+        actions: [
+          TextButton(
+              key: const Key('task-discard-keep'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep editing')),
+          FilledButton(
+              key: const Key('task-discard-yes'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Discard')),
+        ],
+      ),
+    );
+    if (discard == true && mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date ?? DateTime(now.year, now.month, now.day),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && mounted) {
+      setState(() => _date = DateTime(picked.year, picked.month, picked.day));
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+        context: context,
+        initialTime: _time ?? const TimeOfDay(hour: 9, minute: 0));
+    if (picked != null && mounted) setState(() => _time = picked);
   }
 
   Future<void> _delete() async {
@@ -144,16 +279,22 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final loaded = ref.watch(taskDetailProvider(widget.taskId));
-    final task = loaded.valueOrNull ?? widget.initial;
+    // The server's copy replaces the form, unless the user is editing.
+    ref.listen(taskDetailProvider(widget.taskId), (prev, next) {
+      final t = next.valueOrNull;
+      if (t != null && !_dirty) setState(() => _load(t));
+    });
+    final task = _base ?? loaded.valueOrNull;
+    if (_base == null && task != null) _load(task);
     return AlertDialog(
       key: const Key('task-details'),
       title: Row(
         children: [
           Expanded(
-            child: Text(task?.title ?? widget.title ?? 'Task',
-                key: const Key('task-details-title')),
+            child: Text(task == null ? (widget.title ?? 'Task') : 'Task',
+                key: const Key('task-details-heading')),
           ),
-          if (task != null) _buttons(task),
+          if (task != null) _buttons(_base!),
         ],
       ),
       content: SizedBox(
@@ -171,8 +312,8 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
                         TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
             Flexible(
-              child: task != null
-                  ? _TaskFields(task: task)
+              child: _base != null
+                  ? _form(_base!)
                   : loaded.when(
                       loading: () => const SizedBox(
                           height: 80,
@@ -191,7 +332,7 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
                           ),
                         ],
                       ),
-                      data: (t) => _TaskFields(task: t),
+                      data: (_) => const SizedBox.shrink(),
                     ),
             ),
           ],
@@ -200,28 +341,115 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
       actions: [
         TextButton(
           key: const Key('task-details-close'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          onPressed: _busy ? null : _close,
+          child: Text(_dirty ? 'Cancel' : 'Close'),
         ),
+        if (_base != null)
+          FilledButton(
+            key: const Key('task-save'),
+            onPressed: _canSave ? _save : null,
+            child: const Text('Save'),
+          ),
       ],
     );
   }
-}
 
-class _TaskFields extends StatelessWidget {
-  const _TaskFields({required this.task});
-
-  final PlanTask task;
-
-  String get _due {
-    final due = task.dueAt?.toLocal();
-    if (due == null) return 'No due date';
-    return task.scheduledStart == null
-        ? dateKey(due)
-        : '${dateKey(due)} ${hhmm(due)}';
+  Widget _form(PlanTask task) {
+    final text = Theme.of(context).textTheme;
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            key: const Key('task-edit-title'),
+            controller: _titleCtl,
+            textInputAction: TextInputAction.next,
+            style: text.titleSmall,
+            decoration: InputDecoration(
+              labelText: 'Title',
+              errorText:
+                  _titleCtl.text.trim().isEmpty ? 'The title is needed.' : null,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: Space.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: _PickerField(
+                  fieldKey: const ValueKey('task-edit-date'),
+                  clearKey: const Key('task-edit-date-clear'),
+                  label: 'Day',
+                  value: _date == null ? null : dateKey(_date!),
+                  empty: 'No date',
+                  onTap: _busy ? null : _pickDate,
+                  onClear: _date == null || _busy
+                      ? null
+                      : () => setState(() {
+                            _date = null;
+                            _time = null;
+                          }),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                flex: 4,
+                child: _PickerField(
+                  fieldKey: const ValueKey('task-edit-time'),
+                  clearKey: const Key('task-edit-time-clear'),
+                  label: 'Starts at',
+                  value: _time == null
+                      ? null
+                      : '${_time!.hour.toString().padLeft(2, '0')}:'
+                          '${_time!.minute.toString().padLeft(2, '0')}',
+                  empty: _date == null ? '-' : 'All day',
+                  onTap: _busy || _date == null ? null : _pickTime,
+                  onClear: _time == null || _busy
+                      ? null
+                      : () => setState(() => _time = null),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: Space.xs),
+            child: Text(
+              'Without a time, the task is all day. With a time, it takes one '
+              'hour, and the due date is the end of that hour.',
+              key: const Key('task-edit-day-hint'),
+              style: text.bodySmall,
+            ),
+          ),
+          const SizedBox(height: Space.md),
+          TextField(
+            key: const Key('task-edit-description'),
+            controller: _descriptionCtl,
+            minLines: 3,
+            maxLines: 8,
+            decoration: const InputDecoration(
+              labelText: 'Description',
+              alignLabelWithHint: true,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: Space.md),
+          _Row('Status', task.done ? 'Done' : 'Open', 'status'),
+          _Row('On the calendar', _onCalendar(task), 'calendar'),
+          _Row('Context', _context(task), 'context'),
+          if (task.project != null) _Row('Project', task.project!, 'project'),
+          if (task.labels.isNotEmpty) _LabelsRow(labels: task.labels),
+          if (task.syncState == 'conflict')
+            const _Row('Sync',
+                'Changed in both places. Open the Conflicts screen.', 'sync'),
+        ],
+      ),
+    );
   }
 
-  String get _onCalendar {
+  static String _onCalendar(PlanTask task) {
     final start = task.scheduledStart?.toLocal();
     final end = task.scheduledEnd?.toLocal();
     if (start != null && end != null) {
@@ -232,37 +460,60 @@ class _TaskFields extends StatelessWidget {
     return 'Not on the calendar';
   }
 
-  String get _context {
+  static String _context(PlanTask task) {
     final effective = task.effectiveContext ?? 'work';
     final name = effective == 'life' ? 'Life' : 'Work';
     return task.context == null ? '$name (no label, follows the app)' : name;
   }
+}
+
+/// A read-only looking field that opens a picker when tapped, with a button
+/// that clears it.
+class _PickerField extends StatelessWidget {
+  const _PickerField({
+    required this.fieldKey,
+    required this.clearKey,
+    required this.label,
+    required this.value,
+    required this.empty,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final ValueKey<String> fieldKey;
+  final Key clearKey;
+  final String label;
+  final String? value;
+  final String empty;
+  final VoidCallback? onTap;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
-    final description = task.description?.trim() ?? '';
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Row('Status', task.done ? 'Done' : 'Open', 'status'),
-          _Row('Due', _due, 'due'),
-          _Row('On the calendar', _onCalendar, 'calendar'),
-          _Row('Context', _context, 'context'),
-          if (task.project != null) _Row('Project', task.project!, 'project'),
-          if (task.labels.isNotEmpty) _LabelsRow(labels: task.labels),
-          if (task.syncState == 'conflict')
-            const _Row('Sync',
-                'Changed in both places. Open the Conflicts screen.', 'sync'),
-          const SizedBox(height: 12),
-          Text('Description', style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 4),
-          Text(
-            description.isEmpty ? 'No description.' : description,
-            key: const Key('task-details-description'),
-          ),
-        ],
+    final text = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return InkWell(
+      key: fieldKey,
+      borderRadius: BorderRadius.circular(Corner.md),
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: onClear == null
+              ? null
+              : IconButton(
+                  key: clearKey,
+                  tooltip: 'Clear',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: onClear,
+                ),
+        ),
+        child: Text(value ?? empty,
+            key: Key('${fieldKey.value}-value'),
+            style:
+                text.bodyMedium?.copyWith(color: value == null ? muted : null),
+            overflow: TextOverflow.ellipsis),
       ),
     );
   }
