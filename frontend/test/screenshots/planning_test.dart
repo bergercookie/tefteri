@@ -26,11 +26,11 @@ final _weekGoal = goalJson('g3', 'Run 25 km',
 
 final _tasks = [
   {
-    ...taskJson('t6', 'Buy running shoes', status: 'done', context: 'life'),
+    ...taskJson('t6', 'Buy running shoes', status: 'done'),
     'goal_id': 'g3',
   },
   {
-    ...taskJson('t7', 'Run 10 km on Saturday', context: 'life'),
+    ...taskJson('t7', 'Run 10 km on Saturday'),
     'goal_id': 'g3',
     'scheduled_start': '2026-11-07T08:00:00Z',
   },

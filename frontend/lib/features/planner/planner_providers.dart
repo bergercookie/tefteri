@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
-import '../../core/context_filter.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../calendar/calendar_providers.dart';
@@ -48,18 +47,14 @@ final taskSearchProvider = StateProvider<String>((_) => '');
 
 /// Open tasks for the active filter or search.
 final plannerTasksProvider = FutureProvider<List<PlanTask>>((ref) {
-  final filter = ref.watch(contextFilterProvider);
   final due = ref.watch(dueFilterProvider);
   final query = ref.watch(taskSearchProvider);
-  return ref
-      .watch(planningApiProvider)
-      .tasks(filter, due: due.apiValue, query: query);
+  return ref.watch(planningApiProvider).tasks(due: due.apiValue, query: query);
 });
 
 /// Task counts for the filter chips.
 final taskCountsProvider = FutureProvider<Map<String, int>>((ref) {
-  final filter = ref.watch(contextFilterProvider);
-  return ref.watch(planningApiProvider).taskCounts(filter);
+  return ref.watch(planningApiProvider).taskCounts();
 });
 
 /// Where a task that the user is dragging would land if dropped now.

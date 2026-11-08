@@ -67,15 +67,6 @@ The base URL is the address that you use to open Trilium Next, for example
 `#`, and it ignores `/etapi` at the end. Tefteri does not show the hidden notes of Trilium
 Next, such as the launch bar and the options.
 
-## Choose what each connection shows
-
-Each connection has containers. A container is a Vikunja project, a Google calendar or a group of notes.
-You can set each container to Life or Work. Then the Life and Work switch shows the right items.
-
-When you add a connection, choose where the items without a label show: Life, Work or both.
-If you choose both, these items show when the switch is on Life and when it is on Work.
-Items and containers that have a label show only in their own context.
-
 ## Use Sync
 
 Tefteri does not sync in the background. You start each sync.
@@ -107,7 +98,7 @@ If you did not sync for a long time, the data on the screen can be old. Press Sy
 
 1. Open Settings.
 2. Choose the edit button (the pencil) next to the connection.
-3. Change the name, the base URL, the token or the context.
+3. Change the name, the base URL or the token.
    To keep the stored token, leave the token field empty.
 4. Choose Save. Then press Sync.
 

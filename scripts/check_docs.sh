@@ -19,7 +19,6 @@ required=(
     user/daily-planning.md
     user/scheduling.md
     user/conflicts.md
-    user/work-and-life.md
     user/planning-goals.md
     user/weekly-planning.md
     user/accounts-and-sign-in.md

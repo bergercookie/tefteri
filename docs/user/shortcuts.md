@@ -10,7 +10,7 @@ You can open every view and do common actions with the keyboard. Each view opens
 
 You can also choose the keyboard button at the top of the screen.
 
-![The Keyboard shortcuts list. It shows one key for each view and the keys for sync, the work and life filter, the help and Esc.](../images/shortcuts-help.png)
+![The Keyboard shortcuts list. It shows one key for each view and the keys for sync, the help and Esc.](../images/shortcuts-help.png)
 
 ## Open a view
 
@@ -36,9 +36,6 @@ The menu also shows the key next to each view.
 | N | Create a new task (opens the New task dialog) |
 | S | Sync all connections |
 | F5 | Sync all connections, also while you type |
-| 1 | Show all items |
-| 2 | Show life items only |
-| 3 | Show work items only |
 | ? | Show the list of shortcuts |
 | Esc | Leave the text field |
 

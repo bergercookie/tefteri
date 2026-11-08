@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import '../features/settings/sync_controller.dart';
 import '../theme/theme.dart';
 import 'auth_controller.dart';
-import 'context_filter.dart';
 import 'shortcuts/app_shortcuts.dart';
 import 'shortcuts/keymap.dart';
 
@@ -27,9 +26,6 @@ const double _railExtendedWidth = 232;
 /// Distance from the rail's left edge to the icons (and the mark) when the
 /// rail shows labels: the list's side padding plus the item's own.
 const double _railIndent = Space.md + Space.lg;
-
-/// Narrower than this, the context switch moves to its own row.
-const double _headerWrapWidth = 720;
 
 /// The icon of each view, all in the same outlined style.
 const _viewIcons = <String, IconData>{
@@ -116,8 +112,6 @@ class AppShell extends ConsumerWidget {
                       title: title,
                       backTo: backTo,
                       showMenu: !rail,
-                      wrap: c.maxWidth - (rail ? railWidth : 0) <
-                          _headerWrapWidth,
                     ),
                     const Divider(height: 1),
                     Expanded(child: body),
@@ -132,34 +126,21 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// Title, context switch and the header buttons.
+/// Title and the header buttons.
 class _Header extends ConsumerWidget {
   const _Header({
     required this.title,
     required this.backTo,
     required this.showMenu,
-    required this.wrap,
   });
 
   final String title;
   final String? backTo;
   final bool showMenu;
-  final bool wrap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filter = ref.watch(contextFilterProvider);
     final sync = ref.watch(syncControllerProvider);
-    final switcher = SegmentedButton<ContextFilter>(
-      showSelectedIcon: false,
-      segments: [
-        for (final f in ContextFilter.values)
-          ButtonSegment(value: f, label: Text(f.name)),
-      ],
-      selected: {filter},
-      onSelectionChanged: (s) =>
-          ref.read(contextFilterProvider.notifier).state = s.first,
-    );
     return Padding(
       padding: const EdgeInsets.all(Space.sm),
       child: Column(
@@ -192,7 +173,6 @@ class _Header extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineSmall),
                 ),
               ),
-              if (!wrap) ...[switcher, const SizedBox(width: Space.sm)],
               IconButton(
                 key: const Key('shortcuts-button'),
                 tooltip: 'Keyboard shortcuts (?)',
@@ -209,11 +189,6 @@ class _Header extends ConsumerWidget {
               ),
             ],
           ),
-          if (wrap)
-            Padding(
-              padding: const EdgeInsets.only(top: Space.xs),
-              child: Align(alignment: Alignment.centerLeft, child: switcher),
-            ),
         ],
       ),
     );

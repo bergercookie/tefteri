@@ -51,7 +51,6 @@ final _connections = [
     'kind': 'calendar',
     'provider': 'google_calendar',
     'display_name': 'Work calendar',
-    'default_context': 'work',
     'status': 'ok',
     'last_sync_at': '2026-11-01T09:30:00Z',
     'last_sync_outcome': 'ok',
@@ -61,7 +60,6 @@ final _connections = [
     'kind': 'tasks',
     'provider': 'vikunja',
     'display_name': 'Home tasks',
-    'default_context': 'life',
     'settings': {'base_url': 'https://old.test'},
     'status': 'ok',
     'last_sync_at': null,
@@ -371,13 +369,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
           find.byKey(const Key('new-connection-url')), 'https://new.test');
-      await tester.tap(find.text('Work'));
-      await tester.pump();
       await tester.tap(find.byKey(const Key('new-connection-save')));
       await tester.pumpAndSettle();
       expect(adapter.requests['PATCH /connections/c2']!.data, {
         'display_name': 'Home tasks',
-        'default_context': 'both',
         'settings': {'base_url': 'https://new.test'},
       });
       expect(find.text('Saved Home tasks.'), findsOneWidget);
@@ -468,7 +463,6 @@ void main() {
             'kind': 'tasks',
             'provider': body['provider'],
             'display_name': body['display_name'],
-            'default_context': body['default_context'],
             'status': 'ok',
             'last_sync_at': null,
             'last_sync_outcome': null,
@@ -496,7 +490,6 @@ void main() {
       expect(adapter.requests['POST /connections']!.data, {
         'provider': 'vikunja',
         'display_name': 'Home tasks',
-        'default_context': 'life',
         'settings': {'base_url': 'https://vikunja.test/'},
         'credentials': {'token': 'tok'},
       });
@@ -505,8 +498,7 @@ void main() {
       expect(find.text('No connections yet.'), findsNothing);
     });
 
-    Future<Object?> addTrilium(
-        WidgetTester tester, List<String> contextTaps) async {
+    Future<Object?> addTrilium(WidgetTester tester) async {
       final adapter =
           await _pump(tester, {'POST /connections': <String, Object?>{}});
       await openDialog(tester);
@@ -519,35 +511,19 @@ void main() {
           find.byKey(const Key('new-connection-url')), 'https://notes.test');
       await tester.enterText(
           find.byKey(const Key('new-connection-token')), 'etapi');
-      for (final label in contextTaps) {
-        await tester.tap(find.text(label));
-        await tester.pump();
-      }
+      await tester.pump();
       await tester.tap(find.byKey(const Key('new-connection-save')));
       await tester.pumpAndSettle();
       return adapter.requests['POST /connections']!.data;
     }
 
-    testWidgets('Trilium Next sends its provider and Work alone',
-        (tester) async {
-      // Life starts selected: add Work, then remove Life.
-      expect(await addTrilium(tester, ['Work', 'Life']), {
+    testWidgets('Trilium Next sends its provider and token', (tester) async {
+      expect(await addTrilium(tester), {
         'provider': 'trilium',
         'display_name': 'Trilium Next',
-        'default_context': 'work',
         'settings': {'base_url': 'https://notes.test'},
         'credentials': {'token': 'etapi'},
       });
-    });
-
-    testWidgets('selecting Life and Work sends both', (tester) async {
-      final body = await addTrilium(tester, ['Work']);
-      expect((body! as Map)['default_context'], 'both');
-    });
-
-    testWidgets('the last selected context cannot be removed', (tester) async {
-      final body = await addTrilium(tester, ['Life']);
-      expect((body! as Map)['default_context'], 'life');
     });
 
     testWidgets('Google Calendar asks the server for the sign-in link',
@@ -569,7 +545,6 @@ void main() {
       final request = adapter.requests['GET /connections/google/authorize']!;
       expect(request.queryParameters, {
         'display_name': 'Google Calendar',
-        'default_context': 'life',
       });
       expect(adapter.calls, isNot(contains('POST /connections')));
       expect(

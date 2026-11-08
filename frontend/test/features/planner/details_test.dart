@@ -10,14 +10,11 @@ Map<String, Object?> _full(String id, String title,
         {DateTime? due,
         String? description,
         String status = 'open',
-        String? context = 'work',
         String syncState = 'synced'}) =>
     {
       ...dueTask(id, title, due: due),
       'description': description,
       'status': status,
-      'context': context,
-      'effective_context': context ?? 'life',
       'sync_state': syncState,
     };
 
@@ -57,7 +54,6 @@ void main() {
     expect(_picker(tester, 'task-edit-date'), '2026-11-04');
     expect(_picker(tester, 'task-edit-time'), '14:00');
     expect(_text(tester, 'task-details-calendar'), '2026-11-04, 14:00 - 15:00');
-    expect(_text(tester, 'task-details-context'), 'Work');
     // refreshed from the server: the longer description shows
     expect(_field(tester, 'task-edit-description'),
         'Cover the Q3 numbers.\nAdd the chart.');
@@ -70,8 +66,8 @@ void main() {
 
   testWidgets('a task without a date or description says so', (tester) async {
     final api = plannerApi(
-      tasksFor: (_) => [_full('t1', 'Plan trip', context: null)],
-      extra: {'GET /tasks/t1': _full('t1', 'Plan trip', context: null)},
+      tasksFor: (_) => [_full('t1', 'Plan trip')],
+      extra: {'GET /tasks/t1': _full('t1', 'Plan trip')},
     );
     await pumpPlanner(tester, api);
     await tester.tap(find.byKey(const Key('task-t1')));
@@ -80,8 +76,6 @@ void main() {
     expect(_picker(tester, 'task-edit-time'), '-');
     expect(_text(tester, 'task-details-calendar'), 'Not on the calendar');
     expect(_field(tester, 'task-edit-description'), '');
-    expect(_text(tester, 'task-details-context'),
-        'Life (no label, follows the app)');
   });
 
   testWidgets('a done task and a date-only task show the right text',

@@ -124,15 +124,6 @@ When you delete a goal, tefteri also deletes its smaller goals. You choose what 
 If you choose Keep tasks, the tasks stay in your task app. They have no goal now.
 If you choose Delete tasks, tefteri deletes the tasks from your task app.
 
-## Show only work or only life
-
-The switch at the top of every screen also filters goals. It has three choices: All, Life and Work.
-
-1. Choose All, Life or Work at the top of the screen.
-2. Look at the planning view.
-
-You see only the goals that have the label that you chose. Read [Separate work and life](work-and-life.md) for the steps to label items.
-
 ## If an app does not answer
 
 If your task app does not answer, tefteri tells you. The change does not happen.

@@ -19,7 +19,7 @@ Map<String, Object?> _week() => periodJson(
       tasks: [
         {...taskJson('t1', 'Write plan'), 'goal_id': 'g1'},
         {
-          ...taskJson('t2', 'Call Sam', context: null),
+          ...taskJson('t2', 'Call Sam'),
           'scheduled_start': '2026-11-03T09:00:00Z',
         },
         {
@@ -35,7 +35,6 @@ Map<String, Object?> _week() => periodJson(
           'start': DateTime(2026, 11, 3, 10).toUtc().toIso8601String(),
           'end': null,
           'all_day': false,
-          'context': 'work',
           'sync_state': 'synced',
         },
       ],
@@ -61,8 +60,6 @@ void main() {
     expect(find.text('Write plan'), findsOneWidget);
     expect(find.textContaining('Goal: Ship beta'), findsOneWidget);
     expect(find.textContaining('Not scheduled'), findsOneWidget);
-    expect(find.byKey(const Key('unclassified-marker')), findsOneWidget);
-    expect(api.where(_path).first.query['context'], 'all');
   });
 
   testWidgets('a task with only a day shows that day as planned',
@@ -73,14 +70,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Unschedule'), findsOneWidget);
     expect(find.text('Change time'), findsOneWidget);
-  });
-
-  testWidgets('context filter reloads with the new value', (tester) async {
-    final api = _api();
-    await _pump(tester, api);
-    await tester.tap(find.text('work'));
-    await tester.pumpAndSettle();
-    expect(api.where(_path).last.query['context'], 'work');
   });
 
   testWidgets('next week loads the following Monday', (tester) async {
