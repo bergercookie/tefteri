@@ -183,3 +183,27 @@ async def test_labels_reach_vikunja_and_come_back_in_the_task(
         "Phone",
         "Urgent",
     ]
+
+
+async def test_the_week_view_names_the_project_of_each_task(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    world.tasks["default"].containers.append(Container("p2", "Website"))
+    connection = await _task_connection(api)
+    await api.post(f"{V1}/sync")
+    containers = {
+        c["name"]: c["id"]
+        for c in (await api.get(f"{V1}/connections/{connection}/containers")).json()
+    }
+    made = await api.post(
+        f"{V1}/tasks",
+        json={
+            "connection_id": connection,
+            "container_id": containers["Website"],
+            "title": "Fix the form",
+            "due_at": "2026-11-03T00:00:00Z",
+        },
+    )
+    assert made.status_code == 201, made.text
+    week = (await api.get(f"{V1}/views/week/2026-11-03")).json()
+    assert [(t["title"], t["project"]) for t in week["tasks"]] == [("Fix the form", "Website")]

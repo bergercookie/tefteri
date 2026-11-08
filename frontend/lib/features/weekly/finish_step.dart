@@ -2,6 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
+
+import '../../core/project_chip.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/planning_models.dart';
@@ -179,7 +181,8 @@ class FinishStep extends StatelessWidget {
       for (final t in (committed ? p.committedTasks : p.tasks))
         if (t.plannedDay != null) t,
     ]..sort((a, b) => a.plannedDay!.compareTo(b.plannedDay!));
-    return Card(
+    return ProjectCard(
+      name: p.name,
       key: Key('summary-${p.id}'),
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),
