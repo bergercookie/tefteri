@@ -9,6 +9,7 @@ setup
 architecture
 design
 sync
+weekly-planning
 adding-an-adapter
 testing
 deployment

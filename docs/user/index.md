@@ -12,6 +12,7 @@ planner
 daily-planning
 scheduling
 planning-goals
+weekly-planning
 reviews-and-retrospectives
 shortcuts
 conflicts

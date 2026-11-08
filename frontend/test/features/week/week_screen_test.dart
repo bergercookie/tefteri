@@ -22,6 +22,10 @@ Map<String, Object?> _week() => periodJson(
           ...taskJson('t2', 'Call Sam', context: null),
           'scheduled_start': '2026-11-03T09:00:00Z',
         },
+        {
+          ...taskJson('t3', 'File the taxes'),
+          'due_at': DateTime(2026, 11, 5).toUtc().toIso8601String(),
+        },
       ],
       entries: [
         {
@@ -59,6 +63,16 @@ void main() {
     expect(find.textContaining('Not scheduled'), findsOneWidget);
     expect(find.byKey(const Key('unclassified-marker')), findsOneWidget);
     expect(api.where(_path).first.query['context'], 'all');
+  });
+
+  testWidgets('a task with only a day shows that day as planned',
+      (tester) async {
+    await _pump(tester, _api());
+    expect(find.textContaining('Planned 2026-11-05 - All day'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-menu-t3')));
+    await tester.pumpAndSettle();
+    expect(find.text('Unschedule'), findsOneWidget);
+    expect(find.text('Change time'), findsOneWidget);
   });
 
   testWidgets('context filter reloads with the new value', (tester) async {
