@@ -2,6 +2,7 @@
 library;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
@@ -60,6 +61,41 @@ final taskCountsProvider = FutureProvider<Map<String, int>>((ref) {
   final filter = ref.watch(contextFilterProvider);
   return ref.watch(planningApiProvider).taskCounts(filter);
 });
+
+/// Where a task that the user is dragging would land if dropped now.
+@immutable
+class DropPreview {
+  /// Creates a preview for [title] on [day]. [startMinutes] is the start of
+  /// the one-hour block in minutes after midnight; null means all day.
+  const DropPreview(
+      {required this.day, required this.title, this.startMinutes});
+
+  /// The local day under the pointer.
+  final DateTime day;
+
+  /// Title of the dragged task.
+  final String title;
+
+  /// Start of the block, in minutes after midnight, snapped to the grid.
+  final int? startMinutes;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DropPreview &&
+      other.day == day &&
+      other.title == title &&
+      other.startMinutes == startMinutes;
+
+  @override
+  int get hashCode => Object.hash(day, title, startMinutes);
+}
+
+/// True while a task is being dragged. The calendar greys out then.
+final dragActiveProvider = StateProvider<bool>((_) => false);
+
+/// The slot under the pointer during a drag; null when the pointer is not
+/// over a place where the task can be dropped.
+final dropPreviewProvider = StateProvider<DropPreview?>((_) => null);
 
 /// Message of the last failed schedule action; null when there is none.
 final plannerErrorProvider = StateProvider<String?>((_) => null);
