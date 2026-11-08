@@ -10,6 +10,7 @@ architecture
 design
 sync
 weekly-planning
+android-widget
 adding-an-adapter
 testing
 deployment

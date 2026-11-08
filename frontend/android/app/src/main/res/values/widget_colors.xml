@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The paper and ink of the app (lib/theme/palette.dart), light. -->
+<resources>
+    <color name="widget_paper">#FFF6F1E7</color>
+    <color name="widget_rule">#FFE2D9C6</color>
+    <color name="widget_ink">#FF1D1B20</color>
+    <color name="widget_accent">#FF2F4B7C</color>
+    <color name="widget_pressed">#1F2F4B7C</color>
+</resources>

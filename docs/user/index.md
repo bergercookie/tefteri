@@ -9,6 +9,7 @@ getting-started
 accounts-and-sign-in
 connect-apps
 planner
+android-widget
 daily-planning
 scheduling
 planning-goals
