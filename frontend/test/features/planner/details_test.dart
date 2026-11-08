@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tefteri/features/planner/details_dialogs.dart';
 
+import '../../support/fake_api.dart';
 import 'planner_helpers.dart';
 
 Map<String, Object?> _full(String id, String title,
@@ -20,6 +23,14 @@ Map<String, Object?> _full(String id, String title,
 
 String _text(WidgetTester tester, String key) =>
     tester.widget<Text>(find.byKey(Key(key))).data!;
+
+/// The text typed in the field with [key].
+String _field(WidgetTester tester, String key) =>
+    tester.widget<TextField>(find.byKey(Key(key))).controller!.text;
+
+/// What a date or time field of the form shows.
+String _picker(WidgetTester tester, String key) =>
+    tester.widget<Text>(find.byKey(Key('$key-value'))).data!;
 
 void main() {
   testWidgets('a click on a task in the list opens its details',
@@ -41,13 +52,14 @@ void main() {
     await settle(tester);
 
     expect(find.byKey(const Key('task-details')), findsOneWidget);
-    expect(_text(tester, 'task-details-title'), 'Write report');
+    expect(_field(tester, 'task-edit-title'), 'Write report');
     expect(_text(tester, 'task-details-status'), 'Open');
-    expect(_text(tester, 'task-details-due'), '2026-11-04 15:00');
+    expect(_picker(tester, 'task-edit-date'), '2026-11-04');
+    expect(_picker(tester, 'task-edit-time'), '14:00');
     expect(_text(tester, 'task-details-calendar'), '2026-11-04, 14:00 - 15:00');
     expect(_text(tester, 'task-details-context'), 'Work');
     // refreshed from the server: the longer description shows
-    expect(_text(tester, 'task-details-description'),
+    expect(_field(tester, 'task-edit-description'),
         'Cover the Q3 numbers.\nAdd the chart.');
     expect(api.where('GET /tasks/t1'), hasLength(1));
 
@@ -64,9 +76,10 @@ void main() {
     await pumpPlanner(tester, api);
     await tester.tap(find.byKey(const Key('task-t1')));
     await settle(tester);
-    expect(_text(tester, 'task-details-due'), 'No due date');
+    expect(_picker(tester, 'task-edit-date'), 'No date');
+    expect(_picker(tester, 'task-edit-time'), '-');
     expect(_text(tester, 'task-details-calendar'), 'Not on the calendar');
-    expect(_text(tester, 'task-details-description'), 'No description.');
+    expect(_field(tester, 'task-edit-description'), '');
     expect(_text(tester, 'task-details-context'),
         'Life (no label, follows the app)');
   });
@@ -88,7 +101,8 @@ void main() {
     await tester.tap(find.byKey(const Key('task-t1')));
     await settle(tester);
     expect(_text(tester, 'task-details-status'), 'Done');
-    expect(_text(tester, 'task-details-due'), '2026-11-05');
+    expect(_picker(tester, 'task-edit-date'), '2026-11-05');
+    expect(_picker(tester, 'task-edit-time'), 'All day');
     expect(_text(tester, 'task-details-calendar'), '2026-11-05, all day');
   });
 
@@ -122,8 +136,8 @@ void main() {
     await pumpPlanner(tester, api);
     await tester.tap(find.byKey(const Key('block-task-c9')));
     await settle(tester);
-    expect(_text(tester, 'task-details-title'), 'Prepare the demo');
-    expect(_text(tester, 'task-details-description'), 'Slides and a dry run.');
+    expect(_field(tester, 'task-edit-title'), 'Prepare the demo');
+    expect(_field(tester, 'task-edit-description'), 'Slides and a dry run.');
     expect(_text(tester, 'task-details-calendar'), '2026-11-04, 14:00 - 15:00');
   });
 
@@ -136,7 +150,7 @@ void main() {
     await pumpPlanner(tester, api); // GET /tasks/c9 answers 404
     await tester.tap(find.byKey(const Key('block-task-c9')));
     await settle(tester);
-    expect(_text(tester, 'task-details-title'), 'Prepare the demo');
+    expect(_text(tester, 'task-details-heading'), 'Prepare the demo');
     expect(find.byKey(const Key('task-details-error')), findsOneWidget);
     expect(find.byKey(const Key('task-details-retry')), findsOneWidget);
   });
@@ -154,7 +168,7 @@ void main() {
     await pumpPlanner(tester, api);
     await tester.tap(find.byKey(const Key('allday-task-c5')));
     await settle(tester);
-    expect(_text(tester, 'task-details-title'), 'Pay the invoice');
+    expect(_field(tester, 'task-edit-title'), 'Pay the invoice');
   });
 
   testWidgets('a click on a calendar event opens the event details',
@@ -173,6 +187,198 @@ void main() {
     await tester.tap(find.byKey(const Key('event-details-close')));
     await settle(tester);
     expect(find.byKey(const Key('event-details')), findsNothing);
+  });
+
+  group('editing', () {
+    Future<FakeApi> open(WidgetTester tester,
+        {Map<String, Object?> extra = const {},
+        DateTime? due,
+        bool allDay = false}) async {
+      final task = {
+        ..._full('t1', 'Write report',
+            due: due, description: 'Cover the Q3 numbers.'),
+        if (allDay) 'scheduled_start': null,
+        if (allDay) 'scheduled_end': null,
+      };
+      final api = plannerApi(
+        tasksFor: (_) => [task],
+        extra: {'GET /tasks/t1': task, ...extra},
+      );
+      await pumpPlanner(tester, api);
+      await tester.tap(find.byKey(const Key('task-t1')));
+      await settle(tester);
+      return api;
+    }
+
+    bool saveEnabled(WidgetTester tester) =>
+        tester
+            .widget<FilledButton>(find.byKey(const Key('task-save')))
+            .onPressed !=
+        null;
+
+    testWidgets('Save is off until something changes', (tester) async {
+      await open(tester);
+      expect(saveEnabled(tester), isFalse);
+      await tester.enterText(
+          find.byKey(const Key('task-edit-title')), 'Write the report');
+      await tester.pump();
+      expect(saveEnabled(tester), isTrue);
+      await tester.enterText(
+          find.byKey(const Key('task-edit-title')), 'Write report');
+      await tester.pump();
+      expect(saveEnabled(tester), isFalse);
+    });
+
+    testWidgets('the title and the description are written to the task app',
+        (tester) async {
+      final api = await open(tester, extra: {
+        'PATCH /tasks/t1': _full('t1', 'x'),
+      });
+      await tester.enterText(
+          find.byKey(const Key('task-edit-title')), '  Write the report  ');
+      await tester.enterText(find.byKey(const Key('task-edit-description')),
+          'Cover the Q3 numbers.\nAdd the chart.');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('task-save')));
+      await settle(tester);
+      expect(api.where('PATCH /tasks/t1').single.data, {
+        'title': 'Write the report',
+        'description': 'Cover the Q3 numbers.\nAdd the chart.',
+      });
+      expect(api.where('PUT /tasks/t1/schedule'), isEmpty);
+      expect(find.byKey(const Key('task-details')), findsNothing);
+      // The planner reloads its lists.
+      expect(api.where('GET /tasks').length, greaterThan(1));
+    });
+
+    testWidgets('an empty title cannot be saved', (tester) async {
+      await open(tester);
+      await tester.enterText(find.byKey(const Key('task-edit-title')), '   ');
+      await tester.pump();
+      expect(saveEnabled(tester), isFalse);
+      expect(find.text('The title is needed.'), findsOneWidget);
+    });
+
+    testWidgets('a new day makes the task all day', (tester) async {
+      final api = await open(tester,
+          due: DateTime(2026, 11, 4, 15),
+          extra: {'PUT /tasks/t1/schedule': dueTask('t1', 'x')});
+      // Take the time away first: the task becomes all day on its day.
+      await tester.tap(find.byKey(const Key('task-edit-time-clear')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('task-edit-date')));
+      await settle(tester);
+      await tester.tap(find.text('12'));
+      await tester.pump();
+      await tester.tap(find.text('OK'));
+      await settle(tester);
+      expect(_picker(tester, 'task-edit-date'), '2026-11-12');
+      expect(_picker(tester, 'task-edit-time'), 'All day');
+      await tester.tap(find.byKey(const Key('task-save')));
+      await settle(tester);
+      expect(api.where('PUT /tasks/t1/schedule').single.data,
+          {'date': '2026-11-12'});
+      expect(api.where('PATCH /tasks/t1'), isEmpty);
+    });
+
+    testWidgets('a time plans a block that starts then', (tester) async {
+      final api = await open(tester,
+          due: DateTime(2026, 11, 5),
+          allDay: true,
+          extra: {'PUT /tasks/t1/schedule': dueTask('t1', 'x')});
+      expect(_picker(tester, 'task-edit-time'), 'All day');
+      await tester.tap(find.byKey(const Key('task-edit-time')));
+      await settle(tester);
+      await tester.tap(find.text('OK')); // the picker starts at 09:00
+      await settle(tester);
+      expect(_picker(tester, 'task-edit-time'), '09:00');
+      await tester.tap(find.byKey(const Key('task-save')));
+      await settle(tester);
+      expect(api.where('PUT /tasks/t1/schedule').single.data,
+          {'start': DateTime(2026, 11, 5, 9).toUtc().toIso8601String()});
+    });
+
+    testWidgets('clearing the day removes the due date', (tester) async {
+      final api = await open(tester,
+          due: DateTime(2026, 11, 4, 15),
+          extra: {'DELETE /tasks/t1/schedule': dueTask('t1', 'x')});
+      await tester.tap(find.byKey(const Key('task-edit-date-clear')));
+      await tester.pump();
+      expect(_picker(tester, 'task-edit-date'), 'No date');
+      expect(_picker(tester, 'task-edit-time'), '-');
+      await tester.tap(find.byKey(const Key('task-save')));
+      await settle(tester);
+      expect(api.where('DELETE /tasks/t1/schedule'), hasLength(1));
+    });
+
+    testWidgets('a task without a date can be given one', (tester) async {
+      final api = await open(tester,
+          extra: {'PUT /tasks/t1/schedule': dueTask('t1', 'x')});
+      expect(
+          tester.widget<InkWell>(find.byKey(const Key('task-edit-time'))).onTap,
+          isNull); // no time without a day
+      await tester.tap(find.byKey(const Key('task-edit-date')));
+      await settle(tester);
+      await tester.tap(find.text('OK')); // today
+      await settle(tester);
+      expect(_picker(tester, 'task-edit-date'), isNot('No date'));
+      await tester.tap(find.byKey(const Key('task-save')));
+      await settle(tester);
+      expect((api.where('PUT /tasks/t1/schedule').single.data! as Map).keys,
+          ['date']);
+    });
+
+    testWidgets('a refusal stays on screen with the message', (tester) async {
+      await open(tester, extra: {
+        'PATCH /tasks/t1': const ApiFailure(
+            409,
+            'The item changed in Vikunja. Sync to see the new version.',
+            'remote_conflict'),
+      });
+      await tester.enterText(
+          find.byKey(const Key('task-edit-title')), 'Write the report');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('task-save')));
+      await settle(tester);
+      expect(find.byKey(const Key('task-details')), findsOneWidget);
+      expect(
+          find.text(
+              'The item changed in Vikunja. Sync to see the new version.'),
+          findsOneWidget);
+      expect(_field(tester, 'task-edit-title'), 'Write the report');
+      expect(saveEnabled(tester), isTrue); // the user can try again
+    });
+
+    testWidgets('closing with changes asks first', (tester) async {
+      await open(tester);
+      await tester.enterText(
+          find.byKey(const Key('task-edit-title')), 'Write the report');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('task-details-close')));
+      await settle(tester);
+      expect(find.byKey(const Key('task-discard-confirm')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('task-discard-keep')));
+      await settle(tester);
+      expect(find.byKey(const Key('task-details')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('task-details-close')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('task-discard-yes')));
+      await settle(tester);
+      expect(find.byKey(const Key('task-details')), findsNothing);
+    });
+
+    testWidgets('the server copy does not overwrite what the user typed',
+        (tester) async {
+      await open(tester);
+      await tester.enterText(find.byKey(const Key('task-edit-title')), 'Mine');
+      await tester.pump();
+      // A reload from the server (for example after Mark done).
+      final scope = ProviderScope.containerOf(
+          tester.element(find.byKey(const Key('task-details'))));
+      scope.invalidate(taskDetailProvider('t1'));
+      await settle(tester);
+      expect(_field(tester, 'task-edit-title'), 'Mine');
+    });
   });
 
   testWidgets('a drag still moves a task and does not open the details',
