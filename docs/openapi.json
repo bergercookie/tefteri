@@ -4,6 +4,11 @@
       "AnswerIn": {
         "description": "The decisions about one project of the earlier week.",
         "properties": {
+          "archive": {
+            "default": false,
+            "title": "Archive",
+            "type": "boolean"
+          },
           "finished_anyway": {
             "default": false,
             "title": "Finished Anyway",
@@ -3510,6 +3515,53 @@
           }
         },
         "summary": "Update Container",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/api/v1/connections/{connection_id}/containers/{container_id}/archive": {
+      "post": {
+        "description": "Archive a project in the task app. The app can restore it; tefteri forgets it.",
+        "operationId": "archive_container_api_v1_connections__connection_id__containers__container_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "container_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Container Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Container",
         "tags": [
           "connections"
         ]

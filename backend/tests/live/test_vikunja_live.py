@@ -304,3 +304,35 @@ async def test_weekly_planning_follows_a_new_subproject_in_vikunja(
     assert [t["planned_day"] for t in again["plan"]["projects"][0]["tasks"]] == days
     committed = (await tefteri.post(f"{V1}/weekly/{week}/commit")).json()
     assert committed["plan"]["status"] == "committed"
+
+
+async def test_archiving_a_project_from_tefteri_archives_it_in_vikunja(
+    tefteri: AsyncClient, real: RealVikunja
+) -> None:
+    """The project and its subproject disappear from Vikunja's list, and tefteri forgets them."""
+    await _sync(tefteri)
+    week = "2030-03-04"
+    parent = next(
+        c
+        for c in (await tefteri.get(f"{V1}/weekly/{week}/candidates")).json()
+        if c["name"] == "Inbox"
+    )
+    name = _title("Archive me")
+    made = await tefteri.post(
+        f"{V1}/weekly/{week}/subprojects", json={"parent_id": parent["container_id"], "name": name}
+    )
+    assert made.status_code == 201, made.text
+    sub = made.json()["plan"]["projects"][0]["container_id"]
+    connection = parent["connection_id"]
+    archived = await tefteri.post(f"{V1}/connections/{connection}/containers/{sub}/archive")
+    assert archived.status_code == 204, archived.text
+    titles = [
+        p["title"]
+        for p in (await real.client.get(f"{real.base}/projects", headers=real.headers)).json()
+    ]
+    assert name not in titles
+    listed = await tefteri.get(f"{V1}/connections/{connection}/containers")
+    assert name not in {c["name"] for c in listed.json()}
+    await _sync(tefteri)
+    listed = await tefteri.get(f"{V1}/connections/{connection}/containers")
+    assert name not in {c["name"] for c in listed.json()}

@@ -42,6 +42,10 @@ For a project that is not done, you decide two things:
 - Whether to count the project as done anyway. Use the switch when you finished the project, even if
   some tasks are open.
 
+You can also archive a project in your task app. Use the switch Archive the project in your task
+app. Tefteri archives the project when you save the look-back. It first stores the counts of the
+project, so the history keeps them.
+
 You can also write a short note about the week. Then choose Save the look-back. To plan without
 a look-back, choose Skip the look-back.
 
@@ -77,6 +81,18 @@ every few seconds, so the tasks show up in tefteri when you add them. To check a
 the refresh button.
 
 ![The Choose projects step. The project Taxes is chosen. The new subproject Launch campaign waits for tasks.](../images/weekly-projects.png)
+
+## Archive a project
+
+To archive a project that you do not need any more, choose the archive icon of the project in the
+list. Tefteri asks you to confirm.
+
+Tefteri archives the project in your task app, with the projects inside it. The tasks of these
+projects leave tefteri. Your task app keeps them. To get a project back, restore it in your task
+app.
+
+Tefteri refuses to archive a project that is in a committed plan with no look-back yet. The
+look-back counts the tasks of that project. Look back first, and then archive the project.
 
 ## Step 3: give every task a day
 
