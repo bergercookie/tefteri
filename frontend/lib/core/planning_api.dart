@@ -70,6 +70,29 @@ class PlanningApi {
         'title': title,
       });
 
+  /// `POST /goals/bulk`: one goal for each of [titles], all in one period.
+  Future<void> createGoals({
+    required String periodType,
+    required String periodStart,
+    required List<String> titles,
+    String? parentId,
+  }) =>
+      _dio.post<Object?>('/goals/bulk', data: {
+        if (parentId != null) 'parent_id': parentId,
+        'period_type': periodType,
+        'period_start': periodStart,
+        'titles': titles,
+      });
+
+  /// `PATCH /goals/{id}` with new text. A null field stays as it is.
+  Future<void> updateGoal(String id,
+          {String? title, String? description, String? criteria}) =>
+      _dio.patch<Object?>('/goals/$id', data: {
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (criteria != null) 'criteria': criteria,
+      });
+
   /// `PATCH /goals/{id}` with a new [status] (`active`, `done`, `dropped`).
   Future<void> setGoalStatus(String id, String status) =>
       _dio.patch<Object?>('/goals/$id', data: {'status': status});

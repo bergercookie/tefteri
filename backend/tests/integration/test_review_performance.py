@@ -68,5 +68,5 @@ async def test_year_review_opens_in_time(api: AsyncClient, world: FakeWorld) -> 
         r = await api.get(f"{V1}/plans/{plan['id']}/review", params=params)
         elapsed = time.perf_counter() - started
         assert r.status_code == 200, r.text
-        assert r.json()["planned_count"] == 2001  # the year goal and every task
+        assert r.json()["planned_count"] == 1  # the year goal; single tasks are not listed
         assert elapsed < LIMIT_SECONDS, f"review took {elapsed:.1f} s"

@@ -100,6 +100,7 @@ class GoalService:
         period_start: date,
         title: str,
         description: str = "",
+        criteria: str = "",
         context: Context = Context.LIFE,
         parent_id: uuid.UUID | None = None,
     ) -> Goal:
@@ -119,6 +120,7 @@ class GoalService:
             period_start=period_start,
             title=title,
             description=description,
+            criteria=criteria,
             context=context.value,
         )
         db.add(goal)
@@ -132,6 +134,7 @@ class GoalService:
         *,
         title: str | None = None,
         description: str | None = None,
+        criteria: str | None = None,
         status: Literal["active", "done", "dropped"] | None = None,
         context: Context | None = None,
     ) -> Goal:
@@ -140,12 +143,39 @@ class GoalService:
             goal.title = title
         if description is not None:
             goal.description = description
+        if criteria is not None:
+            goal.criteria = criteria
         if status is not None:
             goal.status = status
         if context is not None:
             goal.context = context.value
         await db.flush()
         return goal
+
+    async def create_many(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        *,
+        period_type: PeriodType,
+        period_start: date,
+        titles: list[str],
+        context: Context = Context.LIFE,
+        parent_id: uuid.UUID | None = None,
+    ) -> list[Goal]:
+        """Create one goal per title, all in the same period. All or none are created."""
+        return [
+            await self.create(
+                db,
+                user_id,
+                period_type=period_type,
+                period_start=period_start,
+                title=title,
+                context=context,
+                parent_id=parent_id,
+            )
+            for title in titles
+        ]
 
     async def breakdown(
         self,

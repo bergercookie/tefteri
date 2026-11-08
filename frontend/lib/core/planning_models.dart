@@ -393,6 +393,7 @@ class PlanGoal {
     required this.progress,
     this.parentId,
     this.description,
+    this.criteria,
     this.context,
   });
 
@@ -404,6 +405,7 @@ class PlanGoal {
         periodStart: '${j['period_start']}',
         title: '${j['title'] ?? ''}',
         description: j['description'] as String?,
+        criteria: j['criteria'] as String?,
         context: j['context'] as String?,
         status: '${j['status'] ?? 'active'}',
         progress: ((j['progress'] as num?) ?? 0).toDouble().clamp(0.0, 1.0),
@@ -426,6 +428,9 @@ class PlanGoal {
 
   /// Optional description.
   final String? description;
+
+  /// What has to be true for the goal to count as complete.
+  final String? criteria;
 
   /// Own context (`work`, `life` or null).
   final String? context;
