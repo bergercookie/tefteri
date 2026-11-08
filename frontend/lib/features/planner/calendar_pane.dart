@@ -373,6 +373,44 @@ Color _accentColor(BuildContext context, CalendarItem i) {
   return i.isDone ? c.done : c.task;
 }
 
+/// A small label with a solid background and square corners that names the
+/// project of a task, so that it can be read without opening the task.
+class _ProjectTag extends StatelessWidget {
+  const _ProjectTag({required this.name, required this.maxWidth, super.key});
+
+  final String name;
+
+  /// The widest the tag may be; a longer name is cut with dots.
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: 'Project: $name',
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth < 24 ? 24 : maxWidth),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          // Square corners and a solid fill: dark ink on light paper, and
+          // the reverse in the dark theme.
+          color: scheme.onSurfaceVariant,
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 10,
+                  height: 1.2,
+                  color: scheme.surface,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AllDayChip extends StatelessWidget {
   const _AllDayChip({required this.item, required this.pending});
 
@@ -381,30 +419,49 @@ class _AllDayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme.labelSmall;
     final chip = _OpenDetails(
         item: item,
-        child: Container(
-          key: Key('allday-${item.type}-${item.id}'),
-          margin: const EdgeInsets.symmetric(vertical: 1),
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: _blockColor(context, item),
-            borderRadius: BorderRadius.circular(Corner.sm),
-          ),
-          child: Row(
-            children: [
-              Container(
-                  width: 3, height: 22, color: _accentColor(context, item)),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(item.title,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Corner.sm),
+          child: Container(
+            key: Key('allday-${item.type}-${item.id}'),
+            margin: const EdgeInsets.symmetric(vertical: 1),
+            constraints: const BoxConstraints(minHeight: 22),
+            padding:
+                const EdgeInsets.only(left: 7, right: 3, top: 3, bottom: 3),
+            decoration: BoxDecoration(
+              color: _blockColor(context, item),
+              // The accent bar on the left edge.
+              border: Border(
+                  left:
+                      BorderSide(color: _accentColor(context, item), width: 3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    style: text?.copyWith(
                         decoration:
                             item.isDone ? TextDecoration.lineThrough : null)),
-              ),
-            ],
+                if (item.project != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    // Flexible: the tag takes its own width, up to the chip.
+                    child: Row(children: [
+                      Flexible(
+                        child: _ProjectTag(
+                            key: Key('project-tag-${item.id}'),
+                            name: item.project!,
+                            maxWidth: double.infinity),
+                      ),
+                    ]),
+                  ),
+              ],
+            ),
           ),
         ));
     if (!item.isTask) return chip;
@@ -704,6 +761,12 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
     final time =
         '${hhmm(i.start!)}${i.end == null ? '' : ' - ${hhmm(i.end!)}'}';
     final isPending = pending == i.id;
+    final project = i.project;
+    // A short block has room for one line: the tag sits after the title. A
+    // taller block gives the tag its own line under the title.
+    final inlineTag = project != null && height < 40;
+    final tagLine = project != null && !inlineTag;
+    final showTime = height >= (project != null ? 50 : 40);
     final body = _OpenDetails(
         item: i,
         child: Container(
@@ -745,6 +808,13 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
                                             ? TextDecoration.lineThrough
                                             : null)),
                           ),
+                          if (inlineTag) ...[
+                            const SizedBox(width: 3),
+                            _ProjectTag(
+                                key: Key('project-tag-${i.id}'),
+                                name: project,
+                                maxWidth: colWidth * 0.45),
+                          ],
                           if (i.clippedStart)
                             Tooltip(
                               message: 'Continues from previous day',
@@ -753,7 +823,15 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
                             ),
                         ],
                       ),
-                      if (height >= 40)
+                      if (tagLine)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 1),
+                          child: _ProjectTag(
+                              key: Key('project-tag-${i.id}'),
+                              name: project,
+                              maxWidth: colWidth - 14),
+                        ),
+                      if (showTime)
                         Text(time,
                             maxLines: 1,
                             style: Theme.of(context)
