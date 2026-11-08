@@ -44,6 +44,10 @@ class TaskBackend(Backend, Protocol):
         """Create a project, nested under ``parent`` when given (needs ``SUBPROJECTS``)."""
         ...
 
+    async def archive_container(self, container: Container) -> None:
+        """Archive a project (needs ``ARCHIVE_PROJECTS``). The app can restore it."""
+        ...
+
     async def list_tasks(self, container: Container, since: str | None) -> TaskPage:
         """List tasks of a container, optionally only changes since a version."""
         ...

@@ -104,7 +104,12 @@ class VikunjaTaskBackend:
 
     def capabilities(self) -> set[Capability]:
         """Vikunja stores the due date and time of a task, and recurrence."""
-        return {Capability.TASK_TIME, Capability.RECURRING, Capability.SUBPROJECTS}
+        return {
+            Capability.TASK_TIME,
+            Capability.RECURRING,
+            Capability.SUBPROJECTS,
+            Capability.ARCHIVE_PROJECTS,
+        }
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
         # Vikunja answers 412 for invalid data and 409 for duplicates, never for a version
@@ -153,6 +158,16 @@ class VikunjaTaskBackend:
             for p in data
             if int(p["id"]) > 0
         ]
+
+    async def archive_container(self, container: Container) -> None:
+        """Archive a project (and, in Vikunja, its subprojects). It can be restored there."""
+        path = f"/projects/{container.remote_id}"
+        project = await self._call("GET", path)
+        project["is_archived"] = True
+        await self._call("POST", path, json=project)
+        # Read it back: a change that Vikunja did not keep must not look like a success.
+        if not (await self._call("GET", path)).get("is_archived"):
+            raise NotSaved(f"project {container.remote_id} is not archived")
 
     async def create_container(self, name: str, parent: Container | None) -> Container:
         """Create a project, as a subproject of ``parent`` when given."""

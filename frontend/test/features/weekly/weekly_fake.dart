@@ -206,6 +206,12 @@ class WeeklyServer {
   Map<String, Object?> allRoutes() {
     final r = routes()..remove('PUT /tasks/:id/schedule');
     for (final p in projects) {
+      final pid = p['id'] as String;
+      r['POST /connections/c1/containers/$pid/archive'] = (RequestOptions o) {
+        projects.removeWhere((x) => x['id'] == pid);
+        chosen.remove(pid);
+        return const NoContent();
+      };
       for (final t in p['tasks']! as List) {
         final id = (t as Map)['id'] as String;
         r['PUT /tasks/$id/schedule'] = (RequestOptions o) {
