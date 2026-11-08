@@ -40,6 +40,12 @@ Future<void> _menu(WidgetTester tester, String id, String item) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _openGoal(WidgetTester tester, String title) async {
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(title));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   test('child periods follow the hierarchy', () {
     final year = PlanGoal.fromJson(goalJson('g', 'y'));
@@ -102,15 +108,22 @@ void main() {
   testWidgets('mark done patches the status', (tester) async {
     final api = _api({'PATCH /goals/g1': goalJson('g1', 'x')});
     await _pump(tester, api);
-    await _menu(tester, 'g1', 'Mark done');
+    // The card has no complete button: the goal is completed in its pop-up.
+    expect(find.text('Mark done'), findsNothing);
+    await _openGoal(tester, 'Ship product');
+    await tester.tap(find.byKey(const Key('goal-dialog-complete')));
+    await tester.pumpAndSettle();
     expect(
         (api.where('PATCH /goals/g1').single.data! as Map)['status'], 'done');
+    expect(find.byKey(const Key('goal-dialog')), findsNothing);
   });
 
   testWidgets('delete asks and can keep the linked tasks', (tester) async {
     final api = _api({'DELETE /goals/g1': const NoContent()});
     await _pump(tester, api);
-    await _menu(tester, 'g1', 'Delete');
+    await _openGoal(tester, 'Ship product');
+    await tester.tap(find.byKey(const Key('goal-dialog-delete')));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Child goals are deleted too'), findsOneWidget);
     await tester.tap(find.byKey(const Key('delete-keep-tasks')));
     await tester.pumpAndSettle();
@@ -121,7 +134,9 @@ void main() {
   testWidgets('delete can remove the linked tasks', (tester) async {
     final api = _api({'DELETE /goals/g1': const NoContent()});
     await _pump(tester, api);
-    await _menu(tester, 'g1', 'Delete');
+    await _openGoal(tester, 'Ship product');
+    await tester.tap(find.byKey(const Key('goal-dialog-delete')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete-remove-tasks')));
     await tester.pumpAndSettle();
     expect(
@@ -131,7 +146,9 @@ void main() {
   testWidgets('cancel in the delete dialog sends nothing', (tester) async {
     final api = _api();
     await _pump(tester, api);
-    await _menu(tester, 'g1', 'Delete');
+    await _openGoal(tester, 'Ship product');
+    await tester.tap(find.byKey(const Key('goal-dialog-delete')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete-cancel')));
     await tester.pumpAndSettle();
     expect(api.where('DELETE /goals/g1'), isEmpty);
@@ -175,9 +192,12 @@ void main() {
     await _pump(tester, api);
     await tester.tap(find.text('Week').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('goal-menu-w1')));
+    // A week goal has no menu at all.
+    expect(find.byKey(const Key('goal-menu-w1')), findsNothing);
+    await tester.tap(find.text('Fix bug'));
     await tester.pumpAndSettle();
-    expect(find.text('Break down'), findsNothing);
+    expect(find.byKey(const Key('goal-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('goal-dialog-bulk-field')), findsNothing);
     expect(find.text('Delete'), findsOneWidget);
   });
 
@@ -191,5 +211,118 @@ void main() {
     await tester.tap(find.byKey(const Key('goal-add-button')));
     await tester.pumpAndSettle();
     expect(find.text('A month goal must lie inside its year.'), findsOneWidget);
+  });
+
+  testWidgets('goals are numbered and the totals count goals and subgoals',
+      (tester) async {
+    await _pump(tester, _api());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('goal-number-g1')), findsOneWidget);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('goal-number-g1'))).data, '1');
+    expect(tester.widget<Text>(find.byKey(const Key('goal-number-g2'))).data,
+        '1.1');
+    expect(tester.widget<Text>(find.byKey(const Key('goal-totals'))).data,
+        '1 goal, 1 subgoal');
+  });
+
+  testWidgets('several goals are added at once, one for each line',
+      (tester) async {
+    final api = _api({
+      'POST /goals/bulk': [goalJson('a', 'Run 25 km')],
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('goal-bulk-open')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('goal-bulk-field')),
+        'Run 25 km\n\n- Read 12 books\n  \n2. Learn to sail\n');
+    await tester.pumpAndSettle();
+    expect(find.text('Add 3 goals'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('goal-bulk-create')));
+    await tester.pumpAndSettle();
+    final body = api.where('POST /goals/bulk').single.data! as Map;
+    expect(body['titles'], ['Run 25 km', 'Read 12 books', 'Learn to sail']);
+    expect(body['period_type'], 'year');
+    expect(body['period_start'], '2026-01-01');
+  });
+
+  testWidgets('a goal opens when its text is pressed and keeps the criteria',
+      (tester) async {
+    final api = _api({
+      'GET /goals': (RequestOptions o) => o.queryParameters['parent_id'] != null
+          ? <Object?>[]
+          : [
+              goalJson('g1', 'Ship product',
+                  description: 'The first public release.',
+                  criteria: 'Ten users pay.')
+            ],
+      'PATCH /goals/g1': goalJson('g1', 'x'),
+    });
+    await _pump(tester, api);
+    await tester.pumpAndSettle();
+    // The card shows both texts.
+    expect(find.byKey(const Key('goal-description-g1')), findsOneWidget);
+    expect(find.byKey(const Key('goal-criteria-g1')), findsOneWidget);
+    await tester.tap(find.text('Ship product'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('goal-dialog')), findsOneWidget);
+    expect(find.text('Annual goal'), findsOneWidget);
+    // Save is off until something changes.
+    expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('goal-dialog-save')))
+            .onPressed,
+        isNull);
+    await tester.enterText(
+        find.byKey(const Key('goal-dialog-criteria')), 'Fifty users pay.');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('goal-dialog-save')));
+    await tester.pumpAndSettle();
+    final body = api.where('PATCH /goals/g1').single.data! as Map;
+    expect(body, {
+      'title': 'Ship product',
+      'description': 'The first public release.',
+      'criteria': 'Fifty users pay.',
+    });
+    expect(find.byKey(const Key('goal-dialog')), findsNothing);
+  });
+
+  testWidgets('child goals of an annual goal are added in bulk for a month',
+      (tester) async {
+    final api = _api({
+      'POST /goals/bulk': [goalJson('c', 'x')],
+    });
+    await _pump(tester, api);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ship product'));
+    await tester.pumpAndSettle();
+    // The existing monthly goal is listed.
+    expect(find.byKey(const Key('goal-children')), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('goal-children')),
+            matching: find.text('Beta in March')),
+        findsOneWidget);
+    await tester.enterText(
+        find.byKey(const Key('goal-dialog-bulk-field')), 'Plan\nBuild');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('goal-dialog-bulk-add')));
+    await tester.tap(find.byKey(const Key('goal-dialog-bulk-add')));
+    await tester.pumpAndSettle();
+    final body = api.where('POST /goals/bulk').single.data! as Map;
+    expect(body['titles'], ['Plan', 'Build']);
+    expect(body['parent_id'], 'g1');
+    expect(body['period_type'], 'month');
+  });
+
+  testWidgets('the goal pop-up fits a phone screen', (tester) async {
+    await _pump(tester, _api());
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+    await _openGoal(tester, 'Ship product');
+    expect(find.byKey(const Key('goal-dialog')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    final box = tester.getRect(find.byKey(const Key('goal-dialog')));
+    expect(box.width, lessThanOrEqualTo(390));
   });
 }

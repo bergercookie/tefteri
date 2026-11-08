@@ -155,7 +155,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           style: text.bodySmall,
         ),
         const SizedBox(height: 12),
-        Text('${r.completedCount} of ${r.plannedCount} planned items done',
+        Text('${r.completedCount} of ${r.plannedCount} planned goals done',
             key: const Key('review-counts'), style: text.titleMedium),
         const SizedBox(height: 4),
         LinearProgressIndicator(
@@ -174,7 +174,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             dense: true,
             leading: const Icon(Icons.redo),
             title: Text(i.title),
-            subtitle: Text(i.type == 'goal' ? 'Goal' : 'Task'),
+            subtitle: const Text('Goal'),
           ),
         const SizedBox(height: 16),
         Text('Retrospective', style: text.titleSmall),
@@ -217,6 +217,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           semanticLabel: i.completed ? 'Done' : 'Not done',
         ),
         title: Text(i.title),
-        subtitle: Text(i.type == 'goal' ? 'Goal' : 'Task'),
+        subtitle: const Text('Goal'),
       );
 }

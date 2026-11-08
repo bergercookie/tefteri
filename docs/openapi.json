@@ -902,6 +902,11 @@
             "$ref": "#/components/schemas/Context",
             "default": "life"
           },
+          "criteria": {
+            "default": "",
+            "title": "Criteria",
+            "type": "string"
+          },
           "description": {
             "default": "",
             "title": "Description",
@@ -947,6 +952,10 @@
         "properties": {
           "context": {
             "title": "Context",
+            "type": "string"
+          },
+          "criteria": {
+            "title": "Criteria",
             "type": "string"
           },
           "description": {
@@ -999,6 +1008,7 @@
           "period_start",
           "title",
           "description",
+          "criteria",
           "context",
           "status",
           "progress"
@@ -1018,6 +1028,17 @@
                 "type": "null"
               }
             ]
+          },
+          "criteria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criteria"
           },
           "description": {
             "anyOf": [
@@ -1061,6 +1082,51 @@
           }
         },
         "title": "GoalPatch",
+        "type": "object"
+      },
+      "GoalsIn": {
+        "description": "Data to create several goals of one period at once.",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/Context",
+            "default": "life"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_type": {
+            "$ref": "#/components/schemas/PeriodType"
+          },
+          "titles": {
+            "items": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period_type",
+          "period_start",
+          "titles"
+        ],
+        "title": "GoalsIn",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -3917,6 +3983,52 @@
           }
         },
         "summary": "Create Goal",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/goals/bulk": {
+      "post": {
+        "description": "Create one goal per title. Blank titles are skipped. All goals are created, or none.",
+        "operationId": "create_goals_api_v1_goals_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GoalOut"
+                  },
+                  "title": "Response Create Goals Api V1 Goals Bulk Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Goals",
         "tags": [
           "planning"
         ]

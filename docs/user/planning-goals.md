@@ -27,12 +27,40 @@ The Week view shows the goals of the week. The Month view shows the goals of the
 
 ## Add a goal
 
-1. Open the Week view, the Month view or the Year view.
-2. Choose Add goal.
+1. Open the Goals screen.
+2. Choose the period type (Year, Month or Week) and the period.
 3. Type the title of the goal.
-4. Choose Save.
+4. Choose Add goal.
 
-The goal shows in the view that you chose. It is for the period that the view shows.
+The goal shows in the views for its period. Each goal has a number at the left of its card.
+Above the list, tefteri shows how many goals and how many smaller goals the list holds.
+
+## Add several goals at once
+
+1. Open the Goals screen and choose the period.
+2. Choose Add several goals.
+3. Type or paste one goal on each line.
+4. Choose Add.
+
+Tefteri ignores empty lines. It also ignores a list marker at the start of a line (a dash, an
+asterisk, a bullet or a number). If one goal cannot be added, tefteri adds none of them and shows
+the reason.
+
+## Open a goal
+
+Choose the text of a goal, in the Goals screen or in a planning view. A pop-up shows the goal. In
+the pop-up you can:
+
+- Change the title and the description.
+- For a year goal, write the completeness criteria in the field Complete when. Write what must be
+  true before you call the goal complete.
+- Read the smaller goals of the goal.
+- Add several smaller goals at once. Choose the month (or the week), type one goal on each line,
+  and choose Add goals.
+- Mark the goal complete, drop it, reopen it or delete it.
+
+Save is off until you change the title, the description or the criteria. A year goal shows its
+description and its criteria on its card.
 
 ## Break a goal into smaller goals and tasks
 
@@ -61,9 +89,9 @@ A goal shows its progress as a number. The progress comes from the smaller goals
 
 Tefteri works out the progress each time. You do not type it.
 
-## Schedule a task from a planning view
+## Schedule a task from the Week view
 
-You can schedule a task from the Week view, the Month view or the Year view. You do not need to open the Calendar screen.
+The Month view and the Year view show goals only. They do not list single tasks. You can schedule a task from the Week view. You do not need to open the Calendar screen.
 
 1. Find the task under its goal.
 2. Drag the task to a day or to a time.
@@ -73,22 +101,25 @@ You can schedule a task from the Week view, the Month view or the Year view. You
 Tefteri writes the date and the time into the task. It writes them to your task app.
 The task stays in your task app. Read [Put tasks on the calendar](scheduling.md) for more information.
 
-## Mark a goal done or dropped
+## Mark a goal complete or dropped
 
-1. Choose the goal.
-2. Choose Mark done if you reached the goal. Choose Drop if you stop work on the goal.
+1. Choose the text of the goal. The pop-up opens.
+2. Read the criteria and the smaller goals.
+3. Choose Mark complete if you reached the goal. Choose Drop if you stop work on the goal.
 
-A done goal or a dropped goal stays in your plan. You can see it later.
-To work on the goal again, choose Reopen.
+A complete goal or a dropped goal stays in your plan. You can see it later.
+To work on the goal again, open it and choose Reopen.
+
+The goal card has no button to complete the goal. You complete a goal in its pop-up, after you
+look at the details.
 
 ## Delete a goal
 
 When you delete a goal, tefteri also deletes its smaller goals. You choose what happens to the tasks of the goal.
 
-1. Choose the goal.
+1. Choose the text of the goal. The pop-up opens.
 2. Choose Delete.
 3. Choose Keep tasks or Delete tasks.
-4. Choose Confirm.
 
 If you choose Keep tasks, the tasks stay in your task app. They have no goal now.
 If you choose Delete tasks, tefteri deletes the tasks from your task app.
