@@ -355,6 +355,44 @@
         "title": "ConflictOut",
         "type": "object"
       },
+      "ConnectionCheckOut": {
+        "description": "Whether a connection works, and if not, why.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "message"
+        ],
+        "title": "ConnectionCheckOut",
+        "type": "object"
+      },
       "ConnectionIn": {
         "description": "Data to create a connection.",
         "properties": {
@@ -3403,6 +3441,50 @@
           }
         },
         "summary": "Update Connection",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/api/v1/connections/{connection_id}/check": {
+      "post": {
+        "description": "Test the address and the credentials now, and say what is wrong when they fail.",
+        "operationId": "check_connection_api_v1_connections__connection_id__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Connection",
         "tags": [
           "connections"
         ]

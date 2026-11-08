@@ -85,6 +85,27 @@ class ConnectionOut(BaseModel):
         )
 
 
+class ConnectionCheckOut(BaseModel):
+    """Whether a connection works, and if not, why."""
+
+    status: str
+    reason: str | None
+    message: str | None
+
+
+@router.post("/{connection_id}/check")
+async def check_connection(
+    connection_id: uuid.UUID, db: Db, user: CurrentUser, service: ConnectionService = Service
+) -> ConnectionCheckOut:
+    """Test the address and the credentials now, and say what is wrong when they fail."""
+    health = await service.check(db, await _own(service, db, user, connection_id))
+    return ConnectionCheckOut(
+        status=health.status.value,
+        reason=health.detail or None,
+        message=health.message or None,
+    )
+
+
 class ContainerOut(BaseModel):
     """A project, calendar or note subtree."""
 

@@ -58,6 +58,15 @@ You need the web address of your Trilium Next server and an ETAPI token.
 7. Paste the ETAPI token.
 8. Choose Save.
 
+Tefteri tests each connection when you save it. If the connection does not work, a message
+tells you why. For example, it names the address that answered and what it answered. Fix the
+address or the token, and choose Save again.
+
+The base URL is the address that you use to open Trilium Next, for example
+`https://notes.example.com`. If you copy the address of a page, tefteri ignores the part after
+`#`, and it ignores `/etapi` at the end. Tefteri does not show the hidden notes of Trilium
+Next, such as the launch bar and the options.
+
 ## Choose what each connection shows
 
 Each connection has containers. A container is a Vikunja project, a Google calendar or a group of notes.
