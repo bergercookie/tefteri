@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label">Tefteri shortcuts</string>
+    <string name="widget_description">Open today, the week, the month or the planner</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_week">Week</string>
+    <string name="widget_month">Month</string>
+    <string name="widget_planner">Planner</string>
+    <string name="widget_today_description">Open the plan of today</string>
+    <string name="widget_week_description">Open the plan of the week</string>
+    <string name="widget_month_description">Open the plan of the month</string>
+    <string name="widget_planner_description">Open the planner with tasks and calendar</string>
+</resources>

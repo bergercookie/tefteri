@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget: four buttons in a row. Only views that a RemoteViews can show. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="horizontal"
+    android:padding="4dp">
+
+    <LinearLayout
+        android:id="@+id/widget_today"
+        style="@style/TefteriWidgetButton"
+        android:contentDescription="@string/widget_today_description">
+        <ImageView
+            style="@style/TefteriWidgetIcon"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_today" />
+        <TextView
+            style="@style/TefteriWidgetLabel"
+            android:text="@string/widget_today" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_week"
+        style="@style/TefteriWidgetButton"
+        android:contentDescription="@string/widget_week_description">
+        <ImageView
+            style="@style/TefteriWidgetIcon"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_week" />
+        <TextView
+            style="@style/TefteriWidgetLabel"
+            android:text="@string/widget_week" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_month"
+        style="@style/TefteriWidgetButton"
+        android:contentDescription="@string/widget_month_description">
+        <ImageView
+            style="@style/TefteriWidgetIcon"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_month" />
+        <TextView
+            style="@style/TefteriWidgetLabel"
+            android:text="@string/widget_month" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_planner"
+        style="@style/TefteriWidgetButton"
+        android:contentDescription="@string/widget_planner_description">
+        <ImageView
+            style="@style/TefteriWidgetIcon"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_planner" />
+        <TextView
+            style="@style/TefteriWidgetLabel"
+            android:text="@string/widget_planner" />
+    </LinearLayout>
+</LinearLayout>
