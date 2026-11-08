@@ -1,6 +1,31 @@
 {
   "components": {
     "schemas": {
+      "AnswerIn": {
+        "description": "The decisions about one project of the earlier week.",
+        "properties": {
+          "finished_anyway": {
+            "default": false,
+            "title": "Finished Anyway",
+            "type": "boolean"
+          },
+          "leftover": {
+            "default": "backlog",
+            "title": "Leftover",
+            "type": "string"
+          },
+          "plan_project_id": {
+            "format": "uuid",
+            "title": "Plan Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_project_id"
+        ],
+        "title": "AnswerIn",
+        "type": "object"
+      },
       "AppendIn": {
         "description": "Text to append to a daily note, with an optional task to link.",
         "properties": {
@@ -157,6 +182,57 @@
           "effective_context"
         ],
         "title": "CalendarItemOut",
+        "type": "object"
+      },
+      "CandidateOut": {
+        "description": "A project the user can pick.",
+        "properties": {
+          "carried_tasks": {
+            "title": "Carried Tasks",
+            "type": "integer"
+          },
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "connection_name": {
+            "title": "Connection Name",
+            "type": "string"
+          },
+          "container_id": {
+            "format": "uuid",
+            "title": "Container Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "selected": {
+            "title": "Selected",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "container_id",
+          "connection_id",
+          "connection_name",
+          "name",
+          "path",
+          "open_tasks",
+          "carried_tasks",
+          "selected"
+        ],
+        "title": "CandidateOut",
         "type": "object"
       },
       "ChildGoalIn": {
@@ -935,6 +1011,134 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HistoryEntryOut": {
+        "description": "One reviewed week.",
+        "properties": {
+          "committed_projects": {
+            "title": "Committed Projects",
+            "type": "integer"
+          },
+          "committed_tasks": {
+            "title": "Committed Tasks",
+            "type": "integer"
+          },
+          "done_projects": {
+            "title": "Done Projects",
+            "type": "integer"
+          },
+          "done_tasks": {
+            "title": "Done Tasks",
+            "type": "integer"
+          },
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "reflection": {
+            "title": "Reflection",
+            "type": "string"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "week_start",
+          "committed_projects",
+          "done_projects",
+          "committed_tasks",
+          "done_tasks",
+          "reflection",
+          "projects"
+        ],
+        "title": "HistoryEntryOut",
+        "type": "object"
+      },
+      "HistoryOut": {
+        "description": "The reviewed weeks, newest first, and their totals.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntryOut"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HistoryTotalsOut"
+          }
+        },
+        "required": [
+          "entries",
+          "totals"
+        ],
+        "title": "HistoryOut",
+        "type": "object"
+      },
+      "HistoryProjectOut": {
+        "description": "A project of a reviewed week.",
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "done"
+        ],
+        "title": "HistoryProjectOut",
+        "type": "object"
+      },
+      "HistoryTotalsOut": {
+        "description": "Sums over all reviewed weeks.",
+        "properties": {
+          "committed_projects": {
+            "title": "Committed Projects",
+            "type": "integer"
+          },
+          "committed_tasks": {
+            "title": "Committed Tasks",
+            "type": "integer"
+          },
+          "done_projects": {
+            "title": "Done Projects",
+            "type": "integer"
+          },
+          "done_tasks": {
+            "title": "Done Tasks",
+            "type": "integer"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weeks",
+          "committed_projects",
+          "done_projects",
+          "committed_tasks",
+          "done_tasks"
+        ],
+        "title": "HistoryTotalsOut",
+        "type": "object"
+      },
       "LoginRequest": {
         "description": "Username and password.",
         "properties": {
@@ -972,6 +1176,112 @@
           "expires_at"
         ],
         "title": "LoginResponse",
+        "type": "object"
+      },
+      "LookBackOut": {
+        "description": "The earlier week that the user looks back at.",
+        "properties": {
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/LookBackProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "reflection": {
+            "title": "Reflection",
+            "type": "string"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "boolean"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "week_start",
+          "reviewed",
+          "reflection",
+          "projects"
+        ],
+        "title": "LookBackOut",
+        "type": "object"
+      },
+      "LookBackProjectOut": {
+        "description": "How a project of the earlier week went.",
+        "properties": {
+          "committed": {
+            "title": "Committed",
+            "type": "integer"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "leftover": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyTaskOut"
+            },
+            "title": "Leftover",
+            "type": "array"
+          },
+          "leftover_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leftover Action"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "committed",
+          "done",
+          "completed",
+          "outcome",
+          "leftover_action",
+          "leftover"
+        ],
+        "title": "LookBackProjectOut",
         "type": "object"
       },
       "MeResponse": {
@@ -1251,48 +1561,100 @@
         "title": "PlanIn",
         "type": "object"
       },
-      "PlanOut": {
-        "description": "A plan and the goals of its period.",
+      "ProjectIn": {
+        "description": "The project to add.",
         "properties": {
-          "goals": {
+          "container_id": {
+            "format": "uuid",
+            "title": "Container Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "container_id"
+        ],
+        "title": "ProjectIn",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "description": "A project of the plan.",
+        "properties": {
+          "committed_tasks": {
             "items": {
-              "$ref": "#/components/schemas/GoalOut"
+              "$ref": "#/components/schemas/WeeklyTaskOut"
             },
-            "title": "Goals",
+            "title": "Committed Tasks",
             "type": "array"
+          },
+          "container_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Id"
+          },
+          "created_here": {
+            "title": "Created Here",
+            "type": "boolean"
+          },
+          "done_tasks": {
+            "title": "Done Tasks",
+            "type": "integer"
           },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
+          "name": {
+            "title": "Name",
             "type": "string"
           },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
           },
-          "summary": {
-            "title": "Summary",
-            "type": "string"
+          "scheduled_tasks": {
+            "title": "Scheduled Tasks",
+            "type": "integer"
           },
-          "title": {
-            "title": "Title",
-            "type": "string"
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
           }
         },
         "required": [
           "id",
-          "period_type",
-          "period_start",
-          "title",
-          "summary",
-          "goals"
+          "container_id",
+          "name",
+          "created_here",
+          "url",
+          "open_tasks",
+          "done_tasks",
+          "scheduled_tasks",
+          "tasks",
+          "committed_tasks"
         ],
-        "title": "PlanOut",
+        "title": "ProjectOut",
         "type": "object"
       },
       "Resolution": {
@@ -1329,6 +1691,25 @@
           "body"
         ],
         "title": "RetrospectiveIn",
+        "type": "object"
+      },
+      "ReviewIn": {
+        "description": "The look-back.",
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerIn"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "reflection": {
+            "default": "",
+            "title": "Reflection",
+            "type": "string"
+          }
+        },
+        "title": "ReviewIn",
         "type": "object"
       },
       "ReviewItemOut": {
@@ -1561,6 +1942,28 @@
           }
         },
         "title": "SettingsPatch",
+        "type": "object"
+      },
+      "SubprojectIn": {
+        "description": "A new project under an existing one.",
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "format": "uuid",
+            "title": "Parent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id",
+          "name"
+        ],
+        "title": "SubprojectIn",
         "type": "object"
       },
       "SyncResultOut": {
@@ -2091,6 +2494,206 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WeeklyStateOut": {
+        "description": "Everything the planning page shows for one week.",
+        "properties": {
+          "look_back": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LookBackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__weekly__PlanOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "week_end": {
+            "format": "date",
+            "title": "Week End",
+            "type": "string"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "week_end",
+          "plan",
+          "look_back"
+        ],
+        "title": "WeeklyStateOut",
+        "type": "object"
+      },
+      "WeeklyTaskOut": {
+        "description": "A task of a chosen project and its day.",
+        "properties": {
+          "done": {
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "due_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Day"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "planned_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Day"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "due_day",
+          "planned_day"
+        ],
+        "title": "WeeklyTaskOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__planning__PlanOut": {
+        "description": "A plan and the goals of its period.",
+        "properties": {
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/GoalOut"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_type": {
+            "title": "Period Type",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "period_type",
+          "period_start",
+          "title",
+          "summary",
+          "goals"
+        ],
+        "title": "PlanOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__weekly__PlanOut": {
+        "description": "The plan of one week.",
+        "properties": {
+          "committed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_projects": {
+            "default": 3,
+            "title": "Max Projects",
+            "type": "integer"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "retro_skipped": {
+            "title": "Retro Skipped",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "committed_at",
+          "retro_skipped",
+          "projects"
+        ],
+        "title": "PlanOut",
         "type": "object"
       }
     }
@@ -3488,7 +4091,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/PlanOut"
+                    "$ref": "#/components/schemas/tefteri__api__routers__planning__PlanOut"
                   },
                   "title": "Response List Plans Api V1 Plans Get",
                   "type": "array"
@@ -3521,7 +4124,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlanOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__planning__PlanOut"
                 }
               }
             },
@@ -3565,7 +4168,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlanOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__planning__PlanOut"
                 }
               }
             },
@@ -4699,6 +5302,609 @@
         "summary": "Year View",
         "tags": [
           "planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/history": {
+      "get": {
+        "description": "List the reviewed weeks: projects committed to versus projects done.",
+        "operationId": "history_api_v1_weekly_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/reviews/{plan_id}": {
+      "post": {
+        "description": "Store the look-back at a week and return the history, with that week in it.",
+        "operationId": "review_api_v1_weekly_reviews__plan_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}": {
+      "get": {
+        "description": "Return the plan of the week that holds ``day`` and the look-back at the week before.",
+        "operationId": "get_week_api_v1_weekly__day__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Week",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/candidates": {
+      "get": {
+        "description": "List the projects the user can pick, projects with carried-over tasks first.",
+        "operationId": "candidates_api_v1_weekly__day__candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "context",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ContextFilter",
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CandidateOut"
+                  },
+                  "title": "Response Candidates Api V1 Weekly  Day  Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Candidates",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/commit": {
+      "post": {
+        "description": "Commit the plan: the tasks planned for the week are what the look-back measures.",
+        "operationId": "commit_api_v1_weekly__day__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Commit",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/projects": {
+      "post": {
+        "description": "Add a project to the week (at most three).",
+        "operationId": "add_project_api_v1_weekly__day__projects_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Project",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/projects/{plan_project_id}": {
+      "delete": {
+        "description": "Take a project out of the week.",
+        "operationId": "remove_project_api_v1_weekly__day__projects__plan_project_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "plan_project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Project",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/refresh": {
+      "post": {
+        "description": "Read the tasks of the chosen projects again from the task app, then return the state.",
+        "operationId": "refresh_api_v1_weekly__day__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/reopen": {
+      "post": {
+        "description": "Make a committed plan editable again.",
+        "operationId": "reopen_api_v1_weekly__day__reopen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reopen",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/skip-look-back": {
+      "post": {
+        "description": "Plan the week without looking back at the last one.",
+        "operationId": "skip_look_back_api_v1_weekly__day__skip_look_back_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skip Look Back",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/spread": {
+      "post": {
+        "description": "Give every task without a day in the week a day, keeping the days evenly loaded.",
+        "operationId": "spread_api_v1_weekly__day__spread_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Spread",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/start": {
+      "post": {
+        "description": "Start the plan of the week (does nothing when it exists).",
+        "operationId": "start_api_v1_weekly__day__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/subprojects": {
+      "post": {
+        "description": "Create a project under an existing one in the task app and add it to the week.",
+        "operationId": "create_subproject_api_v1_weekly__day__subprojects_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubprojectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Subproject",
+        "tags": [
+          "weekly planning"
         ]
       }
     },

@@ -80,6 +80,14 @@ class FakeTaskBackend(_FakeBase):
         super().__init__(containers)
         self.tasks: dict[str, RemoteTask] = {}
 
+    async def create_container(self, name: str, parent: Container | None) -> Container:
+        """Create a project (a subproject of ``parent`` when given)."""
+        self._guard()
+        self._require(Capability.SUBPROJECTS)
+        created = Container(self._new_id(), name, parent.remote_id if parent else None)
+        self.containers.append(created)
+        return created
+
     async def list_tasks(self, container: Container, since: str | None) -> TaskPage:  # noqa: ARG002
         """List the tasks of a container."""
         self._guard()

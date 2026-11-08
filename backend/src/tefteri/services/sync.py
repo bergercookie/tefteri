@@ -147,6 +147,46 @@ class SyncService:
         await db.flush()
         return result
 
+    async def sync_projects(
+        self, db: AsyncSession, connection: Connection, rows: list[SourceContainer]
+    ) -> dict[str, int]:
+        """Sync the tasks of some projects only (cheap enough to repeat every few seconds).
+
+        Unlike ``sync_connection`` this reads no other project, writes no ``SyncRun`` and leaves
+        the connection status alone. A task that left a listed project is marked deleted until
+        the next full sync finds it in its new project.
+        """
+        counts = {"created": 0, "updated": 0, "deleted": 0}
+        backend = await self._connections.backend_of_owner(db, connection)
+        if connection.kind != ConnectionKind.TASKS.value:
+            return counts
+        existing = {
+            t.remote_id: t
+            for t in (
+                await db.execute(select(Task).where(Task.connection_id == connection.id))
+            ).scalars()
+        }
+        for row in rows:
+            seen: set[str] = set()
+            container = Container(row.remote_id, row.name, row.parent_remote_id)
+            for item in (await backend.list_tasks(container, None)).items:  # type: ignore[attr-defined]
+                _upsert(
+                    db,
+                    existing,
+                    seen,
+                    counts,
+                    Task,
+                    connection,
+                    item.remote_id,
+                    item.version,
+                    task_values(item, row.id),
+                )
+            _mark_deleted(
+                {k: t for k, t in existing.items() if t.container_id == row.id}, seen, counts
+            )
+        await db.flush()
+        return counts
+
     async def _sync_containers(
         self, db: AsyncSession, connection: Connection, backend: Any
     ) -> dict[str, tuple[Container, uuid.UUID]]:
@@ -168,12 +208,20 @@ class SyncService:
                     connection_id=connection.id,
                     remote_id=container.remote_id,
                     name=container.name,
+                    parent_remote_id=container.parent_id,
                 )
                 db.add(row)
             else:
                 row.name = container.name
+                row.parent_remote_id = container.parent_id
             await db.flush()
             out[container.remote_id] = (container, row.id)
+        # A container that the app no longer lists is gone there (deleted, or never one). Its
+        # tasks, entries and notes are marked deleted by the sync that follows.
+        for remote_id, row in rows.items():
+            if remote_id not in out:
+                await db.delete(row)
+        await db.flush()
         return out
 
     async def _sync_tasks(
