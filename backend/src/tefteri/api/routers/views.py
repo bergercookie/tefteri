@@ -12,7 +12,6 @@ from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
 from tefteri.domain.timeutil import day_bounds, overlaps
-from tefteri.services.context import ContextFilter, load_maps
 
 router = APIRouter(prefix="/views", tags=["views"])
 
@@ -23,7 +22,6 @@ async def day_view(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> DayView:
     """Return the day's entries, tasks (scheduled or due that day) and daily note.
 
@@ -31,15 +29,12 @@ async def day_view(
     """
     start, end = day_bounds(day, user.timezone)
     ZoneInfo(user.timezone)
-    maps = await load_maps(db, user.id)
     entries = [
-        EntryOut.of(e, maps)
+        EntryOut.of(e)
         for e in (
             await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user.id))
         ).scalars()
-        if e.sync_state != "deleted_remotely"
-        and overlaps(aware(e.start), aware(e.end), start, end)
-        and maps.matches(context, e.context, e.container_id, e.connection_id)
+        if e.sync_state != "deleted_remotely" and overlaps(aware(e.start), aware(e.end), start, end)
     ]
     tasks = []
     for t in (await db.execute(select(Task).where(Task.user_id == user.id))).scalars():
@@ -48,8 +43,7 @@ async def day_view(
         when = t.due_at
         if when is None or not (start <= aware(when) < end):
             continue
-        if maps.matches(context, t.context, t.container_id, t.connection_id):
-            tasks.append(TaskOut.of(t, maps))
+        tasks.append(TaskOut.of(t))
     note_row = (
         (
             await db.execute(
@@ -61,11 +55,7 @@ async def day_view(
         .scalars()
         .first()
     )
-    note = (
-        NoteOut.of(note_row, maps)
-        if note_row and maps.matches(context, note_row.context, None, note_row.connection_id)
-        else None
-    )
+    note = NoteOut.of(note_row) if note_row else None
     return DayView(
         date=day.isoformat(), entries=sorted(entries, key=lambda e: e.start), tasks=tasks, note=note
     )

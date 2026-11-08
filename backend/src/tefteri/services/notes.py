@@ -13,12 +13,11 @@ from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
 from tefteri.db.repositories.items import NoteRepository, TaskNoteLinkRepository
 from tefteri.domain.entities import NoteDraft, NotePatch, RemoteNote
-from tefteri.domain.enums import ConnectionKind, Context, SyncState
+from tefteri.domain.enums import ConnectionKind, SyncState
 from tefteri.domain.ports import NoteBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
 from tefteri.services.mirror import note_values
-from tefteri.services.tasks import UNSET
 
 # Kind of a note that sync found in the note app and tefteri did not create.
 DEFAULT_KIND = "custom"
@@ -156,11 +155,8 @@ class NoteService:
         *,
         title: str | None = None,
         body: str | None = None,
-        context: object = UNSET,
     ) -> Note:
-        """Change a note. Title and body go to the note app first; ``context`` stays local."""
-        if context is not UNSET:
-            note.context = None if context is None else Context(str(context)).value
+        """Change a note. Title and body go to the note app first."""
         if title is not None or body is not None:
             connection = await self.notes_connection(db, user_id, note.connection_id)
             remote = await guard(

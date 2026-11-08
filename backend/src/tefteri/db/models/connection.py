@@ -22,7 +22,6 @@ class Connection(IdMixin, CreatedMixin, Base):
     kind: Mapped[str] = mapped_column(String(16))
     provider: Mapped[str] = mapped_column(String(32))
     display_name: Mapped[str] = mapped_column(String(150))
-    default_context: Mapped[str] = mapped_column(String(8), default="life")
     encrypted_credentials: Mapped[str | None] = mapped_column(Text, nullable=True)
     settings: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(32), default=ConnectionStatus.OK.value)
@@ -45,6 +44,5 @@ class SourceContainer(IdMixin, Base):
     )
     remote_id: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255))
-    context: Mapped[str | None] = mapped_column(String(8), nullable=True)
     parent_remote_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     """``remote_id`` of the project this one is nested in (a Vikunja subproject)."""

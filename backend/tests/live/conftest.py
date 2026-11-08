@@ -143,7 +143,6 @@ async def tefteri(
             json={
                 "provider": "vikunja",
                 "display_name": "Live Vikunja",
-                "default_context": "life",
                 "settings": {"base_url": vikunja_url},
                 "credentials": {"token": vikunja_token},
             },

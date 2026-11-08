@@ -11,13 +11,12 @@ from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.repositories.items import EntryRepository
 from tefteri.domain.entities import EntryDraft, EntryPatch, RemoteEntry
-from tefteri.domain.enums import ConnectionKind, Context, SyncState
+from tefteri.domain.enums import ConnectionKind, SyncState
 from tefteri.domain.ports import CalendarBackend
 from tefteri.services import conflicts
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import BackendProblem, Invalid, NotFound, guard
 from tefteri.services.mirror import entry_values
-from tefteri.services.tasks import UNSET
 
 
 class CalendarService:
@@ -105,11 +104,8 @@ class CalendarService:
         start: datetime | None = None,
         end: datetime | None = None,
         location: str | None = None,
-        context: object = UNSET,
     ) -> CalendarEntry:
-        """Change an entry. Remote fields go to the app first; ``context`` stays in tefteri."""
-        if context is not UNSET:
-            entry.context = None if context is None else Context(str(context)).value
+        """Change an entry. Remote fields go to the app first."""
         if any(v is not None for v in (title, start, end, location)):
             connection = await self._connection_of(db, user_id, entry)
             try:

@@ -14,10 +14,8 @@ from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
 from tefteri.db.models.goal import Goal, Plan
 from tefteri.db.models.task import Task
-from tefteri.domain.enums import Context
 from tefteri.domain.periods import PeriodType, period_end, period_start
 from tefteri.domain.timeutil import day_bounds, overlaps
-from tefteri.services.context import ContextFilter, load_maps
 from tefteri.services.errors import Invalid
 from tefteri.services.goals import ChildGoal, ChildTask, GoalService
 
@@ -39,7 +37,6 @@ class GoalOut(BaseModel):
     title: str
     description: str
     criteria: str
-    context: str
     status: str
     progress: float
 
@@ -54,7 +51,6 @@ class GoalOut(BaseModel):
             title=g.title,
             description=g.description,
             criteria=g.criteria,
-            context=g.context,
             status=g.status,
             progress=round(progress.get(g.id, 0.0), 4),
         )
@@ -69,7 +65,6 @@ class GoalIn(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     description: str = ""
     criteria: str = ""
-    context: Context = Context.LIFE
 
 
 class GoalsIn(BaseModel):
@@ -79,7 +74,6 @@ class GoalsIn(BaseModel):
     period_type: PeriodType
     period_start: date
     titles: list[Annotated[str, Field(max_length=500)]] = Field(max_length=100)
-    context: Context = Context.LIFE
 
 
 class GoalPatch(BaseModel):
@@ -89,7 +83,6 @@ class GoalPatch(BaseModel):
     description: str | None = None
     criteria: str | None = None
     status: Literal["active", "done", "dropped"] | None = None
-    context: Context | None = None
 
 
 class ChildGoalIn(BaseModel):
@@ -153,10 +146,6 @@ class PeriodView(BaseModel):
     entries: list[EntryOut]
 
 
-def _matches(wanted: ContextFilter, goal: Goal) -> bool:
-    return wanted is ContextFilter.ALL or goal.context == wanted.value
-
-
 @router.get("/goals")
 async def list_goals(
     request: Request,
@@ -165,7 +154,6 @@ async def list_goals(
     period_type: PeriodType | None = None,
     period_start_: Annotated[date | None, Query(alias="period_start")] = None,
     parent_id: uuid.UUID | None = None,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> list[GoalOut]:
     """List goals, optionally for one period or under one parent."""
     service = _goals(request)
@@ -176,7 +164,6 @@ async def list_goals(
         if (period_type is None or g.period_type == period_type.value)
         and (period_start_ is None or g.period_start == period_start_)
         and (parent_id is None or g.parent_id == parent_id)
-        and _matches(context, g)
     ]
 
 
@@ -201,7 +188,6 @@ async def create_goals(body: GoalsIn, request: Request, db: Db, user: CurrentUse
         period_type=body.period_type,
         period_start=body.period_start,
         titles=titles,
-        context=body.context,
         parent_id=body.parent_id,
     )
     progress = await service.progress(db, user.id)
@@ -248,9 +234,8 @@ async def breakdown_goal(
         [ChildTask(t.connection_id, t.title, t.container_id) for t in body.tasks],
     )
     progress = await service.progress(db, user.id)
-    maps = await load_maps(db, user.id)
     return BreakdownOut(
-        goals=[GoalOut.of(g, progress) for g in goals], tasks=[TaskOut.of(t, maps) for t in tasks]
+        goals=[GoalOut.of(g, progress) for g in goals], tasks=[TaskOut.of(t) for t in tasks]
     )
 
 
@@ -300,18 +285,16 @@ async def _period_view(
     tz: str,
     kind: PeriodType,
     start: date,
-    context: ContextFilter,
 ) -> PeriodView:
     end = period_end(kind, start)
     low = day_bounds(start, tz)[0]
     high = day_bounds(end, tz)[0]
     service = _goals(request)
     progress = await service.progress(db, user_id)
-    maps = await load_maps(db, user_id)
     goals = [
         GoalOut.of(g, progress)
         for g in await service.all(db, user_id)
-        if g.period_type == kind.value and g.period_start == start and _matches(context, g)
+        if g.period_type == kind.value and g.period_start == start
     ]
     projects = {
         c.id: c.name
@@ -324,20 +307,17 @@ async def _period_view(
         when = t.due_at
         if t.sync_state == "deleted_remotely" or when is None or not low <= aware(when) < high:
             continue
-        if maps.matches(context, t.context, t.container_id, t.connection_id):
-            project = projects.get(t.container_id) if t.container_id else None
-            tasks.append(TaskOut.of(t, maps, project=project))
+        project = projects.get(t.container_id) if t.container_id else None
+        tasks.append(TaskOut.of(t, project=project))
     entries: list[EntryOut] = []
     if kind is not PeriodType.YEAR:
         for e in (
             await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user_id))
         ).scalars():
-            if (
-                e.sync_state != "deleted_remotely"
-                and overlaps(aware(e.start), aware(e.end), low, high)
-                and maps.matches(context, e.context, e.container_id, e.connection_id)
+            if e.sync_state != "deleted_remotely" and overlaps(
+                aware(e.start), aware(e.end), low, high
             ):
-                entries.append(EntryOut.of(e, maps))
+                entries.append(EntryOut.of(e))
     return PeriodView(
         period_type=kind.value,
         start=start,
@@ -354,7 +334,6 @@ async def week_view(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> PeriodView:
     """Return the goals, tasks and entries of the Monday-to-Sunday week that contains ``day``."""
     return await _period_view(
@@ -364,7 +343,6 @@ async def week_view(
         user.timezone,
         PeriodType.WEEK,
         period_start(PeriodType.WEEK, day),
-        context,
     )
 
 
@@ -374,7 +352,6 @@ async def month_view(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> PeriodView:
     """Return the goals, tasks and entries of the month that contains ``day``."""
     return await _period_view(
@@ -384,7 +361,6 @@ async def month_view(
         user.timezone,
         PeriodType.MONTH,
         period_start(PeriodType.MONTH, day),
-        context,
     )
 
 
@@ -394,9 +370,8 @@ async def year_view(
     request: Request,
     db: Db,
     user: CurrentUser,
-    context: ContextFilter = ContextFilter.ALL,
 ) -> PeriodView:
     """Return the goals and tasks of a year (no entries)."""
     return await _period_view(
-        request, db, user.id, user.timezone, PeriodType.YEAR, date(year, 1, 1), context
+        request, db, user.id, user.timezone, PeriodType.YEAR, date(year, 1, 1)
     )
