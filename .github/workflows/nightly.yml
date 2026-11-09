@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
   packages: write
+env:
+  # The Flutter version of the Linux packages. Keep it equal to the one in devbox.json.
+  FLUTTER_SDK: "3.47.4"
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -45,21 +48,44 @@ jobs:
           PEP440: ${{ needs.version.outputs.pep440 }}
           FLUTTER: ${{ needs.version.outputs.flutter }}
 
-  clients:
+  linux:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
+    # The oldest runner image that GitHub still offers: the packages then run on older systems too.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      # The Linux packages are built without devbox. Devbox is for the development setup: its
+      # Flutter links the GTK of the nix store, and a bundle like that does not start on other
+      # computers. Use the compiler and the GTK of the system, and a plain Flutter SDK.
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          file desktop-file-utils
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_SDK }}
+      - uses: extractions/setup-just@v2
+      - run: just release::nightly-clients-linux "$IMAGE" "$FLUTTER"
+        env:
+          IMAGE: ${{ needs.version.outputs.image }}
+          FLUTTER: ${{ needs.version.outputs.flutter }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux
+          path: dist/*
+          if-no-files-found: error
+
+  android:
     needs: version
     if: needs.version.outputs.needed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      # Linux desktop build and AppImage tools: not provided by devbox (README exceptions).
-      # Do not install clang or GTK here. The devbox Flutter links its own GTK, and only the
-      # devbox clang can link it (the system clang has an older glibc).
-      - run: >-
-          sudo apt-get update && sudo apt-get install -y
-          cmake ninja-build pkg-config file desktop-file-utils
       - uses: jetify-com/devbox-install-action@v0.12.0
-      - run: devbox run -- just release::nightly-clients "$IMAGE" "$FLUTTER"
+      - run: devbox run -- just release::nightly-clients-android "$IMAGE" "$FLUTTER"
         env:
           IMAGE: ${{ needs.version.outputs.image }}
           FLUTTER: ${{ needs.version.outputs.flutter }}
@@ -67,6 +93,25 @@ jobs:
           TEFTERI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           TEFTERI_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           TEFTERI_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-android
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [version, linux, android]
+    if: needs.version.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: jetify-com/devbox-install-action@v0.12.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
       - run: devbox run -- just release::nightly-publish "$IMAGE"
         env:
           IMAGE: ${{ needs.version.outputs.image }}

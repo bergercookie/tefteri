@@ -14,6 +14,18 @@ and `devbox.lock` keeps the exact versions.
 4. In the repository root, run `devbox shell`.
 5. Run `just backend::install frontend::install`.
 
+```{note}
+Devbox sets up the dependencies for development. Do not use it to build the Linux packages that
+you give to other people. The Flutter SDK of devbox links the GTK libraries of the nix store, and
+a program that links them starts only on the computer that built it. On other computers it stops
+with an error such as `No provider of eglGetPlatformDisplayEXT found`.
+
+The CI builds the `.deb` package and the AppImage outside devbox. It uses the compiler and the
+GTK libraries of the system, and a plain Flutter SDK. Do the same on your computer: open a shell
+without devbox, install the packages that the README lists, and run `just packaging::deb`.
+The build stops with a message when the bundle links to `/nix/store`.
+```
+
 ## Use just for every task
 
 The root `justfile` is the only entry point. Do not call pytest, ruff, flutter or docker
