@@ -1,7 +1,7 @@
 """Google Calendar adapter against recorded (hand-written) HTTP responses."""
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -156,3 +156,35 @@ async def test_the_id_of_a_special_calendar_is_encoded_in_the_path(
     await backend.get_entry(remote_id)
     await backend.update_entry(remote_id, EntryPatch(title="x"), '"1"')
     await backend.delete_entry(remote_id)
+
+
+@respx.mock
+async def test_the_time_of_an_event_keeps_its_offset_or_takes_the_named_zone(
+    backend: GoogleCalendarBackend,
+) -> None:
+    token_route()
+    respx.get(f"{API}/calendars/{CAL}/events").respond(
+        json={
+            "items": [
+                # An offset: 11:00 in Athens in summer is 08:00 UTC.
+                event(
+                    "a",
+                    start={"dateTime": "2026-07-02T11:00:00+03:00"},
+                    end={"dateTime": "2026-07-02T12:00:00+03:00"},
+                ),
+                # No offset, but the zone is named: the zone gives the offset (+02:00 in November).
+                event(
+                    "b",
+                    start={"dateTime": "2026-11-02T11:00:00", "timeZone": "Europe/Athens"},
+                    end={"dateTime": "2026-11-02T12:00:00", "timeZone": "Europe/Athens"},
+                ),
+                # A day, with no time: the sync puts it on the local days of the user.
+                event("c", start={"date": "2026-11-05"}, end={"date": "2026-11-06"}),
+            ]
+        }
+    )
+    page = await backend.list_entries(Container(CAL, "Family"), NOW, NOW.replace(day=30), None)
+    a, b, c = page.items
+    assert a.start.utcoffset() == timedelta(hours=3) and a.start.hour == 11
+    assert b.start.utcoffset() == timedelta(hours=2) and b.start.hour == 11
+    assert c.all_day and c.start.tzinfo is None and c.start.date().isoformat() == "2026-11-05"

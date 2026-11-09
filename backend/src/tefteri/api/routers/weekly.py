@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.schemas import UtcDatetime
 from tefteri.db.models.weekly import WeeklyPlan
 from tefteri.services.errors import NotFound
 from tefteri.services.weekly import (
@@ -83,7 +84,7 @@ class PlanOut(BaseModel):
 
     id: uuid.UUID
     status: str
-    committed_at: datetime | None
+    committed_at: UtcDatetime | None
     retro_skipped: bool
     max_projects: int = MAX_PROJECTS
     projects: list[ProjectOut]

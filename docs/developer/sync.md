@@ -41,6 +41,20 @@ reason: `unreachable`, `auth_expired` or `error`. The connection status changes 
 The sync does not overwrite a row in the `conflict` state. The row stays as it is until the
 user solves the conflict.
 
+## Times
+
+The cache holds every time as UTC. SQLite drops the time zone of a stored time, so the sync
+converts each time to UTC before it stores it (`mirror.to_utc`).
+
+- A time with an offset, such as `2026-11-02T11:00:00+02:00`, is converted. A time without an
+  offset but with a named zone (Google sends `timeZone`) takes the offset of that zone. A time
+  with neither is UTC.
+- An all-day event comes as dates. The sync puts it on the local days of the user: midnight in
+  the time zone of the user, converted to UTC (`sync.anchor_all_day`).
+- The API sends every time from the cache with its zone (`...Z`). Use the type `UtcDatetime` in
+  `api/schemas.py` for every such time in a response. Without the zone, a browser reads the time
+  as its own local time, and the client shows every time shifted by its offset from UTC.
+
 ## Writes from tefteri
 
 A write (for example, change a task title) goes to the connected app first. The adapter sends

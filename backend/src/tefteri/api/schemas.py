@@ -2,16 +2,30 @@
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel
+from pydantic import AfterValidator, BaseModel
 
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
 from tefteri.domain.planning_time import block_for
 from tefteri.domain.timeutil import day_bounds
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Mark a time without a zone as UTC. The cache keeps UTC but SQLite drops the zone."""
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+UtcDatetime = Annotated[datetime, AfterValidator(_as_utc)]
+"""A time that the API sends with its zone (``...Z``).
+
+Without the zone a client reads the time as its own local time, and shows every cached time
+shifted by its offset from UTC (two hours early in Athens, for example). Use this type for every
+time in a response that comes from the cache.
+"""
 
 
 class TaskOut(BaseModel):
@@ -22,9 +36,9 @@ class TaskOut(BaseModel):
     title: str
     description: str
     status: str
-    due_at: datetime | None
-    scheduled_start: datetime | None
-    scheduled_end: datetime | None
+    due_at: UtcDatetime | None
+    scheduled_start: UtcDatetime | None
+    scheduled_end: UtcDatetime | None
     sync_state: str
     goal_id: uuid.UUID | None = None
     project: str | None = None
@@ -66,8 +80,8 @@ class EntryOut(BaseModel):
     id: uuid.UUID
     connection_id: uuid.UUID
     title: str
-    start: datetime
-    end: datetime
+    start: UtcDatetime
+    end: UtcDatetime
     all_day: bool
     location: str
     sync_state: str
@@ -119,8 +133,8 @@ class CalendarItemOut(BaseModel):
     id: uuid.UUID
     connection_id: uuid.UUID
     title: str
-    start: datetime
-    end: datetime
+    start: UtcDatetime
+    end: UtcDatetime
     all_day: bool
     status: str | None = None
     clipped_start: bool = False

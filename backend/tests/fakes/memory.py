@@ -2,7 +2,7 @@
 
 import itertools
 from dataclasses import replace
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from tefteri.domain.entities import (
     ConnectionHealth,
@@ -27,6 +27,11 @@ from tefteri.domain.errors import (
     NotSupported,
     RemoteConflict,
 )
+
+
+def _utc(value: datetime) -> datetime:
+    """An all-day event is a plain date (no zone); compare it as UTC."""
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
 class _FakeBase:
@@ -228,7 +233,7 @@ class FakeCalendarBackend(_FakeBase):
         items = [
             e
             for e in self.entries.values()
-            if e.container_id == container.remote_id and e.start < end and e.end > start
+            if e.container_id == container.remote_id and _utc(e.start) < end and _utc(e.end) > start
         ]
         return EntryPage(items=items, sync_token=self._new_version())
 

@@ -2,7 +2,6 @@
 
 import html
 import uuid
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -13,6 +12,7 @@ from sqlalchemy import select
 from tefteri.api.deps import CurrentUser, Db, SettingsDep
 from tefteri.api.errors import ApiError
 from tefteri.api.routers.sync import SyncResultOut
+from tefteri.api.schemas import UtcDatetime
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.services.connections import ConnectionService, UnknownProvider
 from tefteri.services.google_oauth import GoogleOAuth, InvalidState
@@ -64,7 +64,7 @@ class ConnectionOut(BaseModel):
     display_name: str
     settings: dict[str, Any]
     status: str
-    last_sync_at: datetime | None
+    last_sync_at: UtcDatetime | None
     last_sync_outcome: str | None
 
     @classmethod

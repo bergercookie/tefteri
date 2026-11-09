@@ -27,7 +27,7 @@ from tefteri.domain.timeutil import overlaps
 from tefteri.services import conflicts
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import BackendProblem, Invalid, NotFound, guard
-from tefteri.services.mirror import task_values
+from tefteri.services.mirror import task_values, to_utc
 
 UNSET = object()
 
@@ -293,7 +293,8 @@ async def _owner(db: AsyncSession, user_id: uuid.UUID) -> User:
 
 
 def _iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
+    """A time as text, always in UTC with its zone: the cache drops the zone, an app keeps it."""
+    return to_utc(value).isoformat() if value else None
 
 
 def _aware(value: datetime) -> datetime:

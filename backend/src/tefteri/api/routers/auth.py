@@ -1,13 +1,13 @@
 """Login, logout and identity endpoints."""
 
 import uuid
-from datetime import datetime
 
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 
 from tefteri.api.deps import SESSION_COOKIE, AuthDep, CurrentUser, Db, SettingsDep, Token
 from tefteri.api.errors import ApiError
+from tefteri.api.schemas import UtcDatetime
 from tefteri.auth.passwords import hash_password
 from tefteri.auth.service import InvalidCredentials
 from tefteri.auth.throttle import Throttled
@@ -28,7 +28,7 @@ class LoginResponse(BaseModel):
     """Issued bearer token."""
 
     token: str
-    expires_at: datetime
+    expires_at: UtcDatetime
 
 
 class MeResponse(BaseModel):

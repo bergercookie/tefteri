@@ -1,13 +1,13 @@
 """Conflict endpoints."""
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.schemas import UtcDatetime
 from tefteri.domain.enums import Resolution
 from tefteri.services.conflicts import ConflictService
 
@@ -27,7 +27,7 @@ class ConflictOut(BaseModel):
     entity_id: uuid.UUID
     local_snapshot: dict[str, Any]
     remote_snapshot: dict[str, Any]
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class ResolveIn(BaseModel):

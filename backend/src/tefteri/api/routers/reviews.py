@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from tefteri.api.deps import CurrentUser, Db
-from tefteri.api.schemas import NoteOut
+from tefteri.api.schemas import NoteOut, UtcDatetime
 from tefteri.db.models.goal import Plan
 from tefteri.db.models.note import Note
 from tefteri.db.models.review import PeriodReview
@@ -48,7 +48,7 @@ class ReviewOut(BaseModel):
     period_start: date
     period_end: date
     period_ended: bool
-    generated_at: datetime
+    generated_at: UtcDatetime
     planned_count: int
     completed_count: int
     items: list[ReviewItemOut]
@@ -59,7 +59,7 @@ class ReviewOut(BaseModel):
 class ReviewSummaryOut(BaseModel):
     """Counts of a stored review, for the plan history."""
 
-    generated_at: datetime
+    generated_at: UtcDatetime
     planned_count: int
     completed_count: int
     has_retrospective: bool

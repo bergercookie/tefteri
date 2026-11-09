@@ -1,13 +1,13 @@
 """Sync endpoints."""
 
 import uuid
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.errors import ApiError
+from tefteri.api.schemas import UtcDatetime
 from tefteri.services.connections import ConnectionService
 from tefteri.services.sync import SyncResult, SyncService
 
@@ -57,7 +57,7 @@ class SyncStatusOut(BaseModel):
     connection_id: uuid.UUID
     name: str
     status: str
-    last_sync_at: datetime | None
+    last_sync_at: UtcDatetime | None
     last_sync_outcome: str | None
 
 
