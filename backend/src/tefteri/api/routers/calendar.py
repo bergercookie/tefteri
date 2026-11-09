@@ -79,7 +79,8 @@ async def list_calendar(
         if t.sync_state == "deleted_remotely":
             continue
         project = projects.get(t.container_id) if t.container_id else None
-        items.append(CalendarItemOut.of_task(t, user.timezone, project))
+        color = colors.get(t.container_id) if t.container_id else None
+        items.append(CalendarItemOut.of_task(t, user.timezone, project, color))
     if from_ or to:
         low = aware(from_) if from_ else datetime.min.replace(tzinfo=UTC)
         high = aware(to) if to else datetime.max.replace(tzinfo=UTC)

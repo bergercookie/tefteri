@@ -67,6 +67,7 @@ class WeeklyProject {
     this.parkedTasks = 0,
     this.committedTasks = const [],
     this.containerId,
+    this.color,
     this.url,
   });
 
@@ -75,6 +76,7 @@ class WeeklyProject {
         id: '${j['id']}',
         containerId: j['container_id'] == null ? null : '${j['container_id']}',
         name: '${j['name'] ?? ''}',
+        color: j['color'] as String?,
         createdHere: j['created_here'] == true,
         url: j['url'] as String?,
         openTasks: (j['open_tasks'] as num? ?? 0).toInt(),
@@ -99,6 +101,9 @@ class WeeklyProject {
 
   /// Project name.
   final String name;
+
+  /// The color of the project in the task app, as `#rrggbb`, or null.
+  final String? color;
 
   /// True when this planning session created the project.
   final bool createdHere;
@@ -213,12 +218,14 @@ class LookBackProject {
     required this.leftover,
     this.outcome,
     this.leftoverAction,
+    this.color,
   });
 
   /// Parses a project JSON object.
   factory LookBackProject.fromJson(Map<String, dynamic> j) => LookBackProject(
         id: '${j['id']}',
         name: '${j['name'] ?? ''}',
+        color: j['color'] as String?,
         committed: (j['committed'] as num? ?? 0).toInt(),
         done: (j['done'] as num? ?? 0).toInt(),
         completed: j['completed'] == true,
@@ -235,6 +242,9 @@ class LookBackProject {
 
   /// Project name.
   final String name;
+
+  /// The color of the project in the task app, as `#rrggbb`, or null.
+  final String? color;
 
   /// Tasks that were planned for the week.
   final int committed;

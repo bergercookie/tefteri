@@ -243,7 +243,7 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (t.project != null && t.project!.isNotEmpty)
-            ProjectChip(name: t.project!),
+            ProjectChip(name: t.project!, color: t.projectColor),
           Text(goal == null ? time : '$time - Goal: $goal'),
         ],
       ),

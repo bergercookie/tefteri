@@ -183,6 +183,7 @@ class FinishStep extends StatelessWidget {
     ]..sort((a, b) => a.plannedDay!.compareTo(b.plannedDay!));
     return ProjectCard(
       name: p.name,
+      color: p.color,
       key: Key('summary-${p.id}'),
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),

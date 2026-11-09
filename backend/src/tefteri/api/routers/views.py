@@ -45,7 +45,9 @@ async def day_view(
         when = t.due_at
         if when is None or not (start <= aware(when) < end):
             continue
-        tasks.append(TaskOut.of(t))
+        tasks.append(
+            TaskOut.of(t, project_color=colors.get(t.container_id) if t.container_id else None)
+        )
     note_row = (
         (
             await db.execute(

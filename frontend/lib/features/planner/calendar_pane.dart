@@ -361,20 +361,25 @@ String? _titleOf(Object data) {
 }
 
 Color _blockColor(BuildContext context, CalendarItem i) {
-  if (i.isTask) return context.tefteri.taskContainer;
-  // An event has the color that the user chose for its calendar.
-  final calendar = parseCalendarColor(i.color);
-  return calendar == null
-      ? context.tefteri.eventContainer
-      : calendarTint(context, calendar);
+  // An event has the color that the user chose for its calendar, and a task
+  // the color of its project. Without one, the colors of the app.
+  final chosen = parseCalendarColor(i.color);
+  if (chosen != null && !(i.isTask && i.isDone)) {
+    return calendarTint(context, chosen);
+  }
+  return i.isTask
+      ? context.tefteri.taskContainer
+      : context.tefteri.eventContainer;
 }
 
-/// The strong color on the left edge of a block: tasks in terracotta, events
-/// in ink blue, finished tasks in sage.
+/// The strong color on the left edge of a block: the color that the user chose
+/// for the calendar of an event or the project of a task. Without one, tasks
+/// are terracotta and events ink blue. Finished tasks are sage.
 Color _accentColor(BuildContext context, CalendarItem i) {
   final c = context.tefteri;
   if (!i.isTask) return parseCalendarColor(i.color) ?? c.event;
-  return i.isDone ? c.done : c.task;
+  if (i.isDone) return c.done;
+  return parseCalendarColor(i.color) ?? c.task;
 }
 
 /// A small label with a solid background and square corners that names the

@@ -96,4 +96,49 @@ void main() {
         .border! as Border;
     expect(chip.left.color, const Color.fromARGB(255, 3, 155, 229));
   });
+
+  testWidgets('a task shows the color of its project', (tester) async {
+    final api = plannerApi(calendar: [
+      calItem('task', 'blue', 'Fix the form',
+          start: DateTime(2026, 11, 4, 9), color: '#039be5', status: 'open'),
+      calItem('task', 'plain', 'No project color',
+          start: DateTime(2026, 11, 4, 11), status: 'open'),
+      calItem('task', 'done', 'Finished',
+          start: DateTime(2026, 11, 4, 13), color: '#039be5', status: 'done'),
+    ]);
+    await pumpPlanner(tester, api);
+    Color tint(String key) =>
+        (tester.widget<Container>(find.byKey(Key(key))).decoration!
+                as BoxDecoration)
+            .color!;
+    Color accent(String key) =>
+        tester.widget<Container>(find.byKey(Key(key))).color!;
+    const colors = TefteriColors.light;
+    expect(accent('block-accent-task-blue'),
+        const Color.fromARGB(255, 3, 155, 229));
+    expect(tint('block-task-blue'), isNot(colors.taskContainer));
+    // Without a project color, the colors of the app stay.
+    expect(accent('block-accent-task-plain'), colors.task);
+    expect(tint('block-task-plain'), colors.taskContainer);
+    // A finished task stays sage, whatever its project.
+    expect(accent('block-accent-task-done'), colors.done);
+  });
+
+  testWidgets('the task list shows the project color on a planned task',
+      (tester) async {
+    final api = plannerApi(
+        tasksFor: (_) => [
+              {
+                ...dueTask('t1', 'Fix the form',
+                    due: DateTime(2026, 11, 4, 10)),
+                'project_color': '#039be5',
+              },
+              dueTask('t2', 'Reply to Sam', due: DateTime(2026, 11, 4, 12)),
+            ]);
+    await pumpPlanner(tester, api);
+    Color icon(String id) =>
+        tester.widget<Icon>(find.byKey(Key('scheduled-$id'))).color!;
+    expect(icon('t1'), const Color.fromARGB(255, 3, 155, 229));
+    expect(icon('t2'), TefteriColors.light.task);
+  });
 }

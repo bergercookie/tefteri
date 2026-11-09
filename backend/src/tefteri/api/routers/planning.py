@@ -303,15 +303,21 @@ async def _period_view(
             await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
         ).scalars()
     }
+    colors = await container_colors(db, user_id)
     tasks = []
     for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars():
         when = t.due_at
         if t.sync_state == "deleted_remotely" or when is None or not low <= aware(when) < high:
             continue
         project = projects.get(t.container_id) if t.container_id else None
-        tasks.append(TaskOut.of(t, project=project))
+        tasks.append(
+            TaskOut.of(
+                t,
+                project=project,
+                project_color=colors.get(t.container_id) if t.container_id else None,
+            )
+        )
     entries: list[EntryOut] = []
-    colors = await container_colors(db, user_id)
     if kind is not PeriodType.YEAR:
         for e in (
             await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user_id))

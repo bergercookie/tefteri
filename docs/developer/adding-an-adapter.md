@@ -118,9 +118,12 @@ Look at `test_vikunja.py` for a complete example.
 ## The color of a container
 
 A container can carry the color that the user chose in the app (`Container.color`, as
-`#rrggbb`). The Google adapter reads `backgroundColor` from `calendarList`. The sync stores it in
+`#rrggbb`). The Google adapter reads `backgroundColor` from `calendarList`. The Vikunja adapter reads
+`hex_color` of a project. Both go through `normalize_color` in `domain/colors.py`, because Vikunja
+sends the color without the `#`. The sync stores it in
 `source_containers.color` and refreshes it at each sync. The API sends it as `color` on the
-containers and on the calendar entries and items of that container. Leave it `None` when the app
+containers and on the calendar entries and items of that container, and as `project_color` on
+the tasks of a project. Leave it `None` when the app
 has no such color, and the client uses its own color.
 
 ## The first sync

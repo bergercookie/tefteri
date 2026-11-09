@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.lookups import container_colors
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
@@ -38,6 +39,7 @@ def _goals(request: Request) -> GoalService:
 async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
     """Return one task with its project name and the link that opens it in its app."""
     project: str | None = None
+    container: SourceContainer | None = None
     if task.container_id is not None:
         container = await db.get(SourceContainer, task.container_id)
         project = container.name if container else None
@@ -47,7 +49,8 @@ async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
         base = str(connection.settings.get("base_url", "")).rstrip("/")
         if base:
             url = f"{base}/tasks/{task.remote_id}"
-    return TaskOut.of(task, project=project, url=url)
+    color = container.color if task.container_id is not None and container else None
+    return TaskOut.of(task, project=project, url=url, project_color=color)
 
 
 class TaskIn(BaseModel):
@@ -148,6 +151,7 @@ async def list_tasks(
         # The same rule as ``task_filters.matches``, done in the database (kept in step by tests).
         query = query.where(task_filters.sql_condition(due, now, user.timezone))
     needle = (q or "").strip().casefold()
+    colors = await container_colors(db, user.id)
     out = []
     for t in (await db.execute(query)).scalars():
         if unscheduled and t.due_at is not None:
@@ -159,7 +163,9 @@ async def list_tasks(
             continue
         if to and (when is None or aware(when) >= aware(to)):
             continue
-        out.append(TaskOut.of(t))
+        out.append(
+            TaskOut.of(t, project_color=colors.get(t.container_id) if t.container_id else None)
+        )
     return out
 
 

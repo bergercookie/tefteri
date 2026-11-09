@@ -492,3 +492,24 @@ async def test_reads_label_names_and_reopens(backend: VikunjaTaskBackend) -> Non
     reopened = await backend.reopen_task("7")
     assert not reopened.done
     assert stored.posts[-1]["done"] is False
+
+
+@respx.mock
+async def test_the_color_of_a_project_is_read_as_rrggbb(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/projects").respond(
+        json=[
+            {"id": 1, "title": "Red", "hex_color": "d50000"},  # Vikunja sends no "#"
+            {"id": 2, "title": "Mixed case", "hex_color": "#33B679"},
+            {"id": 3, "title": "Unset", "hex_color": ""},
+            {"id": 4, "title": "Missing"},
+            {"id": 5, "title": "Odd", "hex_color": "red"},
+        ]
+    )
+    containers = await backend.list_containers()
+    assert [(c.name, c.color) for c in containers] == [
+        ("Red", "#d50000"),
+        ("Mixed case", "#33b679"),
+        ("Unset", None),
+        ("Missing", None),
+        ("Odd", None),
+    ]

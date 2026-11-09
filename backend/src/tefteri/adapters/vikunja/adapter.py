@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from tefteri.adapters.http import request
+from tefteri.domain.colors import normalize_color
 from tefteri.domain.entities import (
     ConnectionHealth,
     Container,
@@ -154,6 +155,7 @@ class VikunjaTaskBackend:
                 str(p["id"]),
                 p["title"],
                 str(p["parent_project_id"]) if p.get("parent_project_id") else None,
+                color=normalize_color(p.get("hex_color")),
             )
             for p in data
             if int(p["id"]) > 0
@@ -179,6 +181,7 @@ class VikunjaTaskBackend:
             str(data["id"]),
             data["title"],
             str(data["parent_project_id"]) if data.get("parent_project_id") else None,
+            color=normalize_color(data.get("hex_color")),
         )
 
     async def check_connection(self) -> ConnectionHealth:

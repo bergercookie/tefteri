@@ -217,6 +217,7 @@ class _ProjectTasks extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return ProjectCard(
       name: project.name,
+      color: project.color,
       key: Key('tasks-of-${project.id}'),
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),
@@ -418,7 +419,7 @@ class _ParkedSectionState extends State<_ParkedSection> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(t.title, style: text.bodyMedium),
-                          ProjectChip(name: project.name),
+                          ProjectChip(name: project.name, color: project.color),
                         ],
                       ),
                       TextButton(
