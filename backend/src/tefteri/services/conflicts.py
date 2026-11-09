@@ -19,11 +19,12 @@ from tefteri.domain.enums import Resolution, SyncState
 from tefteri.domain.ports import CalendarBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
-from tefteri.services.mirror import entry_values, task_values
+from tefteri.services.mirror import entry_values, task_values, to_utc
 
 
 def _iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
+    """A time as text, always in UTC with its zone: the cache drops the zone, an app keeps it."""
+    return to_utc(value).isoformat() if value else None
 
 
 def _dt(value: str | None) -> datetime | None:

@@ -3,9 +3,10 @@
 import logging
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,8 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.note import Note
 from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
-from tefteri.domain.entities import Container
+from tefteri.db.models.user import User
+from tefteri.domain.entities import Container, RemoteEntry
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
 from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
@@ -82,6 +84,23 @@ def _mark_deleted(existing: dict[str, Any], seen: set[str], counts: dict[str, in
         if remote_id not in seen and row.sync_state == SyncState.SYNCED.value:
             row.sync_state = SyncState.DELETED_REMOTELY.value
             counts["deleted"] += 1
+
+
+def anchor_all_day(item: RemoteEntry, tz_name: str) -> RemoteEntry:
+    """Put an all-day event on the user's local days.
+
+    An app sends an all-day event as dates (``2026-11-05`` to ``2026-11-06``). The cache holds
+    instants, so the dates become midnight in the user's time zone. Taken as UTC midnight, the
+    event would start two hours late and end two hours into the next day in Athens.
+    """
+    if not item.all_day:
+        return item
+    zone = ZoneInfo(tz_name)
+
+    def midnight(value: datetime) -> datetime:
+        return datetime.combine(value.date(), time(0), tzinfo=zone)
+
+    return replace(item, start=midnight(item.start), end=midnight(item.end))
 
 
 class SyncService:
@@ -272,6 +291,8 @@ class SyncService:
         }
         seen: set[str] = set()
         now = self._clock()
+        owner = await db.get(User, connection.user_id)
+        tz_name = owner.timezone if owner is not None else "UTC"
         for container, container_row_id in containers.values():
             try:
                 page = await backend.list_entries(
@@ -302,7 +323,7 @@ class SyncService:
                     connection,
                     item.remote_id,
                     item.version,
-                    entry_values(item, container_row_id),
+                    entry_values(anchor_all_day(item, tz_name), container_row_id),
                 )
         _mark_deleted(existing, seen, counts)
 

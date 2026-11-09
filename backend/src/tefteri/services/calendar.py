@@ -16,7 +16,7 @@ from tefteri.domain.ports import CalendarBackend
 from tefteri.services import conflicts
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import BackendProblem, Invalid, NotFound, guard
-from tefteri.services.mirror import entry_values
+from tefteri.services.mirror import entry_values, to_utc
 
 
 class CalendarService:
@@ -125,8 +125,8 @@ class CalendarService:
                         raise problem from None
                     local = {
                         "title": title if title is not None else entry.title,
-                        "start": (start or entry.start).isoformat(),
-                        "end": (end or entry.end).isoformat(),
+                        "start": to_utc(start or entry.start).isoformat(),
+                        "end": to_utc(end or entry.end).isoformat(),
                         "location": location if location is not None else entry.location,
                     }
                     await conflicts.record(

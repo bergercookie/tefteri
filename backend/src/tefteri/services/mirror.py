@@ -8,6 +8,11 @@ from tefteri.domain.entities import RemoteEntry, RemoteNote, RemoteTask
 from tefteri.domain.planning_time import BLOCK_LENGTH
 
 
+def to_utc(value: datetime) -> datetime:
+    """Return ``value`` as an aware UTC time. A time without an offset is taken as UTC."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 def utc(value: datetime | None) -> datetime | None:
     """Return ``value`` as UTC, for storing in the cache.
 
@@ -16,9 +21,7 @@ def utc(value: datetime | None) -> datetime | None:
     late. Apps send such offsets when their server runs in another time zone than UTC. A time
     without an offset is taken as UTC.
     """
-    if value is None:
-        return None
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+    return None if value is None else to_utc(value)
 
 
 def task_values(item: RemoteTask, container_row_id: uuid.UUID | None) -> dict[str, Any]:

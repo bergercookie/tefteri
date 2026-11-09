@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 
@@ -37,6 +38,24 @@ def _path(calendar_id: str, event_id: str | None = None) -> str:
     """
     base = f"/calendars/{quote(calendar_id, safe='')}/events"
     return base if event_id is None else f"{base}/{quote(event_id, safe='')}"
+
+
+def _when(point: dict[str, Any]) -> datetime:
+    """Read the ``start`` or ``end`` of an event.
+
+    A day (``date``) has no time: the sync puts it on the user's local days. A time (``dateTime``)
+    has an offset, such as ``+02:00``. Google leaves the offset out when it names the zone in
+    ``timeZone`` instead, and then the zone gives the offset. A time with neither is UTC.
+    """
+    if "date" in point:
+        return datetime.fromisoformat(point["date"])
+    value = datetime.fromisoformat(point["dateTime"])
+    if value.tzinfo is None and point.get("timeZone"):
+        try:
+            return value.replace(tzinfo=ZoneInfo(point["timeZone"]))
+        except ZoneInfoNotFoundError:
+            return value
+    return value
 
 
 def split_id(remote_id: str) -> tuple[str, str]:
@@ -103,13 +122,12 @@ class GoogleCalendarBackend:
     def _entry(calendar_id: str, data: dict[str, Any]) -> RemoteEntry:
         start, end = data["start"], data["end"]
         all_day = "date" in start
-        parse = datetime.fromisoformat
         return RemoteEntry(
             remote_id=join_id(calendar_id, data["id"]),
             container_id=calendar_id,
             title=data.get("summary", ""),
-            start=parse(start["date"] if all_day else start["dateTime"]),
-            end=parse(end["date"] if all_day else end["dateTime"]),
+            start=_when(start),
+            end=_when(end),
             all_day=all_day,
             recurrence=";".join(data["recurrence"]) if data.get("recurrence") else None,
             location=data.get("location", ""),
