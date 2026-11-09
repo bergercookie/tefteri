@@ -74,6 +74,8 @@ class LookBackProject:
     leftover: list[TaskView]
     completed: bool
     """All its planned tasks are done (and there was at least one), or the user said so."""
+    color: str | None = None
+    """The color of the project in the task app (``#rrggbb``), if it still exists there."""
 
 
 @dataclass
@@ -562,7 +564,11 @@ class WeeklyService:
             else:
                 committed = len(planned)
                 completed = committed > 0 and done == committed
-            out.append(LookBackProject(row, committed, done, leftover, completed))
+            container = (
+                await db.get(SourceContainer, row.container_id) if row.container_id else None
+            )
+            color = container.color if container else None
+            out.append(LookBackProject(row, committed, done, leftover, completed, color))
         return LookBack(previous, out)
 
     async def review(

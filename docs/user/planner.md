@@ -12,7 +12,8 @@ The right column is the calendar for one week. It shows your calendar entries an
 
 Task blocks have a colored outline and a check mark. Calendar entries have no outline. An entry
 from a Google calendar has the color that you chose for that calendar in Google Calendar: a
-strong line on its left edge and a softer color on the block.
+strong line on its left edge and a softer color on the block. A task has the color of its
+project in Vikunja in the same way. A finished task stays green.
 A red dot and a red line show the current time in the column of the current day. The line moves while you work.
 A task with a date and no time shows in the row called all day.
 

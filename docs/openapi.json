@@ -1307,6 +1307,17 @@
       "LookBackProjectOut": {
         "description": "How a project of the earlier week went.",
         "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
           "committed": {
             "title": "Committed",
             "type": "integer"
@@ -1663,6 +1674,17 @@
       "ProjectOut": {
         "description": "A project of the plan.",
         "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
           "committed_tasks": {
             "items": {
               "$ref": "#/components/schemas/WeeklyTaskOut"
@@ -2292,6 +2314,17 @@
               }
             ],
             "title": "Project"
+          },
+          "project_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Color"
           },
           "scheduled_end": {
             "anyOf": [

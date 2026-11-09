@@ -67,6 +67,8 @@ class ProjectOut(BaseModel):
     id: uuid.UUID
     container_id: uuid.UUID | None
     name: str
+    color: str | None = None
+    """The color of the project in the task app, as ``#rrggbb``."""
     created_here: bool
     url: str | None
     open_tasks: int
@@ -95,6 +97,7 @@ class LookBackProjectOut(BaseModel):
 
     id: uuid.UUID
     name: str
+    color: str | None = None
     committed: int
     done: int
     completed: bool
@@ -215,6 +218,7 @@ def _project_out(v: ProjectView) -> ProjectOut:
         id=v.row.id,
         container_id=v.row.container_id,
         name=v.container.name if v.container else v.row.name,
+        color=v.container.color if v.container else None,
         created_here=v.row.created_here,
         url=f"{base}/projects/{v.container.remote_id}" if base and v.container else None,
         open_tasks=sum(1 for t in v.open_tasks if not t.parked),
@@ -236,6 +240,7 @@ def _look_back_out(back: LookBack) -> LookBackOut:
             LookBackProjectOut(
                 id=p.row.id,
                 name=p.row.name,
+                color=p.color,
                 committed=p.committed,
                 done=p.done,
                 completed=p.completed,

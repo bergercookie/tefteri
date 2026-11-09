@@ -34,6 +34,14 @@ Tefteri syncs the new connection at once. If the sync works, the connection show
 the first sync fails, tefteri still keeps the connection and shows the reason in a message. Fix the
 address or the token, then press Sync next to the connection to try again.
 
+### The color of a project
+
+Tefteri reads the color of each project in Vikunja. It uses this color for the tasks of the
+project in the planner, in the task list, in the Week and Month views and in the weekly planning.
+When you change the color of a project in Vikunja, tefteri shows the new color after the next sync.
+A project with no color gets a color from the palette of tefteri. The same project always gets
+the same color.
+
 ## Connect a Google account
 
 You use the Google sign-in page. Tefteri never sees your Google password.

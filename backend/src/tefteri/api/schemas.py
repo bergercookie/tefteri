@@ -42,6 +42,8 @@ class TaskOut(BaseModel):
     sync_state: str
     goal_id: uuid.UUID | None = None
     project: str | None = None
+    project_color: str | None = None
+    """The color of its project in the task app, as ``#rrggbb``."""
     labels: list[str] = []
     url: str | None = None
 
@@ -51,11 +53,12 @@ class TaskOut(BaseModel):
         t: Task,
         project: str | None = None,
         url: str | None = None,
+        project_color: str | None = None,
     ) -> "TaskOut":
         """Build from the ORM row.
 
-        ``project`` and ``url`` come from the task's container and connection; the task
-        detail endpoints fill them.
+        ``project``, ``project_color`` and ``url`` come from the task's container and
+        connection; the endpoints fill them.
         """
         return cls(
             id=t.id,
@@ -69,6 +72,7 @@ class TaskOut(BaseModel):
             sync_state=t.sync_state,
             goal_id=t.goal_id,
             project=project,
+            project_color=project_color,
             labels=list(t.labels or []),
             url=url,
         )
@@ -144,7 +148,7 @@ class CalendarItemOut(BaseModel):
     project: str | None = None
     """For a task: the name of its project in the task app."""
     color: str | None = None
-    """For an entry: the color of its calendar in the calendar app, as ``#rrggbb``."""
+    """The color of its calendar (an entry) or of its project (a task), as ``#rrggbb``."""
 
     @classmethod
     def of_entry(
@@ -163,7 +167,9 @@ class CalendarItemOut(BaseModel):
         )
 
     @classmethod
-    def of_task(cls, t: Task, tz_name: str, project: str | None = None) -> "CalendarItemOut":
+    def of_task(
+        cls, t: Task, tz_name: str, project: str | None = None, color: str | None = None
+    ) -> "CalendarItemOut":
         """Build from a task with a due date (``due_at`` must be set).
 
         A timed task becomes the block that ends at its due time. An all-day task covers its
@@ -188,6 +194,7 @@ class CalendarItemOut(BaseModel):
             status=t.status,
             clipped_start=clipped,
             project=project,
+            color=color,
         )
 
 

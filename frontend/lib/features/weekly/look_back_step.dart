@@ -203,6 +203,7 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
     final ratio = p.committed == 0 ? 0.0 : p.done / p.committed;
     return ProjectCard(
       name: p.name,
+      color: p.color,
       key: Key('look-project-${p.id}'),
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),

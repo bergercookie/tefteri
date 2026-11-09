@@ -33,6 +33,7 @@ class PlanTask {
     this.scheduledEnd,
     this.goalId,
     this.project,
+    this.projectColor,
     this.labels = const [],
     this.url,
   });
@@ -50,6 +51,7 @@ class PlanTask {
         syncState: '${j['sync_state'] ?? 'synced'}',
         goalId: j['goal_id'] == null ? null : '${j['goal_id']}',
         project: j['project'] as String?,
+        projectColor: j['project_color'] as String?,
         labels: [for (final l in (j['labels'] as List? ?? const [])) '$l'],
         url: j['url'] as String?,
       );
@@ -86,6 +88,9 @@ class PlanTask {
 
   /// Name of the project (in the task app) that holds the task.
   final String? project;
+
+  /// The color of the project in the task app, as `#rrggbb`, or null.
+  final String? projectColor;
 
   /// Names of the labels the task has in the task app.
   final List<String> labels;

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/calendar_color.dart';
 import '../../core/control_key.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
@@ -249,8 +250,10 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
                         ? 'scheduled-${t.id}'
                         : 'unscheduled-${t.id}'),
                     size: 20,
-                    color:
-                        t.isScheduled ? colors.task : scheme.onSurfaceVariant,
+                    // A planned task has the color of its project.
+                    color: t.isScheduled
+                        ? (parseCalendarColor(t.projectColor) ?? colors.task)
+                        : scheme.onSurfaceVariant,
                   ),
                 ),
               ),
