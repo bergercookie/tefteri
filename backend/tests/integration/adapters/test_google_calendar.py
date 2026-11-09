@@ -128,3 +128,31 @@ async def test_revoked_refresh_token_and_outage(backend: GoogleCalendarBackend) 
     respx.post(TOKEN_URL).mock(side_effect=httpx.ConnectError("down"))
     with pytest.raises(BackendUnavailable):
         await backend.list_containers()
+
+
+@respx.mock
+async def test_the_id_of_a_special_calendar_is_encoded_in_the_path(
+    backend: GoogleCalendarBackend,
+) -> None:
+    # "#" starts a fragment in a URL: left as it is, Google got a cut address and answered 404.
+    token_route()
+    holiday = "en.usa#holiday@group.v.calendar.google.com"
+    route = respx.get(
+        f"{API}/calendars/en.usa%23holiday%40group.v.calendar.google.com/events"
+    ).respond(json={"items": [event()]})
+    page = await backend.list_entries(
+        Container(holiday, "Holidays"), NOW, NOW.replace(day=30), None
+    )
+    assert [e.title for e in page.items] == ["Standup"]
+    assert route.calls[0].request.url.raw_path.startswith(
+        b"/calendar/v3/calendars/en.usa%23holiday%40group.v.calendar.google.com/events?"
+    )
+    # Reading, changing and deleting one event of that calendar uses the same encoding.
+    base = f"{API}/calendars/en.usa%23holiday%40group.v.calendar.google.com/events/e1"
+    respx.get(base).respond(json=event())
+    respx.patch(base).respond(json=event(etag='"2"'))
+    respx.delete(base).respond(204)
+    remote_id = join_id(holiday, "e1")
+    await backend.get_entry(remote_id)
+    await backend.update_entry(remote_id, EntryPatch(title="x"), '"1"')
+    await backend.delete_entry(remote_id)

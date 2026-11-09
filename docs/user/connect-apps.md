@@ -29,7 +29,10 @@ You need the web address of your Vikunja server and an API token.
 6. Type the base URL of your Vikunja server. Type it in full, with https at the start.
 7. Paste the API token.
 8. Choose Save.
-9. Press Sync to test the connection. If the sync works, the connection shows the status OK.
+
+Tefteri syncs the new connection at once. If the sync works, the connection shows the status OK. If
+the first sync fails, tefteri still keeps the connection and shows the reason in a message. Fix the
+address or the token, then press Sync next to the connection to try again.
 
 ## Connect a Google account
 
@@ -69,7 +72,8 @@ Next, such as the launch bar and the options.
 
 ## Use Sync
 
-Tefteri does not sync in the background. You start each sync.
+Tefteri does not sync in the background. You start each sync. The only exception is a new
+connection: tefteri syncs it once when you add it.
 
 1. Press the Sync button at the top of the screen.
 2. Wait until the button stops moving.

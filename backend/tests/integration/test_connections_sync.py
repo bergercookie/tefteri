@@ -1,5 +1,6 @@
 """Connections and sync endpoints with fake backends."""
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -8,7 +9,7 @@ import respx
 from httpx import AsyncClient
 
 from tefteri.config import Settings
-from tefteri.domain.entities import Container
+from tefteri.domain.entities import Container, RemoteEntry
 from tefteri.main import create_app
 from tests.conftest import connect_all
 from tests.fakes.world import FakeWorld
@@ -125,6 +126,8 @@ async def test_google_oauth_flow(make_settings, world: FakeWorld) -> None:  # ty
             assert [(x["provider"], x["display_name"]) for x in listed] == [
                 ("google_calendar", "Work")
             ]
+            # The new connection was synced at once.
+            assert listed[0]["last_sync_at"] is not None and listed[0]["status"] == "ok"
             bad = await c.get(
                 f"{V1}/connections/google/callback", params={"code": "c", "state": "forged"}
             )
@@ -198,3 +201,60 @@ async def test_old_clients_may_still_send_the_removed_context_fields(api: AsyncC
     assert r.status_code == 201
     assert "default_context" not in r.json()
     assert (await api.get(f"{V1}/tasks", params={"context": "work"})).status_code == 200
+
+
+async def test_a_new_connection_syncs_at_once(api: AsyncClient, world: FakeWorld) -> None:
+    await world.seed()
+    for provider, name in (("vikunja", "T"), ("google_calendar", "C"), ("trilium", "N")):
+        r = await api.post(
+            f"{V1}/connections", json={**NEW, "provider": provider, "display_name": name}
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        # The answer carries the result of the first sync, and the connection shows it.
+        assert body["sync"]["outcome"] == "ok" and body["sync"]["counts"]["created"] >= 1
+        assert body["status"] == "ok" and body["last_sync_at"] is not None
+    # Nothing called /sync: the items are in the cache already.
+    assert [t["title"] for t in (await api.get(f"{V1}/tasks")).json()] == ["Write report"]
+    assert [e["title"] for e in (await api.get(f"{V1}/calendar")).json()] == ["Standup"]
+    assert [n["title"] for n in (await api.get(f"{V1}/notes")).json()] == ["Process"]
+
+
+async def test_a_connection_whose_first_sync_fails_is_still_created(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    world.tasks["default"].unavailable = True
+    r = await api.post(f"{V1}/connections", json=NEW)
+    assert r.status_code == 201, r.text
+    assert r.json()["sync"]["outcome"] == "error" and r.json()["sync"]["reason"] == "unreachable"
+    listed = (await api.get(f"{V1}/connections")).json()
+    assert [(c["display_name"], c["status"]) for c in listed] == [("My Vikunja", "error")]
+    # Retry works once the app is back.
+    world.tasks["default"].unavailable = False
+    retry = await api.post(f"{V1}/connections/{r.json()['id']}/sync")
+    assert retry.json()["outcome"] == "ok"
+
+
+async def test_one_refused_calendar_does_not_stop_the_others(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    calendar = world.calendars["default"]
+    calendar.containers = [Container("mine", "Mine"), Container("#daynum@group", "Day numbers")]
+    soon = datetime.now(UTC) + timedelta(days=1)
+    for cal, entry_id in (("mine", "e1"), ("#daynum@group", "e2")):
+        calendar.entries[entry_id] = RemoteEntry(
+            entry_id, cal, f"in {cal}", soon, soon + timedelta(hours=1), "v1"
+        )
+    created = await api.post(
+        f"{V1}/connections", json={**NEW, "provider": "google_calendar", "display_name": "G"}
+    )
+    assert created.json()["sync"]["counts"]["created"] == 2
+    # The app now refuses one calendar: the sync still works, and keeps what it knew of it.
+    calendar.refused.add("#daynum@group")
+    again = (await api.post(f"{V1}/connections/{created.json()['id']}/sync")).json()
+    assert again["outcome"] == "ok" and again["counts"]["skipped"] == 1
+    assert again["counts"]["deleted"] == 0
+    assert {e["title"] for e in (await api.get(f"{V1}/calendar")).json()} == {
+        "in mine",
+        "in #daynum@group",
+    }

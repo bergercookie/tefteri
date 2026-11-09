@@ -72,9 +72,12 @@ async def test_expired_credentials_and_stale_version(api: AsyncClient, world: Fa
 
 
 async def test_create_needs_a_task_connection_and_a_synced_project(
-    api: AsyncClient,
+    api: AsyncClient, world: FakeWorld
 ) -> None:
+    # The first sync of a new connection fails, so no project is known yet.
+    world.tasks["default"].unavailable = True
     ids = await connect_all(api)
+    world.tasks["default"].unavailable = False
     no_projects = await api.post(
         f"{V1}/tasks", json={"connection_id": ids["vikunja"], "title": "x"}
     )
