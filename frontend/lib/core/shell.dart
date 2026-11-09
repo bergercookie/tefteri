@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../features/settings/sync_controller.dart';
 import '../theme/theme.dart';
 import 'auth_controller.dart';
+import 'pane_widths.dart';
 import 'shortcuts/app_shortcuts.dart';
 import 'shortcuts/keymap.dart';
 import 'versions.dart';
@@ -22,7 +23,7 @@ const double railMinWidth = 960;
 const double railExtendedMinWidth = 1180;
 
 const double _railCompactWidth = 76;
-const double _railExtendedWidth = 232;
+const double _sidebarMinWidth = 200;
 
 /// Distance from the rail's left edge to the icons (and the mark) when the
 /// rail shows labels: the list's side padding plus the item's own.
@@ -86,7 +87,12 @@ class AppShell extends ConsumerWidget {
     return LayoutBuilder(builder: (context, c) {
       final rail = c.maxWidth >= railMinWidth;
       final extended = c.maxWidth >= railExtendedMinWidth;
-      final railWidth = extended ? _railExtendedWidth : _railCompactWidth;
+      // The labelled sidebar is as wide as the user dragged it, but never more
+      // than two fifths of the window.
+      final sidebar = ref.watch(sidebarWidthProvider);
+      final railWidth = extended
+          ? sidebar.clamp(_sidebarMinWidth, c.maxWidth * 0.4).toDouble()
+          : _railCompactWidth;
       return Scaffold(
         drawer: rail
             ? null
@@ -103,7 +109,19 @@ class AppShell extends ConsumerWidget {
                     child: _NavPanel(extended: extended, onRail: true),
                   ),
                 ),
-                const VerticalDivider(width: 1),
+                if (extended)
+                  ResizeHandle(
+                    key: const Key('sidebar-resize'),
+                    label: 'Resize the sidebar',
+                    onDrag: (dx) => ref
+                        .read(sidebarWidthProvider.notifier)
+                        .by(dx, cap: c.maxWidth * 0.4),
+                    onEnd: () => ref.read(sidebarWidthProvider.notifier).save(),
+                    onReset: () =>
+                        ref.read(sidebarWidthProvider.notifier).reset(),
+                  )
+                else
+                  const VerticalDivider(width: 1),
               ],
               Expanded(
                 child: Column(
