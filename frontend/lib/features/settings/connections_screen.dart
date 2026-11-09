@@ -159,11 +159,14 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       );
       return;
     }
+    // The server syncs a new connection at once and answers with the result.
+    String? syncProblem;
     await _send('Connected ${body['display_name']}.', (dio) async {
       final r =
           await dio.post<Map<String, dynamic>>('/connections', data: body);
+      syncProblem = _firstSyncProblem(r.data?['sync']);
       return r.data?['id'] as String?;
-    }, name: '${body['display_name']}');
+    }, name: '${body['display_name']}', syncProblem: () => syncProblem);
   }
 
   Future<void> _edit(Connection c) async {
@@ -211,14 +214,25 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
   /// [request] answers the id of a connection to test, or null. A connection
   /// that was just saved is tested at once, so that a wrong address or token
   /// shows now, with the reason, and not later as a failed sync.
+  ///
+  /// [syncProblem] tells, after [request], what went wrong in the first sync
+  /// of a new connection (null when it worked or did not run).
   Future<void> _send(String done, Future<String?> Function(Dio dio) request,
-      {String? name}) async {
+      {String? name, String? Function()? syncProblem}) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final dio = ref.read(dioProvider);
       final id = await request(dio);
       final problem = id == null ? null : await _problemWith(dio, id);
-      if (problem == null) {
+      final syncFailed = syncProblem?.call();
+      if (problem == null && syncFailed != null) {
+        messenger.showSnackBar(SnackBar(
+          key: const Key('connection-sync-failed'),
+          duration: const Duration(seconds: 12),
+          content: Text('${name ?? 'The connection'} is connected, but its '
+              'first sync failed. $syncFailed'),
+        ));
+      } else if (problem == null) {
         messenger.showSnackBar(SnackBar(content: Text(done)));
       } else {
         messenger.showSnackBar(SnackBar(
@@ -235,6 +249,15 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       ));
     }
     ref.invalidate(connectionsProvider);
+  }
+
+  /// Reads the result of the first sync from the answer to `POST /connections`:
+  /// null when it worked (or the server sent no result), else what went wrong.
+  String? _firstSyncProblem(Object? sync) {
+    if (sync is! Map || sync['outcome'] == 'ok') return null;
+    final detail = sync['detail'] as String?;
+    final reason = FailureReason.parse(sync['reason']).message;
+    return detail == null || detail.isEmpty ? reason : '$reason $detail';
   }
 
   /// Asks the server to test connection [id]. Returns what is wrong, or null

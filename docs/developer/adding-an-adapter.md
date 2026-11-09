@@ -115,6 +115,20 @@ Adapter tests do not call a real app. They use `respx` to answer the HTTP reques
 
 Look at `test_vikunja.py` for a complete example.
 
+## The first sync
+
+The API syncs every new connection once, in the request that creates it
+(`POST /connections` and the Google callback). The function `_create_and_sync` in
+`api/routers/connections.py` does this for every provider, so a new adapter needs no extra code.
+The connection stays when the sync fails. The answer holds the result in the field `sync`, and the
+client shows the reason. Keep `list_containers` and the item calls fast, because the user waits
+for them.
+
+An error from one container (for example one calendar that the app refuses) must not stop the
+others. Raise `BackendError` for it. The sync of calendars skips that container, keeps the copies
+it already has and counts it in `skipped`. `AuthExpired` and `BackendUnavailable` stop the whole
+connection.
+
 ## Register the adapter
 
 1. Write a factory function. It takes the connection settings and the decrypted credentials. It returns your backend.

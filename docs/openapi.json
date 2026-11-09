@@ -376,6 +376,76 @@
         "title": "ConnectionCheckOut",
         "type": "object"
       },
+      "ConnectionCreatedOut": {
+        "description": "A new connection and the result of its first sync.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "last_sync_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync Outcome"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "sync": {
+            "$ref": "#/components/schemas/SyncResultOut"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "provider",
+          "display_name",
+          "settings",
+          "status",
+          "last_sync_at",
+          "last_sync_outcome",
+          "sync"
+        ],
+        "title": "ConnectionCreatedOut",
+        "type": "object"
+      },
       "ConnectionIn": {
         "description": "Data to create a connection.",
         "properties": {
@@ -3115,7 +3185,7 @@
         ]
       },
       "post": {
-        "description": "Connect an app.",
+        "description": "Connect an app and sync it once. The answer holds the result of that sync.",
         "operationId": "create_connection_api_v1_connections_post",
         "requestBody": {
           "content": {
@@ -3132,7 +3202,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConnectionOut"
+                  "$ref": "#/components/schemas/ConnectionCreatedOut"
                 }
               }
             },

@@ -17,7 +17,7 @@ from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
 from tefteri.domain.entities import Container
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
-from tefteri.domain.errors import AuthExpired, BackendUnavailable
+from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.mirror import entry_values, note_values, task_values
@@ -273,9 +273,25 @@ class SyncService:
         seen: set[str] = set()
         now = self._clock()
         for container, container_row_id in containers.values():
-            page = await backend.list_entries(
-                container, now - CALENDAR_PAST, now + CALENDAR_FUTURE, None
-            )
+            try:
+                page = await backend.list_entries(
+                    container, now - CALENDAR_PAST, now + CALENDAR_FUTURE, None
+                )
+            except (AuthExpired, BackendUnavailable):
+                raise  # the whole account has a problem
+            except BackendError:
+                # One calendar that the app refuses must not stop the others. Keep what the
+                # cache already holds of it: not seeing it now does not mean it is gone.
+                logger.warning(
+                    "Sync of connection %s: skipped calendar %r", connection.id, container.name
+                )
+                counts["skipped"] = counts.get("skipped", 0) + 1
+                seen.update(
+                    remote_id
+                    for remote_id, entry in existing.items()
+                    if entry.container_id == container_row_id
+                )
+                continue
             for item in page.items:
                 _upsert(
                     db,

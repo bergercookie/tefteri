@@ -449,6 +449,51 @@ void main() {
     FilledButton saveButton(WidgetTester tester) => tester
         .widget<FilledButton>(find.byKey(const Key('new-connection-save')));
 
+    testWidgets('a first sync that fails is shown with its reason',
+        (tester) async {
+      // The server created the connection and synced it at once; the sync
+      // failed for one calendar, so the answer says so.
+      await _pump(tester, {
+        'GET /connections': <Object?>[],
+        'POST /connections': {
+          'id': 'new1',
+          'kind': 'calendar',
+          'provider': 'vikunja',
+          'display_name': 'Home tasks',
+          'status': 'error',
+          'last_sync_at': null,
+          'last_sync_outcome': 'error',
+          'sync': {
+            'connection_id': 'new1',
+            'name': 'Home tasks',
+            'outcome': 'error',
+            'reason': 'error',
+            'detail': 'GET https://x.test/calendars/a/events answered 404',
+            'counts': {'created': 0, 'updated': 0, 'deleted': 0},
+          },
+        },
+        'POST /connections/new1/check': {
+          'status': 'ok',
+          'reason': null,
+          'message': null,
+        },
+      });
+      await openDialog(tester);
+      await tester.enterText(
+          find.byKey(const Key('new-connection-name')), 'Home tasks');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-url')), 'https://vikunja.test/');
+      await tester.enterText(
+          find.byKey(const Key('new-connection-token')), 'tok');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('new-connection-save')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('connection-sync-failed')), findsOneWidget);
+      expect(find.textContaining('first sync failed'), findsOneWidget);
+      expect(find.textContaining('answered 404'), findsOneWidget);
+      expect(find.text('Connected Home tasks.'), findsNothing);
+    });
+
     testWidgets(
         'a new user with no connections adds Vikunja and sees it listed',
         (tester) async {
@@ -494,6 +539,7 @@ void main() {
         'credentials': {'token': 'tok'},
       });
       expect(find.text('Connected Home tasks.'), findsOneWidget);
+      expect(find.byKey(const Key('connection-sync-failed')), findsNothing);
       expect(find.byKey(const Key('connection-new1')), findsOneWidget);
       expect(find.text('No connections yet.'), findsNothing);
     });

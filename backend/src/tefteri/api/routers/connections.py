@@ -12,10 +12,12 @@ from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db, SettingsDep
 from tefteri.api.errors import ApiError
+from tefteri.api.routers.sync import SyncResultOut
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.services.connections import ConnectionService, UnknownProvider
 from tefteri.services.google_oauth import GoogleOAuth, InvalidState
 from tefteri.services.projects import ProjectService
+from tefteri.services.sync import SyncService
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -80,6 +82,25 @@ class ConnectionOut(BaseModel):
         )
 
 
+class ConnectionCreatedOut(ConnectionOut):
+    """A new connection and the result of its first sync."""
+
+    sync: SyncResultOut
+
+
+async def _create_and_sync(
+    request: Request, db: Db, service: ConnectionService, user_id: uuid.UUID, **fields: Any
+) -> tuple[Connection, SyncResultOut]:
+    """Create a connection and sync it at once, whatever its provider.
+
+    The connection stays when the sync fails: the result says why, and the user can fix the
+    address or the token. Every way to add a connection goes through here.
+    """
+    connection = await service.create(db, user_id, **fields)
+    sync: SyncService = request.app.state.sync_service
+    return connection, SyncResultOut.of(await sync.sync_connection(db, connection))
+
+
 class ConnectionCheckOut(BaseModel):
     """Whether a connection works, and if not, why."""
 
@@ -127,12 +148,18 @@ async def list_connections(
 
 @router.post("", status_code=201)
 async def create_connection(
-    body: ConnectionIn, db: Db, user: CurrentUser, service: ConnectionService = Service
-) -> ConnectionOut:
-    """Connect an app."""
+    request: Request,
+    body: ConnectionIn,
+    db: Db,
+    user: CurrentUser,
+    service: ConnectionService = Service,
+) -> ConnectionCreatedOut:
+    """Connect an app and sync it once. The answer holds the result of that sync."""
     try:
-        connection = await service.create(
+        connection, sync = await _create_and_sync(
+            request,
             db,
+            service,
             user.id,
             provider=body.provider,
             display_name=body.display_name,
@@ -141,7 +168,7 @@ async def create_connection(
         )
     except UnknownProvider as exc:
         raise ApiError(422, "unknown_provider", f"Unknown provider: {body.provider}") from exc
-    return ConnectionOut.of(connection)
+    return ConnectionCreatedOut(**ConnectionOut.of(connection).model_dump(), sync=sync)
 
 
 @router.get("/google/authorize")
@@ -187,8 +214,10 @@ async def google_callback(
     except InvalidState as exc:
         raise ApiError(400, "invalid_state", "Invalid or expired sign-in request") from exc
     refresh_token = await oauth.exchange_code(code, _callback_url(request, settings.public_url))
-    connection = await service.create(
+    connection, _ = await _create_and_sync(
+        request,
         db,
+        service,
         uuid.UUID(data["user_id"]),
         provider="google_calendar",
         display_name=data["name"],

@@ -20,7 +20,13 @@ from tefteri.domain.entities import (
     TaskPatch,
 )
 from tefteri.domain.enums import Capability, ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, NotSupported, RemoteConflict
+from tefteri.domain.errors import (
+    AuthExpired,
+    BackendError,
+    BackendUnavailable,
+    NotSupported,
+    RemoteConflict,
+)
 
 
 class _FakeBase:
@@ -205,6 +211,8 @@ class FakeCalendarBackend(_FakeBase):
         """Start empty."""
         super().__init__(containers)
         self.entries: dict[str, RemoteEntry] = {}
+        self.refused: set[str] = set()
+        """Remote ids of calendars that the app answers with an error (like a 404)."""
 
     async def list_entries(
         self,
@@ -215,6 +223,8 @@ class FakeCalendarBackend(_FakeBase):
     ) -> EntryPage:
         """List events overlapping the window."""
         self._guard()
+        if container.remote_id in self.refused:
+            raise BackendError(f"GET calendars/{container.remote_id}/events answered 404")
         items = [
             e
             for e in self.entries.values()

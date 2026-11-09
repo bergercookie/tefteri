@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -25,6 +26,17 @@ SEP = "::"
 def join_id(calendar_id: str, event_id: str) -> str:
     """Build the remote id of an event: it must also identify the calendar."""
     return f"{calendar_id}{SEP}{event_id}"
+
+
+def _path(calendar_id: str, event_id: str | None = None) -> str:
+    """Build the path of a calendar or of one of its events.
+
+    The ids go into the path as they are, so they must be encoded: the id of a special calendar
+    such as ``en.usa#holiday@group.v.calendar.google.com`` holds a ``#``, which a URL reads as the
+    start of a fragment. Google answers 404 to the cut address.
+    """
+    base = f"/calendars/{quote(calendar_id, safe='')}/events"
+    return base if event_id is None else f"{base}/{quote(event_id, safe='')}"
 
 
 def split_id(remote_id: str) -> tuple[str, str]:
@@ -135,9 +147,7 @@ class GoogleCalendarBackend:
             "maxResults": 250,
         }
         while True:
-            data = await self._call(
-                "GET", f"/calendars/{container.remote_id}/events", params=params
-            )
+            data = await self._call("GET", _path(container.remote_id), params=params)
             entries.extend(
                 self._entry(container.remote_id, e)
                 for e in data.get("items", [])
@@ -150,7 +160,7 @@ class GoogleCalendarBackend:
     async def get_entry(self, remote_id: str) -> RemoteEntry:
         """Fetch one event."""
         calendar_id, event_id = split_id(remote_id)
-        data = await self._call("GET", f"/calendars/{calendar_id}/events/{event_id}")
+        data = await self._call("GET", _path(calendar_id, event_id))
         return self._entry(calendar_id, data)
 
     async def create_entry(self, draft: EntryDraft) -> RemoteEntry:
@@ -166,7 +176,7 @@ class GoogleCalendarBackend:
                 "end": {"dateTime": draft.end.isoformat()},
             }
         body = {"summary": draft.title, "location": draft.location, **when}
-        data = await self._call("POST", f"/calendars/{draft.container_id}/events", json=body)
+        data = await self._call("POST", _path(draft.container_id), json=body)
         return self._entry(draft.container_id, data)
 
     async def update_entry(
@@ -185,7 +195,7 @@ class GoogleCalendarBackend:
             body["end"] = {"dateTime": patch.end.isoformat()}
         data = await self._call(
             "PATCH",
-            f"/calendars/{calendar_id}/events/{event_id}",
+            _path(calendar_id, event_id),
             json=body,
             headers={"If-Match": expected_version},
         )
@@ -194,4 +204,4 @@ class GoogleCalendarBackend:
     async def delete_entry(self, remote_id: str) -> None:
         """Delete an event."""
         calendar_id, event_id = split_id(remote_id)
-        await self._call("DELETE", f"/calendars/{calendar_id}/events/{event_id}")
+        await self._call("DELETE", _path(calendar_id, event_id))

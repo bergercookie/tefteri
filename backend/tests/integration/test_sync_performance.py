@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from httpx import AsyncClient
 
 from tefteri.domain.entities import RemoteEntry, RemoteNote, RemoteTask
-from tests.conftest import V1, connect_all
+from tests.conftest import V1
 from tests.fakes.world import FakeWorld
 
 LIMIT_SECONDS = 30
@@ -33,13 +33,22 @@ def _fill(world: FakeWorld) -> None:
 
 async def test_full_sync_meets_the_target(api: AsyncClient, world: FakeWorld) -> None:
     _fill(world)
-    await connect_all(api)
-
+    # A new connection syncs once at once: this is the first sync of every provider.
     started = time.perf_counter()
-    r = await api.post(f"{V1}/sync")
+    created = {}
+    for provider in ("vikunja", "google_calendar", "trilium"):
+        r = await api.post(
+            f"{V1}/connections",
+            json={
+                "provider": provider,
+                "display_name": provider,
+                "settings": {},
+                "credentials": {"token": "t"},
+            },
+        )
+        assert r.status_code == 201, r.text
+        created[provider] = r.json()["sync"]["counts"]["created"]
     first = time.perf_counter() - started
-    assert r.status_code == 200, r.text
-    created = {x["name"]: x["counts"]["created"] for x in r.json()}
     assert created == {"vikunja": 2000, "google_calendar": 1000, "trilium": 500}
     assert first < LIMIT_SECONDS, f"first sync took {first:.1f} s"
 
