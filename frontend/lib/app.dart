@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/find.dart';
 import 'core/app_selection.dart';
 import 'core/auth_controller.dart';
 import 'core/shortcuts/app_shortcuts.dart';
@@ -149,7 +150,9 @@ class TefteriApp extends ConsumerWidget {
               router: router,
               // One selection area for the whole app, so the user can select
               // and copy text on every screen, also in dialogs and messages.
-              child: AppSelection(child: child ?? const SizedBox()),
+              child: FindHost(
+                child: AppSelection(child: child ?? const SizedBox()),
+              ),
             ),
     );
   }

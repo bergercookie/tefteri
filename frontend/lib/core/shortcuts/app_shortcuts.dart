@@ -2,12 +2,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/planner/new_task_dialog.dart';
 import '../../features/settings/sync_controller.dart';
 import '../auth_controller.dart';
+import '../find.dart';
 import 'keymap.dart';
 
 /// True while a text field has the keyboard focus.
@@ -67,7 +69,12 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
-      shortcuts: {for (final s in appShortcuts) s.activator: s.intent},
+      shortcuts: {
+        for (final s in appShortcuts) s.activator: s.intent,
+        // The same key on a Mac.
+        const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+            const FindIntent(),
+      },
       child: Actions(
         actions: {
           OpenViewIntent: _KeyAction<OpenViewIntent>(
@@ -87,6 +94,10 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
               if (context != null) showNewTaskDialog(context);
             },
             (_) => _signedIn && _plainAllowed(),
+          ),
+          FindIntent: _KeyAction<FindIntent>(
+            (_) => ref.read(findProvider.notifier).open(),
+            (_) => _signedIn,
           ),
           ShowShortcutsIntent: _KeyAction<ShowShortcutsIntent>(
             (_) {

@@ -63,6 +63,12 @@ class NewTaskIntent extends Intent {
   const NewTaskIntent();
 }
 
+/// Opens the find bar.
+class FindIntent extends Intent {
+  /// Creates the intent.
+  const FindIntent();
+}
+
 /// Opens the shortcut help overlay.
 class ShowShortcutsIntent extends Intent {
   /// Creates the intent.
@@ -124,6 +130,12 @@ final List<AppShortcut> appShortcuts = [
     description: 'Create a new task',
     activator: CharacterActivator('n'),
     intent: NewTaskIntent(),
+  ),
+  const AppShortcut(
+    keys: 'Ctrl+F',
+    description: 'Find text on this page, also while typing',
+    activator: SingleActivator(LogicalKeyboardKey.keyF, control: true),
+    intent: FindIntent(),
   ),
   const AppShortcut(
     keys: 'F5',

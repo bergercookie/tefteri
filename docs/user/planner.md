@@ -42,8 +42,12 @@ Every screen with a calendar or a period has a Today button: the planner, Today,
 
 ## Mark a task as done from the calendar
 
-Hold Ctrl and click a task on the calendar with the right mouse button. Tefteri marks the task
-as done in your task app. This works for blocks and for tasks in the all day row.
+Hold Ctrl and double-click a task on the calendar. Tefteri marks the task as done in your task app.
+This works for blocks and for tasks in the all day row. It also works for a task in the task list.
+You can also hold Ctrl and click the task once with the right mouse button.
+
+A click that holds Ctrl does not open the task. A single Ctrl click does nothing, and a double
+click without Ctrl opens the task as before.
 
 A task that is done stays done: the same click does nothing on it. To reopen a task, open it
 and choose Mark not done. A click with the right button alone does nothing.
@@ -95,10 +99,23 @@ want to discard the change.
 
 If you choose a calendar entry, the pop-up shows the time of the entry.
 
-## Find text with the browser
+## Find text on the page
 
-In a web browser, press Ctrl+F to find text on the page, for example the title of a task. The
-browser finds the text in the task list, on the calendar and in all other views.
+Press Ctrl+F (Cmd+F on a Mac). A find bar opens at the top right of the screen. It works in every
+view, in the web client and in the Android and Linux apps.
+
+1. Type the text. Tefteri marks every match on the screen, for example in the task list, on the
+   calendar and in the menu. The bar shows which match you are at, for example `2 of 7`.
+2. Press Enter to go to the next match. Press Shift+Enter to go to the match before. Tefteri
+   scrolls the match into view.
+3. Press Esc, or choose the cross, to close the bar.
+
+The search does not care about upper and lower case. Tefteri searches the text that the screen
+shows. A long list shows only part of its items, so the bar finds the items that you can reach by
+scrolling when you scroll to them.
+
+Tefteri takes the Ctrl+F key from the browser. The browser cannot mark text in the web client,
+because the client draws its text itself.
 
 ## Find a task
 
