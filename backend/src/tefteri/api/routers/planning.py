@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.lookups import container_colors
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
@@ -310,6 +311,7 @@ async def _period_view(
         project = projects.get(t.container_id) if t.container_id else None
         tasks.append(TaskOut.of(t, project=project))
     entries: list[EntryOut] = []
+    colors = await container_colors(db, user_id)
     if kind is not PeriodType.YEAR:
         for e in (
             await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user_id))
@@ -317,7 +319,7 @@ async def _period_view(
             if e.sync_state != "deleted_remotely" and overlaps(
                 aware(e.start), aware(e.end), low, high
             ):
-                entries.append(EntryOut.of(e))
+                entries.append(EntryOut.of(e, colors))
     return PeriodView(
         period_type=kind.value,
         start=start,

@@ -115,6 +115,14 @@ Adapter tests do not call a real app. They use `respx` to answer the HTTP reques
 
 Look at `test_vikunja.py` for a complete example.
 
+## The color of a container
+
+A container can carry the color that the user chose in the app (`Container.color`, as
+`#rrggbb`). The Google adapter reads `backgroundColor` from `calendarList`. The sync stores it in
+`source_containers.color` and refreshes it at each sync. The API sends it as `color` on the
+containers and on the calendar entries and items of that container. Leave it `None` when the app
+has no such color, and the client uses its own color.
+
 ## The first sync
 
 The API syncs every new connection once, in the request that creates it

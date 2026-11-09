@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/calendar_color.dart';
 import '../../core/api_error.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
@@ -258,7 +259,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     final place = (e.location?.isNotEmpty ?? false) ? ' - ${e.location}' : '';
     return ListTile(
       key: Key('entry-${e.id}'),
-      leading: const Icon(Icons.event),
+      leading: Icon(Icons.event, color: parseCalendarColor(e.color)),
       title: Text(e.title),
       subtitle: Text('$time$place${_syncNote(e.syncState)}'),
     );

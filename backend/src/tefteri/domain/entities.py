@@ -14,6 +14,8 @@ class Container:
     name: str
     parent_id: str | None = None
     """``remote_id`` of the container this one is nested in (a Vikunja subproject), if any."""
+    color: str | None = None
+    """The color that the user chose for it in the app, as ``#rrggbb`` (a Google calendar)."""
 
 
 @dataclass(frozen=True)

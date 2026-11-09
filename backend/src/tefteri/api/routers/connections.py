@@ -129,6 +129,8 @@ class ContainerOut(BaseModel):
     remote_id: str
     name: str
     parent_remote_id: str | None = None
+    color: str | None = None
+    """The color of a calendar in the calendar app, as ``#rrggbb``."""
 
 
 async def _own(service: ConnectionService, db: Db, user: CurrentUser, cid: uuid.UUID) -> Connection:
@@ -282,6 +284,7 @@ async def list_containers(
             remote_id=r.remote_id,
             name=r.name,
             parent_remote_id=r.parent_remote_id,
+            color=r.color,
         )
         for r in rows
     ]

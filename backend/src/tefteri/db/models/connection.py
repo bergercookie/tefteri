@@ -46,3 +46,5 @@ class SourceContainer(IdMixin, Base):
     name: Mapped[str] = mapped_column(String(255))
     parent_remote_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     """``remote_id`` of the project this one is nested in (a Vikunja subproject)."""
+    color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    """The color that the user chose in the app (``#rrggbb``), for a Google calendar."""

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.lookups import container_colors
 from tefteri.api.schemas import CalendarItemOut, EntryOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
@@ -57,13 +58,14 @@ async def list_calendar(
     A timed task is the block that ends at its due time; a date-only task is ``all_day``.
     """
     items: list[CalendarItemOut] = []
+    colors = await container_colors(db, user.id)
     entries = (
         await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user.id))
     ).scalars()
     for e in entries:
         if e.sync_state == "deleted_remotely":
             continue
-        items.append(CalendarItemOut.of_entry(e))
+        items.append(CalendarItemOut.of_entry(e, colors))
     projects = {
         c.id: c.name
         for c in (
@@ -89,7 +91,7 @@ async def list_calendar(
 async def create_entry(body: EntryIn, request: Request, db: Db, user: CurrentUser) -> EntryOut:
     """Create an event in the connected calendar."""
     entry = await _calendar(request).create(db, user.id, **body.model_dump())
-    return EntryOut.of(entry)
+    return EntryOut.of(entry, await container_colors(db, user.id))
 
 
 @router.patch("/calendar/entries/{entry_id}")
@@ -101,7 +103,7 @@ async def update_entry(
     entry = await service.get(db, user.id, entry_id)
     fields = body.model_dump(exclude_unset=True)
     await service.update(db, user.id, entry, **fields)
-    return EntryOut.of(entry)
+    return EntryOut.of(entry, await container_colors(db, user.id))
 
 
 @router.delete("/calendar/entries/{entry_id}", status_code=204)

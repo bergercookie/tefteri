@@ -228,11 +228,13 @@ class SyncService:
                     remote_id=container.remote_id,
                     name=container.name,
                     parent_remote_id=container.parent_id,
+                    color=container.color,
                 )
                 db.add(row)
             else:
                 row.name = container.name
                 row.parent_remote_id = container.parent_id
+                row.color = container.color
             await db.flush()
             out[container.remote_id] = (container, row.id)
         # A container that the app no longer lists is gone there (deleted, or never one). Its

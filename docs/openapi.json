@@ -116,6 +116,17 @@
             "title": "Clipped Start",
             "type": "boolean"
           },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
           "connection_id": {
             "format": "uuid",
             "title": "Connection Id",
@@ -590,6 +601,17 @@
       "ContainerOut": {
         "description": "A project, calendar or note subtree.",
         "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -739,6 +761,17 @@
           "all_day": {
             "title": "All Day",
             "type": "boolean"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
           },
           "connection_id": {
             "format": "uuid",

@@ -15,6 +15,7 @@ Map<String, Object?> _item(String type, String id, String title, DateTime start,
         {DateTime? end,
         bool allDay = false,
         String? status,
+        String? color,
         String? project}) =>
     {
       'type': type,
@@ -27,6 +28,7 @@ Map<String, Object?> _item(String type, String id, String title, DateTime start,
       if (status != null) 'status': status,
       'clipped_start': false,
       if (project != null) 'project': project,
+      if (color != null) 'color': color,
     };
 
 Map<String, Object?> _task(String id, String title, {DateTime? due}) => {
@@ -39,15 +41,16 @@ Map<String, Object?> _task(String id, String title, {DateTime? due}) => {
 
 final _calendar = [
   _item('entry', 'e1', 'Team standup', DateTime(2026, 11, 2, 9),
-      end: DateTime(2026, 11, 2, 9, 30)),
+      end: DateTime(2026, 11, 2, 9, 30), color: '#039be5'),
   _item('task', 't1', 'Write the release notes', DateTime(2026, 11, 2, 10),
       project: 'Website'),
   _item('task', 't4', 'Update the road map', DateTime(2026, 11, 2, 14),
       project: 'Website'),
-  _item('entry', 'e3', 'Design review', DateTime(2026, 11, 3, 14)),
+  _item('entry', 'e3', 'Design review', DateTime(2026, 11, 3, 14),
+      color: '#33b679'),
   _item('task', 't3', 'Prepare the demo', DateTime(2026, 11, 3, 14, 30),
       end: DateTime(2026, 11, 3, 15, 30), project: 'Launch'),
-  _item('entry', 'e2', 'Dentist', DateTime(2026, 11, 4, 16)),
+  _item('entry', 'e2', 'Dentist', DateTime(2026, 11, 4, 16), color: '#8e24aa'),
   _item('task', 't5', 'Pay the invoice', DateTime(2026, 11, 5),
       end: DateTime(2026, 11, 6), allDay: true, project: 'Taxes'),
   _item('task', 't6', 'Send the report', DateTime(2026, 11, 4, 11),

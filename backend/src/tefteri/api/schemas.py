@@ -83,12 +83,14 @@ class EntryOut(BaseModel):
     start: UtcDatetime
     end: UtcDatetime
     all_day: bool
+    color: str | None = None
+    """The color of its calendar in the calendar app, as ``#rrggbb``."""
     location: str
     sync_state: str
 
     @classmethod
-    def of(cls, e: CalendarEntry) -> "EntryOut":
-        """Build from the ORM row."""
+    def of(cls, e: CalendarEntry, colors: dict[uuid.UUID, str] | None = None) -> "EntryOut":
+        """Build from the ORM row. ``colors`` maps container ids to calendar colors."""
         return cls(
             id=e.id,
             connection_id=e.connection_id,
@@ -96,6 +98,7 @@ class EntryOut(BaseModel):
             start=e.start,
             end=e.end,
             all_day=e.all_day,
+            color=(colors or {}).get(e.container_id) if e.container_id else None,
             location=e.location,
             sync_state=e.sync_state,
         )
@@ -140,11 +143,16 @@ class CalendarItemOut(BaseModel):
     clipped_start: bool = False
     project: str | None = None
     """For a task: the name of its project in the task app."""
+    color: str | None = None
+    """For an entry: the color of its calendar in the calendar app, as ``#rrggbb``."""
 
     @classmethod
-    def of_entry(cls, e: CalendarEntry) -> "CalendarItemOut":
-        """Build from an entry."""
+    def of_entry(
+        cls, e: CalendarEntry, colors: dict[uuid.UUID, str] | None = None
+    ) -> "CalendarItemOut":
+        """Build from an entry. ``colors`` maps container ids to calendar colors."""
         return cls(
+            color=(colors or {}).get(e.container_id) if e.container_id else None,
             type="entry",
             id=e.id,
             connection_id=e.connection_id,

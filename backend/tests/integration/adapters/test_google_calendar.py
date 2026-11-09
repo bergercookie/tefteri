@@ -188,3 +188,27 @@ async def test_the_time_of_an_event_keeps_its_offset_or_takes_the_named_zone(
     assert a.start.utcoffset() == timedelta(hours=3) and a.start.hour == 11
     assert b.start.utcoffset() == timedelta(hours=2) and b.start.hour == 11
     assert c.all_day and c.start.tzinfo is None and c.start.date().isoformat() == "2026-11-05"
+
+
+@respx.mock
+async def test_the_color_that_the_user_chose_is_read_with_each_calendar(
+    backend: GoogleCalendarBackend,
+) -> None:
+    token_route()
+    respx.get(f"{API}/users/me/calendarList").respond(
+        json={
+            "items": [
+                {"id": "a", "summary": "Palette", "backgroundColor": "#D50000", "colorId": "11"},
+                {"id": "b", "summary": "Custom", "backgroundColor": "#1a2b3c"},
+                {"id": "c", "summary": "No color"},
+                {"id": "d", "summary": "Odd", "backgroundColor": "red"},
+            ]
+        }
+    )
+    containers = await backend.list_containers()
+    assert [(c.name, c.color) for c in containers] == [
+        ("Palette", "#d50000"),  # in lower case, as every color is kept
+        ("Custom", "#1a2b3c"),
+        ("No color", None),
+        ("Odd", None),  # anything but #rrggbb is left out
+    ]
