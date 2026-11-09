@@ -35,6 +35,7 @@ The menu also shows the key next to each view.
 | Right arrow | In the planner: show the week after |
 | N | Create a new task (opens the New task dialog) |
 | S | Sync all connections |
+| Ctrl+F | Find text on the page, also while you type |
 | F5 | Sync all connections, also while you type |
 | ? | Show the list of shortcuts |
 | Esc | Leave the text field |
@@ -42,7 +43,7 @@ The menu also shows the key next to each view.
 ## Type in a text field
 
 The one-key shortcuts do not work while you type in a text field. The key goes into the field
-as text. F5 works at all times.
+as text. F5 and Ctrl+F work at all times.
 
 To use a one-key shortcut after you type:
 

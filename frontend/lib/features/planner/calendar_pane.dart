@@ -5,11 +5,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:flutter/services.dart'
-    show HardwareKeyboard, KeyUpEvent, LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/control_key.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import '../calendar/calendar_providers.dart';
@@ -905,42 +904,11 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-/// Tells if Ctrl is down, or went up a moment ago.
-///
-/// On the web with the accessibility tree on (it makes Ctrl+F work), Flutter
-/// holds a pointer event for a short time before it hands it to the app. A
-/// quick Ctrl and click can end before that, so Ctrl is already up when the
-/// click arrives.
-class _ControlKey {
-  static const _grace = Duration(milliseconds: 600);
-  static DateTime? _released;
-  static bool _listening = false;
-
-  static bool get heldRecently {
-    final released = _released;
-    return HardwareKeyboard.instance.isControlPressed ||
-        (released != null && DateTime.now().difference(released) < _grace);
-  }
-
-  /// Starts to watch the Ctrl keys. Call once.
-  static void watch() {
-    if (_listening) return;
-    _listening = true;
-    HardwareKeyboard.instance.addHandler((event) {
-      if (event is KeyUpEvent &&
-          (event.logicalKey == LogicalKeyboardKey.controlLeft ||
-              event.logicalKey == LogicalKeyboardKey.controlRight)) {
-        _released = DateTime.now();
-      }
-      return false;
-    });
-  }
-}
-
 /// Opens the details pop-up of [item] when the user taps [child]: the task for
 /// a task block, the event for an event.
 ///
-/// Ctrl and a right click on a task block mark the task as done. A task that
+/// Ctrl and a right click, or Ctrl and a double click, on a task block mark the
+/// task as done. A task that
 /// is done stays as it is (no second click reopens it by mistake), and events
 /// have nothing to complete.
 class _OpenDetails extends ConsumerWidget {
@@ -951,17 +919,27 @@ class _OpenDetails extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    _ControlKey.watch();
+    ControlKey.watch();
     return _gesture(context, ref);
   }
 
   Widget _gesture(BuildContext context, WidgetRef ref) => GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => item.isTask
-            ? showTaskDetails(context, taskId: item.id, title: item.title)
-            : showEventDetails(context, item),
+        onTap: () {
+          // Ctrl and a double click mark a task as done. A click that holds Ctrl
+          // opens nothing, so the second click is not lost on a pop-up.
+          if (item.isTask && ControlKey.heldRecently) {
+            if (!item.isDone && ControlKey.isSecondClick(item.id)) {
+              ref.read(plannerActionsProvider).complete(item.id);
+            }
+            return;
+          }
+          item.isTask
+              ? showTaskDetails(context, taskId: item.id, title: item.title)
+              : showEventDetails(context, item);
+        },
         onSecondaryTapUp: (_) {
-          if (item.isTask && !item.isDone && _ControlKey.heldRecently) {
+          if (item.isTask && !item.isDone && ControlKey.heldRecently) {
             ref.read(plannerActionsProvider).complete(item.id);
           }
         },

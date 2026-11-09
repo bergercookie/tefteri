@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/control_key.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import 'details_dialogs.dart';
@@ -39,6 +40,7 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
   @override
   void initState() {
     super.initState();
+    ControlKey.watch();
     _controller.text = ref.read(taskSearchProvider);
   }
 
@@ -217,7 +219,16 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
     final text = Theme.of(context).textTheme;
     final row = InkWell(
       key: Key('task-${t.id}'),
-      onTap: () => showTaskDetails(context, taskId: t.id, initial: t),
+      onTap: () {
+        // Ctrl and a double click mark the task as done (see the calendar).
+        if (ControlKey.heldRecently) {
+          if (!t.done && ControlKey.isSecondClick(t.id)) {
+            ref.read(plannerActionsProvider).complete(t.id);
+          }
+          return;
+        }
+        showTaskDetails(context, taskId: t.id, initial: t);
+      },
       child: DecoratedBox(
         // A ruled line under every task, like the lines of a notebook page.
         decoration: BoxDecoration(
