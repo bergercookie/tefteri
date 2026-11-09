@@ -81,7 +81,12 @@ GoRouter buildRouter(Ref ref) {
       // Old addresses, from before Settings and Admin settings existed.
       GoRoute(path: '/password', redirect: (_, __) => '/settings/password'),
       GoRoute(path: '/users', redirect: (_, __) => '/admin/users'),
-      GoRoute(path: '/', builder: (_, __) => const PlannerScreen()),
+      GoRoute(
+        path: '/',
+        builder: (_, s) => PlannerScreen(
+            initialDate:
+                DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
+      ),
       GoRoute(path: '/daily', builder: (_, __) => const DailyScreen()),
       GoRoute(path: '/calendar', redirect: (_, __) => '/'),
       GoRoute(

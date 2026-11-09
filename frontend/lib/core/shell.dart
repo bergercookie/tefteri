@@ -11,6 +11,7 @@ import '../theme/theme.dart';
 import 'auth_controller.dart';
 import 'shortcuts/app_shortcuts.dart';
 import 'shortcuts/keymap.dart';
+import 'versions.dart';
 
 /// Window width from which the navigation is a permanent rail on the left
 /// instead of a drawer behind a menu button.
@@ -268,7 +269,31 @@ class _NavPanel extends ConsumerWidget {
             },
           ),
         ),
+        if (extended) const _AppVersionLabel(),
       ],
+    );
+  }
+}
+
+/// The version of the client app, under the Sign out button. It shows
+/// nothing while the version is unknown.
+class _AppVersionLabel extends ConsumerWidget {
+  const _AppVersionLabel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final version = ref.watch(appVersionProvider).valueOrNull;
+    if (version == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(_railIndent, 0, Space.md, Space.md),
+      child: Text(
+        'Version $version',
+        key: const Key('nav-app-version'),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
     );
   }
 }

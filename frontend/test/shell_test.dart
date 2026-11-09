@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/auth_controller.dart';
 import 'package:tefteri/core/shell.dart';
+import 'package:tefteri/core/versions.dart';
 
 void main() {
   testWidgets('the header shows the sync button', (tester) async {
@@ -16,6 +17,7 @@ void main() {
   });
   adminMenuTests();
   railTests();
+  versionTests();
 }
 
 class _FakeAuth extends AuthController {
@@ -163,5 +165,58 @@ void railTests() {
     await _pumpWide(tester, railMinWidth - 1);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
     expect(find.byKey(const Key('nav-/')), findsNothing);
+  });
+}
+
+void versionTests() {
+  Future<void> pump(WidgetTester tester, double width,
+      {bool known = true}) async {
+    tester.view.physicalSize = Size(width, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith((ref) => _FakeAuth(ref, false)),
+        appVersionProvider.overrideWith((_) async {
+          if (!known) throw StateError('unknown');
+          return const AppVersion('0.1.0', 14);
+        }),
+      ],
+      child: const MaterialApp(home: AppShell(title: 'T', body: SizedBox())),
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the labelled rail shows the version of the app under Sign out',
+      (tester) async {
+    await pump(tester, railExtendedMinWidth);
+    final label = find.byKey(const Key('nav-app-version'));
+    expect(label, findsOneWidget);
+    expect(tester.widget<Text>(label).data, 'Version 0.1.0 (build 14)');
+    // It sits below the Sign out button.
+    expect(
+        tester.getTopLeft(label).dy,
+        greaterThan(
+            tester.getBottomLeft(find.byKey(const Key('sign-out'))).dy));
+  });
+
+  testWidgets('the drawer shows the version too', (tester) async {
+    await pump(tester, 800);
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('nav-app-version')), findsOneWidget);
+  });
+
+  testWidgets('no version label while the version is unknown', (tester) async {
+    await pump(tester, railExtendedMinWidth, known: false);
+    expect(find.byKey(const Key('nav-app-version')), findsNothing);
+    expect(find.byKey(const Key('sign-out')), findsOneWidget);
+  });
+
+  test('a Flutter version splits into its name and build number', () {
+    final v = parseAppVersion('0.1.0+14');
+    expect((v.name, v.build), ('0.1.0', 14));
+    expect(parseAppVersion('1.2.3').build, 0);
+    expect(parseAppVersion('1.2.3+x').build, 0);
   });
 }
