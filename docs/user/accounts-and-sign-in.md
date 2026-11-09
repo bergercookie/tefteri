@@ -61,9 +61,20 @@ Use the new password the next time you sign in.
 
 ![The Users screen. It lists three users. Each user has the buttons Disable or Enable, Reset password and Delete.](../images/accounts-users.png)
 
-![The Admin settings page. It lists one page: Users.](../images/admin-settings-page.png)
+![The Admin settings page. It shows the server version and the client app version, and it lists one page: Users.](../images/admin-settings-page.png)
 
 Only an administrator sees the Admin settings menu item. The Users screen is inside it. The first administrator comes from the deployment settings.
+
+## See which versions run
+
+Everyone can see the version of the client app. It is in the menu, under the Sign out button, for example `Version 0.1.0 (build 14)`.
+
+An administrator can see both versions at the top of the Admin settings page:
+
+- Server is the version that the server runs.
+- Client app is the version of the app in your window.
+
+The two versions help you find out if an update reached you. After you update the server, reload the page of the web client. If Client app still shows the old build, your browser still holds the old app: reload the page again without the cache (Ctrl+Shift+R).
 
 ### Add a user
 

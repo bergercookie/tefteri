@@ -24,8 +24,25 @@ class AppVersion {
   String toString() => '$name (build $build)';
 }
 
+/// The version that the build put into the program (`--dart-define`), for
+/// example `0.1.0+14`. Empty in a build that did not set it.
+///
+/// This is the version of the code that runs. A web client that reads the
+/// version from a file on the server could show a newer number than the old
+/// code that the browser still holds.
+const _builtVersion = String.fromEnvironment('TEFTERI_APP_VERSION');
+
+/// Splits a Flutter version such as `0.1.0+14` into its name and build number.
+AppVersion parseAppVersion(String version) {
+  final plus = version.indexOf('+');
+  if (plus < 0) return AppVersion(version, 0);
+  return AppVersion(version.substring(0, plus),
+      int.tryParse(version.substring(plus + 1)) ?? 0);
+}
+
 /// Reads the version of the running app. Tests override it.
 final appVersionProvider = FutureProvider<AppVersion>((ref) async {
+  if (_builtVersion.isNotEmpty) return parseAppVersion(_builtVersion);
   final info = await PackageInfo.fromPlatform();
   return AppVersion(info.version, int.tryParse(info.buildNumber) ?? 0);
 });

@@ -60,7 +60,12 @@ void main() {
 
   testWidgets('admin settings page', (tester) async {
     await pumpScreen(tester, FakeApi({}), const AdminSettingsScreen(),
-        overrides: [authControllerProvider.overrideWith(_Admin.new)]);
+        overrides: [
+          authControllerProvider.overrideWith(_Admin.new),
+          appVersionProvider
+              .overrideWith((_) async => const AppVersion('1.4.0', 3)),
+          serverVersionProvider.overrideWith((ref, address) async => '1.4.0'),
+        ]);
     await saveScreenshot('admin-settings-page');
   });
 }

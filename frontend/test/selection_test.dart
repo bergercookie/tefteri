@@ -17,6 +17,9 @@ class _SignedIn extends AuthController {
 }
 
 Future<void> _pumpApp(WidgetTester tester, FakeApi api) async {
+  // Open the planner on the week of the test data, whatever day it is today.
+  tester.platformDispatcher.defaultRouteNameTestValue = '/?date=2026-11-04';
+  addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
   tester.view.physicalSize = const Size(1000, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);

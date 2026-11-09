@@ -55,6 +55,11 @@ This form is not a valid Python version, so the packages use other forms of the 
 For a release, the image and Python forms are `X.Y.Z`. The Flutter form is `X.Y.Z+<number of
 commits>`, because Android needs a build number that is more than 0.
 
+The recipes `frontend::build-web`, `build-linux` and `build-apk` also pass this version to the app
+with `--dart-define=TEFTERI_APP_VERSION`. The app shows that version in the menu and in Admin
+settings. The web client does not read the version from a file on the server, because a browser
+that holds old code could then show a newer number than the code that runs.
+
 ## Signing the Android package
 
 The release and nightly workflows sign the `.apk` with a release keystore. Add these
