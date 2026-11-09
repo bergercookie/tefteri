@@ -4,6 +4,7 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/calendar_color.dart';
 import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -201,7 +202,7 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
             ListTile(
               key: Key('entry-${e.id}'),
               dense: true,
-              leading: const Icon(Icons.event),
+              leading: Icon(Icons.event, color: parseCalendarColor(e.color)),
               title: Text(e.title),
               subtitle: Text(_when(e.start, e.allDay)),
             ),

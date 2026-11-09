@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.lookups import container_colors
 from tefteri.api.schemas import DayView, EntryOut, NoteOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.note import Note
@@ -29,8 +30,9 @@ async def day_view(
     """
     start, end = day_bounds(day, user.timezone)
     ZoneInfo(user.timezone)
+    colors = await container_colors(db, user.id)
     entries = [
-        EntryOut.of(e)
+        EntryOut.of(e, colors)
         for e in (
             await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user.id))
         ).scalars()

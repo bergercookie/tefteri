@@ -10,7 +10,9 @@ You can see what you must do and when you have time, on one screen.
 The left column is the task list. At the top you find the filters and the search box.
 The right column is the calendar for one week. It shows your calendar entries and your tasks together.
 
-Task blocks have a colored outline and a check mark. Calendar entries have no outline.
+Task blocks have a colored outline and a check mark. Calendar entries have no outline. An entry
+from a Google calendar has the color that you chose for that calendar in Google Calendar: a
+strong line on its left edge and a softer color on the block.
 A red dot and a red line show the current time in the column of the current day. The line moves while you work.
 A task with a date and no time shows in the row called all day.
 

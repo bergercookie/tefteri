@@ -113,6 +113,7 @@ class PlanEntry {
     this.start,
     this.end,
     this.location,
+    this.color,
   });
 
   /// Parses an entry JSON object.
@@ -124,11 +125,15 @@ class PlanEntry {
         end: _dt(j['end']),
         allDay: j['all_day'] == true,
         location: j['location'] as String?,
+        color: j['color'] as String?,
         syncState: '${j['sync_state'] ?? 'synced'}',
       );
 
   /// Entry id.
   final String id;
+
+  /// The color of its calendar in the calendar app, as `#rrggbb`, or null.
+  final String? color;
 
   /// Owning connection id.
   final String connectionId;
@@ -244,6 +249,7 @@ class CalendarItem {
     this.status,
     this.clippedStart = false,
     this.project,
+    this.color,
   });
 
   /// Parses one calendar item JSON object.
@@ -258,7 +264,11 @@ class CalendarItem {
         status: j['status'] as String?,
         clippedStart: j['clipped_start'] == true,
         project: j['project'] as String?,
+        color: j['color'] as String?,
       );
+
+  /// The color of the calendar of an entry, as `#rrggbb`, or null.
+  final String? color;
 
   /// `entry` or `task`.
   final String type;

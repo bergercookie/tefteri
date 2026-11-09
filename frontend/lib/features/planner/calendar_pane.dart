@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/calendar_color.dart';
 import '../../core/control_key.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
@@ -360,16 +361,19 @@ String? _titleOf(Object data) {
 }
 
 Color _blockColor(BuildContext context, CalendarItem i) {
-  return i.isTask
-      ? context.tefteri.taskContainer
-      : context.tefteri.eventContainer;
+  if (i.isTask) return context.tefteri.taskContainer;
+  // An event has the color that the user chose for its calendar.
+  final calendar = parseCalendarColor(i.color);
+  return calendar == null
+      ? context.tefteri.eventContainer
+      : calendarTint(context, calendar);
 }
 
 /// The strong color on the left edge of a block: tasks in terracotta, events
 /// in ink blue, finished tasks in sage.
 Color _accentColor(BuildContext context, CalendarItem i) {
   final c = context.tefteri;
-  if (!i.isTask) return c.event;
+  if (!i.isTask) return parseCalendarColor(i.color) ?? c.event;
   return i.isDone ? c.done : c.task;
 }
 

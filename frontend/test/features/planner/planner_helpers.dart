@@ -18,6 +18,7 @@ Map<String, Object?> calItem(String type, String id, String title,
         bool allDay = false,
         String? status,
         String? project,
+        String? color,
         bool clipped = false}) =>
     {
       'type': type,
@@ -30,6 +31,7 @@ Map<String, Object?> calItem(String type, String id, String title,
       if (status != null) 'status': status,
       'clipped_start': clipped,
       if (project != null) 'project': project,
+      if (color != null) 'color': color,
     };
 
 /// A task JSON object with a due date. Local time; `null` means no due date.

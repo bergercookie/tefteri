@@ -1,5 +1,6 @@
 """Google Calendar adapter (one instance per Google account; OAuth2 refresh-token flow)."""
 
+import re
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
@@ -38,6 +39,18 @@ def _path(calendar_id: str, event_id: str | None = None) -> str:
     """
     base = f"/calendars/{quote(calendar_id, safe='')}/events"
     return base if event_id is None else f"{base}/{quote(event_id, safe='')}"
+
+
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _color(value: object) -> str | None:
+    """Read the color of a calendar: the one the user sees it in, as ``#rrggbb``.
+
+    ``calendarList`` sends ``backgroundColor`` for the color that the user picked (one of the
+    palette, or a custom one). Anything that is not ``#rrggbb`` is left out.
+    """
+    return value.lower() if isinstance(value, str) and _HEX_COLOR.match(value) else None
 
 
 def _when(point: dict[str, Any]) -> datetime:
@@ -137,7 +150,14 @@ class GoogleCalendarBackend:
     async def list_containers(self) -> list[Container]:
         """List the account's calendars (personal, shared, company)."""
         data = await self._call("GET", "/users/me/calendarList")
-        return [Container(c["id"], c.get("summaryOverride") or c["summary"]) for c in data["items"]]
+        return [
+            Container(
+                c["id"],
+                c.get("summaryOverride") or c["summary"],
+                color=_color(c.get("backgroundColor")),
+            )
+            for c in data["items"]
+        ]
 
     async def check_connection(self) -> ConnectionHealth:
         """Check the credentials by listing calendars."""
