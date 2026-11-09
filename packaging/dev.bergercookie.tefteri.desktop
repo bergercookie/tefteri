@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Tefteri
+GenericName=Daily planner
+Comment=Plan and do your daily work
+Exec=tefteri
+Icon=tefteri
+Terminal=false
+StartupNotify=true
+StartupWMClass=dev.bergercookie.tefteri
+Categories=Office;ProjectManagement;
+Keywords=planner;tasks;calendar;notes;goals;

@@ -15,6 +15,8 @@ tool_url=https://github.com/AppImage/appimagetool/releases/download/1.9.0/appima
     exit 1
 }
 
+bash "${root}/packaging/check-bundle.sh" "${bundle}"
+
 tool=$(command -v appimagetool || true)
 if [[ -z ${tool} ]]; then
     tool=${HOME}/.cache/tefteri/appimagetool
@@ -30,7 +32,7 @@ trap 'rm -rf "$appdir"' EXIT
 
 mkdir -p "${appdir}/usr/lib/tefteri"
 cp -r "${bundle}/." "${appdir}/usr/lib/tefteri/"
-cp "${root}/packaging/tefteri.desktop" "${appdir}/tefteri.desktop"
+cp "${root}/packaging/dev.bergercookie.tefteri.desktop" "${appdir}/dev.bergercookie.tefteri.desktop"
 cp "${root}/frontend/web/icons/Icon-512.png" "${appdir}/tefteri.png"
 cat >"${appdir}/AppRun" <<'APPRUN'
 #!/bin/sh

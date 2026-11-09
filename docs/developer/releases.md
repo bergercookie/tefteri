@@ -13,7 +13,8 @@ The workflow `release.yml` starts. It does these steps:
 
 - `just release::image` builds the server image and pushes it to
   `ghcr.io/bergercookie/tefteri` with the tags `1.4.0` and `latest`.
-- `just release::clients` builds the `.deb` package, the AppImage and the `.apk` into `dist/`.
+- `just release::clients-linux` builds the `.deb` package and the AppImage into `dist/`.
+  `just release::clients-android` builds the `.apk`. The two recipes run in separate jobs.
 - `just release::publish` creates the GitHub release `v1.4.0` with the three packages.
 
 ## Nightly builds
@@ -23,7 +24,8 @@ already has the current commit. Otherwise it does these steps:
 
 - `just release::nightly-versions` computes the version.
 - `just release::nightly-image` pushes the image with the tags `nightly` and the version.
-- `just release::nightly-clients` builds the packages.
+- `just release::nightly-clients-linux` and `just release::nightly-clients-android` build the
+  packages, in separate jobs.
 - `just release::nightly-publish` publishes them as two pre-releases on GitHub: one named
   `nightly-<version>` that stays, and `nightly`, which it replaces. The update check of the app
   reads `nightly`, so it always holds the newest build.
@@ -70,8 +72,20 @@ app with a release-signed app. Keep the keystore safe: you need the same key for
 
 ## Tools on the CI runner
 
-The workflows install devbox. They also install the Linux desktop build tools with `apt-get`,
-because devbox does not give them. The runner gives Docker and the Android SDK.
+The jobs for the server image, the version and the Android package install devbox. The runner
+gives Docker and the Android SDK.
+
+The job for the Linux packages does not use devbox. It runs on the oldest Ubuntu image that
+GitHub offers, so that the packages also run on older systems. It installs the compiler, the
+GTK development files and `just` with `apt-get` and actions, and it installs a plain Flutter SDK.
+The version of this SDK is in the variable `FLUTTER_SDK` of the workflow. Keep it equal to the
+version in `devbox.json`.
+
+```{note}
+Devbox sets up the dependencies for development. The CI bypasses it for the Linux packages,
+because a bundle that links the libraries of devbox does not start on other computers.
+`packaging/check-bundle.sh` checks the bundle before it goes into a package.
+```
 
 ## Upgrade notes for the planner (spec 002)
 
