@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/pane_widths.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../settings/sync_controller.dart';
@@ -14,8 +15,8 @@ import 'planner_providers.dart';
 import 'schedule_dialog.dart';
 import 'task_pane.dart';
 
-/// Width of the task column in the two-column layout.
-const double taskPaneWidth = 360;
+/// The calendar keeps at least this much width when the task list grows.
+const double calendarMinWidth = 460;
 
 /// Below this width two columns do not fit and the screen uses two tabs.
 const double twoColumnMinWidth = 840;
@@ -82,8 +83,9 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                 ),
               Expanded(
                 child: LayoutBuilder(
-                  builder: (context, c) =>
-                      c.maxWidth >= twoColumnMinWidth ? _wide() : _narrow(),
+                  builder: (context, c) => c.maxWidth >= twoColumnMinWidth
+                      ? _wide(c.maxWidth)
+                      : _narrow(),
                 ),
               ),
             ],
@@ -100,13 +102,28 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
         onToday: () => setState(() => _weekStart = _mondayOf(widget.clock())),
       );
 
-  Widget _wide() => Row(
-        children: [
-          const SizedBox(width: taskPaneWidth, child: TaskPane()),
-          const VerticalDivider(width: 1),
-          Expanded(child: _calendar()),
-        ],
-      );
+  Widget _wide(double available) {
+    final notifier = ref.read(taskPaneWidthProvider.notifier);
+    // The task list is as wide as the user dragged it, and leaves the
+    // calendar its minimum.
+    final most = (available - calendarMinWidth - resizeHandleWidth)
+        .clamp(notifier.min, notifier.max)
+        .toDouble();
+    final width = ref.watch(taskPaneWidthProvider).clamp(notifier.min, most);
+    return Row(
+      children: [
+        SizedBox(width: width, child: const TaskPane()),
+        ResizeHandle(
+          key: const Key('task-pane-resize'),
+          label: 'Resize the task list',
+          onDrag: (dx) => notifier.by(dx, cap: most),
+          onEnd: notifier.save,
+          onReset: notifier.reset,
+        ),
+        Expanded(child: _calendar()),
+      ],
+    );
+  }
 
   /// Two tabs that stay alive, so the filter, the search text and the week
   /// survive a switch. Tasks are scheduled with a dialog instead of a drag.

@@ -16,6 +16,23 @@ A task with a date and no time shows in the row called all day.
 
 When you sync, both columns update.
 
+## Change the width of the sidebar and the task list
+
+You can make the sidebar and the task list wider or narrower.
+
+1. Point at the line between the sidebar and the page, or at the line between the task list and the
+   calendar. The pointer changes and the line gets thicker.
+2. Drag the line to the left or to the right.
+
+To use the keyboard, choose the line with the Tab key or with a click. Then press the left arrow
+key or the right arrow key. Each press moves the line by 16 pixels.
+
+To go back to the standard width, double-click the line, or choose it and press Home.
+
+Tefteri keeps the widths and uses them the next time you open it. The sidebar is 200 to 360 pixels
+wide. The task list is 260 to 640 pixels wide, and it always leaves room for the calendar. The
+sidebar has a line to drag only when the window is wide enough to show the names of the views.
+
 ## Move to today
 
 Choose Today at the top of the calendar to go to the week of today. The calendar scrolls to the current time.
