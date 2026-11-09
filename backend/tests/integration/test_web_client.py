@@ -22,6 +22,9 @@ async def test_serves_web_client_without_shadowing_the_api(
         index = await c.get("/")
         assert index.status_code == 200 and "tefteri" in index.text
         assert (await c.get("/main.dart.js")).text == "// app"
+        # The browser asks the server before it reuses a file: no old app stays in its cache.
+        for path in ("/", "/main.dart.js"):
+            assert (await c.get(path)).headers["cache-control"] == "no-cache"
         assert (await c.get("/health")).json() == {"status": "ok"}
         assert (await c.get("/api/v1/auth/me")).json()["code"] == "not_authenticated"
 

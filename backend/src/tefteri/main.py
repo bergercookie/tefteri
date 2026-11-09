@@ -8,6 +8,8 @@ from importlib.metadata import PackageNotFoundError, version
 import httpx
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
 
 from tefteri.adapters.google_calendar import GoogleCalendarBackend
 from tefteri.adapters.trilium import TriliumNoteBackend
@@ -71,6 +73,19 @@ def default_registry(cfg: Settings, http: httpx.AsyncClient) -> AdapterRegistry:
         ),
     )
     return registry
+
+
+class _WebFiles(StaticFiles):
+    """The web client, served so that a browser never keeps an old copy of the app.
+
+    The browser asks the server before it reuses a file (ETag). An update of the server then
+    shows at once.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def create_app(
@@ -165,5 +180,5 @@ def create_app(
         app.include_router(r.router, prefix="/api/v1")
     # Mounted last so the API routes above take precedence over the files.
     if cfg.web_dir is not None:
-        app.mount("/", StaticFiles(directory=cfg.web_dir, html=True), name="web")
+        app.mount("/", _WebFiles(directory=cfg.web_dir, html=True), name="web")
     return app
