@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Tefteri
-Comment=Plan and do your daily work
-Exec=tefteri
-Icon=tefteri
-Categories=Office;ProjectManagement;
-Terminal=false

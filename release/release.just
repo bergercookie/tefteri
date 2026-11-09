@@ -13,9 +13,16 @@ image:
     TEFTERI_VERSION="$(bash ../scripts/version.sh release pep440)" TEFTERI_FLUTTER_VERSION="$(bash ../scripts/version.sh release flutter)" just deploy::build-image
     just deploy::push-image "$(bash ../scripts/version.sh release)" latest
 
-# Build the client packages for the release tag at HEAD into dist/.
-clients:
-    TEFTERI_VERSION="$(bash ../scripts/version.sh release)" TEFTERI_FLUTTER_VERSION="$(bash ../scripts/version.sh release flutter)" just packaging::deb packaging::appimage packaging::apk
+# Build all client packages for the release tag at HEAD into dist/.
+clients: clients-linux clients-android
+
+# Build the .deb package and the AppImage. Run it outside devbox, with the system GTK.
+clients-linux:
+    TEFTERI_VERSION="$(bash ../scripts/version.sh release)" TEFTERI_FLUTTER_VERSION="$(bash ../scripts/version.sh release flutter)" just packaging::deb packaging::appimage
+
+# Build the .apk. This needs the Android SDK and the Flutter SDK of devbox.
+clients-android:
+    TEFTERI_VERSION="$(bash ../scripts/version.sh release)" TEFTERI_FLUTTER_VERSION="$(bash ../scripts/version.sh release flutter)" just packaging::apk
 
 # Create the GitHub release for the tag at HEAD with the packages in dist/.
 publish:
@@ -39,9 +46,16 @@ nightly-image image pep440 flutter:
     TEFTERI_VERSION="{{ pep440 }}" TEFTERI_FLUTTER_VERSION="{{ flutter }}" just deploy::build-image
     just deploy::push-image "{{ image }}" nightly
 
-# Build the nightly client packages into dist/.
-nightly-clients image flutter:
-    TEFTERI_VERSION="{{ image }}" TEFTERI_FLUTTER_VERSION="{{ flutter }}" just packaging::deb packaging::appimage packaging::apk
+# Build all nightly client packages into dist/.
+nightly-clients image flutter: (nightly-clients-linux image flutter) (nightly-clients-android image flutter)
+
+# Build the nightly .deb package and AppImage. Run outside devbox (see `clients-linux`).
+nightly-clients-linux image flutter:
+    TEFTERI_VERSION="{{ image }}" TEFTERI_FLUTTER_VERSION="{{ flutter }}" just packaging::deb packaging::appimage
+
+# Build the nightly .apk.
+nightly-clients-android image flutter:
+    TEFTERI_VERSION="{{ image }}" TEFTERI_FLUTTER_VERSION="{{ flutter }}" just packaging::apk
 
 # Publish the nightly packages. Every build gets its own pre-release `nightly-<version>`, and only
 # the newest `keep` of them stay. The pre-release `nightly` always holds the newest build: the
