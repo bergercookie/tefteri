@@ -194,6 +194,24 @@ async def test_a_committed_plan_keeps_its_tasks_when_they_get_done(
     assert draft["committed_tasks"] == []
 
 
+async def test_a_done_task_reports_the_local_day_it_was_completed(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    admin = (await api.get(f"{V1}/auth/me")).json()
+    await api.patch(f"{V1}/users/{admin['id']}", json={"timezone": "Europe/Athens"})
+    ids = await _setup(api, world)
+    state = await _add(api, FUTURE, ids["Website"])
+    await api.post(f"{V1}/weekly/{FUTURE}/spread")
+    await api.post(f"{V1}/weekly/{FUTURE}/commit")
+    first = state["plan"]["projects"][0]["tasks"][0]["id"]
+    await api.post(f"{V1}/tasks/{first}/complete")
+    project = (await api.get(f"{V1}/weekly/{FUTURE}")).json()["plan"]["projects"][0]
+    days = {t["id"]: t["completed_day"] for t in project["committed_tasks"]}
+    # 22:30 UTC is already the next day in Athens (the test user's time zone), in March.
+    assert days[first] == "2030-03-07"
+    assert [d for i, d in days.items() if i != first] == [None]
+
+
 async def test_commit_needs_a_project_and_a_started_plan(
     api: AsyncClient, world: FakeWorld
 ) -> None:

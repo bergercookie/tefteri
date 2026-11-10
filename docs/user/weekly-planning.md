@@ -29,6 +29,22 @@ you see.
 
 ![The Give tasks a day step. The checklist is on the left. The week has seven days. Four of seven tasks have a day.](../images/weekly-tasks.png)
 
+## See how the week goes
+
+After you commit a plan, the Week view shows a Committed plan card under the planning card. It
+shows:
+
+- How many of the committed tasks are done and how many are left.
+- How many tasks you finished on each day, and the total for the week.
+- Your cadence: the tasks you finished per day since Monday. Next to it is the pace the rest of
+  the week needs, counting today, and whether you are on track.
+- A burndown chart. The dashed line is the ideal pace from all tasks on Monday to none on Sunday.
+  The solid line is the open tasks at the end of each day.
+
+Tefteri takes the day of a task from the date that your task app gives for its completion. Tasks
+that were done before the week began, or that have no completion date yet, count as done but not
+in the chart. A task that was finished before this feature gets its day at the next sync.
+
 ## Step 1: look back at the week before
 
 This step shows when you committed a plan last week. For each project of that plan, you see how many

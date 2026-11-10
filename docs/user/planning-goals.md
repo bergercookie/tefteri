@@ -17,13 +17,14 @@ You can keep your goals after the period ends.
 2. Choose Week, Month or Year.
 3. To see a different period, choose the arrows or the date at the top.
 
-![The Week view. It shows the goal Run 25 km at 50 percent, one event and three tasks. Two tasks belong to the goal.](../images/planning-week.png)
+![The Week view. A card shows the committed plan: 5 of 8 tasks done, tasks done on each day, the cadence and a burndown chart. Below it are the goal Run 25 km at 50 percent and three tasks.](../images/planning-week.png)
 
 ![The Month view for November 2026 with the goal Run 100 km in November.](../images/planning-month.png)
 
 ![The Year view for 2026 with two goals and their progress.](../images/planning-year.png)
 
-The Week view shows the goals of the week. The Month view shows the goals of the month. The Year view shows the goals of the year.
+The Week view shows the plan you committed to, the goals of the week and its tasks. It does not
+show calendar events. The Month view shows the goals of the month. The Year view shows the goals of the year.
 
 ## Add a goal
 

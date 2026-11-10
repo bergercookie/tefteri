@@ -46,6 +46,8 @@ class RemoteTask:
     due_at: datetime | None = None
     all_day: bool = False
     labels: tuple[str, ...] = ()
+    done_at: datetime | None = None
+    """When the task was completed, if the app says."""
 
 
 @dataclass(frozen=True)

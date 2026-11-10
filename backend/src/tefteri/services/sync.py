@@ -71,7 +71,12 @@ def _upsert(
         counts["created"] += 1
     elif row.sync_state == SyncState.CONFLICT.value:
         return
-    elif row.remote_version != version or row.sync_state == SyncState.DELETED_REMOTELY.value:
+    elif (
+        row.remote_version != version
+        or row.sync_state == SyncState.DELETED_REMOTELY.value
+        # A task finished before ``completed_at`` existed gets its completion day now.
+        or (values.get("completed_at") is not None and row.completed_at is None)
+    ):
         for key, value in values.items():
             setattr(row, key, value)
         row.remote_version = version
