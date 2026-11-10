@@ -23,6 +23,8 @@ from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 API = "https://www.googleapis.com/calendar/v3"
 TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105
 SEP = "::"
+READ_ONLY_ROLES = ("reader", "freeBusyReader")
+"""``accessRole`` values of a calendar in which the user cannot change events."""
 
 
 def join_id(calendar_id: str, event_id: str) -> str:
@@ -137,12 +139,22 @@ class GoogleCalendarBackend:
 
     async def list_containers(self) -> list[Container]:
         """List the account's calendars (personal, shared, company)."""
-        data = await self._call("GET", "/users/me/calendarList")
+        # ``showHidden`` also lists the calendars that the user hides in Google Calendar, so
+        # that the user can choose them in tefteri.
+        data = await self._call(
+            "GET", "/users/me/calendarList", params={"showHidden": "true", "maxResults": 250}
+        )
         return [
             Container(
                 c["id"],
                 c.get("summaryOverride") or c["summary"],
                 color=normalize_color(c.get("backgroundColor")),
+                read_only=c.get("accessRole") in READ_ONLY_ROLES,
+                # The calendars that the user shows in Google Calendar start on. The others
+                # (holidays, birthdays, the calendars of other people) start off.
+                enabled_by_default=bool(c.get("selected") or c.get("primary"))
+                and not c.get("hidden")
+                and c.get("accessRole") != "freeBusyReader",
             )
             for c in data["items"]
         ]

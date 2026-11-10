@@ -89,11 +89,18 @@ class EntryOut(BaseModel):
     all_day: bool
     color: str | None = None
     """The color of its calendar in the calendar app, as ``#rrggbb``."""
+    read_only: bool = False
+    """Its calendar is read-only: the user cannot move or change it."""
     location: str
     sync_state: str
 
     @classmethod
-    def of(cls, e: CalendarEntry, colors: dict[uuid.UUID, str] | None = None) -> "EntryOut":
+    def of(
+        cls,
+        e: CalendarEntry,
+        colors: dict[uuid.UUID, str] | None = None,
+        read_only: set[uuid.UUID] | None = None,
+    ) -> "EntryOut":
         """Build from the ORM row. ``colors`` maps container ids to calendar colors."""
         return cls(
             id=e.id,
@@ -103,6 +110,7 @@ class EntryOut(BaseModel):
             end=e.end,
             all_day=e.all_day,
             color=(colors or {}).get(e.container_id) if e.container_id else None,
+            read_only=bool(read_only and e.container_id in read_only),
             location=e.location,
             sync_state=e.sync_state,
         )
@@ -149,14 +157,20 @@ class CalendarItemOut(BaseModel):
     """For a task: the name of its project in the task app."""
     color: str | None = None
     """The color of its calendar (an entry) or of its project (a task), as ``#rrggbb``."""
+    read_only: bool = False
+    """For an entry: its calendar is read-only, so the user cannot move or change it."""
 
     @classmethod
     def of_entry(
-        cls, e: CalendarEntry, colors: dict[uuid.UUID, str] | None = None
+        cls,
+        e: CalendarEntry,
+        colors: dict[uuid.UUID, str] | None = None,
+        read_only: set[uuid.UUID] | None = None,
     ) -> "CalendarItemOut":
         """Build from an entry. ``colors`` maps container ids to calendar colors."""
         return cls(
             color=(colors or {}).get(e.container_id) if e.container_id else None,
+            read_only=bool(read_only and e.container_id in read_only),
             type="entry",
             id=e.id,
             connection_id=e.connection_id,

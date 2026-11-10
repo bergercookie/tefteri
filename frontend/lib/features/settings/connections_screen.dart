@@ -10,6 +10,8 @@ import '../../core/api_error.dart';
 import '../../core/open_url.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
+import 'calendar_choice.dart';
+import 'calendar_chooser_dialog.dart';
 import 'connection_dialog.dart';
 import 'connection_models.dart';
 import 'failure_card.dart';
@@ -27,13 +29,18 @@ String formatSyncTime(DateTime? time) {
 /// Lists connections with last-sync info and any failures.
 class ConnectionsScreen extends ConsumerStatefulWidget {
   /// Creates the screen.
-  const ConnectionsScreen({super.key});
+  const ConnectionsScreen({this.choose, super.key});
+
+  /// Id of a connection whose calendar chooser opens once, after sign-in.
+  final String? choose;
 
   @override
   ConsumerState<ConnectionsScreen> createState() => _ConnectionsScreenState();
 }
 
 class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
+  bool _autoOpened = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +53,16 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
   Widget build(BuildContext context) {
     final sync = ref.watch(syncControllerProvider);
     final connections = ref.watch(connectionsProvider);
+    final choose = widget.choose;
+    final target = (choose == null || _autoOpened)
+        ? null
+        : connections.valueOrNull?.where((c) => c.id == choose).firstOrNull;
+    if (target != null) {
+      _autoOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _chooseCalendars(target);
+      });
+    }
     return AppShell(
       title: 'Connections',
       backTo: '/settings',
@@ -140,6 +157,9 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
             result: sync.results[c.id],
             onEdit: () => _edit(c),
             onRemove: () => _remove(c),
+            onChoose: c.provider == ConnectionProvider.googleCalendar.id
+                ? () => _chooseCalendars(c)
+                : null,
           ),
         const PlannerSettingsCard(),
       ],
@@ -179,6 +199,12 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
       await dio.patch<void>('/connections/${c.id}', data: body);
       return c.id;
     }, name: '${body['display_name']}');
+  }
+
+  Future<void> _chooseCalendars(Connection c) async {
+    final saved = await showCalendarChooser(context,
+        connectionId: c.id, name: c.displayName);
+    if (saved && mounted) ref.invalidate(connectionsProvider);
   }
 
   Future<void> _remove(Connection c) async {
@@ -347,11 +373,12 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
   }
 }
 
-class _ConnectionTile extends StatelessWidget {
+class _ConnectionTile extends ConsumerWidget {
   const _ConnectionTile({
     required this.connection,
     required this.onEdit,
     required this.onRemove,
+    this.onChoose,
     this.result,
   });
 
@@ -359,19 +386,24 @@ class _ConnectionTile extends StatelessWidget {
   final SyncResult? result;
   final VoidCallback onEdit;
   final VoidCallback onRemove;
+  final VoidCallback? onChoose;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final outcome = result?.outcome ?? connection.lastSyncOutcome ?? 'none';
     final at = connection.lastSyncAt;
     final url = connection.settings['base_url'];
-    return ListTile(
+    final count = onChoose == null
+        ? null
+        : ref.watch(calendarCountProvider(connection.id)).valueOrNull;
+    final tile = ListTile(
       key: Key('connection-${connection.id}'),
       title: Text(connection.displayName),
       subtitle: Text(
         '${connection.kind} - ${connection.provider}'
         '${url == null ? '' : ' - $url'}\n'
-        'Last sync: ${formatSyncTime(at)} ($outcome)',
+        'Last sync: ${formatSyncTime(at)} ($outcome)'
+        '${count == null ? '' : '\n${count.on} of ${count.total} calendars'}',
       ),
       isThreeLine: true,
       leading: Icon(
@@ -392,6 +424,22 @@ class _ConnectionTile extends StatelessWidget {
         ),
       ]),
     );
+    if (onChoose == null) return tile;
+    return Column(children: [
+      tile,
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.only(left: Space.lg),
+          child: OutlinedButton.icon(
+            key: Key('choose-calendars-${connection.id}'),
+            onPressed: onChoose,
+            icon: const Icon(Icons.calendar_month_outlined),
+            label: const Text('Choose calendars'),
+          ),
+        ),
+      ),
+    ]);
   }
 }
 

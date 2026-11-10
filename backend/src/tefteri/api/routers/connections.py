@@ -131,6 +131,10 @@ class ContainerOut(BaseModel):
     parent_remote_id: str | None = None
     color: str | None = None
     """The color of a calendar in the calendar app, as ``#rrggbb``."""
+    enabled: bool = True
+    """Tefteri syncs it. The user chooses which calendars of a Google account to sync."""
+    read_only: bool = False
+    """The user cannot change what it holds in the app."""
 
 
 async def _own(service: ConnectionService, db: Db, user: CurrentUser, cid: uuid.UUID) -> Connection:
@@ -228,7 +232,9 @@ async def google_callback(
     )
     if settings.web_dir is not None:
         base = (settings.public_url or "").rstrip("/")
-        return RedirectResponse(f"{base}/#/settings", status_code=303)
+        return RedirectResponse(
+            f"{base}/#/settings/connections?choose={connection.id}", status_code=303
+        )
     name = html.escape(connection.display_name)
     return HTMLResponse(
         f"<!doctype html><title>tefteri</title><p>{name} is connected. "
@@ -285,9 +291,76 @@ async def list_containers(
             name=r.name,
             parent_remote_id=r.parent_remote_id,
             color=r.color,
+            enabled=r.enabled,
+            read_only=r.read_only,
         )
         for r in rows
     ]
+
+
+class EnabledIn(BaseModel):
+    """The calendars (containers) that tefteri syncs. Every other one of the connection is off."""
+
+    container_ids: list[uuid.UUID]
+
+
+class ContainersSyncedOut(BaseModel):
+    """The containers after a new choice, and the result of the sync that followed."""
+
+    containers: list[ContainerOut]
+    sync: SyncResultOut
+
+
+@router.put("/{connection_id}/containers/enabled")
+async def choose_containers(
+    connection_id: uuid.UUID,
+    body: EnabledIn,
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+    service: ConnectionService = Service,
+) -> ContainersSyncedOut:
+    """Choose which calendars of the connection tefteri syncs, then sync the connection.
+
+    The ids that are not listed are switched off, and their events leave the cache. An id that
+    does not belong to the connection is refused.
+    """
+    connection = await _own(service, db, user, connection_id)
+    rows = list(
+        (
+            await db.execute(
+                select(SourceContainer).where(
+                    SourceContainer.connection_id == connection_id,
+                    SourceContainer.user_id == user.id,
+                )
+            )
+        ).scalars()
+    )
+    known = {r.id for r in rows}
+    unknown = set(body.container_ids) - known
+    if unknown:
+        raise ApiError(422, "unknown_container", "One of the calendars is not in this connection.")
+    chosen = set(body.container_ids)
+    for row in rows:
+        row.enabled = row.id in chosen
+    await db.flush()
+    sync: SyncService = request.app.state.sync_service
+    result = SyncResultOut.of(await sync.sync_connection(db, connection))
+    return ContainersSyncedOut(
+        containers=[
+            ContainerOut(
+                id=r.id,
+                remote_id=r.remote_id,
+                name=r.name,
+                parent_remote_id=r.parent_remote_id,
+                color=r.color,
+                enabled=r.enabled,
+                read_only=r.read_only,
+            )
+            for r in rows
+        ],
+        sync=result,
+    )
 
 
 @router.get("/{connection_id}/labels")

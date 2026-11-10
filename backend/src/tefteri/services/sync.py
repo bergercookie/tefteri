@@ -4,10 +4,9 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, time, timedelta
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,12 +17,12 @@ from tefteri.db.models.note import Note
 from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
-from tefteri.domain.entities import Container, RemoteEntry
+from tefteri.domain.entities import Container
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
 from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
-from tefteri.services.mirror import entry_values, note_values, task_values
+from tefteri.services.mirror import anchor_all_day, entry_values, note_values, task_values
 
 logger = logging.getLogger(__name__)
 
@@ -85,23 +84,6 @@ def _mark_deleted(existing: dict[str, Any], seen: set[str], counts: dict[str, in
         if remote_id not in seen and row.sync_state == SyncState.SYNCED.value:
             row.sync_state = SyncState.DELETED_REMOTELY.value
             counts["deleted"] += 1
-
-
-def anchor_all_day(item: RemoteEntry, tz_name: str) -> RemoteEntry:
-    """Put an all-day event on the user's local days.
-
-    An app sends an all-day event as dates (``2026-11-05`` to ``2026-11-06``). The cache holds
-    instants, so the dates become midnight in the user's time zone. Taken as UTC midnight, the
-    event would start two hours late and end two hours into the next day in Athens.
-    """
-    if not item.all_day:
-        return item
-    zone = ZoneInfo(tz_name)
-
-    def midnight(value: datetime) -> datetime:
-        return datetime.combine(value.date(), time(0), tzinfo=zone)
-
-    return replace(item, start=midnight(item.start), end=midnight(item.end))
 
 
 class SyncService:
@@ -240,18 +222,25 @@ class SyncService:
                     name=container.name,
                     parent_remote_id=container.parent_id,
                     color=container.color,
+                    read_only=container.read_only,
+                    enabled=container.enabled_by_default,
                 )
                 db.add(row)
             else:
                 row.name = container.name
                 row.parent_remote_id = container.parent_id
                 row.color = container.color
+                row.read_only = container.read_only
             await db.flush()
-            out[container.remote_id] = (container, row.id)
+            # A container that the user switched off stays known (it is in the list to choose
+            # from) but is not synced: its items are not seen, so they leave the cache.
+            if row.enabled:
+                out[container.remote_id] = (container, row.id)
         # A container that the app no longer lists is gone there (deleted, or never one). Its
         # tasks, entries and notes are marked deleted by the sync that follows.
+        listed = {c.remote_id for c in remote}
         for remote_id, row in rows.items():
-            if remote_id not in out:
+            if remote_id not in listed:
                 await db.delete(row)
         await db.flush()
         return out

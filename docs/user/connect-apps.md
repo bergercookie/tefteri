@@ -63,6 +63,22 @@ the events of that calendar in the planner, in the Today view and in the Week an
 When you change the color of a calendar in Google Calendar, tefteri shows the new color after the
 next sync. A calendar with no color keeps the standard color of tefteri.
 
+## Choose the calendars
+
+Tefteri syncs only the calendars that you switch on. The first sync of a new Google connection uses
+the calendars that you show in Google Calendar. After you sign in, tefteri opens the list of
+calendars so that you can check the choice.
+
+You can change the choice at any time:
+
+1. Open Settings and choose Connections.
+2. Find the Google connection. Choose Choose calendars.
+3. Select the calendars that you want. Choose Save.
+
+The list also shows the calendars that you hide in Google Calendar, and shared calendars, for
+example Family. Tefteri leaves them off until you switch them on. A calendar with the label
+Read only shows its events, but tefteri cannot change them.
+
 ## Connect Trilium Next
 
 You need the web address of your Trilium Next server and an ETAPI token.

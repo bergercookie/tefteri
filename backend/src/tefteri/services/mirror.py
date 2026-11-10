@@ -1,8 +1,10 @@
 """Conversion of remote items to the column values of their cached (mirror) rows."""
 
 import uuid
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, datetime, time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from tefteri.domain.entities import RemoteEntry, RemoteNote, RemoteTask
 from tefteri.domain.planning_time import BLOCK_LENGTH
@@ -61,3 +63,20 @@ def entry_values(item: RemoteEntry, container_row_id: uuid.UUID | None) -> dict[
 def note_values(item: RemoteNote) -> dict[str, Any]:
     """Return the mirror-row values for a remote note."""
     return {"title": item.title, "body": item.body, "note_date": item.note_date}
+
+
+def anchor_all_day(item: RemoteEntry, tz_name: str) -> RemoteEntry:
+    """Put an all-day event on the user's local days.
+
+    An app sends an all-day event as dates (``2026-11-05`` to ``2026-11-06``). The cache holds
+    instants, so the dates become midnight in the user's time zone. Taken as UTC midnight, the
+    event would start two hours late and end two hours into the next day in Athens.
+    """
+    if not item.all_day:
+        return item
+    zone = ZoneInfo(tz_name)
+
+    def midnight(value: datetime) -> datetime:
+        return datetime.combine(value.date(), time(0), tzinfo=zone)
+
+    return replace(item, start=midnight(item.start), end=midnight(item.end))

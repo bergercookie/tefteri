@@ -1,6 +1,7 @@
 @Tags(['screenshots'])
 library;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
@@ -197,5 +198,56 @@ void main() {
     await tester.tap(find.byKey(const Key('task-t4')));
     await tester.pumpAndSettle();
     await saveScreenshot('planner-task-details');
+  });
+
+  testWidgets('planner: a right click on an empty slot', (tester) async {
+    await pumpScreen(
+        tester, _api(), PlannerScreen(initialDate: day, clock: _now));
+    final column =
+        tester.getTopLeft(find.byKey(const Key('day-column-2026-11-05')));
+    await tester.tapAt(column + Offset(40, minutesToOffset(12 * 60 + 20)),
+        buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+    await saveScreenshot('planner-slot-menu');
+  });
+
+  testWidgets('planner: adding an event', (tester) async {
+    await pumpScreen(
+        tester,
+        _api({
+          'GET /connections': [
+            connectionJson('c2', 'calendar', 'Google (work)'),
+          ],
+          'GET /connections/c2/containers': [
+            {
+              'id': 'k1',
+              'remote_id': 'work',
+              'name': 'Work',
+              'color': '#039be5',
+              'enabled': true,
+              'read_only': false,
+            },
+            {
+              'id': 'k2',
+              'remote_id': 'family',
+              'name': 'Family',
+              'color': '#33b679',
+              'enabled': true,
+              'read_only': false,
+            },
+          ],
+        }),
+        PlannerScreen(initialDate: day, clock: _now));
+    final column =
+        tester.getTopLeft(find.byKey(const Key('day-column-2026-11-05')));
+    await tester.tapAt(column + Offset(40, minutesToOffset(12 * 60 + 20)),
+        buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('slot-new-event')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('new-event-title')), 'Lunch with Sam');
+    await tester.pumpAndSettle();
+    await saveScreenshot('planner-new-event');
   });
 }

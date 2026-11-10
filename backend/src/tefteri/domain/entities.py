@@ -16,6 +16,11 @@ class Container:
     """``remote_id`` of the container this one is nested in (a Vikunja subproject), if any."""
     color: str | None = None
     """The color that the user chose for it in the app, as ``#rrggbb`` (a Google calendar)."""
+    read_only: bool = False
+    """The user cannot change what it holds (a calendar that was shared for reading)."""
+    enabled_by_default: bool = True
+    """Whether tefteri syncs it before the user chose. A Google calendar that the user shows in
+    Google Calendar is on, the other calendars (holidays, birthdays, others) are off."""
 
 
 @dataclass(frozen=True)

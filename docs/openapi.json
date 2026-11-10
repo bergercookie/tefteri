@@ -153,6 +153,11 @@
             ],
             "title": "Project"
           },
+          "read_only": {
+            "default": false,
+            "title": "Read Only",
+            "type": "boolean"
+          },
           "start": {
             "format": "date-time",
             "title": "Start",
@@ -612,6 +617,11 @@
             ],
             "title": "Color"
           },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -632,6 +642,11 @@
             ],
             "title": "Parent Remote Id"
           },
+          "read_only": {
+            "default": false,
+            "title": "Read Only",
+            "type": "boolean"
+          },
           "remote_id": {
             "title": "Remote Id",
             "type": "string"
@@ -643,6 +658,27 @@
           "name"
         ],
         "title": "ContainerOut",
+        "type": "object"
+      },
+      "ContainersSyncedOut": {
+        "description": "The containers after a new choice, and the result of the sync that followed.",
+        "properties": {
+          "containers": {
+            "items": {
+              "$ref": "#/components/schemas/ContainerOut"
+            },
+            "title": "Containers",
+            "type": "array"
+          },
+          "sync": {
+            "$ref": "#/components/schemas/SyncResultOut"
+          }
+        },
+        "required": [
+          "containers",
+          "sync"
+        ],
+        "title": "ContainersSyncedOut",
         "type": "object"
       },
       "DayView": {
@@ -698,6 +734,24 @@
         ],
         "title": "DueFilter",
         "type": "string"
+      },
+      "EnabledIn": {
+        "description": "The calendars (containers) that tefteri syncs. Every other one of the connection is off.",
+        "properties": {
+          "container_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Container Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "container_ids"
+        ],
+        "title": "EnabledIn",
+        "type": "object"
       },
       "EntryIn": {
         "description": "Data to create a calendar entry.",
@@ -791,6 +845,11 @@
           "location": {
             "title": "Location",
             "type": "string"
+          },
+          "read_only": {
+            "default": false,
+            "title": "Read Only",
+            "type": "boolean"
           },
           "start": {
             "format": "date-time",
@@ -3570,6 +3629,60 @@
           }
         },
         "summary": "List Containers",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/api/v1/connections/{connection_id}/containers/enabled": {
+      "put": {
+        "description": "Choose which calendars of the connection tefteri syncs, then sync the connection.\n\nThe ids that are not listed are switched off, and their events leave the cache. An id that\ndoes not belong to the connection is refused.",
+        "operationId": "choose_containers_api_v1_connections__connection_id__containers_enabled_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainersSyncedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Choose Containers",
         "tags": [
           "connections"
         ]

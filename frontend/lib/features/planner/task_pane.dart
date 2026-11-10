@@ -221,11 +221,9 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
     final row = InkWell(
       key: Key('task-${t.id}'),
       onTap: () {
-        // Ctrl and a double click mark the task as done (see the calendar).
+        // Ctrl and a click mark the task as done (see the calendar).
         if (ControlKey.heldRecently) {
-          if (!t.done && ControlKey.isSecondClick(t.id)) {
-            ref.read(plannerActionsProvider).complete(t.id);
-          }
+          if (!t.done) ref.read(plannerActionsProvider).complete(t.id);
           return;
         }
         showTaskDetails(context, taskId: t.id, initial: t);
