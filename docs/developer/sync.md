@@ -41,6 +41,24 @@ reason: `unreachable`, `auth_expired` or `error`. The connection status changes 
 The sync does not overwrite a row in the `conflict` state. The row stays as it is until the
 user solves the conflict.
 
+## The automatic sync
+
+The server syncs all connections of all users at a regular interval
+(`TEFTERI_SYNC_INTERVAL_MINUTES`, 60 by default; 0 turns it off). `BackgroundSync` in
+`services/background_sync.py` does it. The lifespan of the app starts it as a task and cancels it at
+shutdown.
+
+- The first pass comes 30 seconds after the start. Then a pass comes at each interval.
+- Each connection syncs in its own session and transaction. A failing connection, or a failing
+  user, never stops the others.
+- A connection with the status `needs_attention` is left out. A manual sync still tries it.
+- `SyncService` takes a lock for each connection. A scheduled sync, a manual sync and a double
+  click on Sync of the same connection run one after the other, never at the same time.
+- Each pass deletes the records of syncs (`sync_runs`) that are older than 30 days.
+
+The server is one process. If you run more than one, each one runs its own loop. Set the interval
+to 0 on all but one.
+
 ## Times
 
 The cache holds every time as UTC. SQLite drops the time zone of a stored time, so the sync

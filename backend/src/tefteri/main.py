@@ -1,8 +1,9 @@
 """FastAPI application factory."""
 
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 from importlib.metadata import PackageNotFoundError, version
 
 import httpx
@@ -36,6 +37,7 @@ from tefteri.db.base import Base
 from tefteri.db.session import create_engine, create_session_factory, session_scope
 from tefteri.domain.enums import ConnectionKind
 from tefteri.security.crypto import TokenCipher
+from tefteri.services.background_sync import BackgroundSync
 from tefteri.services.calendar import CalendarService
 from tefteri.services.conflicts import ConflictService
 from tefteri.services.connections import AdapterRegistry, ConnectionService
@@ -114,7 +116,19 @@ def create_app(
                 await conn.run_sync(Base.metadata.create_all)
         async with session_scope(factory) as db:
             await auth_service.bootstrap_admin(db, cfg.admin_username, cfg.admin_password_hash)
-        yield
+        background: asyncio.Task[None] | None = None
+        if cfg.sync_interval_minutes > 0:
+            runner = BackgroundSync(
+                factory, sync_service, timedelta(minutes=cfg.sync_interval_minutes)
+            )
+            background = asyncio.create_task(runner.run_forever(), name="background-sync")
+        try:
+            yield
+        finally:
+            if background is not None:
+                background.cancel()
+                with suppress(asyncio.CancelledError):
+                    await background
         await engine.dispose()
         if http_client is None:
             await http.aclose()
