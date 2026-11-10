@@ -155,12 +155,36 @@ class PlanningApi {
   }
 
   /// `PATCH /me/settings`.
+  ///
+  /// Sends only the settings that are given.
   Future<UserSettings> updateSettings(
-      {required bool randomTimeOnDateDrop}) async {
-    final r = await _dio.patch<Object?>('/me/settings',
-        data: {'random_time_on_date_drop': randomTimeOnDateDrop});
+      {bool? randomTimeOnDateDrop, int? defaultReminderMinutes}) async {
+    final r = await _dio.patch<Object?>('/me/settings', data: {
+      if (randomTimeOnDateDrop != null)
+        'random_time_on_date_drop': randomTimeOnDateDrop,
+      if (defaultReminderMinutes != null)
+        'default_reminder_minutes': defaultReminderMinutes,
+    });
     return UserSettings.fromJson(r.data! as Map<String, dynamic>);
   }
+
+  /// `GET /tasks/{id}/reminder`: the reminder in the task app.
+  Future<TaskReminder> taskReminder(String id) async {
+    final r = await _dio.get<Object?>('/tasks/$id/reminder');
+    return TaskReminder.fromJson(r.data! as Map<String, dynamic>);
+  }
+
+  /// `PUT /tasks/{id}/reminder`: remind [minutesBefore] minutes before the
+  /// due time, or by the user's default when it is null.
+  Future<TaskReminder> setTaskReminder(String id, {int? minutesBefore}) async {
+    final r = await _dio.put<Object?>('/tasks/$id/reminder',
+        data: {if (minutesBefore != null) 'minutes_before': minutesBefore});
+    return TaskReminder.fromJson(r.data! as Map<String, dynamic>);
+  }
+
+  /// `DELETE /tasks/{id}/reminder`.
+  Future<void> clearTaskReminder(String id) =>
+      _dio.delete<Object?>('/tasks/$id/reminder');
 
   /// `POST /tasks`. With a [containerId] the task goes into that project,
   /// else into the first one; unknown [labels] are created in the task app.

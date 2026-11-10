@@ -16,6 +16,7 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.services import task_filters
 from tefteri.services.goals import GoalService
+from tefteri.services.settings import MAX_REMINDER_MINUTES
 from tefteri.services.task_filters import DueFilter
 from tefteri.services.tasks import UNSET, TaskService
 
@@ -243,6 +244,64 @@ async def reopen_task(task_id: uuid.UUID, request: Request, db: Db, user: Curren
     service = _tasks(request)
     task = await service.reopen(db, user.id, await service.get(db, user.id, task_id))
     return await _out(db, user.id, task)
+
+
+class ReminderIn(BaseModel):
+    """How long before the due time to remind."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    minutes_before: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
+    """Leave out to use the default of the user's settings."""
+
+
+class ReminderOut(BaseModel):
+    """The reminder of a task in its app."""
+
+    supported: bool
+    """False when the task app has no reminders: the page hides the button."""
+    minutes_before: int | None
+    """Minutes before the due time that the reminder fires, or ``None`` when there is none."""
+
+
+@router.get("/{task_id}/reminder")
+async def get_reminder(
+    task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
+) -> ReminderOut:
+    """Return the reminder of a task, read from the task app."""
+    service = _tasks(request)
+    supported, minutes = await service.reminder(
+        db, user.id, await service.get(db, user.id, task_id)
+    )
+    return ReminderOut(supported=supported, minutes_before=minutes)
+
+
+@router.put("/{task_id}/reminder")
+async def set_reminder(
+    task_id: uuid.UUID, body: ReminderIn, request: Request, db: Db, user: CurrentUser
+) -> ReminderOut:
+    """Remind before the due time of the task, in the task app.
+
+    Without ``minutes_before``, the default of the user's settings is used. The task needs a
+    day and a time. The reminder follows the due time when it changes.
+    """
+    service = _tasks(request)
+    task = await service.get(db, user.id, task_id)
+    minutes = await service.set_reminder(
+        db, user.id, task, body.minutes_before, use_default=body.minutes_before is None
+    )
+    return ReminderOut(supported=True, minutes_before=minutes)
+
+
+@router.delete("/{task_id}/reminder")
+async def delete_reminder(
+    task_id: uuid.UUID, request: Request, db: Db, user: CurrentUser
+) -> ReminderOut:
+    """Remove the reminder before the due time, in the task app."""
+    service = _tasks(request)
+    task = await service.get(db, user.id, task_id)
+    await service.set_reminder(db, user.id, task, None)
+    return ReminderOut(supported=True, minutes_before=None)
 
 
 @router.put("/{task_id}/schedule")

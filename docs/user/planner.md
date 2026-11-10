@@ -97,6 +97,28 @@ changes stay in the fields, so you can try again.
 Save is off until you change something. If you choose Cancel after a change, tefteri asks if you
 want to discard the change.
 
+### Add a reminder
+
+When a task has a day and a start time, the pop-up has a button, for example Remind me 15 minutes
+before. Choose it to add a reminder to the task in Vikunja. Vikunja then tells you at that time,
+the way you set it up there.
+
+- The reminder is relative to the due date. If you move the task to another time, the reminder
+  moves with it.
+- The pop-up then shows the reminder and a Remove button. Choose Remove to delete the reminder.
+- The button is off when the task has no start time, because an all day task has no time to count
+  back from. It is also off while you have a change in the day or the time that is not saved. Save
+  the change first.
+- The button is not there when the app that holds the task has no reminders. Today, only Vikunja
+  has them.
+
+Tefteri adds or removes the reminder at once. You do not need to choose Save. Other reminders that
+you made in Vikunja stay as they are.
+
+To change the default time, open the menu, choose Settings, and then choose Connections. Use
+"Default reminder". It offers at the due time, from 5 minutes up to 2 days before. A change
+applies to the reminders that you add after it. The reminders that exist stay as they are.
+
 ![The pop-up of the task Update the road map. It shows the title, the day, the start time and the description as fields that you can change, and the Save button.](../images/planner-task-details.png)
 
 If you choose a calendar entry, the pop-up shows the time of the entry.
@@ -178,7 +200,7 @@ You can change what happens in this case. Open the menu, choose Settings, and th
 "Give a random time to date-only drops". When the switch is on, the task gets a random time on that day.
 The time is from 08:00 to 19:45. You can move the block later.
 
-![The Connections screen. The switch Give a random time to date-only drops is on.](../images/planner-setting-random-time.png)
+![The Connections screen. The switch Give a random time to date-only drops is on. Below it, the default reminder is 15 minutes before.](../images/planner-setting-random-time.png)
 
 ## Move an event to another time
 

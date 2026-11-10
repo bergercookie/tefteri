@@ -1827,6 +1827,53 @@
         "title": "ProjectOut",
         "type": "object"
       },
+      "ReminderIn": {
+        "additionalProperties": false,
+        "description": "How long before the due time to remind.",
+        "properties": {
+          "minutes_before": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Before"
+          }
+        },
+        "title": "ReminderIn",
+        "type": "object"
+      },
+      "ReminderOut": {
+        "description": "The reminder of a task in its app.",
+        "properties": {
+          "minutes_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Before"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "supported",
+          "minutes_before"
+        ],
+        "title": "ReminderOut",
+        "type": "object"
+      },
       "Resolution": {
         "description": "How the user resolved a conflict.",
         "enum": [
@@ -2084,13 +2131,18 @@
       "SettingsOut": {
         "description": "The current user's settings.",
         "properties": {
+          "default_reminder_minutes": {
+            "title": "Default Reminder Minutes",
+            "type": "integer"
+          },
           "random_time_on_date_drop": {
             "title": "Random Time On Date Drop",
             "type": "boolean"
           }
         },
         "required": [
-          "random_time_on_date_drop"
+          "random_time_on_date_drop",
+          "default_reminder_minutes"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -2099,6 +2151,19 @@
         "additionalProperties": false,
         "description": "Settings to change; fields that are left out stay as they are.",
         "properties": {
+          "default_reminder_minutes": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Reminder Minutes"
+          },
           "random_time_on_date_drop": {
             "anyOf": [
               {
@@ -5083,6 +5148,144 @@
           }
         },
         "summary": "Complete Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/reminder": {
+      "delete": {
+        "description": "Remove the reminder before the due time, in the task app.",
+        "operationId": "delete_reminder_api_v1_tasks__task_id__reminder_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Reminder",
+        "tags": [
+          "tasks"
+        ]
+      },
+      "get": {
+        "description": "Return the reminder of a task, read from the task app.",
+        "operationId": "get_reminder_api_v1_tasks__task_id__reminder_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Reminder",
+        "tags": [
+          "tasks"
+        ]
+      },
+      "put": {
+        "description": "Remind before the due time of the task, in the task app.\n\nWithout ``minutes_before``, the default of the user's settings is used. The task needs a\nday and a time. The reminder follows the due time when it changes.",
+        "operationId": "set_reminder_api_v1_tasks__task_id__reminder_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Reminder",
         "tags": [
           "tasks"
         ]

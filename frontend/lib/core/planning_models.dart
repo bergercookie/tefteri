@@ -528,12 +528,44 @@ class TaskDraft {
 @immutable
 class UserSettings {
   /// Creates settings.
-  const UserSettings({required this.randomTimeOnDateDrop});
+  const UserSettings({
+    required this.randomTimeOnDateDrop,
+    this.defaultReminderMinutes = defaultReminderOffset,
+  });
 
   /// Parses the settings JSON object.
-  factory UserSettings.fromJson(Map<String, dynamic> j) =>
-      UserSettings(randomTimeOnDateDrop: j['random_time_on_date_drop'] == true);
+  factory UserSettings.fromJson(Map<String, dynamic> j) => UserSettings(
+        randomTimeOnDateDrop: j['random_time_on_date_drop'] == true,
+        defaultReminderMinutes:
+            (j['default_reminder_minutes'] as num?)?.toInt() ??
+                defaultReminderOffset,
+      );
 
   /// When true, a date-only drop gets a random time of day on that date.
   final bool randomTimeOnDateDrop;
+
+  /// Minutes before its due time that a new task reminder fires.
+  final int defaultReminderMinutes;
+}
+
+/// What a new reminder uses until the user changes it: 15 minutes.
+const int defaultReminderOffset = 15;
+
+/// The reminder of one task in its task app (`/tasks/{id}/reminder`).
+@immutable
+class TaskReminder {
+  /// Creates a reminder.
+  const TaskReminder({required this.supported, this.minutesBefore});
+
+  /// Parses the reminder JSON object.
+  factory TaskReminder.fromJson(Map<String, dynamic> j) => TaskReminder(
+        supported: j['supported'] == true,
+        minutesBefore: (j['minutes_before'] as num?)?.toInt(),
+      );
+
+  /// False when the task app has no reminders: the button is hidden.
+  final bool supported;
+
+  /// Minutes before the due time that it fires, or null when there is none.
+  final int? minutesBefore;
 }
