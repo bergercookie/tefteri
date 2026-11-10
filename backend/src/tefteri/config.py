@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
 
+    sync_interval_minutes: int = Field(default=60, ge=0)
+    """Minutes between two automatic syncs of all connections. 0 turns them off."""
+
     login_max_failures: int = 5
     login_window_seconds: int = 15 * 60
     login_block_seconds: int = 15 * 60

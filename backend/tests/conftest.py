@@ -27,6 +27,7 @@ def make_settings(admin_hash: str) -> Callable[..., Settings]:
             "admin_password_hash": admin_hash,
             "secret_key": "test-secret-key-0123456789",
             "create_schema": True,
+            "sync_interval_minutes": 0,  # no sync loop in a test; tests start one on purpose
         }
         values.update(overrides)
         return Settings(_env_file=None, **values)  # type: ignore[arg-type]

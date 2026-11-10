@@ -1,5 +1,6 @@
 """On-demand sync of connections into the local cache (failures are isolated per connection)."""
 
+import asyncio
 import logging
 import uuid
 from collections.abc import Callable
@@ -114,6 +115,7 @@ class SyncService:
         """Use ``connections`` to build backends; ``clock`` is injectable for tests."""
         self._connections = connections
         self._clock = clock
+        self._locks: dict[uuid.UUID, asyncio.Lock] = {}
 
     async def sync_all(self, db: AsyncSession, user_id: uuid.UUID) -> list[SyncResult]:
         """Sync every connection of the user; one failing connection never stops the others."""
@@ -123,7 +125,16 @@ class SyncService:
         return results
 
     async def sync_connection(self, db: AsyncSession, connection: Connection) -> SyncResult:
-        """Sync one connection and record a ``SyncRun``; failures become a structured result."""
+        """Sync one connection and record a ``SyncRun``; failures become a structured result.
+
+        Two syncs of the same connection never run at once (a scheduled one and a manual one, or
+        a double click): the second waits for the first, and then syncs on top of its result.
+        """
+        lock = self._locks.setdefault(connection.id, asyncio.Lock())
+        async with lock:
+            return await self._sync_locked(db, connection)
+
+    async def _sync_locked(self, db: AsyncSession, connection: Connection) -> SyncResult:
         result = SyncResult(connection.id, connection.display_name, "ok")
         started = self._clock()
         try:

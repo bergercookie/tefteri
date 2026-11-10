@@ -87,8 +87,16 @@ Next, such as the launch bar and the options.
 
 ## Use Sync
 
-Tefteri does not sync in the background. You start each sync. The only exception is a new
-connection: tefteri syncs it once when you add it.
+Tefteri syncs all your connections by itself every hour. It also syncs a new connection once when
+you add it. The server does this, so it works when no window of tefteri is open. The administrator
+can change the time between two syncs, or turn the automatic sync off. Read
+[Deploy tefteri](../developer/deployment.md).
+
+A connection that needs attention is left out of the automatic sync, because the app rejects its
+token and each try would fail again. Fix the token in Settings. Then the automatic sync includes
+the connection again.
+
+You can also sync at any time:
 
 1. Press the Sync button at the top of the screen.
 2. Wait until the button stops moving.
@@ -111,7 +119,7 @@ Each connection shows the time and the result of its last sync.
 | Needs attention | The app refused your credentials. Reconnect the app. |
 | Error | Tefteri could not reach the app. Retry later. |
 
-If you did not sync for a long time, the data on the screen can be old. Press Sync to get new data.
+The data on the screen is as new as the last sync, and the automatic sync runs every hour. Press Sync to get new data at once, for example after you change something in your app.
 
 ## Change a connection
 
