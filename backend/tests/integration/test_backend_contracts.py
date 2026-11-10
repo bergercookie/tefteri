@@ -166,6 +166,32 @@ async def test_task_crud_and_schedule(tasks: TaskBackend) -> None:
     assert (await tasks.list_tasks(container, None)).items == []
 
 
+async def test_task_reminder_before_the_due_time(tasks: TaskBackend) -> None:
+    if Capability.TASK_REMINDERS not in tasks.capabilities():
+        pytest.skip("the app has no reminders")
+    container = (await tasks.list_containers())[0]
+    task = await tasks.create_task(TaskDraft(container.remote_id, "Call Sam"))
+    planned = await tasks.set_planned_time(
+        task.remote_id, NOW + timedelta(hours=2), False, task.version
+    )
+    assert await tasks.get_reminder(task.remote_id) is None
+
+    reminded = await tasks.set_reminder(task.remote_id, 15)
+    assert await tasks.get_reminder(task.remote_id) == 15
+    assert reminded.due_at == planned.due_at
+
+    # Other edits keep the reminder, and a new offset replaces the old one.
+    await tasks.update_task(task.remote_id, TaskPatch(title="Call"), reminded.version)
+    assert await tasks.get_reminder(task.remote_id) == 15
+    again = await tasks.set_reminder(task.remote_id, 60)
+    assert await tasks.get_reminder(task.remote_id) == 60
+    await tasks.set_planned_time(task.remote_id, NOW + timedelta(hours=5), False, again.version)
+    assert await tasks.get_reminder(task.remote_id) == 60  # it follows the due time
+
+    await tasks.set_reminder(task.remote_id, None)
+    assert await tasks.get_reminder(task.remote_id) is None
+
+
 async def test_task_stale_version_raises_conflict(tasks: TaskBackend) -> None:
     container = (await tasks.list_containers())[0]
     task = await tasks.create_task(TaskDraft(container.remote_id, "x"))

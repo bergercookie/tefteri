@@ -77,7 +77,7 @@ async def test_date_only_drop_is_all_day_by_default(api: AsyncClient, world: Fak
 async def test_date_only_drop_with_random_time_setting(api: AsyncClient, world: FakeWorld) -> None:
     task_id = await _task(api)
     on = await api.patch(f"{V1}/me/settings", json={"random_time_on_date_drop": True})
-    assert on.json() == {"random_time_on_date_drop": True}
+    assert on.json()["random_time_on_date_drop"] is True
     for _ in range(25):
         r = await api.put(f"{V1}/tasks/{task_id}/schedule", json={"date": "2026-11-04"})
         task = r.json()["task"]

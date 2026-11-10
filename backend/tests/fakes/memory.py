@@ -92,6 +92,7 @@ class FakeTaskBackend(_FakeBase):
         self.tasks: dict[str, RemoteTask] = {}
         self.archived: list[Container] = []
         self.known_labels: set[str] = set()
+        self.reminders: dict[str, int] = {}
 
     async def create_container(self, name: str, parent: Container | None) -> Container:
         """Create a project (a subproject of ``parent`` when given)."""
@@ -163,6 +164,24 @@ class FakeTaskBackend(_FakeBase):
             due_at=patch.due_at if patch.due_at is not None else current.due_at,
             version=self._new_version(),
         )
+        self.tasks[remote_id] = updated
+        return updated
+
+    async def get_reminder(self, remote_id: str) -> int | None:
+        """Return the minutes before the due time of the reminder."""
+        self._guard()
+        self._require(Capability.TASK_REMINDERS)
+        return self.reminders.get(remote_id)
+
+    async def set_reminder(self, remote_id: str, minutes_before: int | None) -> RemoteTask:
+        """Set or remove the reminder."""
+        self._guard()
+        self._require(Capability.TASK_REMINDERS)
+        if minutes_before is None:
+            self.reminders.pop(remote_id, None)
+        else:
+            self.reminders[remote_id] = minutes_before
+        updated = replace(self.tasks[remote_id], version=self._new_version())
         self.tasks[remote_id] = updated
         return updated
 

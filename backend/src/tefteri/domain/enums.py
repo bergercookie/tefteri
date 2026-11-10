@@ -42,3 +42,4 @@ class Capability(StrEnum):
     NOTE_APPEND = "note_append"
     SUBPROJECTS = "subprojects"
     ARCHIVE_PROJECTS = "archive_projects"
+    TASK_REMINDERS = "task_reminders"

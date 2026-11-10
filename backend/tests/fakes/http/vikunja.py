@@ -240,6 +240,15 @@ class FakeVikunja(FakeHttpServer):
         task["priority"] = int(body.get("priority", 0) or 0)
         task["repeat_after"] = int(body.get("repeat_after", 0) or 0)
         task["percent_done"] = float(body.get("percent_done", 0) or 0)
+        # The reminders of an update replace the old ones: leaving them out removes them.
+        task["reminders"] = [
+            {
+                "id": n,
+                "relative_to": r.get("relative_to", ""),
+                "relative_period": int(r.get("relative_period", 0) or 0),
+            }
+            for n, r in enumerate(body.get("reminders") or [], start=1)
+        ]
         for name in _DATE_FIELDS:
             task[name] = _parse(body.get(name))
         if task["done"] and not was_done:

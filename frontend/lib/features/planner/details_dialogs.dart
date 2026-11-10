@@ -8,13 +8,20 @@ import '../../core/api_error.dart';
 import '../../core/open_url.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
+import '../../core/reminder_text.dart';
 import '../../theme/theme.dart';
+import '../settings/planner_settings_card.dart' show userSettingsProvider;
 import 'picker_field.dart';
 import 'planner_providers.dart';
 
 /// Loads one task from the server, by id.
 final taskDetailProvider = FutureProvider.family<PlanTask, String>(
     (ref, id) => ref.watch(planningApiProvider).task(id));
+
+/// Loads the reminder of one task from its task app, by task id.
+final taskReminderProvider = FutureProvider.autoDispose
+    .family<TaskReminder, String>(
+        (ref, id) => ref.watch(planningApiProvider).taskReminder(id));
 
 /// Opens the pop-up with the details of the task [taskId].
 ///
@@ -172,6 +179,77 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
         }
       }
     }, closeAfter: true);
+  }
+
+  /// Changes the reminder in the task app, then reads it again.
+  Future<void> _changeReminder(
+      Future<void> Function(PlanningApi api) action) async {
+    await _run(action);
+    ref.invalidate(taskReminderProvider(widget.taskId));
+  }
+
+  /// The reminder of the task: a button to add one, or what it is and a
+  /// button to remove it. Nothing when the task app has no reminders.
+  Widget _reminder(PlanTask task) {
+    final reminder = ref.watch(taskReminderProvider(widget.taskId)).valueOrNull;
+    if (reminder == null || !reminder.supported) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    final minutes = reminder.minutesBefore;
+    // A reminder is set against the saved due time, so the day must be saved.
+    final canAdd = task.scheduledStart != null && !_dayChanged && !_busy;
+    final standard = ref.watch(userSettingsProvider).valueOrNull;
+    final offset = standard?.defaultReminderMinutes ?? defaultReminderOffset;
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.md),
+      child: minutes == null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OutlinedButton.icon(
+                  key: const Key('task-reminder-add'),
+                  icon: const Icon(Icons.notifications_none),
+                  label: Text('Remind me ${reminderOffsetText(offset)}'),
+                  onPressed: canAdd
+                      ? () => _changeReminder((api) =>
+                          api.setTaskReminder(widget.taskId).then((_) {}))
+                      : null,
+                ),
+                if (task.scheduledStart == null || _dayChanged)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(
+                      'Give the task a day and a time, and save it, to add '
+                      'a reminder in Vikunja.',
+                      key: const Key('task-reminder-hint'),
+                      style: text.bodySmall,
+                    ),
+                  ),
+              ],
+            )
+          : Row(
+              children: [
+                Icon(Icons.notifications_active_outlined,
+                    color: context.tefteri.task),
+                const SizedBox(width: Space.sm),
+                Expanded(
+                  child: Text(
+                    minutes == 0
+                        ? 'Reminder at the due time'
+                        : 'Reminder ${reminderOffsetText(minutes)} the due time',
+                    key: const Key('task-reminder-text'),
+                  ),
+                ),
+                TextButton(
+                  key: const Key('task-reminder-remove'),
+                  onPressed: _busy
+                      ? null
+                      : () => _changeReminder(
+                          (api) => api.clearTaskReminder(widget.taskId)),
+                  child: const Text('Remove'),
+                ),
+              ],
+            ),
+    );
   }
 
   Future<void> _close() async {
@@ -424,6 +502,7 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
               style: text.bodySmall,
             ),
           ),
+          _reminder(task),
           const SizedBox(height: Space.md),
           TextField(
             key: const Key('task-edit-description'),

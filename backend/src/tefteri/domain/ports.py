@@ -82,6 +82,21 @@ class TaskBackend(Backend, Protocol):
         """Mark a done task open again."""
         ...
 
+    async def get_reminder(self, remote_id: str) -> int | None:
+        """Return the minutes before its due time that the task reminds, or ``None``.
+
+        Needs ``TASK_REMINDERS``.
+        """
+        ...
+
+    async def set_reminder(self, remote_id: str, minutes_before: int | None) -> RemoteTask:
+        """Remind ``minutes_before`` minutes before the due time; ``None`` removes the reminder.
+
+        Needs ``TASK_REMINDERS``. The reminder follows the due time when that changes. Reminders
+        that the user made in the app by other means are left alone.
+        """
+        ...
+
     async def set_planned_time(
         self,
         remote_id: str,

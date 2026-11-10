@@ -192,6 +192,50 @@ class TaskService:
         await db.flush()
         return task
 
+    async def reminder(
+        self, db: AsyncSession, user_id: uuid.UUID, task: Task
+    ) -> tuple[bool, int | None]:
+        """Return whether the task app has reminders, and the minutes before the due time.
+
+        The reminder is read from the app: it can be changed there too.
+        """
+        connection = await self._connection_of(db, user_id, task)
+        backend = await self._backend(db, connection)
+        if Capability.TASK_REMINDERS not in backend.capabilities():
+            return False, None
+        return True, await guard(connection, backend.get_reminder(task.remote_id))
+
+    async def set_reminder(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        task: Task,
+        minutes_before: int | None,
+        *,
+        use_default: bool = False,
+    ) -> int | None:
+        """Remind before the due time of the task in the app, or remove the reminder.
+
+        ``use_default`` takes the offset from the user's setting. A reminder is relative to the
+        due time, so a task with no time of day cannot have one.
+        """
+        connection = await self._connection_of(db, user_id, task)
+        backend = await self._backend(db, connection)
+        if Capability.TASK_REMINDERS not in backend.capabilities():
+            raise BackendProblem(
+                "not_supported",
+                connection.display_name,
+                f"{connection.display_name} does not support reminders.",
+            )
+        if use_default:
+            minutes_before = (await _owner(db, user_id)).default_reminder_minutes
+        if minutes_before is not None and (task.due_at is None or task.all_day):
+            raise Invalid("Give the task a day and a time before you add a reminder.")
+        remote = await guard(connection, backend.set_reminder(task.remote_id, minutes_before))
+        self._apply(task, remote)
+        await db.flush()
+        return minutes_before
+
     async def delete(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> None:
         """Delete a task in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)

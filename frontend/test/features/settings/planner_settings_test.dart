@@ -65,4 +65,54 @@ void main() {
     expect(card.width, lessThanOrEqualTo(plannerSettingsCardWidth));
     expect(card.left, lessThan(40)); // sits at the left edge, not centered
   });
+
+  testWidgets('the default reminder is 15 minutes and saves a change',
+      (tester) async {
+    var stored = 15;
+    final api = FakeApi({
+      'GET /me/settings': (_) => {
+            'random_time_on_date_drop': false,
+            'default_reminder_minutes': stored,
+          },
+      'PATCH /me/settings': (o) {
+        stored = (o.data as Map)['default_reminder_minutes'] as int;
+        return {
+          'random_time_on_date_drop': false,
+          'default_reminder_minutes': stored,
+        };
+      },
+    });
+    await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
+    DropdownButton<int> select() => tester.widget<DropdownButton<int>>(
+        find.byKey(const Key('default-reminder-select')));
+    expect(select().value, 15);
+
+    await tester.tap(find.byKey(const Key('default-reminder-select')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1 hour before').last);
+    await tester.pumpAndSettle();
+
+    // Only the changed setting is sent.
+    expect(api.where('PATCH /me/settings').single.data,
+        {'default_reminder_minutes': 60});
+    expect(select().value, 60); // reloaded from the server
+  });
+
+  testWidgets('an offset that is not in the list is still shown',
+      (tester) async {
+    final api = FakeApi({
+      'GET /me/settings': {
+        'random_time_on_date_drop': false,
+        'default_reminder_minutes': 45,
+      },
+    });
+    await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
+    expect(
+        tester
+            .widget<DropdownButton<int>>(
+                find.byKey(const Key('default-reminder-select')))
+            .value,
+        45);
+    expect(find.text('45 minutes before'), findsOneWidget);
+  });
 }

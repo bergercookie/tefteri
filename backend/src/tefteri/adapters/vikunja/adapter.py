@@ -43,6 +43,19 @@ def _parse(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
 
 
+def _is_due_reminder(reminder: dict[str, Any]) -> bool:
+    """A reminder at a set time before the due date (not at a fixed time, not after)."""
+    period = reminder.get("relative_period")
+    return reminder.get("relative_to") == "due_date" and isinstance(period, int) and period <= 0
+
+
+def _due_reminder_minutes(reminders: list[dict[str, Any]] | None) -> int | None:
+    for reminder in reminders or []:
+        if _is_due_reminder(reminder):
+            return -int(reminder["relative_period"]) // 60
+    return None
+
+
 def _fmt(value: datetime | None) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if value else _ZERO_DATE
 
@@ -110,6 +123,7 @@ class VikunjaTaskBackend:
             Capability.RECURRING,
             Capability.SUBPROJECTS,
             Capability.ARCHIVE_PROJECTS,
+            Capability.TASK_REMINDERS,
         }
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
@@ -283,6 +297,23 @@ class VikunjaTaskBackend:
         if patch.due_at is not None:
             changes["due_date"] = _fmt(patch.due_at)
         return await self._update(remote_id, expected_version, changes)
+
+    async def get_reminder(self, remote_id: str) -> int | None:
+        """Return the minutes before the due date of the task's reminder, if it has one."""
+        data = await self._call("GET", f"/tasks/{remote_id}")
+        return _due_reminder_minutes(data.get("reminders"))
+
+    async def set_reminder(self, remote_id: str, minutes_before: int | None) -> RemoteTask:
+        """Put one reminder relative to the due date on the task, or remove it.
+
+        Vikunja replaces the reminders of a task with the ones in an update, so the other
+        reminders are sent back as they are.
+        """
+        current = await self._call("GET", f"/tasks/{remote_id}")
+        kept = [r for r in current.get("reminders") or [] if not _is_due_reminder(r)]
+        if minutes_before is not None:
+            kept.append({"relative_to": "due_date", "relative_period": -60 * minutes_before})
+        return await self._update(remote_id, None, {"reminders": kept})
 
     async def delete_task(self, remote_id: str) -> None:
         """Delete a task."""
