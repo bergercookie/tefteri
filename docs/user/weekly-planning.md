@@ -6,14 +6,14 @@ This page tells you how to do a weekly planning session.
 
 ## What the session does
 
-The session follows a checklist of four steps:
+The session has four steps:
 
 1. Look back at the week before.
 2. Choose up to three projects.
 3. Give every task of these projects a day.
 4. Check the plan and commit it.
 
-The checklist shows which steps you finished. You can choose any step at any time. The session
+The list of steps shows which steps you finished. You can choose any step at any time. The session
 saves your work as you go, so you can stop and come back later.
 
 Tefteri keeps your projects and your tasks in your task app. When you give a task a day, tefteri
@@ -27,7 +27,23 @@ writes that day as the due date of the task in your task app.
 From Friday on, the card is about the coming week. On the other days, it is about the week that
 you see.
 
-![The Give tasks a day step. The checklist is on the left. The week has seven days. Four of seven tasks have a day.](../images/weekly-tasks.png)
+![The Give tasks a day step. The steps are on the left, with the weekly checklist below them. The week has seven days. Four of seven tasks have a day.](../images/weekly-tasks.png)
+
+## Go through your own checklist
+
+You can make a list of what you want to do in every weekly planning, for example "Clear the
+inbox" or "Check the calendar for the week". Tefteri shows this weekly checklist next to the steps,
+on every step, so it stays in view while you plan. On a narrow screen, it is above the step. Choose
+its title to open or close it.
+
+- Choose an item to tick it. Choose it again to untick it. The list shows how many items are done.
+- The ticks belong to the week that you plan. When you plan the next week, the list starts clean.
+  The weeks before keep their ticks.
+- An item that is not ticked never stops you from committing the plan. The list is there to remind you.
+- Choose Edit the list to change the items.
+
+If you have no weekly checklist, tefteri shows a hint and a Create a checklist button. Refer to
+[Make a checklist](planning-goals.md#make-a-checklist) to write one.
 
 ## See how the week goes
 

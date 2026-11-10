@@ -118,6 +118,24 @@ def test_0006_adds_random_time_setting_and_keeps_users(
         assert conn.exec_driver_sql("select count(*) from users").scalar() == 1
 
 
+def test_0016_adds_checklists_and_keeps_users(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0015")
+    alembic_runner.insert_into("users", {"id": "11111111-1111-1111-1111-111111111111"} | _USER)
+    alembic_runner.migrate_up_to("0016")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
+    assert "checklists" in columns
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select checklists from users").scalar() in ("{}", {})
+    assert "checklist_progress" in inspect(alembic_engine).get_table_names()
+    alembic_runner.migrate_down_one()
+    assert "checklist_progress" not in inspect(alembic_engine).get_table_names()
+    assert "checklists" not in {c["name"] for c in inspect(alembic_engine).get_columns("users")}
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from users").scalar() == 1
+
+
 _USER = {
     "username": "sam",
     "password_hash": None,

@@ -80,6 +80,25 @@ final _weeklyState = {
 };
 
 FakeApi _api() => FakeApi({
+      'GET /checklists/year/2026-01-01': {
+        'period_type': 'year',
+        'period_start': '2026-01-01',
+        'items': <Object?>[],
+        'done': 0,
+        'total': 0,
+      },
+      'GET /checklists/month/2026-11-01': {
+        'period_type': 'month',
+        'period_start': '2026-11-01',
+        'items': [
+          {'text': 'Look back at the month', 'checked': true},
+          {'text': 'Review the goals of the month', 'checked': false},
+          {'text': 'Check the budget', 'checked': false},
+          {'text': 'Set the goals for next month', 'checked': false},
+        ],
+        'done': 1,
+        'total': 4,
+      },
       'GET /weekly/2026-11-02': _weeklyState,
       'GET /views/week/2026-11-02':
           periodJson('week', '2026-11-02', '2026-11-09',

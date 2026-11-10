@@ -250,6 +250,133 @@
         "title": "CandidateOut",
         "type": "object"
       },
+      "ChecklistItemOut": {
+        "description": "One item and whether it is ticked in this period.",
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "checked"
+        ],
+        "title": "ChecklistItemOut",
+        "type": "object"
+      },
+      "ChecklistOut": {
+        "description": "The checklist of one period.",
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_type": {
+            "$ref": "#/components/schemas/PeriodType"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period_type",
+          "period_start",
+          "items",
+          "done",
+          "total"
+        ],
+        "title": "ChecklistOut",
+        "type": "object"
+      },
+      "ChecklistsOut": {
+        "description": "The planning checklists: the items to go through at each kind of planning.",
+        "properties": {
+          "month": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Month",
+            "type": "array"
+          },
+          "week": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Week",
+            "type": "array"
+          },
+          "year": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Year",
+            "type": "array"
+          }
+        },
+        "required": [
+          "week",
+          "month",
+          "year"
+        ],
+        "title": "ChecklistsOut",
+        "type": "object"
+      },
+      "ChecklistsPatch": {
+        "additionalProperties": false,
+        "description": "Checklists to replace; a list that is left out stays as it is.",
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/_Items"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "week": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/_Items"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/_Items"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ChecklistsPatch",
+        "type": "object"
+      },
       "ChildGoalIn": {
         "description": "A smaller goal in a breakdown.",
         "properties": {
@@ -2131,6 +2258,9 @@
       "SettingsOut": {
         "description": "The current user's settings.",
         "properties": {
+          "checklists": {
+            "$ref": "#/components/schemas/ChecklistsOut"
+          },
           "default_reminder_minutes": {
             "title": "Default Reminder Minutes",
             "type": "integer"
@@ -2142,7 +2272,8 @@
         },
         "required": [
           "random_time_on_date_drop",
-          "default_reminder_minutes"
+          "default_reminder_minutes",
+          "checklists"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -2151,6 +2282,16 @@
         "additionalProperties": false,
         "description": "Settings to change; fields that are left out stay as they are.",
         "properties": {
+          "checklists": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChecklistsPatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "default_reminder_minutes": {
             "anyOf": [
               {
@@ -2567,6 +2708,28 @@
         "title": "TaskPatch",
         "type": "object"
       },
+      "TickIn": {
+        "additionalProperties": false,
+        "description": "Tick or untick one item.",
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "text": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "checked"
+        ],
+        "title": "TickIn",
+        "type": "object"
+      },
       "UserIn": {
         "description": "Data to create a user.",
         "properties": {
@@ -2845,6 +3008,14 @@
         ],
         "title": "WeeklyTaskOut",
         "type": "object"
+      },
+      "_Items": {
+        "items": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "maxItems": 50,
+        "type": "array"
       },
       "tefteri__api__routers__planning__PlanOut": {
         "description": "A plan and the goals of its period.",
@@ -3285,6 +3456,120 @@
         "summary": "Update Entry",
         "tags": [
           "calendar"
+        ]
+      }
+    },
+    "/api/v1/checklists/{kind}/{day}": {
+      "get": {
+        "description": "Return the checklist of the week, month or year that holds ``day``.\n\nThe ticks belong to that period: the next period starts with a clean list.",
+        "operationId": "get_checklist_api_v1_checklists__kind___day__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PeriodType"
+            }
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Checklist",
+        "tags": [
+          "checklists"
+        ]
+      }
+    },
+    "/api/v1/checklists/{kind}/{day}/items": {
+      "put": {
+        "description": "Tick or untick one item of the checklist of that period.",
+        "operationId": "tick_item_api_v1_checklists__kind___day__items_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PeriodType"
+            }
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TickIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tick Item",
+        "tags": [
+          "checklists"
         ]
       }
     },

@@ -14,6 +14,7 @@ import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
 import '../goals/periods.dart';
+import '../checklists/checklist_panel.dart';
 import 'finish_step.dart';
 import 'look_back_step.dart';
 import 'projects_step.dart';
@@ -227,6 +228,12 @@ class _WeeklyPlanningScreenState extends ConsumerState<WeeklyPlanningScreen> {
               children: [
                 _weekSwitcher(),
                 const SizedBox(height: Space.lg),
+                // On a narrow screen the user's checklist folds away above the step.
+                if (!wide) ...[
+                  PlanningChecklist(
+                      kind: ChecklistKind.week, day: _week, collapsible: true),
+                  const SizedBox(height: Space.lg),
+                ],
                 if (s.plan?.committed ?? false)
                   if (step == WeeklyStep.projects || step == WeeklyStep.tasks)
                     Padding(
@@ -265,7 +272,8 @@ class _WeeklyPlanningScreenState extends ConsumerState<WeeklyPlanningScreen> {
         children: [
           SizedBox(
             width: 280,
-            child: _SideChecklist(state: s, step: step, onSelect: _go),
+            child: _SideChecklist(
+                state: s, week: _week, step: step, onSelect: _go),
           ),
           const VerticalDivider(width: 1),
           Expanded(child: body),
@@ -400,9 +408,15 @@ String _detail(WeeklyStep step, WeeklyState s) {
 
 class _SideChecklist extends StatelessWidget {
   const _SideChecklist(
-      {required this.state, required this.step, required this.onSelect});
+      {required this.state,
+      required this.week,
+      required this.step,
+      required this.onSelect});
 
   final WeeklyState state;
+
+  /// Monday of the week that is planned.
+  final DateTime week;
   final WeeklyStep step;
   final void Function(WeeklyStep) onSelect;
 
@@ -416,7 +430,7 @@ class _SideChecklist extends StatelessWidget {
         key: const Key('checklist'),
         padding: const EdgeInsets.all(Space.lg),
         children: [
-          Text('Checklist', style: text.titleMedium),
+          Text('Steps', style: text.titleMedium),
           const SizedBox(height: Space.xs),
           Text('$done of ${WeeklyStep.values.length} done',
               key: const Key('checklist-progress'), style: text.bodySmall),
@@ -429,6 +443,11 @@ class _SideChecklist extends StatelessWidget {
               detail: _detail(st, state),
               onTap: () => onSelect(st),
             ),
+          const SizedBox(height: Space.lg),
+          const Divider(height: 1),
+          const SizedBox(height: Space.lg),
+          // The user's own list, next to the steps on every step.
+          PlanningChecklist(kind: ChecklistKind.week, day: week),
         ],
       ),
     );

@@ -4,7 +4,11 @@ from httpx import AsyncClient
 
 from tests.conftest import V1
 
-OFF = {"random_time_on_date_drop": False, "default_reminder_minutes": 15}
+OFF = {
+    "random_time_on_date_drop": False,
+    "default_reminder_minutes": 15,
+    "checklists": {"week": [], "month": [], "year": []},
+}
 
 
 async def test_default_is_off_and_patch_changes_it(api: AsyncClient) -> None:

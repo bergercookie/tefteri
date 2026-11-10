@@ -26,6 +26,36 @@ You can keep your goals after the period ends.
 The Week view shows the plan you committed to, the goals of the week and its tasks. It does not
 show calendar events. The Month view shows the goals of the month. The Year view shows the goals of the year.
 
+## Make a checklist
+
+A checklist is a list of what you want to go through when you plan. You can make one for the week,
+one for the month and one for the year.
+
+1. Open the menu, choose Settings, and then choose Checklists.
+2. In the box of the weekly, monthly or annual checklist, write one item on each line.
+3. Choose Save.
+
+![The Checklists settings. The weekly and monthly checklists have items. The annual checklist is empty and offers an example.](../images/settings-checklists.png)
+
+Tefteri removes empty lines, extra spaces and bullets such as - or *, so you can paste a list.
+An item that appears twice is kept once. A list has at most 50 items, and an item has at most 200
+characters. To remove a checklist, delete all its lines. If a box is empty, choose Start from an
+example to fill it with a list that you can change.
+
+To change or remove one item, change its line and choose Save. If you rename an item, it is a new
+item, and it is not ticked in the current period.
+
+Where you see a checklist:
+
+- The weekly checklist is next to the steps of the weekly planning. Refer to
+  [Weekly planning](weekly-planning.md#go-through-your-own-checklist).
+- The monthly checklist is at the top of the Month view. The annual checklist is at the top of the
+  Year view.
+
+Choose an item to tick it. The ticks belong to one week, month or year. The next week, month or
+year starts with a clean list, and the periods before keep their ticks. When you have no checklist
+for a period, the page tells you so and has a button to make one.
+
 ## Add a goal
 
 1. Open the Goals screen.

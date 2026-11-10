@@ -21,6 +21,7 @@ import 'features/goals/goals_screen.dart';
 import 'features/month/month_screen.dart';
 import 'features/review/plan_history_screen.dart';
 import 'features/review/review_screen.dart';
+import 'features/settings/checklists_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/week/week_screen.dart';
@@ -66,6 +67,10 @@ GoRouter buildRouter(Ref ref) {
             path: 'connections',
             builder: (_, s) =>
                 ConnectionsScreen(choose: s.uri.queryParameters['choose']),
+          ),
+          GoRoute(
+            path: 'checklists',
+            builder: (_, __) => const ChecklistsScreen(),
           ),
           GoRoute(
             path: 'password',

@@ -19,6 +19,7 @@ from tefteri.api.errors import install_error_handlers
 from tefteri.api.errors_map import install_service_error_handlers
 from tefteri.api.routers import auth as auth_router
 from tefteri.api.routers import calendar as calendar_router
+from tefteri.api.routers import checklists as checklists_router
 from tefteri.api.routers import conflicts as conflicts_router
 from tefteri.api.routers import connections as connections_router
 from tefteri.api.routers import notes as notes_router
@@ -190,6 +191,7 @@ def create_app(
         weekly_router,
         users_router,
         settings_router,
+        checklists_router,
     ):
         app.include_router(r.router, prefix="/api/v1")
     # Mounted last so the API routes above take precedence over the files.

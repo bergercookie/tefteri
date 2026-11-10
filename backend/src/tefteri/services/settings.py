@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.user import User
+from tefteri.services.checklists import KINDS, clean_items
 from tefteri.services.errors import NotFound
 
 MAX_REMINDER_MINUTES = 7 * 24 * 60
@@ -18,10 +19,13 @@ class UserSettings:
 
     random_time_on_date_drop: bool
     default_reminder_minutes: int
+    checklists: dict[str, list[str]]
+    """The planning checklists by period type: ``week``, ``month`` and ``year``."""
 
 
 def _of(user: User) -> UserSettings:
-    return UserSettings(user.random_time_on_date_drop, user.default_reminder_minutes)
+    lists = {k.value: list(user.checklists.get(k.value, [])) for k in KINDS}
+    return UserSettings(user.random_time_on_date_drop, user.default_reminder_minutes, lists)
 
 
 class SettingsService:
@@ -41,6 +45,7 @@ class SettingsService:
         *,
         random_time_on_date_drop: bool | None = None,
         default_reminder_minutes: int | None = None,
+        checklists: dict[str, list[str]] | None = None,
     ) -> UserSettings:
         """Change the fields that are not ``None`` and return the new settings."""
         user = await db.get(User, user_id)
@@ -50,5 +55,11 @@ class SettingsService:
             user.random_time_on_date_drop = random_time_on_date_drop
         if default_reminder_minutes is not None:
             user.default_reminder_minutes = default_reminder_minutes
+        if checklists:
+            # Only the lists that are given change; the others stay as they are.
+            merged = {k.value: list(user.checklists.get(k.value, [])) for k in KINDS}
+            for kind, items in checklists.items():
+                merged[kind] = clean_items(items)
+            user.checklists = merged
         await db.flush()
         return _of(user)

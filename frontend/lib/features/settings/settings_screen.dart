@@ -28,6 +28,14 @@ class SettingsScreen extends StatelessWidget {
               path: '/settings/connections',
             ),
             SettingsEntry(
+              keyName: 'checklists',
+              icon: Icons.checklist,
+              title: 'Checklists',
+              subtitle: 'What to go through when you plan a week, a month '
+                  'or a year.',
+              path: '/settings/checklists',
+            ),
+            SettingsEntry(
               keyName: 'password',
               icon: Icons.password,
               title: 'Change password',
