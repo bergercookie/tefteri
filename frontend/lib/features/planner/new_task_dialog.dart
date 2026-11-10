@@ -14,9 +14,14 @@ import 'picker_field.dart';
 import 'planner_providers.dart';
 
 /// Opens the pop-up that creates a task.
-Future<void> showNewTaskDialog(BuildContext context) => showDialog<void>(
+///
+/// With [start] the pop-up begins with that day, and with that time unless
+/// [allDay] is true: the user clicked an empty slot of the calendar.
+Future<void> showNewTaskDialog(BuildContext context,
+        {DateTime? start, bool allDay = false}) =>
+    showDialog<void>(
       context: context,
-      builder: (_) => const NewTaskDialog(),
+      builder: (_) => NewTaskDialog(start: start, allDay: allDay),
     );
 
 const double _dialogWidth = 440;
@@ -37,8 +42,15 @@ class _LabelOption {
 /// a time makes an all-day task; with a time, the task is a block of one hour
 /// that starts then, as everywhere in the planner.
 class NewTaskDialog extends ConsumerStatefulWidget {
-  /// Creates the pop-up.
-  const NewTaskDialog({super.key});
+  /// Creates the pop-up. [start] gives the first day and time; with [allDay]
+  /// the task has no time.
+  const NewTaskDialog({this.start, this.allDay = false, super.key});
+
+  /// The day (and time) to begin with, or null for none.
+  final DateTime? start;
+
+  /// The task begins with a day and no time.
+  final bool allDay;
 
   @override
   ConsumerState<NewTaskDialog> createState() => _NewTaskDialogState();
@@ -64,6 +76,11 @@ class _NewTaskDialogState extends ConsumerState<NewTaskDialog> {
   @override
   void initState() {
     super.initState();
+    final start = widget.start;
+    if (start != null) {
+      _date = DateTime(start.year, start.month, start.day);
+      if (!widget.allDay) _time = TimeOfDay.fromDateTime(start);
+    }
     // The lists show while a field has the focus.
     _projectFocus.addListener(() => setState(() {}));
     _labelFocus.addListener(() => setState(() {}));

@@ -61,9 +61,36 @@ final taskCountsProvider = FutureProvider<Map<String, int>>((ref) {
 @immutable
 class DropPreview {
   /// Creates a preview for [title] on [day]. [startMinutes] is the start of
-  /// the one-hour block in minutes after midnight; null means all day.
-  const DropPreview(
-      {required this.day, required this.title, this.startMinutes});
+  /// the block in minutes after midnight; null means all day. A task is a block
+  /// of one hour. An event keeps its [durationMinutes] and its [color] (the
+  /// color of its calendar, `#rrggbb`).
+  const DropPreview({
+    required this.day,
+    required this.title,
+    this.startMinutes,
+    this.durationMinutes = 60,
+    this.event = false,
+    this.color,
+  });
+
+  /// The same preview at another start.
+  DropPreview at(int? startMinutes) => DropPreview(
+        day: day,
+        title: title,
+        startMinutes: startMinutes,
+        durationMinutes: durationMinutes,
+        event: event,
+        color: color,
+      );
+
+  /// How long the block is, in minutes.
+  final int durationMinutes;
+
+  /// An event is dragged, not a task.
+  final bool event;
+
+  /// The color of the calendar of an event (`#rrggbb`), or null.
+  final String? color;
 
   /// The local day under the pointer.
   final DateTime day;
@@ -79,10 +106,14 @@ class DropPreview {
       other is DropPreview &&
       other.day == day &&
       other.title == title &&
-      other.startMinutes == startMinutes;
+      other.startMinutes == startMinutes &&
+      other.durationMinutes == durationMinutes &&
+      other.event == event &&
+      other.color == color;
 
   @override
-  int get hashCode => Object.hash(day, title, startMinutes);
+  int get hashCode =>
+      Object.hash(day, title, startMinutes, durationMinutes, event, color);
 }
 
 /// True while a task is being dragged. The calendar greys out then.
@@ -113,6 +144,15 @@ class PlannerActions {
   /// Plans [taskId] for [day] only, with no time of day.
   Future<void> scheduleOnDate(String taskId, DateTime day) =>
       _run(taskId, (api) => api.scheduleTaskOnDate(taskId, day));
+
+  /// Moves the event [item] so that it starts at [start]. It keeps its length.
+  /// The calendar app saves the new time; a calendar that is read-only refuses.
+  Future<void> moveEntry(CalendarItem item, DateTime start) {
+    final length = (item.end ?? item.start!.add(const Duration(hours: 1)))
+        .difference(item.start!);
+    return _run(
+        item.id, (api) => api.moveEntry(item.id, start, start.add(length)));
+  }
 
   /// Marks [taskId] as done in the task app.
   Future<void> complete(String taskId) =>

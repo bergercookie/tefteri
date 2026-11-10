@@ -10,11 +10,11 @@ import 'planner_helpers.dart';
 Map<String, Object?> _done(String id) =>
     {...dueTask(id, 'x'), 'status': 'done'};
 
-/// A right click on [target]; with [ctrl], while the Ctrl key is down.
-Future<void> _rightClick(WidgetTester tester, Finder target,
-    {bool ctrl = false}) async {
+/// A click on [target]; with [ctrl], while the Ctrl key is down.
+Future<void> _click(WidgetTester tester, Finder target,
+    {bool ctrl = false, int buttons = kPrimaryButton}) async {
   if (ctrl) await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-  await tester.tap(target, buttons: kSecondaryButton);
+  await tester.tap(target, buttons: buttons);
   if (ctrl) await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
   await settle(tester);
 }
@@ -44,122 +44,90 @@ void main() {
         },
       );
 
-  testWidgets('Ctrl and a right click complete a task block', (tester) async {
+  testWidgets('Ctrl and a click complete a task block', (tester) async {
     final api = api0();
     await pumpPlanner(tester, api);
-    await _rightClick(tester, find.byKey(const Key('block-task-t1')),
-        ctrl: true);
+    await _click(tester, find.byKey(const Key('block-task-t1')), ctrl: true);
     expect(api.where('POST /tasks/t1/complete'), hasLength(1));
     // The calendar reloads, and no pop-up opened.
     expect(api.where('GET /calendar').length, greaterThan(1));
     expect(find.byKey(const Key('task-details')), findsNothing);
   });
 
-  testWidgets('Ctrl and a right click complete an all-day task',
-      (tester) async {
+  testWidgets('Ctrl and a click complete an all-day task', (tester) async {
     final api = api0();
     await pumpPlanner(tester, api);
-    await _rightClick(tester, find.byKey(const Key('allday-task-c5')),
-        ctrl: true);
+    await _click(tester, find.byKey(const Key('allday-task-c5')), ctrl: true);
     expect(api.where('POST /tasks/c5/complete'), hasLength(1));
   });
 
-  testWidgets('a right click without Ctrl does nothing', (tester) async {
-    final api = api0();
-    await pumpPlanner(tester, api);
-    await _rightClick(tester, find.byKey(const Key('block-task-t1')));
-    expect(api.where('POST /tasks/t1/complete'), isEmpty);
-    expect(find.byKey(const Key('task-details')), findsNothing);
-  });
-
-  Future<void> ctrlClick(WidgetTester tester, Finder target) async {
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.tap(target);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-    await tester.pump(const Duration(milliseconds: 80));
-  }
-
-  testWidgets('Ctrl and a double click complete a task block', (tester) async {
-    final api = api0();
-    await pumpPlanner(tester, api);
-    final block = find.byKey(const Key('block-task-t1'));
-    await ctrlClick(tester, block);
-    // One Ctrl click does not complete, and it opens no pop-up that would
-    // cover the second click.
-    expect(api.where('POST /tasks/t1/complete'), isEmpty);
-    expect(find.byKey(const Key('task-details')), findsNothing);
-    await ctrlClick(tester, block);
-    await settle(tester);
-    expect(api.where('POST /tasks/t1/complete'), hasLength(1));
-    expect(find.byKey(const Key('task-details')), findsNothing);
-  });
-
-  testWidgets('two Ctrl clicks on different tasks complete none',
-      (tester) async {
-    final api = api0();
-    await pumpPlanner(tester, api);
-    await ctrlClick(tester, find.byKey(const Key('block-task-t1')));
-    await ctrlClick(tester, find.byKey(const Key('allday-task-c5')));
-    await settle(tester);
-    expect(api.requests.where((r) => r.path.endsWith('/complete')), isEmpty);
-  });
-
-  testWidgets('Ctrl clicks that are far apart in time complete nothing',
-      (tester) async {
-    final api = api0();
-    await pumpPlanner(tester, api);
-    var clock = DateTime(2026, 11, 9, 10);
-    ControlKey.now = () => clock;
-    addTearDown(() => ControlKey.now = DateTime.now);
-    final block = find.byKey(const Key('block-task-t1'));
-    await ctrlClick(tester, block);
-    clock = clock.add(const Duration(seconds: 2));
-    await ctrlClick(tester, block);
-    await settle(tester);
-    expect(api.where('POST /tasks/t1/complete'), isEmpty);
-  });
-
-  testWidgets('a double click without Ctrl completes nothing', (tester) async {
-    final api = api0();
-    await pumpPlanner(tester, api);
-    await tester.tap(find.byKey(const Key('block-task-t1')));
-    await tester.pump(const Duration(milliseconds: 80));
-    await settle(tester);
-    expect(api.where('POST /tasks/t1/complete'), isEmpty);
-    // A plain click opens the details, as before.
-    expect(find.byKey(const Key('task-details')), findsOneWidget);
-  });
-
-  testWidgets('Ctrl and a double click complete a task of the list',
-      (tester) async {
+  testWidgets('Ctrl and a click complete a task of the list', (tester) async {
     final api = plannerApi(extra: {
       'POST /tasks/t1/complete': _done('t1'),
     });
     await pumpPlanner(tester, api);
-    final row = find.byKey(const Key('task-t1'));
-    await ctrlClick(tester, row);
-    expect(api.where('POST /tasks/t1/complete'), isEmpty);
-    await ctrlClick(tester, row);
+    await _click(tester, find.byKey(const Key('task-t1')), ctrl: true);
+    expect(api.where('POST /tasks/t1/complete'), hasLength(1));
+    expect(find.byKey(const Key('task-details')), findsNothing);
+  });
+
+  testWidgets('a click that is quick enough to end before Flutter sees it',
+      (tester) async {
+    // On the web, Flutter delivers the click a moment late. Ctrl can be up by
+    // then, so a Ctrl that went up a moment ago still counts.
+    final api = api0();
+    await pumpPlanner(tester, api);
+    var clock = DateTime(2026, 11, 9, 10);
+    ControlKey.reset();
+    ControlKey.now = () => clock;
+    addTearDown(() => ControlKey.now = DateTime.now);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    clock = clock.add(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const Key('block-task-t1')));
     await settle(tester);
     expect(api.where('POST /tasks/t1/complete'), hasLength(1));
+    // Much later, the same click opens the details instead.
+    clock = clock.add(const Duration(seconds: 5));
+    await tester.tap(find.byKey(const Key('block-task-t1')));
+    await settle(tester);
+    expect(api.where('POST /tasks/t1/complete'), hasLength(1));
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+  });
+
+  testWidgets('a click without Ctrl opens the details', (tester) async {
+    final api = api0();
+    await pumpPlanner(tester, api);
+    await _click(tester, find.byKey(const Key('block-task-t1')));
+    expect(api.where('POST /tasks/t1/complete'), isEmpty);
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+  });
+
+  testWidgets('a right click, with or without Ctrl, completes nothing',
+      (tester) async {
+    final api = api0();
+    await pumpPlanner(tester, api);
+    for (final ctrl in [true, false]) {
+      await _click(tester, find.byKey(const Key('block-task-t1')),
+          ctrl: ctrl, buttons: kSecondaryButton);
+    }
+    expect(api.where('POST /tasks/t1/complete'), isEmpty);
     expect(find.byKey(const Key('task-details')), findsNothing);
   });
 
   testWidgets('a task that is done is not touched again', (tester) async {
     final api = api0();
     await pumpPlanner(tester, api);
-    await _rightClick(tester, find.byKey(const Key('block-task-d1')),
-        ctrl: true);
+    await _click(tester, find.byKey(const Key('block-task-d1')), ctrl: true);
     expect(api.where('POST /tasks/d1/complete'), isEmpty);
+    expect(find.byKey(const Key('task-details')), findsNothing);
   });
 
   testWidgets('an event has nothing to complete', (tester) async {
     final api = api0();
     await pumpPlanner(tester, api);
-    await _rightClick(tester, find.byKey(const Key('block-entry-e1')),
-        ctrl: true);
+    await _click(tester, find.byKey(const Key('block-entry-e1')), ctrl: true);
     expect(api.requests.where((r) => r.path.endsWith('/complete')), isEmpty);
-    expect(find.byKey(const Key('event-details')), findsNothing);
   });
 
   testWidgets('a refusal from the task app is shown', (tester) async {
@@ -170,8 +138,7 @@ void main() {
           'backend_unavailable'),
     });
     await pumpPlanner(tester, api);
-    await _rightClick(tester, find.byKey(const Key('block-task-t1')),
-        ctrl: true);
+    await _click(tester, find.byKey(const Key('block-task-t1')), ctrl: true);
     expect(find.text('Home tasks cannot be reached. Nothing was changed.'),
         findsOneWidget);
   });

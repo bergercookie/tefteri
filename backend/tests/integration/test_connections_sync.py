@@ -178,7 +178,9 @@ async def test_google_callback_returns_to_the_web_client(  # type: ignore[no-unt
             cb = await c.get(
                 f"{V1}/connections/google/callback", params={"code": "c", "state": state}
             )
-        assert cb.status_code == 303 and cb.headers["location"] == "/#/settings"
+        listed = (await c.get(f"{V1}/connections")).json()
+        assert cb.status_code == 303
+        assert cb.headers["location"] == f"/#/settings/connections?choose={listed[0]['id']}"
 
 
 async def test_a_container_that_the_app_stops_listing_is_forgotten(

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
-from tefteri.api.lookups import container_colors
+from tefteri.api.lookups import container_colors, read_only_containers
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
@@ -304,6 +304,7 @@ async def _period_view(
         ).scalars()
     }
     colors = await container_colors(db, user_id)
+    locked = await read_only_containers(db, user_id)
     tasks = []
     for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars():
         when = t.due_at
@@ -325,7 +326,7 @@ async def _period_view(
             if e.sync_state != "deleted_remotely" and overlaps(
                 aware(e.start), aware(e.end), low, high
             ):
-                entries.append(EntryOut.of(e, colors))
+                entries.append(EntryOut.of(e, colors, locked))
     return PeriodView(
         period_type=kind.value,
         start=start,

@@ -119,6 +119,7 @@ class PlanEntry {
     this.end,
     this.location,
     this.color,
+    this.readOnly = false,
   });
 
   /// Parses an entry JSON object.
@@ -131,6 +132,7 @@ class PlanEntry {
         allDay: j['all_day'] == true,
         location: j['location'] as String?,
         color: j['color'] as String?,
+        readOnly: j['read_only'] == true,
         syncState: '${j['sync_state'] ?? 'synced'}',
       );
 
@@ -139,6 +141,9 @@ class PlanEntry {
 
   /// The color of its calendar in the calendar app, as `#rrggbb`, or null.
   final String? color;
+
+  /// Its calendar is read-only: the user cannot move or change it.
+  final bool readOnly;
 
   /// Owning connection id.
   final String connectionId;
@@ -255,6 +260,7 @@ class CalendarItem {
     this.clippedStart = false,
     this.project,
     this.color,
+    this.readOnly = false,
   });
 
   /// Parses one calendar item JSON object.
@@ -270,7 +276,14 @@ class CalendarItem {
         clippedStart: j['clipped_start'] == true,
         project: j['project'] as String?,
         color: j['color'] as String?,
+        readOnly: j['read_only'] == true,
       );
+
+  /// The calendar of an event is read-only: the user cannot move it.
+  final bool readOnly;
+
+  /// A timed event of a calendar that the user can change: it can be dragged.
+  bool get movable => !isTask && !allDay && !readOnly && start != null;
 
   /// The color of the calendar of an entry, as `#rrggbb`, or null.
   final String? color;

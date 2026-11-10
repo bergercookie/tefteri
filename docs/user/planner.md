@@ -43,17 +43,16 @@ To move by one week, choose the arrows next to the Today button. You can also pr
 The arrow keys do not work while you type in the search box.
 Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
 
-## Mark a task as done from the calendar
+## Mark a task as done with Ctrl and a click
 
-Hold Ctrl and double-click a task on the calendar. Tefteri marks the task as done in your task app.
-This works for blocks and for tasks in the all day row. It also works for a task in the task list.
-You can also hold Ctrl and click the task once with the right mouse button.
+Hold Ctrl and click a task with the left mouse button. Tefteri marks the task as done in your task
+app. This works for a task block on the calendar, for a task in the all day row and for a task in
+the task list.
 
-A click that holds Ctrl does not open the task. A single Ctrl click does nothing, and a double
-click without Ctrl opens the task as before.
+A click that holds Ctrl does not open the task. A click without Ctrl opens the task, as before.
 
-A task that is done stays done: the same click does nothing on it. To reopen a task, open it
-and choose Mark not done. A click with the right button alone does nothing.
+A task that is done stays done: the same click does nothing on it. To reopen a task, open it and
+choose Mark not done. An event has nothing to complete.
 
 ## See the project of a task
 
@@ -180,6 +179,52 @@ You can change what happens in this case. Open the menu, choose Settings, and th
 The time is from 08:00 to 19:45. You can move the block later.
 
 ![The Connections screen. The switch Give a random time to date-only drops is on.](../images/planner-setting-random-time.png)
+
+## Move an event to another time
+
+Drag an event block to another time or to another day. The event keeps its length. While you
+drag, the calendar shows where the event would land, with its start and end time in the color of
+its calendar. Tefteri writes the new time to your calendar app, for example Google Calendar.
+
+You can move an event only when you can change its calendar:
+
+- An event of a calendar that is read-only does not move. This is a calendar that someone shared
+  with you for reading. Tefteri still shows the event.
+- An all-day event does not move.
+
+If the calendar app does not accept the change, tefteri shows the reason and the event stays
+where it was.
+
+![The menu of a right click on an empty slot. It offers a new event and a new task at 12:15.](../images/planner-slot-menu.png)
+
+## Add an event or a task on an empty slot
+
+Click an empty slot of the calendar with the right mouse button. A menu opens, with the time of
+the slot (a quarter of an hour):
+
+- Choose New event to add an event to one of your calendars.
+- Choose New task to add a task to one of your projects. The task starts with that day and time.
+
+Click the row all day with the right button to add an all-day event or a task for that day.
+
+![The pop-up New event. It shows the title, the calendar with its color, the day, the times, the switch All day and the place.](../images/planner-new-event.png)
+
+In the pop-up New event:
+
+1. Type the title.
+2. Choose the calendar. The list shows only the calendars that are on and that you can change.
+   Tefteri starts with the calendar of your last new event.
+3. Change the day, the start time and the end time if you need to. To add an event for the whole
+   day, turn on All day.
+4. Optional: type a place.
+5. Choose Add event, or press Ctrl+Enter.
+
+If you have no calendar that you can change, the pop-up tells you to connect a Google calendar
+and to choose a calendar in Settings. Read [Connect your apps](connect-apps.md).
+
+A right click on a task block or on an event block does nothing. In a web browser, the right
+click opens the menu of tefteri, not the menu of the browser, while the pointer is over the
+calendar.
 
 ## Move a task or take it off the calendar
 

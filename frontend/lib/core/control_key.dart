@@ -1,7 +1,7 @@
-/// Tells whether the Ctrl key goes with a click, and spots a double click that
-/// holds it.
+/// Tells whether the Ctrl key goes with a click.
 library;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 
 /// The Ctrl key, as the clicks of a task see it.
@@ -17,11 +17,7 @@ class ControlKey {
   static DateTime Function() now = DateTime.now;
 
   static const _grace = Duration(milliseconds: 600);
-  static const _doubleClick = Duration(milliseconds: 600);
   static DateTime? _released;
-  static bool _listening = false;
-  static String? _lastTap;
-  static DateTime? _lastTapAt;
 
   /// Ctrl is down, or went up a moment ago.
   static bool get heldRecently {
@@ -30,35 +26,24 @@ class ControlKey {
         (released != null && now().difference(released) < _grace);
   }
 
-  /// Starts to watch the Ctrl keys. Call it before [heldRecently] is read.
+  /// Forgets when Ctrl went up. Tests call it before they move the clock.
+  @visibleForTesting
+  static void reset() => _released = null;
+
+  /// Starts to watch the Ctrl keys. Call it before [heldRecently] is read. It
+  /// may be called any number of times: the keyboard has the handler once.
   static void watch() {
-    if (_listening) return;
-    _listening = true;
-    HardwareKeyboard.instance.addHandler((event) {
-      if (event is KeyUpEvent &&
-          (event.logicalKey == LogicalKeyboardKey.controlLeft ||
-              event.logicalKey == LogicalKeyboardKey.controlRight)) {
-        _released = now();
-      }
-      return false;
-    });
+    HardwareKeyboard.instance
+      ..removeHandler(_onKey)
+      ..addHandler(_onKey);
   }
 
-  /// Call it for a click that holds Ctrl, with the id of what was clicked.
-  /// Answers true when this is the second such click on the same thing within
-  /// a short time: a Ctrl and double click.
-  ///
-  /// It counts the clicks itself, because a double-click recognizer would
-  /// delay every single click, and the accessibility tree of the web client
-  /// turns clicks into taps that have no double-tap form.
-  static bool isSecondClick(String id) {
-    final at = now();
-    final last = _lastTapAt;
-    final second =
-        _lastTap == id && last != null && at.difference(last) < _doubleClick;
-    // A third click starts a new pair.
-    _lastTap = second ? null : id;
-    _lastTapAt = second ? null : at;
-    return second;
+  static bool _onKey(KeyEvent event) {
+    if (event is KeyUpEvent &&
+        (event.logicalKey == LogicalKeyboardKey.controlLeft ||
+            event.logicalKey == LogicalKeyboardKey.controlRight)) {
+      _released = now();
+    }
+    return false;
   }
 }

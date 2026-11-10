@@ -4,7 +4,18 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    false,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tefteri.db.base import Base, CreatedMixin, IdMixin
@@ -48,3 +59,7 @@ class SourceContainer(IdMixin, Base):
     """``remote_id`` of the project this one is nested in (a Vikunja subproject)."""
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     """The color that the user chose in the app (``#rrggbb``), for a Google calendar."""
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    """Tefteri syncs the container only when it is on. The user picks the calendars."""
+    read_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    """The user cannot change what it holds in the app."""

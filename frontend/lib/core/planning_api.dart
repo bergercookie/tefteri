@@ -203,6 +203,34 @@ class PlanningApi {
   /// `DELETE /tasks/{id}`.
   Future<void> deleteTask(String id) => _dio.delete<Object?>('/tasks/$id');
 
+  /// `PATCH /calendar/entries/{id}` with a new time. The event keeps its title.
+  Future<void> moveEntry(String id, DateTime start, DateTime end) =>
+      _dio.patch<Object?>('/calendar/entries/$id', data: {
+        'start': start.toUtc().toIso8601String(),
+        'end': end.toUtc().toIso8601String(),
+      });
+
+  /// `POST /calendar/entries`: a new event in a calendar of a connection.
+  /// An all-day event covers the days from [start] to [end] (exclusive).
+  Future<void> createEntry({
+    required String connectionId,
+    required String containerId,
+    required String title,
+    required DateTime start,
+    required DateTime end,
+    bool allDay = false,
+    String location = '',
+  }) =>
+      _dio.post<Object?>('/calendar/entries', data: {
+        'connection_id': connectionId,
+        'container_id': containerId,
+        'title': title,
+        'start': start.toUtc().toIso8601String(),
+        'end': end.toUtc().toIso8601String(),
+        'all_day': allDay,
+        if (location.isNotEmpty) 'location': location,
+      });
+
   /// `PUT /tasks/{id}/schedule` with a block [start]. The server stores the
   /// due date one hour later. Never creates a calendar event.
   Future<void> scheduleTaskAt(String id, DateTime start) =>

@@ -20,6 +20,7 @@ class PlannerDraggable<T extends Object> extends ConsumerWidget {
     required this.child,
     required this.label,
     this.dimmed = false,
+    this.feedbackColor,
     super.key,
   });
 
@@ -34,6 +35,9 @@ class PlannerDraggable<T extends Object> extends ConsumerWidget {
 
   /// Shows the source dimmed (a save is running).
   final bool dimmed;
+
+  /// Background of the chip that follows the pointer. The task color if null.
+  final Color? feedbackColor;
 
   bool get _touch =>
       defaultTargetPlatform == TargetPlatform.android ||
@@ -58,7 +62,7 @@ class PlannerDraggable<T extends Object> extends ConsumerWidget {
       offset: const Offset(14, 26),
       child: Material(
         elevation: 4,
-        color: colors.taskContainer,
+        color: feedbackColor ?? colors.taskContainer,
         borderRadius: BorderRadius.circular(Corner.md),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 220),

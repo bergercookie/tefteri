@@ -64,7 +64,8 @@ GoRouter buildRouter(Ref ref) {
         routes: [
           GoRoute(
             path: 'connections',
-            builder: (_, __) => const ConnectionsScreen(),
+            builder: (_, s) =>
+                ConnectionsScreen(choose: s.uri.queryParameters['choose']),
           ),
           GoRoute(
             path: 'password',

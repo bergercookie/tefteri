@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
-from tefteri.api.lookups import container_colors
+from tefteri.api.lookups import container_colors, read_only_containers
 from tefteri.api.schemas import CalendarItemOut, EntryOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
@@ -59,13 +59,14 @@ async def list_calendar(
     """
     items: list[CalendarItemOut] = []
     colors = await container_colors(db, user.id)
+    locked = await read_only_containers(db, user.id)
     entries = (
         await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user.id))
     ).scalars()
     for e in entries:
         if e.sync_state == "deleted_remotely":
             continue
-        items.append(CalendarItemOut.of_entry(e, colors))
+        items.append(CalendarItemOut.of_entry(e, colors, locked))
     projects = {
         c.id: c.name
         for c in (

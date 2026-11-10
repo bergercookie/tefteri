@@ -8,12 +8,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/browser_menu.dart';
 import '../../core/calendar_color.dart';
 import '../../core/control_key.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import '../calendar/calendar_providers.dart';
 import 'details_dialogs.dart';
+import 'new_event_dialog.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
 import 'time_grid.dart';
@@ -304,40 +306,58 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
         final colors = context.tefteri;
         final hover = candidates.isNotEmpty;
         final dragging = ref.watch(dragActiveProvider);
-        return Container(
-          constraints: const BoxConstraints(minHeight: 28),
-          margin: const EdgeInsets.all(1),
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: hover
-                ? colors.taskContainer
-                : dragging
-                    ? _veilColor(context)
-                    : null,
-            border: Border.all(
-                color: hover ? colors.task : Theme.of(context).dividerColor,
-                width: hover ? 2 : 1),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (hover)
-                Text('All day',
-                    key: const Key('drop-preview-allday'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(color: colors.task)),
-              for (final i in items)
-                _AllDayChip(item: i, pending: pending == i.id),
-            ],
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          // A right click on the empty all-day row offers an all-day event or
+          // a task for this day.
+          onSecondaryTapUp: (d) =>
+              showSlotMenu(context, d.globalPosition, start: day, allDay: true),
+          child: NoBrowserMenu(
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 28),
+              margin: const EdgeInsets.all(1),
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: hover
+                    ? colors.taskContainer
+                    : dragging
+                        ? _veilColor(context)
+                        : null,
+                border: Border.all(
+                    color: hover ? colors.task : Theme.of(context).dividerColor,
+                    width: hover ? 2 : 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (hover)
+                    Text('All day',
+                        key: const Key('drop-preview-allday'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(color: colors.task)),
+                  for (final i in items)
+                    _AllDayChip(item: i, pending: pending == i.id),
+                ],
+              ),
+            ),
           ),
         );
       },
     );
   }
 }
+
+/// The event that a drag carries when the user can move it: a timed event of a
+/// calendar that is not read-only. Null for anything else.
+CalendarItem? _movableEvent(Object data) =>
+    data is CalendarItem && data.movable ? data : null;
+
+/// What the calendar takes in a drop on a day: a task, or a movable event.
+bool _dropAccepted(Object data) =>
+    _taskIdOf(data) != null || _movableEvent(data) != null;
 
 /// Task id carried by a dragged task row or task block; null for others.
 String? _taskIdOf(Object data) {
@@ -356,8 +376,30 @@ Color _veilColor(BuildContext context) => Color.alphaBlend(
 /// Title of a dragged task row or task block; null for others.
 String? _titleOf(Object data) {
   if (data is PlanTask) return data.title;
-  if (data is CalendarItem && data.isTask) return data.title;
+  if (data is CalendarItem && (data.isTask || data.movable)) return data.title;
   return null;
+}
+
+/// The preview of a drop of [data] on [day] at [minutes]; null for things that
+/// the calendar does not take.
+DropPreview? _previewOf(Object data, DateTime day, int minutes) {
+  final title = _titleOf(data);
+  if (title == null) return null;
+  final event = _movableEvent(data);
+  if (event == null) {
+    return DropPreview(day: day, title: title, startMinutes: minutes);
+  }
+  final length = (event.end ?? event.start!.add(const Duration(hours: 1)))
+      .difference(event.start!)
+      .inMinutes;
+  return DropPreview(
+    day: day,
+    title: title,
+    startMinutes: minutes,
+    durationMinutes: length < 15 ? 15 : length,
+    event: true,
+    color: event.color,
+  );
 }
 
 Color _blockColor(BuildContext context, CalendarItem i) {
@@ -539,8 +581,7 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
           current.day != day) {
         return;
       }
-      final next = DropPreview(
-          day: day, title: current.title, startMinutes: _minutesAt(pointer));
+      final next = current.at(_minutesAt(pointer));
       if (next != current) ref.read(dropPreviewProvider.notifier).state = next;
     });
   }
@@ -583,13 +624,11 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
     ];
     final layout = layoutOverlaps(spans);
     return DragTarget<Object>(
-      onWillAcceptWithDetails: (d) => _taskIdOf(d.data) != null,
+      onWillAcceptWithDetails: (d) => _dropAccepted(d.data),
       onMove: (d) {
-        final title = _titleOf(d.data);
-        if (title == null) return;
         _pointer = d.offset;
-        final next = DropPreview(
-            day: day, title: title, startMinutes: _minutesAt(d.offset));
+        final next = _previewOf(d.data, day, _minutesAt(d.offset));
+        if (next == null) return;
         if (ref.read(dropPreviewProvider) != next) {
           ref.read(dropPreviewProvider.notifier).state = next;
         }
@@ -601,64 +640,83 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
       },
       onAcceptWithDetails: (d) {
         final id = _taskIdOf(d.data);
+        final event = _movableEvent(d.data);
         final box = boxKey.currentContext?.findRenderObject() as RenderBox?;
         _pointer = null;
         ref.read(dropPreviewProvider.notifier).state = null;
-        if (id == null || box == null) return;
-        final local = box.globalToLocal(d.offset);
-        ref
-            .read(plannerActionsProvider)
-            .scheduleAt(id, slotStart(day, local.dy));
+        if ((id == null && event == null) || box == null) return;
+        final start = slotStart(day, box.globalToLocal(d.offset).dy);
+        final actions = ref.read(plannerActionsProvider);
+        if (event != null) {
+          // An event that did not move needs no save.
+          if (event.start!.toLocal() != start) actions.moveEntry(event, start);
+        } else {
+          actions.scheduleAt(id!, start);
+        }
       },
-      builder: (context, candidates, _) => Container(
-        key: boxKey,
-        height: hourHeight * 24,
-        decoration: BoxDecoration(
-          color: candidates.isNotEmpty
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.5)
-              : now != null
-                  ? context.tefteri.today
-                  : day.weekday >= DateTime.saturday
-                      ? context.tefteri.weekend
-                      : null,
-          border:
-              Border(left: BorderSide(color: Theme.of(context).dividerColor)),
-        ),
-        child: LayoutBuilder(
-          builder: (context, c) => Stack(
-            key: Key('day-column-${dateKey(day)}'),
-            clipBehavior: Clip.hardEdge,
-            children: [
-              for (var h = 0; h < 24; h++) ...[
-                if (h > 0)
-                  Positioned(
-                    top: h * hourHeight,
-                    left: 0,
-                    right: 0,
-                    child: Divider(height: 1, color: context.tefteri.rule),
-                  ),
-                // a fainter line at the half hour
-                Positioned(
-                  top: h * hourHeight + hourHeight / 2,
-                  left: 0,
-                  right: 0,
-                  child: Divider(
-                      height: 1,
-                      color: context.tefteri.rule.withValues(alpha: 0.4)),
-                ),
-              ],
-              for (var n = 0; n < items.length; n++)
-                _block(context, items[n], spans[n], layout[n], c.maxWidth),
-              if (now != null) _nowLine(context, now!),
-              // While a task is dragged, everything fades back, and only the
-              // slot under the pointer shows where the task would land.
-              _scrim(context, dragging),
-              if (dragging && preview != null && preview.day == day)
-                _previewBlock(context, preview),
-            ],
+      builder: (context, candidates, _) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        // A right click on an empty slot offers a new event or a new task. A
+        // block takes its own right click (see _OpenDetails), so this is only
+        // reached by a click on an empty slot.
+        onSecondaryTapUp: (d) {
+          final box = boxKey.currentContext?.findRenderObject() as RenderBox?;
+          if (box == null) return;
+          final start = slotStart(day, box.globalToLocal(d.globalPosition).dy);
+          showSlotMenu(context, d.globalPosition, start: start);
+        },
+        child: NoBrowserMenu(
+          child: Container(
+            key: boxKey,
+            height: hourHeight * 24,
+            decoration: BoxDecoration(
+              color: candidates.isNotEmpty
+                  ? Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.5)
+                  : now != null
+                      ? context.tefteri.today
+                      : day.weekday >= DateTime.saturday
+                          ? context.tefteri.weekend
+                          : null,
+              border: Border(
+                  left: BorderSide(color: Theme.of(context).dividerColor)),
+            ),
+            child: LayoutBuilder(
+              builder: (context, c) => Stack(
+                key: Key('day-column-${dateKey(day)}'),
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  for (var h = 0; h < 24; h++) ...[
+                    if (h > 0)
+                      Positioned(
+                        top: h * hourHeight,
+                        left: 0,
+                        right: 0,
+                        child: Divider(height: 1, color: context.tefteri.rule),
+                      ),
+                    // a fainter line at the half hour
+                    Positioned(
+                      top: h * hourHeight + hourHeight / 2,
+                      left: 0,
+                      right: 0,
+                      child: Divider(
+                          height: 1,
+                          color: context.tefteri.rule.withValues(alpha: 0.4)),
+                    ),
+                  ],
+                  for (var n = 0; n < items.length; n++)
+                    _block(context, items[n], spans[n], layout[n], c.maxWidth),
+                  if (now != null) _nowLine(context, now!),
+                  // While a task is dragged, everything fades back, and only the
+                  // slot under the pointer shows where the task would land.
+                  _scrim(context, dragging),
+                  if (dragging && preview != null && preview.day == day)
+                    _previewBlock(context, preview),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -683,7 +741,14 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
     final colors = context.tefteri;
     final text = Theme.of(context).textTheme;
     final start = p.startMinutes ?? 0;
-    final end = start + 60;
+    final end = start + p.durationMinutes;
+    final chosen = parseCalendarColor(p.color);
+    final fill = p.event
+        ? (chosen == null
+            ? colors.eventContainer
+            : calendarTint(context, chosen))
+        : colors.taskContainer;
+    final edge = p.event ? (chosen ?? colors.event) : colors.task;
     final height =
         minutesToOffset((end > minutesPerDay ? minutesPerDay : end) - start);
     String hm(int m) =>
@@ -700,9 +765,9 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: BoxDecoration(
-            color: colors.taskContainer,
+            color: fill,
             borderRadius: BorderRadius.circular(Corner.sm),
-            border: Border.all(color: colors.task, width: 2),
+            border: Border.all(color: edge, width: 2),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,7 +780,7 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
                     '${hm(start)} - ${hm(end > minutesPerDay ? minutesPerDay : end)}',
                     key: const Key('drop-preview-time'),
                     maxLines: 1,
-                    style: text.labelMedium?.copyWith(color: colors.task)),
+                    style: text.labelMedium?.copyWith(color: edge)),
               ),
               if (height >= 36)
                 Text(p.title,
@@ -862,9 +927,13 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
       left: colWidth * place.column,
       width: colWidth,
       height: height,
-      child: i.isTask
+      child: i.isTask || i.movable
           ? PlannerDraggable<CalendarItem>(
-              data: i, label: i.title, dimmed: isPending, child: body)
+              data: i,
+              label: i.title,
+              dimmed: isPending,
+              feedbackColor: i.isTask ? null : _blockColor(context, i),
+              child: body)
           : body,
     );
   }
@@ -916,10 +985,9 @@ class _DayHeader extends StatelessWidget {
 /// Opens the details pop-up of [item] when the user taps [child]: the task for
 /// a task block, the event for an event.
 ///
-/// Ctrl and a right click, or Ctrl and a double click, on a task block mark the
-/// task as done. A task that
-/// is done stays as it is (no second click reopens it by mistake), and events
-/// have nothing to complete.
+/// Ctrl and a click on a task block mark the task as done, and open nothing. A
+/// task that is done stays as it is (no second click reopens it by mistake),
+/// and events have nothing to complete.
 class _OpenDetails extends ConsumerWidget {
   const _OpenDetails({required this.item, required this.child});
 
@@ -934,11 +1002,12 @@ class _OpenDetails extends ConsumerWidget {
 
   Widget _gesture(BuildContext context, WidgetRef ref) => GestureDetector(
         behavior: HitTestBehavior.opaque,
+        // A right click on a block does nothing. This also keeps it from
+        // reaching the day column, which offers a new event on an empty slot.
+        onSecondaryTap: () {},
         onTap: () {
-          // Ctrl and a double click mark a task as done. A click that holds Ctrl
-          // opens nothing, so the second click is not lost on a pop-up.
           if (item.isTask && ControlKey.heldRecently) {
-            if (!item.isDone && ControlKey.isSecondClick(item.id)) {
+            if (!item.isDone) {
               ref.read(plannerActionsProvider).complete(item.id);
             }
             return;
@@ -946,11 +1015,6 @@ class _OpenDetails extends ConsumerWidget {
           item.isTask
               ? showTaskDetails(context, taskId: item.id, title: item.title)
               : showEventDetails(context, item);
-        },
-        onSecondaryTapUp: (_) {
-          if (item.isTask && !item.isDone && ControlKey.heldRecently) {
-            ref.read(plannerActionsProvider).complete(item.id);
-          }
         },
         child: child,
       );
