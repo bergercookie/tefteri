@@ -43,6 +43,8 @@ class WeeklyTaskOut(BaseModel):
     planned_day: date | None
     """The day in the planned week, or ``None`` when the task has no day in that week."""
     done: bool = False
+    completed_day: date | None = None
+    """The day the task was completed, or ``None`` when open or when the app does not say."""
     parked: bool = False
     """The user set the task aside for this plan."""
     url: str | None = None
@@ -56,6 +58,7 @@ class WeeklyTaskOut(BaseModel):
             due_day=v.due_day,
             planned_day=v.planned_day,
             done=v.task.status == "done",
+            completed_day=v.completed_day,
             parked=v.parked,
             url=f"{base}/tasks/{v.task.remote_id}" if base else None,
         )

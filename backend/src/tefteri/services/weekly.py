@@ -49,6 +49,8 @@ class TaskView:
     """``due_day`` when it lies in the week of the plan, else ``None``."""
     parked: bool = False
     """The user set the task aside for this plan."""
+    completed_day: date | None = None
+    """The local day the task was completed, when the task app says."""
 
 
 @dataclass
@@ -201,7 +203,12 @@ class WeeklyService:
                 for t in await self._container_tasks(db, user_id, container.id):
                     day = due_day(t, tz)
                     in_week = day is not None and plan.week_start <= day < end
-                    tv = TaskView(t, day, day if in_week else None, str(t.id) in parked)
+                    done_day = (
+                        _aware(t.completed_at).astimezone(ZoneInfo(tz)).date()
+                        if t.completed_at
+                        else None
+                    )
+                    tv = TaskView(t, day, day if in_week else None, str(t.id) in parked, done_day)
                     if str(t.id) in promised:
                         view.committed.append(tv)
                     if t.status == "done":

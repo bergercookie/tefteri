@@ -134,6 +134,7 @@ class VikunjaTaskBackend:
             title=data["title"],
             description=data.get("description", "") or "",
             done=bool(data.get("done")),
+            done_at=_parse(data.get("done_at")) if data.get("done") else None,
             due_at=due,
             all_day=due is not None and due.astimezone(self._tz).time() == time.min,
             version=_version(data),

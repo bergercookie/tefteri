@@ -14,6 +14,7 @@ class WeeklyTask {
     required this.title,
     this.dueDay,
     this.plannedDay,
+    this.completedDay,
     this.done = false,
     this.parked = false,
     this.url,
@@ -25,6 +26,7 @@ class WeeklyTask {
         title: '${j['title'] ?? ''}',
         dueDay: _day(j['due_day']),
         plannedDay: _day(j['planned_day']),
+        completedDay: _day(j['completed_day']),
         done: j['done'] == true,
         parked: j['parked'] == true,
         url: j['url'] as String?,
@@ -47,6 +49,10 @@ class WeeklyTask {
 
   /// The day in the planned week, or null when it has no day in that week.
   final DateTime? plannedDay;
+
+  /// The day the task was completed, or null while open or when the task app
+  /// does not say.
+  final DateTime? completedDay;
 
   /// Page of the task in the task app.
   final String? url;

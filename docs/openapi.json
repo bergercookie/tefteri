@@ -2705,6 +2705,18 @@
       "WeeklyTaskOut": {
         "description": "A task of a chosen project and its day.",
         "properties": {
+          "completed_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Day"
+          },
           "done": {
             "default": false,
             "title": "Done",

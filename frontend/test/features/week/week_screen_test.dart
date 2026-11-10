@@ -47,7 +47,8 @@ Future<void> _pump(WidgetTester tester, FakeApi api) =>
     pumpWithApi(tester, api, WeekScreen(initialDate: _day));
 
 void main() {
-  testWidgets('shows goals with progress, events and tasks', (tester) async {
+  testWidgets('shows goals with progress and tasks, but no events',
+      (tester) async {
     final api = _api();
     await _pump(tester, api);
     expect(find.text('Week of 2026-11-02'), findsOneWidget);
@@ -56,7 +57,8 @@ void main() {
         find.byKey(const Key('goal-progress-g1')));
     expect(bar.value, 0.5);
     expect(find.text('50%'), findsOneWidget);
-    expect(find.text('Standup'), findsOneWidget);
+    expect(find.text('Standup'), findsNothing);
+    expect(find.byKey(const Key('no-events')), findsNothing);
     expect(find.text('Write plan'), findsOneWidget);
     expect(find.textContaining('Goal: Ship beta'), findsOneWidget);
     expect(find.textContaining('Not scheduled'), findsOneWidget);

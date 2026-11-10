@@ -174,14 +174,21 @@ class FakeTaskBackend(_FakeBase):
     async def complete_task(self, remote_id: str) -> RemoteTask:
         """Mark a task done."""
         self._guard()
-        updated = replace(self.tasks[remote_id], done=True, version=self._new_version())
+        updated = replace(
+            self.tasks[remote_id],
+            done=True,
+            done_at=datetime(2030, 3, 6, 22, 30, tzinfo=UTC),
+            version=self._new_version(),
+        )
         self.tasks[remote_id] = updated
         return updated
 
     async def reopen_task(self, remote_id: str) -> RemoteTask:
         """Mark a task open again."""
         self._guard()
-        updated = replace(self.tasks[remote_id], done=False, version=self._new_version())
+        updated = replace(
+            self.tasks[remote_id], done=False, done_at=None, version=self._new_version()
+        )
         self.tasks[remote_id] = updated
         return updated
 

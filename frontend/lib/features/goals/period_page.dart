@@ -195,7 +195,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           else
             GoalTile(goal: g, onChanged: widget.onReload),
         const SizedBox(height: 8),
-        if (v.periodType != 'year') ...[
+        // The week page is about the plan, so it leaves the events out.
+        if (v.periodType == 'month') ...[
           Text('Events', style: heading),
           if (entries.isEmpty) const Text('No events.', key: Key('no-events')),
           for (final e in entries)

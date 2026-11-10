@@ -37,7 +37,50 @@ final _tasks = [
   taskJson('t1', 'Write the release notes'),
 ];
 
+Map<String, Object?> _committedTask(int n, {String? doneOn}) => {
+      'id': 'c$n',
+      'title': 'Task $n',
+      'done': doneOn != null,
+      'completed_day': doneOn,
+    };
+
+/// Eight tasks committed for the week: two done Monday, one Tuesday, two Wednesday.
+final _weeklyState = {
+  'week_start': '2026-11-02',
+  'week_end': '2026-11-09',
+  'look_back': null,
+  'plan': {
+    'id': 'plan1',
+    'status': 'committed',
+    'committed_at': '2026-11-01T18:00:00Z',
+    'retro_skipped': false,
+    'max_projects': 3,
+    'projects': [
+      {
+        'id': 'pp1',
+        'name': 'Website',
+        'created_here': false,
+        'open_tasks': 3,
+        'done_tasks': 5,
+        'scheduled_tasks': 3,
+        'tasks': <Object?>[],
+        'committed_tasks': [
+          _committedTask(1, doneOn: '2026-11-02'),
+          _committedTask(2, doneOn: '2026-11-02'),
+          _committedTask(3, doneOn: '2026-11-03'),
+          _committedTask(4, doneOn: '2026-11-04'),
+          _committedTask(5, doneOn: '2026-11-04'),
+          _committedTask(6),
+          _committedTask(7),
+          _committedTask(8),
+        ],
+      },
+    ],
+  },
+};
+
 FakeApi _api() => FakeApi({
+      'GET /weekly/2026-11-02': _weeklyState,
       'GET /views/week/2026-11-02':
           periodJson('week', '2026-11-02', '2026-11-09',
               goals: [_weekGoal],
@@ -68,7 +111,8 @@ FakeApi _api() => FakeApi({
 
 void main() {
   testWidgets('weekly view', (tester) async {
-    await pumpScreen(tester, _api(), WeekScreen(initialDate: day));
+    await pumpScreen(tester, _api(),
+        WeekScreen(initialDate: day, today: DateTime(2026, 11, 4)));
     await saveScreenshot('planning-week');
   });
 
