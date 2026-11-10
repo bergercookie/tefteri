@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, false, text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Uuid, false, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tefteri.db.base import Base, CreatedMixin, IdMixin
@@ -22,6 +22,10 @@ class User(IdMixin, CreatedMixin, Base):
         Boolean, default=False, server_default=false()
     )
     """A date-only drop on the calendar gets a random time of day instead of staying all-day."""
+    checklists: Mapped[dict[str, list[str]]] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'")
+    )
+    """The user's planning checklists: the items for ``week``, ``month`` and ``year``."""
     default_reminder_minutes: Mapped[int] = mapped_column(
         Integer, default=15, server_default=text("15")
     )

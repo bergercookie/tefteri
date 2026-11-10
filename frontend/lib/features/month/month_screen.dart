@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
+import '../checklists/checklist_panel.dart';
 import '../goals/period_page.dart';
 import '../goals/periods.dart';
 
@@ -44,6 +45,8 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       title: 'Month',
       label: '${monthName(_first.month)} ${_first.year}',
       view: ref.watch(monthViewProvider(key)),
+      banner:
+          PlanningChecklist(kind: ChecklistKind.month, day: _first, card: true),
       onReload: () => ref.invalidate(monthViewProvider(key)),
       onShift: (d) =>
           setState(() => _first = DateTime(_first.year, _first.month + d, 1)),

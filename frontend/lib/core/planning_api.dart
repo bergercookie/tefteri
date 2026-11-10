@@ -157,15 +157,37 @@ class PlanningApi {
   /// `PATCH /me/settings`.
   ///
   /// Sends only the settings that are given.
-  Future<UserSettings> updateSettings(
-      {bool? randomTimeOnDateDrop, int? defaultReminderMinutes}) async {
+  Future<UserSettings> updateSettings({
+    bool? randomTimeOnDateDrop,
+    int? defaultReminderMinutes,
+    Map<ChecklistKind, List<String>>? checklists,
+  }) async {
     final r = await _dio.patch<Object?>('/me/settings', data: {
+      if (checklists != null)
+        'checklists': {for (final e in checklists.entries) e.key.name: e.value},
       if (randomTimeOnDateDrop != null)
         'random_time_on_date_drop': randomTimeOnDateDrop,
       if (defaultReminderMinutes != null)
         'default_reminder_minutes': defaultReminderMinutes,
     });
     return UserSettings.fromJson(r.data! as Map<String, dynamic>);
+  }
+
+  /// `GET /checklists/{kind}/{day}`: the checklist of the week, month or
+  /// year that holds [day].
+  Future<PeriodChecklist> checklist(ChecklistKind kind, DateTime day) async {
+    final r =
+        await _dio.get<Object?>('/checklists/${kind.name}/${dateKey(day)}');
+    return PeriodChecklist.fromJson(r.data! as Map<String, dynamic>);
+  }
+
+  /// `PUT /checklists/{kind}/{day}/items`: ticks or unticks one item.
+  Future<PeriodChecklist> tickChecklistItem(
+      ChecklistKind kind, DateTime day, String text, bool checked) async {
+    final r = await _dio.put<Object?>(
+        '/checklists/${kind.name}/${dateKey(day)}/items',
+        data: {'text': text, 'checked': checked});
+    return PeriodChecklist.fromJson(r.data! as Map<String, dynamic>);
   }
 
   /// `GET /tasks/{id}/reminder`: the reminder in the task app.

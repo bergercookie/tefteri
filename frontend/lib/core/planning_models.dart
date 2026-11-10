@@ -531,6 +531,7 @@ class UserSettings {
   const UserSettings({
     required this.randomTimeOnDateDrop,
     this.defaultReminderMinutes = defaultReminderOffset,
+    this.checklists = const {},
   });
 
   /// Parses the settings JSON object.
@@ -539,6 +540,14 @@ class UserSettings {
         defaultReminderMinutes:
             (j['default_reminder_minutes'] as num?)?.toInt() ??
                 defaultReminderOffset,
+        checklists: {
+          for (final kind in ChecklistKind.values)
+            kind: [
+              for (final i in ((j['checklists'] as Map?)?[kind.name] as List? ??
+                  const []))
+                '$i',
+            ],
+        },
       );
 
   /// When true, a date-only drop gets a random time of day on that date.
@@ -546,6 +555,71 @@ class UserSettings {
 
   /// Minutes before its due time that a new task reminder fires.
   final int defaultReminderMinutes;
+
+  /// The planning checklists: the items to go through at each kind of
+  /// planning. A kind without items has no checklist.
+  final Map<ChecklistKind, List<String>> checklists;
+
+  /// The items of the checklist of [kind].
+  List<String> itemsOf(ChecklistKind kind) => checklists[kind] ?? const [];
+}
+
+/// The kind of planning that a checklist belongs to.
+enum ChecklistKind {
+  /// Goes with the weekly planning.
+  week('Weekly', 'week'),
+
+  /// Goes with the month.
+  month('Monthly', 'month'),
+
+  /// Goes with the year.
+  year('Annual', 'year');
+
+  const ChecklistKind(this.adjective, this.noun);
+
+  /// `Weekly`, `Monthly` or `Annual`.
+  final String adjective;
+
+  /// `week`, `month` or `year`.
+  final String noun;
+}
+
+/// One item of a checklist, ticked or not in a period.
+@immutable
+class ChecklistItem {
+  /// Creates an item.
+  const ChecklistItem(this.text, {this.checked = false});
+
+  /// The words of the item.
+  final String text;
+
+  /// True when the item is ticked in the period.
+  final bool checked;
+}
+
+/// The checklist of one week, month or year (`/checklists/{kind}/{day}`).
+@immutable
+class PeriodChecklist {
+  /// Creates a checklist.
+  const PeriodChecklist(this.items);
+
+  /// Parses the checklist JSON object.
+  factory PeriodChecklist.fromJson(Map<String, dynamic> j) => PeriodChecklist([
+        for (final i in (j['items'] as List? ?? const []))
+          ChecklistItem('${(i as Map)['text']}', checked: i['checked'] == true),
+      ]);
+
+  /// The items of the user's list. Empty when they have not made one.
+  final List<ChecklistItem> items;
+
+  /// How many items are ticked.
+  int get done => items.where((i) => i.checked).length;
+
+  /// The same checklist with [text] ticked or unticked.
+  PeriodChecklist withTick(String text, bool checked) => PeriodChecklist([
+        for (final i in items)
+          i.text == text ? ChecklistItem(i.text, checked: checked) : i,
+      ]);
 }
 
 /// What a new reminder uses until the user changes it: 15 minutes.

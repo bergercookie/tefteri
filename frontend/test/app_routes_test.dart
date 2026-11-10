@@ -11,6 +11,7 @@ import 'package:tefteri/features/admin/admin_settings_screen.dart';
 import 'package:tefteri/features/admin/users_screen.dart';
 import 'package:tefteri/features/auth/change_password_screen.dart';
 import 'package:tefteri/features/daily/daily_screen.dart';
+import 'package:tefteri/features/settings/checklists_screen.dart';
 import 'package:tefteri/features/settings/connections_screen.dart';
 import 'package:tefteri/features/settings/settings_screen.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
@@ -101,6 +102,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);
     expect(find.byKey(const Key('settings-connections')), findsOneWidget);
+    expect(find.byKey(const Key('settings-checklists')), findsOneWidget);
     expect(find.byKey(const Key('settings-password')), findsOneWidget);
     // no administrator page for this user
     expect(find.byKey(const Key('settings-users')), findsNothing);
@@ -114,6 +116,19 @@ void main() {
     await tester.tap(find.byKey(const Key('settings-connections')));
     await tester.pumpAndSettle();
     expect(find.byType(ConnectionsScreen), findsOneWidget);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+  });
+
+  testWidgets('Checklists opens from Settings and goes back to it',
+      (tester) async {
+    final router = await _pump(tester);
+    router.go('/settings');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-checklists')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChecklistsScreen), findsOneWidget);
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);

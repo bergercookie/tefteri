@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
+import '../checklists/checklist_panel.dart';
 import '../goals/period_page.dart';
 
 /// Loads the year view.
@@ -40,6 +41,8 @@ class _YearScreenState extends ConsumerState<YearScreen> {
       title: 'Year',
       label: '$_year',
       view: ref.watch(yearViewProvider(_year)),
+      banner: PlanningChecklist(
+          kind: ChecklistKind.year, day: DateTime(_year), card: true),
       onReload: () => ref.invalidate(yearViewProvider(_year)),
       onShift: (d) => setState(() => _year += d),
       onToday: () => setState(() => _year = DateTime.now().year),

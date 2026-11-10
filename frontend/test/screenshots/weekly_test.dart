@@ -23,10 +23,26 @@ WeeklyServer _server({Map<String, Object?>? lookBack}) {
   return s;
 }
 
+/// The weekly checklist of the user, with two items ticked.
+final _checklist = {
+  'period_type': 'week',
+  'period_start': weekKey,
+  'items': [
+    {'text': 'Look back at last week', 'checked': true},
+    {'text': 'Check the calendar for the week', 'checked': true},
+    {'text': 'Clear the inbox', 'checked': false},
+    {'text': 'Pick the most important tasks', 'checked': false},
+    {'text': 'Block time for focused work', 'checked': false},
+  ],
+  'done': 2,
+  'total': 5,
+};
+
 Future<void> _pump(WidgetTester tester, WeeklyServer s) => pumpScreen(
     tester,
     FakeApi({
       ...s.allRoutes(),
+      'GET /checklists/week/$weekKey': _checklist,
       // No refresh: the page would show the time of the check, which changes.
       'POST /weekly/$weekKey/refresh':
           const ApiFailure(502, 'offline', 'backend_unavailable'),
