@@ -9,6 +9,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jetify-com/devbox-install-action@v0.12.0
+        with: {enable-cache: true}
+      # The Python packages (uv) are downloaded again on every run without this.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/uv.lock', 'docs/requirements.txt') }}
+          restore-keys: uv-${{ runner.os }}-
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('frontend/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       # The Dart hooks (format, analyze) need the package config; without it the formatter
       # uses another style and the analyzer cannot resolve imports.
       - run: devbox run -- just frontend::install
@@ -22,6 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jetify-com/devbox-install-action@v0.12.0
+        with: {enable-cache: true}
       - run: devbox run -- just deploy::smoke
   postgres:
     runs-on: ubuntu-latest
@@ -35,4 +48,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jetify-com/devbox-install-action@v0.12.0
+        with: {enable-cache: true}
+      # The Python packages (uv) are downloaded again on every run without this.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/uv.lock', 'docs/requirements.txt') }}
+          restore-keys: uv-${{ runner.os }}-
       - run: devbox run -- just backend::test-postgres
