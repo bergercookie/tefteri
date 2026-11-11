@@ -254,8 +254,30 @@ class ConnectionProjects {
     required this.name,
     this.canRename = false,
     this.canRestore = false,
+    this.status = 'ok',
+    this.lastSyncOutcome,
     this.projects = const [],
   });
+
+  /// Health of the connection at the last sync: `ok`, `needs_attention` or
+  /// `error`.
+  final String status;
+
+  /// Why the last sync failed (for example `auth_expired`), or `ok`.
+  final String? lastSyncOutcome;
+
+  /// Whether the last sync failed.
+  bool get hasProblem => status != 'ok';
+
+  /// What went wrong and what to do, in plain words.
+  String get problemMessage => switch (lastSyncOutcome) {
+        'auth_expired' => 'Your sign-in for $name expired or was revoked. '
+            'Reconnect it to read your latest projects.',
+        'unreachable' => 'Tefteri cannot reach $name right now. The list '
+            'below is from the last sync that worked.',
+        _ => 'The last sync of $name failed. The list below is from the last '
+            'sync that worked.',
+      };
 
   /// Parses one item of `connections`.
   factory ConnectionProjects.fromJson(Map<String, dynamic> j) {
@@ -265,6 +287,8 @@ class ConnectionProjects {
       name: '${j['name'] ?? ''}',
       canRename: caps['rename'] == true,
       canRestore: caps['restore'] == true,
+      status: '${j['status'] ?? 'ok'}',
+      lastSyncOutcome: j['last_sync_outcome'] as String?,
       projects: [
         for (final p in (j['projects'] as List? ?? const []))
           ClassifiedProject.fromJson(p as Map<String, dynamic>),

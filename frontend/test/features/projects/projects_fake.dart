@@ -13,6 +13,8 @@ class ProjectsServer {
     List<Map<String, Object?>>? projects,
     this.canRename = true,
     this.canRestore = true,
+    this.status = 'ok',
+    this.lastSyncOutcome = 'ok',
   }) : projects = projects ?? defaultProjects();
 
   /// The default tree: two themes, three milestones, one routine-to-be.
@@ -66,11 +68,19 @@ class ProjectsServer {
     };
   }
 
+  /// Connection health at the last sync (`ok`, `needs_attention`, `error`).
+  final String status;
+
+  /// Why the last sync failed, or `ok`.
+  final String lastSyncOutcome;
+
   Map<String, Object?> classification() => {
         'connections': [
           {
             'connection_id': 'c1',
             'name': 'Vikunja',
+            'status': status,
+            'last_sync_outcome': lastSyncOutcome,
             'capabilities': {'rename': canRename, 'restore': canRestore},
             'projects': [for (final p in projects) _derived(p)],
           },
