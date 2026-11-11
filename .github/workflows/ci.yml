@@ -47,12 +47,13 @@ jobs:
       TEFTERI_TEST_POSTGRES_URL: postgresql+asyncpg://postgres:tefteri@localhost:5432/tefteri
     steps:
       - uses: actions/checkout@v4
-      - uses: jetify-com/devbox-install-action@v0.12.0
-        with: {enable-cache: true}
-      # The Python packages (uv) are downloaded again on every run without this.
-      - uses: actions/cache@v4
+      # This job needs only Python, uv and just, so it does not install the whole devbox
+      # (Flutter, clang and the linters). The packages are the ones of backend/uv.lock, and the
+      # Python version is the one of devbox.json.
+      - uses: astral-sh/setup-uv@v6
         with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('backend/uv.lock', 'docs/requirements.txt') }}
-          restore-keys: uv-${{ runner.os }}-
-      - run: devbox run -- just backend::test-postgres
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: extractions/setup-just@v2
+      - run: just backend::test-postgres
