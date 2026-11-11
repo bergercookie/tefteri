@@ -15,6 +15,7 @@ from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 
 from tefteri.config import Settings
+from tefteri.domain.entities import Container, TaskDraft
 from tefteri.main import create_app
 from tests.conftest import ADMIN_PASSWORD, V1, connect_all
 from tests.fakes.world import FakeWorld
@@ -124,3 +125,67 @@ async def test_conflict_and_cascades_on_postgres(pg_api: AsyncClient, world: Fak
     sam = await pg_api.post(f"{V1}/users", json={"username": "sam", "password": "long enough pw"})
     assert (await pg_api.delete(f"{V1}/users/{sam.json()['id']}")).status_code == 204
     assert [u["username"] for u in (await pg_api.get(f"{V1}/users")).json()] == ["admin"]
+
+
+async def test_weekly_milestones_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> None:
+    """Milestone rows, rollover events, the close log (JSON) and the cascades on PostgreSQL."""
+    backend = world.tasks["default"]
+    backend.containers.extend([Container("p2", "Open source"), Container("p3", "Login flow", "p2")])
+    for n in range(3):
+        await backend.create_task(TaskDraft("p3", f"Task {n}"))
+    await connect_all(pg_api)
+    await pg_api.post(f"{V1}/sync")
+    tree = (await pg_api.get(f"{V1}/projects/classification")).json()
+    by_name = {p["name"]: p["id"] for c in tree["connections"] for p in c["projects"]}
+    labelled = await pg_api.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": by_name["Open source"], "label": "theme"}]},
+    )
+    assert labelled.status_code == 200, labelled.text
+    week, next_week = "2030-03-04", "2030-03-11"
+    themes = (await pg_api.get(f"{V1}/weekly/{week}/themes")).json()["themes"]
+    parent = next(t["container_id"] for t in themes if t["name"] == "Open source")
+    made = await pg_api.post(
+        f"{V1}/weekly/{week}/milestones",
+        json={"parent_id": parent, "name": "Passkeys", "done_state": "Sign in works"},
+    )
+    assert made.status_code == 201, made.text
+    login = (await pg_api.get(f"{V1}/weekly/{week}/candidates")).json()
+    container = next(c["container_id"] for c in login if c["name"] == "Login flow")
+    await pg_api.post(f"{V1}/weekly/{week}/projects", json={"container_id": container})
+    await pg_api.post(f"{V1}/weekly/{week}/spread")
+    committed = await pg_api.post(f"{V1}/weekly/{week}/commit")
+    assert committed.status_code == 200, committed.text
+    entries = {p["name"]: p for p in committed.json()["plan"]["projects"]}
+
+    # Close one milestone: the log is a JSON column that grows with each moved task.
+    closed = await pg_api.post(
+        f"{V1}/milestones/{entries['Login flow']['milestone_id']}/close", json={"confirm": True}
+    )
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["moved"] == 3
+    reopened = await pg_api.post(f"{V1}/milestones/{entries['Login flow']['milestone_id']}/reopen")
+    assert reopened.json()["moved_back"] == 3
+
+    back = (await pg_api.get(f"{V1}/weekly/{next_week}")).json()["look_back"]
+    ids = {p["name"]: p["id"] for p in back["projects"]}
+    reviewed = await pg_api.post(
+        f"{V1}/weekly/reviews/{back['plan_id']}",
+        json={
+            "projects": [
+                {"plan_project_id": ids["Passkeys"], "decision": "recommit", "expected": True},
+                {"plan_project_id": ids["Login flow"], "decision": "park"},
+            ]
+        },
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    plan = (await pg_api.get(f"{V1}/weekly/{next_week}")).json()["plan"]
+    assert [(p["name"], p["rollover_count"]) for p in plan["projects"]] == [("Passkeys", 1)]
+    found = {c["name"]: c for c in (await pg_api.get(f"{V1}/weekly/{next_week}/candidates")).json()}
+    assert found["Login flow"]["state"] == "parked"
+    history = (await pg_api.get(f"{V1}/weekly/history")).json()
+    assert {p["decision"] for p in history["entries"][0]["projects"]} == {"recommit", "park"}
+
+    # Deleting the user removes the milestone rows through the cascades.
+    sam = await pg_api.post(f"{V1}/users", json={"username": "sam", "password": "long enough pw"})
+    assert (await pg_api.delete(f"{V1}/users/{sam.json()['id']}")).status_code == 204

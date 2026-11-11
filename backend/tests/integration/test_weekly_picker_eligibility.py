@@ -1,6 +1,7 @@
 """The weekly picker lists only weekly-eligible projects (spec 003, FR-007, FR-008, FR-025)."""
 
 from datetime import date
+from typing import Any
 
 from httpx import AsyncClient
 
@@ -21,7 +22,7 @@ async def _label(env: ProjectsEnv, **labels: ProjectLabel | None) -> None:
         )
 
 
-async def _candidates(api: AsyncClient) -> dict[str, dict[str, object]]:
+async def _candidates(api: AsyncClient) -> dict[str, dict[str, Any]]:
     r = await api.get(f"{V1}/weekly/{WEEK}/candidates")
     assert r.status_code == 200, r.text
     return {c["name"]: c for c in r.json()}

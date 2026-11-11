@@ -67,6 +67,7 @@ async def test_a_project_that_is_removed_is_marked_orphaned_and_keeps_everything
     # The stored name is shown, the milestone is still unfinished, and the close option is not
     # offered because the project is gone from the task app (SC-009, FR-032).
     assert entry["milestone_state"] == "active" and entry["close"]["available"] is False
+    assert entry["close"]["reason"] == "orphaned"
     past_plan = (await api.get(f"{V1}/weekly/{PAST}")).json()["plan"]["projects"]
     assert [(p["name"], p["orphaned"]) for p in past_plan] == [("Garden", True)]
     names = {c["name"] for c in (await api.get(f"{V1}/weekly/{PAST}/candidates")).json()}
