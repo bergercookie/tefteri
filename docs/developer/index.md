@@ -10,6 +10,7 @@ architecture
 design
 sync
 weekly-planning
+project-classification
 android-widget
 adding-an-adapter
 testing

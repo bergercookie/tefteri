@@ -114,6 +114,14 @@ tells you if you plan more or less than you finish. Use this to choose how much 
 Choose the projects that you want to move forward this week. You can choose at most three.
 Projects with tasks that you carried over show first.
 
+The list shows only projects that you can plan. Tefteri leaves out routine projects, ignored projects
+and projects that are no longer in your task app. It also leaves out a project inside a routine or
+an ignored project. Read [Sort your projects](organizing-projects.md) to change a label.
+
+If some projects have no label yet, a quiet line above the list tells you how many. Choose Label
+them to open the Projects view. Planning works while projects have no label. If the list is empty,
+choose Label a project as theme or Create a theme.
+
 1. Find the project in the list. To find it faster, type in the search field.
 2. Choose Add.
 3. To remove a project, choose the cross on its card.

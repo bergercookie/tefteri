@@ -38,11 +38,25 @@ The service derives the calendar block. Do not return a block or a start time.
 
 ## Capabilities
 
-A capability is an optional feature. The `Capability` enum has `task_time`, `recurring` and `note_append`.
+A capability is an optional feature. The `Capability` enum lists them, for example `task_time`,
+`recurring`, `note_append` and the project capabilities below.
 
 Return only the capabilities that the app supports. If the user asks for a missing capability,
 raise `NotSupported` with that capability. Tefteri then tells the user that the action is not available.
 Never drop the data without a message.
+
+### Capabilities of a task app
+
+A task app must declare these capabilities, or tefteri refuses the connection with a message that
+names each missing one: `subprojects` (at least two levels), `project_tree`, `stable_project_ids`,
+`archive_projects`, `create_tasks` and `completion_times`. These are optional: `rename_projects`
+and `restore_projects`. Without an optional capability, tefteri hides only the feature that needs it.
+Declare a capability only when the app does the work and keeps the result. Read
+[Project classification](project-classification.md#capabilities) for the full table.
+
+A task adapter also implements `rename_container` and `restore_container`. Read the project back
+after the write. Raise `NotSaved` if the app did not keep the change. An adapter must never
+write a label, a tag or a field to record a classification.
 
 ## Errors
 

@@ -85,9 +85,9 @@ description: "Task list for feature 003-project-classification"
 
 ## Phase 6: M6 Docs and proof
 
-- [ ] T050 [P] [US1] Write `docs/user/organizing-projects.md` in simplified technical English: what the labels mean, how to accept suggestions, how to change one, how to undo, what orphaned means, how to rename; add it to the docs index
-- [ ] T051 [P] Write `docs/developer/project-classification.md`: the tables, the rules in `domain/classification.py`, the capability table, how to make a new adapter declare them; update `docs/developer/adding-an-adapter.md` and `docs/developer/sync.md`
-- [ ] T052 [P] [US1] Add screenshot tests in `frontend/test/screenshots/projects_screens_test.dart` with fake data (tree with suggestions, effect dialog, orphaned group, empty state); run `just docs::screenshots`; commit `docs/images/projects-*.png` with alt text in the guide
+- [x] T050 [P] [US1] Write `docs/user/organizing-projects.md` in simplified technical English: what the labels mean, how to accept suggestions, how to change one, how to undo, what orphaned means, how to rename; add it to the docs index
+- [x] T051 [P] Write `docs/developer/project-classification.md`: the tables, the rules in `domain/classification.py`, the capability table, how to make a new adapter declare them; update `docs/developer/adding-an-adapter.md` and `docs/developer/sync.md`
+- [x] T052 [P] [US1] Add screenshot tests in `frontend/test/screenshots/projects_screens_test.dart` with fake data (tree with suggestions, effect dialog, orphaned group, empty state); run `just docs::screenshots`; commit `docs/images/projects-*.png` with alt text in the guide
 - [ ] T053 [US1] Browser walkthrough of quickstart section 2 with Playwright (Chromium) against a seeded live Vikunja and the built web client; save a screenshot per step in the scratchpad; record every confusing point
 - [ ] T054 [US1] Fix every usability finding of T053 (wording, spacing, contrast, missing feedback, phone and dark mode); repeat T053 until a first-time run has no stuck point; re-run `just docs::screenshots`
 - [ ] T055 Run `just lint` (includes markdownlint and Vale) and fix prose; run `just docs::check`

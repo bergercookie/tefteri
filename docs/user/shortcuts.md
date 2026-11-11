@@ -22,6 +22,7 @@ You can also choose the keyboard button at the top of the screen.
 | M | Month |
 | Y | Year |
 | G | Goals |
+| O | Projects |
 | R | Reviews |
 | X | Conflicts |
 
