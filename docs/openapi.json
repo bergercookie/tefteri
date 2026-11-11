@@ -1060,6 +1060,65 @@
         "title": "EntryPatch",
         "type": "object"
       },
+      "ExtraDoneOut": {
+        "description": "A task that was completed during the week and was not in the committed plan.",
+        "properties": {
+          "completed_day": {
+            "format": "date",
+            "title": "Completed Day",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "project_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Color"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "completed_day"
+        ],
+        "title": "ExtraDoneOut",
+        "type": "object"
+      },
       "GoalIn": {
         "description": "Data to create a goal.",
         "properties": {
@@ -2890,6 +2949,13 @@
       "WeeklyStateOut": {
         "description": "Everything the planning page shows for one week.",
         "properties": {
+          "done_outside_plan": {
+            "items": {
+              "$ref": "#/components/schemas/ExtraDoneOut"
+            },
+            "title": "Done Outside Plan",
+            "type": "array"
+          },
           "look_back": {
             "anyOf": [
               {

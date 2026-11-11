@@ -311,6 +311,48 @@ class LookBack {
   final List<LookBackProject> projects;
 }
 
+/// A task that was completed during the week and was not in the committed plan.
+@immutable
+class ExtraDoneTask {
+  /// Creates a task.
+  const ExtraDoneTask({
+    required this.id,
+    required this.title,
+    required this.completedDay,
+    this.project,
+    this.projectColor,
+    this.url,
+  });
+
+  /// Parses a task JSON object.
+  factory ExtraDoneTask.fromJson(Map<String, dynamic> j) => ExtraDoneTask(
+        id: '${j['id']}',
+        title: '${j['title'] ?? ''}',
+        completedDay: DateTime.parse('${j['completed_day']}'),
+        project: j['project'] as String?,
+        projectColor: j['project_color'] as String?,
+        url: j['url'] as String?,
+      );
+
+  /// Task id.
+  final String id;
+
+  /// Task title.
+  final String title;
+
+  /// The day it was completed.
+  final DateTime completedDay;
+
+  /// Name of the project that holds it, if any.
+  final String? project;
+
+  /// The color of the project in the task app, as `#rrggbb`, or null.
+  final String? projectColor;
+
+  /// Page of the task in the task app.
+  final String? url;
+}
+
 /// Everything the planning page shows for one week.
 @immutable
 class WeeklyState {
@@ -320,6 +362,7 @@ class WeeklyState {
     required this.weekEnd,
     this.plan,
     this.lookBack,
+    this.doneOutsidePlan = const [],
   });
 
   /// Parses the state JSON object.
@@ -332,6 +375,10 @@ class WeeklyState {
         lookBack: j['look_back'] == null
             ? null
             : LookBack.fromJson(j['look_back'] as Map<String, dynamic>),
+        doneOutsidePlan: [
+          for (final t in (j['done_outside_plan'] as List? ?? const []))
+            ExtraDoneTask.fromJson(t as Map<String, dynamic>),
+        ],
       );
 
   /// Monday of the week.
@@ -345,6 +392,9 @@ class WeeklyState {
 
   /// The earlier committed week, if there is one.
   final LookBack? lookBack;
+
+  /// Tasks completed during the week that the committed plan did not promise.
+  final List<ExtraDoneTask> doneOutsidePlan;
 
   /// The look-back is settled: nothing to review, done, or skipped.
   bool get lookBackSettled =>

@@ -109,8 +109,46 @@ void main() {
     });
   });
 
+  group('WeekProgress outside the plan', () {
+    ExtraDoneTask extra(String day) =>
+        ExtraDoneTask(id: day, title: 'T', completedDay: DateTime.parse(day));
+
+    test('counts the tasks done outside the plan on each day', () {
+      final p =
+          WeekProgress.of(_plan(tasks), _monday, DateTime(2026, 11, 4), extra: [
+        extra('2026-11-02'),
+        extra('2026-11-04'),
+        extra('2026-11-04'),
+        extra('2026-11-08'),
+      ]);
+      expect(p.extraByDay, [1, 0, 2, 0, 0, 0, 1]);
+      expect(p.extraDone, 4);
+    });
+
+    test('they change nothing about the plan, the cadence or the burndown', () {
+      final plain =
+          WeekProgress.of(_plan(tasks), _monday, DateTime(2026, 11, 4));
+      final withExtra = WeekProgress.of(
+          _plan(tasks), _monday, DateTime(2026, 11, 4),
+          extra: [extra('2026-11-03'), extra('2026-11-04')]);
+      expect(withExtra.done, plain.done);
+      expect(withExtra.left, plain.left);
+      expect(withExtra.cadence, plain.cadence);
+      expect(withExtra.remainingByDay, plain.remainingByDay);
+      expect(plain.extraDone, 0);
+    });
+
+    test('a day outside the week is not counted', () {
+      final p = WeekProgress.of(_plan(tasks), _monday, DateTime(2026, 11, 4),
+          extra: [extra('2026-11-01'), extra('2026-11-09')]);
+      expect(p.extraDone, 0);
+    });
+  });
+
   group('WeekProgressCard', () {
-    Map<String, Object?> state(String status) => {
+    Map<String, Object?> state(String status,
+            {List<Map<String, Object?>> extra = const []}) =>
+        {
           'week_start': '2026-11-02',
           'week_end': '2026-11-09',
           'plan': {
@@ -131,6 +169,7 @@ void main() {
             ],
           },
           'look_back': null,
+          'done_outside_plan': extra,
         };
 
     testWidgets('shows done, left, cadence, days and the burndown',
@@ -162,7 +201,86 @@ void main() {
       expect(find.byKey(const Key('burndown')), findsOneWidget);
     });
 
-    testWidgets('shows nothing for a draft plan', (tester) async {
+    Map<String, Object?> extraTask(String id, String title, String day,
+            {String? project}) =>
+        {
+          'id': id,
+          'title': title,
+          'completed_day': day,
+          'project': project,
+          'project_color': null,
+          'url': null,
+        };
+
+    Future<void> pumpCard(
+        WidgetTester tester, List<Map<String, Object?>> extra) async {
+      await pumpWithApi(
+        tester,
+        FakeApi({'GET /weekly/2026-11-02': state('committed', extra: extra)}),
+        Scaffold(
+          body: SingleChildScrollView(
+            child:
+                WeekProgressCard(week: _monday, today: DateTime(2026, 11, 4)),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('lists the tasks done outside the plan, with day and project',
+        (tester) async {
+      await pumpCard(tester, [
+        extraTask('x1', 'Call the plumber', '2026-11-03', project: 'Home'),
+        extraTask('x2', 'Fix the bike', '2026-11-04'),
+        extraTask('x3', 'Pay the invoice', '2026-11-04', project: 'Taxes'),
+      ]);
+      expect(find.byKey(const Key('done-outside-plan')), findsOneWidget);
+      expect(find.text('Done outside the plan'), findsOneWidget);
+      expect(find.text('3 tasks'), findsOneWidget);
+      expect(find.text('Call the plumber'), findsOneWidget);
+      expect(find.text('Tue 3'), findsOneWidget);
+      expect(find.text('Home'), findsOneWidget);
+      // The plan itself is unchanged, and the extras show as a separate count.
+      expect(find.text('4 of 10 tasks done'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('stat-extra')),
+              matching: find.text('+3')),
+          findsOneWidget);
+      expect(find.text('Total 4 + 3 outside the plan'), findsOneWidget);
+      // The days with extra tasks say how many.
+      expect(find.byKey(const Key('extra-day-1')), findsOneWidget); // Tuesday
+      expect(find.text('+2'), findsOneWidget); // Wednesday
+      expect(find.byKey(const Key('extra-day-0')), findsNothing);
+    });
+
+    testWidgets('shows nothing about it when every task was in the plan',
+        (tester) async {
+      await pumpCard(tester, const []);
+      expect(find.byKey(const Key('done-outside-plan')), findsNothing);
+      expect(find.byKey(const Key('stat-extra')), findsNothing);
+      expect(find.text('Total 4'), findsOneWidget);
+    });
+
+    testWidgets('a long list shows the first few and the rest on a tap',
+        (tester) async {
+      await pumpCard(tester, [
+        for (var i = 0; i < 8; i++)
+          extraTask('x$i', 'Extra $i', '2026-11-0${2 + i % 3}'),
+      ]);
+      expect(find.text('8 tasks'), findsOneWidget);
+      expect(find.text('Extra 4'), findsOneWidget);
+      expect(find.text('Extra 5'), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('extra-toggle')));
+      await tester.tap(find.byKey(const Key('extra-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.text('Extra 7'), findsOneWidget);
+      expect(find.text('Show fewer'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('extra-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.text('Extra 7'), findsNothing);
+    });
+
+    testWidgets('a draft plan shows nothing', (tester) async {
       await pumpWithApi(
         tester,
         FakeApi({'GET /weekly/2026-11-02': state('draft')}),

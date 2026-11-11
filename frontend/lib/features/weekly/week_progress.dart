@@ -17,11 +17,17 @@ class WeekProgress {
     required this.doneAfter,
     required this.daysElapsed,
     required this.daysLeft,
+    required this.extraByDay,
   });
 
   /// Reads the progress of [plan] (the plan of the week that starts on
   /// [monday]) as of [today].
-  factory WeekProgress.of(WeeklyPlan plan, DateTime monday, DateTime today) {
+  ///
+  /// [extra] are the tasks done during the week that the plan did not promise.
+  /// They are counted apart: the plan, the cadence and the burndown are about
+  /// the committed tasks only.
+  factory WeekProgress.of(WeeklyPlan plan, DateTime monday, DateTime today,
+      {List<ExtraDoneTask> extra = const []}) {
     final start = DateTime(monday.year, monday.month, monday.day);
     final end = DateTime(start.year, start.month, start.day + 7);
     final day = DateTime(today.year, today.month, today.day);
@@ -46,6 +52,14 @@ class WeekProgress {
         }
       }
     }
+    final extraByDay = List<int>.filled(7, 0);
+    for (final t in extra) {
+      final d = DateTime(
+          t.completedDay.year, t.completedDay.month, t.completedDay.day);
+      if (!d.isBefore(start) && d.isBefore(end)) {
+        extraByDay[d.difference(start).inDays]++;
+      }
+    }
     final elapsed = day.isBefore(start)
         ? 0
         : day.isBefore(end)
@@ -59,6 +73,7 @@ class WeekProgress {
       doneUndated: undated,
       doneAfter: after,
       daysElapsed: elapsed,
+      extraByDay: extraByDay,
       daysLeft: day.isBefore(start)
           ? 7
           : day.isBefore(end)
@@ -87,6 +102,12 @@ class WeekProgress {
 
   /// Days of the week that have begun, counting today: 0 to 7.
   final int daysElapsed;
+
+  /// Tasks done on each day of the week that were not in the plan, Monday first.
+  final List<int> extraByDay;
+
+  /// Tasks done during the week that were not in the plan.
+  int get extraDone => extraByDay.fold(0, (a, b) => a + b);
 
   /// Tasks completed during the week.
   int get doneInWeek => doneByDay.fold(0, (a, b) => a + b);
