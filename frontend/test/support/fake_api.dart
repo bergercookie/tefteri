@@ -177,8 +177,10 @@ Map<String, Object?> classifiedJson(String id, String name,
     int tasks = 0,
     int subprojects = 0,
     bool eligible = true,
-    bool inPlan = false}) {
-  final proposal = parent == null ? 'theme' : 'milestone';
+    bool inPlan = false,
+    String? proposalLabel,
+    String? proposalReason}) {
+  final proposal = proposalLabel ?? (parent == null ? 'theme' : 'milestone');
   return {
     'id': id,
     'name': name,
@@ -186,7 +188,7 @@ Map<String, Object?> classifiedJson(String id, String name,
     'label': label,
     'proposal': {
       'label': proposal,
-      'reason': parent == null ? 'top_level' : 'nested',
+      'reason': proposalReason ?? (parent == null ? 'top_level' : 'nested'),
     },
     'effective_label': label ?? proposal,
     'parent_theme_id': parentTheme,

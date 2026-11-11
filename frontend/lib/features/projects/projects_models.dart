@@ -62,12 +62,16 @@ enum ProposalReason {
   nested,
 
   /// The project was in a past weekly plan.
-  wasCommitted;
+  wasCommitted,
+
+  /// The project sits inside a routine project.
+  insideRoutine;
 
   /// Parses the API value.
   static ProposalReason parse(Object? value) => switch (value) {
         'top_level' => ProposalReason.topLevel,
         'was_committed' => ProposalReason.wasCommitted,
+        'inside_routine' => ProposalReason.insideRoutine,
         _ => ProposalReason.nested,
       };
 }
@@ -96,6 +100,7 @@ class Proposal {
         ProposalReason.topLevel => 'it is at the top level',
         ProposalReason.nested => 'it sits inside another project',
         ProposalReason.wasCommitted => 'you planned it in a past week',
+        ProposalReason.insideRoutine => 'it sits inside a routine project',
       };
 }
 

@@ -141,4 +141,25 @@ void main() {
       expect(find.byKey(const Key('archive-p1')), findsOneWidget);
     });
   });
+
+  group('suggestions', () {
+    testWidgets('a project inside a routine is suggested as a routine',
+        (tester) async {
+      await pumpProjects(
+        tester,
+        ProjectsServer(projects: [
+          classifiedJson('p1', 'Admin', label: 'maintenance'),
+          classifiedJson('p2', 'Groceries',
+              parent: 'p1',
+              proposalLabel: 'maintenance',
+              proposalReason: 'inside_routine'),
+        ]),
+      );
+      expect(
+        find.textContaining('Suggested: Routine, because it sits inside a '
+            'routine project'),
+        findsOneWidget,
+      );
+    });
+  });
 }

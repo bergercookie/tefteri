@@ -32,8 +32,8 @@ enum GroupKind {
   /// One plain sentence under the name.
   String get sentence => switch (this) {
         GroupKind.unsorted =>
-          'You have not labelled these yet. Each one shows a suggestion: tap '
-              'a label to choose, or accept all suggestions at once.',
+          'Not labelled yet. Each one shows a suggestion: tap a label to '
+              'choose, or accept all at once.',
         GroupKind.themes =>
           'A theme is a long-running home for related work. Milestones are '
               'small outcomes you can finish in a week, shown inside their '
@@ -191,8 +191,9 @@ List<TreeItem> buildTreeItems(
       if (kind == GroupKind.themes ||
           kind == GroupKind.unsorted ||
           kind == GroupKind.noThemeMilestones) {
-        body = _treeRows(kind, members, conn, byId, ancestors, pathOf, matches,
-            q, collapsedNodes: collapsedNodes);
+        body = _treeRows(
+            kind, members, conn, byId, ancestors, pathOf, matches, q,
+            collapsedNodes: collapsedNodes);
       } else {
         body = [
           for (final p in members)

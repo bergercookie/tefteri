@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../screenshots/screenshot_helper.dart' show loadFonts;
 import '../../support/fake_api.dart';
 import 'projects_fake.dart';
 
@@ -244,5 +245,147 @@ void main() {
     expect(server.projects.last['label'], 'ignored');
     expect((api.where('PUT /projects/labels').last.data as Map)['changes'],
         hasLength(2));
+  });
+
+  group('unsorted tree', () {
+    testWidgets('children sit under their parent, parent first',
+        (tester) async {
+      // Groceries sorts before Home alphabetically, but Garden is Home's
+      // child and must follow it.
+      await pumpProjects(tester, ProjectsServer());
+      final home = tester.getTopLeft(find.byKey(const Key('name-p4')));
+      final garden = tester.getTopLeft(find.byKey(const Key('name-p5')));
+      final groceries = tester.getTopLeft(find.byKey(const Key('name-p6')));
+      expect(garden.dy, greaterThan(home.dy));
+      expect(garden.dx, greaterThan(home.dx));
+      expect(groceries.dy, greaterThan(garden.dy));
+      expect(groceries.dx, home.dx);
+      // The parent is in the same group, so no path subtitle repeats it.
+      expect(find.textContaining('Home  ·'), findsNothing);
+    });
+
+    testWidgets('a child whose parent is elsewhere names the parent',
+        (tester) async {
+      final projects = [
+        classifiedJson('a', 'Admin', label: 'maintenance'),
+        classifiedJson('g', 'Groceries', parent: 'a'),
+      ];
+      await pumpProjects(tester, ProjectsServer(projects: projects));
+      final row = find.byKey(const Key('row-g'));
+      expect(find.descendant(of: row, matching: find.textContaining('Admin')),
+          findsOneWidget);
+      final g = tester.getTopLeft(find.byKey(const Key('name-g')));
+      expect(g.dx,
+          lessThan(tester.getTopLeft(find.byKey(const Key('row-g'))).dx + 80));
+    });
+  });
+
+  group('themes and milestones without a theme', () {
+    List<Map<String, Object?>> tree() => [
+          classifiedJson('t1', 'Open source', label: 'theme'),
+          classifiedJson('m1', 'Website',
+              parent: 't1', label: 'milestone', parentTheme: 't1'),
+          classifiedJson('m2', 'Website 2',
+              parent: 't1', label: 'milestone', parentTheme: 't1'),
+          classifiedJson('x', 'Loose', label: 'milestone'),
+          classifiedJson('y', 'Loose 2', label: 'milestone'),
+          classifiedJson('z', 'Loose 3', label: 'milestone'),
+        ];
+
+    testWidgets('Themes counts only themes; loose milestones have a group',
+        (tester) async {
+      await pumpProjects(tester, ProjectsServer(projects: tree()));
+      expect(find.text('Themes (1)'), findsOneWidget);
+      expect(find.text('Milestones without a theme (3)'), findsOneWidget);
+      expect(
+          find.text('These milestones are not inside a theme. Move them under '
+              'a theme in your task app, or change their label.'),
+          findsOneWidget);
+      // Placed after Themes; the loose ones are not listed among the themes.
+      final themes = tester.getTopLeft(find.byKey(const Key('group-themes')));
+      final loose =
+          tester.getTopLeft(find.byKey(const Key('group-noThemeMilestones')));
+      expect(loose.dy, greaterThan(themes.dy));
+      expect(tester.getTopLeft(find.byKey(const Key('name-m2'))).dy,
+          lessThan(loose.dy));
+      expect(tester.getTopLeft(find.byKey(const Key('name-x'))).dy,
+          greaterThan(loose.dy));
+    });
+
+    testWidgets('no group appears when every milestone has a theme',
+        (tester) async {
+      await pumpProjects(
+          tester, ProjectsServer(projects: tree().sublist(0, 3)));
+      expect(find.byKey(const Key('group-noThemeMilestones')), findsNothing);
+    });
+  });
+
+  group('label hint', () {
+    testWidgets('is expanded on the first visit on a desktop', (tester) async {
+      await pumpProjects(tester, ProjectsServer());
+      expect(find.byKey(const Key('term-hint-labels')), findsOneWidget);
+      expect(find.text('What do these labels mean?'), findsNothing);
+    });
+
+    testWidgets('folds to one line after a label is saved and opens in place',
+        (tester) async {
+      await pumpProjects(tester, ProjectsServer());
+      await tapKey(tester, 'chip-p6-maintenance');
+      expect(find.byKey(const Key('term-hint-labels')), findsNothing);
+      expect(find.text('What do these labels mean?'), findsOneWidget);
+      await tapKey(tester, 'term-hint-open-labels');
+      expect(find.byKey(const Key('term-hint-labels')), findsOneWidget);
+      expect(find.textContaining('Routine (maintenance)'), findsOneWidget);
+      // It can be dismissed for good from the open box.
+      await tapKey(tester, 'term-hint-close-labels');
+      expect(find.byKey(const Key('term-hint-labels')), findsNothing);
+      expect(find.text('What do these labels mean?'), findsNothing);
+    });
+
+    testWidgets('is one line on a narrow screen even on the first visit',
+        (tester) async {
+      await pumpProjects(tester, ProjectsServer(), size: const Size(600, 900));
+      expect(find.byKey(const Key('term-hint-labels')), findsNothing);
+      expect(find.text('What do these labels mean?'), findsOneWidget);
+    });
+  });
+
+  group('compact top', () {
+    Future<int> visibleRows(WidgetTester tester, double height) async {
+      var n = 0;
+      for (final e in find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is Key && '$k'.startsWith("[<'row-");
+      }).evaluate()) {
+        // The row counts when its name and chips start inside the window.
+        final r = tester.getRect(find.byWidget(e.widget));
+        if (r.top >= 0 && r.top + 40 <= height) n++;
+      }
+      return n;
+    }
+
+    for (final (name, size, min) in [
+      ('900px desktop', const Size(1280, 900), 3),
+      ('640px phone', const Size(360, 640), 2),
+    ]) {
+      testWidgets('$name shows $min rows after the first label save',
+          (tester) async {
+        await loadFonts();
+        await pumpProjects(tester, ProjectsServer(), size: size);
+        await tester.scrollUntilVisible(
+            find.byKey(const Key('chip-p1-theme')), 100,
+            scrollable: find.descendant(
+                of: find.byKey(const Key('projects-list')),
+                matching: find.byType(Scrollable)));
+        await tapKey(tester, 'chip-p1-theme');
+        await tester.pumpAndSettle(const Duration(seconds: 5));
+        await tester.drag(
+            find.byKey(const Key('projects-list')), const Offset(0, 2000));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('all-sorted')), findsNothing);
+        expect(
+            await visibleRows(tester, size.height), greaterThanOrEqualTo(min));
+      });
+    }
   });
 }
