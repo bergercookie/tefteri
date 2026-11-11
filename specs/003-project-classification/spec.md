@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Label the user's existing task-manager projects as theme, milestone, maintenance or ignored, so that later planning cycles know which projects are long-running homes for work, which are finishable outcomes, which are routine, and which to hide. Tefteri guesses the labels and the user corrects them. The labels live only in Tefteri. Source: `specs/planning-cycles/source-spec.md`, with the decisions in `specs/planning-cycles/decisions.md`."
 
