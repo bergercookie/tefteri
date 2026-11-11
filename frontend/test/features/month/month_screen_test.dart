@@ -15,6 +15,17 @@ Map<String, Object?> _month() => periodJson(
             periodType: 'month', periodStart: '2026-11-01', progress: 0.25),
       ],
       tasks: [taskJson('t1', 'Draft copy')],
+      entries: [
+        {
+          'id': 'e1',
+          'connection_id': 'c2',
+          'title': 'Team standup',
+          'start': DateTime(2026, 11, 3, 10).toUtc().toIso8601String(),
+          'end': null,
+          'all_day': false,
+          'sync_state': 'synced',
+        },
+      ],
     );
 
 Future<void> _pump(WidgetTester tester, FakeApi api) =>
@@ -37,6 +48,16 @@ void main() {
     expect(find.text('Draft copy'), findsNothing);
     expect(find.text('Tasks'), findsNothing);
     expect(find.byKey(const Key('no-tasks')), findsNothing);
+  });
+
+  testWidgets('does not list the events of the month', (tester) async {
+    await _pump(tester, FakeApi({_path: _month()}));
+    expect(find.text('Launch site'), findsOneWidget);
+    // The list was long and no help in a monthly overview.
+    expect(find.text('Events'), findsNothing);
+    expect(find.text('Team standup'), findsNothing);
+    expect(find.byKey(const Key('no-events')), findsNothing);
+    expect(find.byKey(const Key('entry-e1')), findsNothing);
   });
 
   testWidgets('next month loads the first day of December', (tester) async {

@@ -59,7 +59,7 @@ Each connection shows the calendars of that account. For example, you can see pe
 ### The color of a calendar
 
 Tefteri reads the color that you chose for each calendar in Google Calendar. It uses this color for
-the events of that calendar in the planner, in the Today view and in the Week and Month views.
+the events of that calendar in the planner and in the Today view.
 When you change the color of a calendar in Google Calendar, tefteri shows the new color after the
 next sync. A calendar with no color keeps the standard color of tefteri.
 
