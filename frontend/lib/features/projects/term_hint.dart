@@ -75,10 +75,19 @@ const projectTerms = [
 ];
 
 /// A closable box that lists [terms]. It shows until the user closes it.
-class TermHint extends ConsumerWidget {
+///
+/// With [compact] it starts as one tappable line that opens in place, so the
+/// list below stays in view. The user can open or fold it either way.
+class TermHint extends ConsumerStatefulWidget {
   /// Creates the hint; [id] is what the device remembers.
-  const TermHint(
-      {required this.id, required this.title, required this.terms, super.key});
+  const TermHint({
+    required this.id,
+    required this.title,
+    required this.terms,
+    this.compact = false,
+    this.compactTitle,
+    super.key,
+  });
 
   /// Stable id of the hint.
   final String id;
@@ -89,16 +98,52 @@ class TermHint extends ConsumerWidget {
   /// The terms to explain.
   final List<Term> terms;
 
+  /// Whether the hint is folded to one line until the user opens it.
+  final bool compact;
+
+  /// The text of the folded line; defaults to [title].
+  final String? compactTitle;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TermHint> createState() => _TermHintState();
+}
+
+class _TermHintState extends ConsumerState<TermHint> {
+  /// What the user chose by tapping; null follows [TermHint.compact].
+  bool? _open;
+
+  @override
+  Widget build(BuildContext context) {
     final closed = ref.watch(closedHintsProvider).valueOrNull;
     // Wait for the stored state, so a closed hint does not flash.
-    if (closed == null || closed.contains(id)) return const SizedBox.shrink();
+    if (closed == null || closed.contains(widget.id)) {
+      return const SizedBox.shrink();
+    }
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final open = _open ?? !widget.compact;
+    if (!open) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: Space.xs),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: Key('term-hint-open-${widget.id}'),
+            style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            onPressed: () => setState(() => _open = true),
+            icon: const Icon(Icons.help_outline, size: 18),
+            label: Text(widget.compactTitle ?? widget.title),
+          ),
+        ),
+      );
+    }
+    final heading = Text(widget.title, style: text.titleSmall);
     return Container(
-      key: Key('term-hint-$id'),
-      margin: const EdgeInsets.only(bottom: Space.lg),
+      key: Key('term-hint-${widget.id}'),
+      margin: const EdgeInsets.only(bottom: Space.md),
       padding:
           const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.sm, Space.md),
       decoration: BoxDecoration(
@@ -113,9 +158,20 @@ class TermHint extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: text.titleSmall),
+                if (widget.compact)
+                  InkWell(
+                    key: Key('term-hint-fold-${widget.id}'),
+                    onTap: () => setState(() => _open = false),
+                    child: Row(children: [
+                      Flexible(child: heading),
+                      const SizedBox(width: Space.xs),
+                      const Icon(Icons.expand_less, size: 18),
+                    ]),
+                  )
+                else
+                  heading,
                 const SizedBox(height: Space.xs),
-                for (final t in terms)
+                for (final t in widget.terms)
                   Padding(
                     padding: const EdgeInsets.only(top: Space.xs),
                     child: Text.rich(TextSpan(children: [
@@ -130,10 +186,11 @@ class TermHint extends ConsumerWidget {
             ),
           ),
           IconButton(
-            key: Key('term-hint-close-$id'),
+            key: Key('term-hint-close-${widget.id}'),
             tooltip: 'Got it, hide this hint',
             icon: const Icon(Icons.close),
-            onPressed: () => ref.read(closedHintsProvider.notifier).close(id),
+            onPressed: () =>
+                ref.read(closedHintsProvider.notifier).close(widget.id),
           ),
         ],
       ),

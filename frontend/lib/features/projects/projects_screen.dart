@@ -445,8 +445,15 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             ],
           ),
         ),
-      const TermHint(
-          id: 'labels', title: 'What the labels mean', terms: projectTerms),
+      TermHint(
+          id: 'labels',
+          title: 'What the labels mean',
+          compactTitle: 'What do these labels mean?',
+          // Once a label is saved the user has seen the terms; a narrow
+          // screen has no room for the full box.
+          compact: MediaQuery.sizeOf(context).width < 700 ||
+              c.connections.any((k) => k.projects.any((p) => p.label != null)),
+          terms: projectTerms),
       if (_selecting) _selectBar(),
       if (recent.isNotEmpty) _recentChanges(recent),
     ];
