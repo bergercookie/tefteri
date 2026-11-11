@@ -56,6 +56,26 @@ jobs:
         with: {fetch-depth: 0}
       - uses: jetify-com/devbox-install-action@v0.12.0
         with: {enable-cache: true}
+      # The Android build downloads Gradle, its Maven packages and the Dart packages on every run.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.pub-cache
+          key: >-
+            gradle-${{ runner.os }}-${{ hashFiles('frontend/android/**/*.gradle*',
+            'frontend/android/gradle/wrapper/gradle-wrapper.properties', 'frontend/pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
+      # The runner image has the Android SDK, but not the NDK and CMake that Flutter asks for: the
+      # build downloads them (about 2 minutes). The NDK version is the one of Flutter 3.47.4
+      # (devbox.json); when Flutter changes it, change the path and the key here.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/android/sdk/ndk/28.2.13676358
+            /usr/local/lib/android/sdk/cmake/3.22.1
+          key: android-sdk-${{ runner.os }}-ndk-28.2.13676358-cmake-3.22.1
       - run: devbox run -- just release::clients-android
         env:
           TEFTERI_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
