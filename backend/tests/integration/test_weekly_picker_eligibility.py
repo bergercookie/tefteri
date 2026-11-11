@@ -48,16 +48,25 @@ async def test_ignored_projects_their_descendants_and_maintenance_are_not_listed
     )
     found = await _candidates(env.api)
     # Ignored, what is inside an ignored project, maintenance, and what is inside a maintenance
-    # project are out: work inside a routine project is routine work.
-    assert set(found) == {"Inbox", "Website"}
+    # project are out: work inside a routine project is routine work. A theme is out too:
+    # only milestones are committed (spec 004).
+    assert set(found) == {"Inbox"}
 
 
-async def test_unclassified_projects_are_listed_and_marked_unsorted(env: ProjectsEnv) -> None:
-    await env.connect(Container("p2", "Website"))
-    await _label(env, Website=ProjectLabel.THEME)
+async def test_a_theme_is_absent_an_unsorted_leaf_is_unsorted_and_a_milestone_is_a_milestone(
+    env: ProjectsEnv,
+) -> None:
+    await env.connect(
+        Container("p2", "Website"), Container("p3", "Launch", "p2"), Container("p4", "Garden")
+    )
+    await _label(env, Website=ProjectLabel.THEME, Garden=ProjectLabel.MILESTONE)
     found = await _candidates(env.api)
-    assert found["Website"]["unsorted"] is False
-    assert found["Inbox"]["unsorted"] is True  # still listed: unsorted never blocks planning
+    assert "Website" not in found  # a theme is never offered
+    assert (found["Garden"]["kind"], found["Garden"]["unsorted"]) == ("milestone", False)
+    # Still listed: unsorted never blocks planning. Picking it labels it milestone.
+    assert (found["Inbox"]["kind"], found["Inbox"]["unsorted"]) == ("unsorted", True)
+    assert (found["Launch"]["kind"], found["Launch"]["unsorted"]) == ("unsorted", True)
+    assert found["Launch"]["theme"]["name"] == "Website"
 
 
 async def test_a_project_can_be_picked_again_after_the_label_changes(env: ProjectsEnv) -> None:
@@ -66,6 +75,8 @@ async def test_a_project_can_be_picked_again_after_the_label_changes(env: Projec
     assert "Website" not in await _candidates(env.api)
     await _label(env, Website=ProjectLabel.MILESTONE)
     assert "Website" in await _candidates(env.api)
+    await _label(env, Website=ProjectLabel.THEME)
+    assert "Website" not in await _candidates(env.api)
 
 
 async def test_maintenance_tasks_stay_in_the_planner_and_the_daily_lists(

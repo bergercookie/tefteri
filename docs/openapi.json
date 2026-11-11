@@ -8918,7 +8918,7 @@
     },
     "/api/v1/weekly/{day}/tasks/{task_id}/parked": {
       "put": {
-        "description": "Set a task aside for this plan (\"not this week\"), or put it back. The task app stays as is.",
+        "description": "Set a task aside for this plan (\"not this week\"), or put it back. The app is not touched.",
         "operationId": "park_task_api_v1_weekly__day__tasks__task_id__parked_put",
         "parameters": [
           {

@@ -14,12 +14,31 @@ final _noPolling = [weeklyPollIntervalProvider.overrideWithValue(null)];
 
 WeeklyServer _server({Map<String, Object?>? lookBack}) {
   final s = WeeklyServer(lookBack: lookBack, projects: [
-    WeeklyServer.project('p1', 'Website', tasks: 4),
-    WeeklyServer.project('p2', 'Garden', tasks: 3),
-    WeeklyServer.project('p3', 'Taxes', tasks: 2),
+    WeeklyServer.project('tA', 'Work', kind: 'theme'),
+    WeeklyServer.project('tB', 'Home', kind: 'theme'),
+    WeeklyServer.project('p1', 'Website',
+        tasks: 4,
+        theme: 'tA',
+        themeName: 'Work',
+        doneState: 'The new site is live'),
+    WeeklyServer.project('p2', 'Garden',
+        tasks: 3,
+        theme: 'tB',
+        themeName: 'Home',
+        doneState: 'The beds are planted'),
+    WeeklyServer.project('p3', 'Taxes',
+        tasks: 2,
+        theme: 'tB',
+        themeName: 'Home',
+        doneState: 'The return is sent',
+        rollover: 1),
     WeeklyServer.project('p4', 'Inbox', tasks: 2),
   ]);
-  s.projects[2]['carried'] = 2;
+  s.projects[3]['carried'] = 2;
+  s.themes = [
+    WeeklyServer.theme('tA', 'Work', milestones: 1),
+    WeeklyServer.theme('tB', 'Home', milestones: 2),
+  ];
   return s;
 }
 
@@ -81,9 +100,19 @@ void main() {
               'done_tasks': [7, 4, 3][i],
               'reflection': i == 1 ? 'Too many garden jobs for one week.' : '',
               'projects': [
-                {'name': 'Website', 'done': true},
-                {'name': 'Garden', 'done': i == 0},
-                {'name': 'Taxes', 'done': false},
+                {'name': 'Website', 'done': true, 'milestone_id': 'm1'},
+                {
+                  'name': 'Garden',
+                  'done': i == 0,
+                  'decision': i == 0 ? null : 'recommit',
+                  'milestone_id': 'm2'
+                },
+                {
+                  'name': 'Taxes',
+                  'done': false,
+                  'decision': 'park',
+                  'milestone_id': 'm3'
+                },
               ],
             },
         ],
@@ -104,11 +133,13 @@ void main() {
     final s = _server()..chosen.add('p3');
     await _pump(tester, s);
     await _open(tester, 'projects');
-    await tester.tap(find.byKey(const Key('new-subproject')));
+    await tester.tap(find.byKey(const Key('new-milestone')));
     await tester.pumpAndSettle();
     await tester.enterText(
-        find.byKey(const Key('subproject-name')), 'Launch campaign');
-    await tester.tap(find.byKey(const Key('subproject-create')));
+        find.byKey(const Key('milestone-name')), 'Launch campaign');
+    await tester.enterText(
+        find.byKey(const Key('milestone-done-state')), 'The campaign is live');
+    await tester.tap(find.byKey(const Key('milestone-create')));
     await tester.pumpAndSettle();
     await saveScreenshot('weekly-projects');
   });

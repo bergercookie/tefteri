@@ -17,7 +17,8 @@ Map<String, Object?> _plan(String status, {int done = 0}) => {
       'status': status,
       'committed_at': null,
       'retro_skipped': false,
-      'max_projects': 3,
+      'milestone_count': 1,
+      'milestone_cap': 3,
       'projects': [
         {
           'id': 'a',
@@ -57,6 +58,9 @@ void main() {
         week: monday, today: DateTime(2030, 3, 5));
     expect(find.text('Plan this week'), findsOneWidget);
     expect(find.text('Start planning'), findsOneWidget);
+    // Milestones, and no limit of three.
+    expect(find.textContaining('milestones'), findsOneWidget);
+    expect(find.textContaining('up to three'), findsNothing);
   });
 
   testWidgets('says that a plan is in progress', (tester) async {
@@ -65,7 +69,7 @@ void main() {
         week: monday, today: DateTime(2030, 3, 5));
     expect(find.text('Planning is in progress'), findsOneWidget);
     expect(find.text('Continue planning'), findsOneWidget);
-    expect(find.textContaining('1 of 3 projects chosen'), findsOneWidget);
+    expect(find.textContaining('1 milestone chosen'), findsOneWidget);
   });
 
   testWidgets('reports committed and done tasks of a committed plan',
@@ -79,8 +83,8 @@ void main() {
         week: monday,
         today: DateTime(2030, 3, 5));
     expect(find.text('This week is planned'), findsOneWidget);
-    expect(
-        find.text('1 project and 4 tasks committed, 1 done.'), findsOneWidget);
+    expect(find.text('1 milestone and 4 tasks committed, 1 done.'),
+        findsOneWidget);
     expect(find.text('Open the plan'), findsOneWidget);
   });
 

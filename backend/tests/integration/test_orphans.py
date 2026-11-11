@@ -44,7 +44,7 @@ async def test_a_project_that_is_removed_is_marked_orphaned_and_keeps_everything
     env: ProjectsEnv, api: AsyncClient, world: FakeWorld
 ) -> None:
     await env.connect(Container("p2", "Garden"), Container("p3", "Taxes"), tasks={"p2": 1})
-    await _label(env, "Garden", ProjectLabel.THEME)
+    await _label(env, "Garden", ProjectLabel.MILESTONE)
     await api.post(f"{V1}/weekly/{PAST}/projects", json={"container_id": await _container(api)})
     await api.post(f"{V1}/weekly/{PAST}/commit")
     backend = world.tasks["default"]
@@ -52,9 +52,9 @@ async def test_a_project_that_is_removed_is_marked_orphaned_and_keeps_everything
     await env.sync()
 
     garden = (await env.rows())["Garden"]  # not deleted, same name
-    assert (garden.orphaned_reason, garden.label) == ("missing", "theme")
+    assert (garden.orphaned_reason, garden.label) == ("missing", "milestone")
     assert garden.orphaned_at is not None
-    assert [h.label for h in await env.history("Garden")] == ["theme"]
+    assert [h.label for h in await env.history("Garden")] == ["milestone"]
     assert (await env.rows())["Taxes"].orphaned_reason is None
 
     # Every service that reads projects still works, and shows the stored name (SC-004).
@@ -63,6 +63,12 @@ async def test_a_project_that_is_removed_is_marked_orphaned_and_keeps_everything
     assert (await api.get(f"{V1}/weekly/{NEXT_WEEK}")).status_code == 200
     back = (await api.get(f"{V1}/weekly/{NEXT_WEEK}")).json()["look_back"]
     assert [p["name"] for p in back["projects"]] == ["Garden"]
+    (entry,) = back["projects"]
+    # The stored name is shown, the milestone is still unfinished, and the close option is not
+    # offered because the project is gone from the task app (SC-009, FR-032).
+    assert entry["milestone_state"] == "active" and entry["close"]["available"] is False
+    past_plan = (await api.get(f"{V1}/weekly/{PAST}")).json()["plan"]["projects"]
+    assert [(p["name"], p["orphaned"]) for p in past_plan] == [("Garden", True)]
     names = {c["name"] for c in (await api.get(f"{V1}/weekly/{PAST}/candidates")).json()}
     assert "Garden" not in names
     assert (await api.get(f"{V1}/connections/{env.connection_id}/containers")).status_code == 200
@@ -74,6 +80,40 @@ async def test_a_project_that_is_removed_is_marked_orphaned_and_keeps_everything
     assert tree.unsorted_count == 2  # Inbox and Taxes; an orphan is not "unsorted"
     await env.sync()  # a second sync keeps the mark and does not add a row
     assert len(await env.rows()) == 3
+
+
+async def test_an_orphaned_milestone_can_still_be_recommitted_and_parked_in_a_review(
+    env: ProjectsEnv, api: AsyncClient, world: FakeWorld
+) -> None:
+    await env.connect(Container("p2", "Garden"), Container("p3", "Taxes"), tasks={"p2": 1, "p3": 1})
+    await _label(env, "Garden", ProjectLabel.MILESTONE)
+    await _label(env, "Taxes", ProjectLabel.MILESTONE)
+    for name in ("Garden", "Taxes"):
+        found = (await api.get(f"{V1}/weekly/{PAST}/candidates")).json()
+        container = next(c["container_id"] for c in found if c["name"] == name)
+        await api.post(f"{V1}/weekly/{PAST}/projects", json={"container_id": container})
+    await api.post(f"{V1}/weekly/{PAST}/commit")
+    backend = world.tasks["default"]
+    backend.containers = [c for c in backend.containers if c.remote_id not in ("p2", "p3")]
+    await env.sync()
+    back = (await api.get(f"{V1}/weekly/{NEXT_WEEK}")).json()["look_back"]
+    ids = {p["name"]: p["id"] for p in back["projects"]}
+    reviewed = await api.post(
+        f"{V1}/weekly/reviews/{back['plan_id']}",
+        json={
+            "projects": [
+                {"plan_project_id": ids["Garden"], "decision": "recommit"},
+                {"plan_project_id": ids["Taxes"], "decision": "park"},
+            ]
+        },
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    entries = {
+        p["name"]: p for p in (await api.get(f"{V1}/weekly/{NEXT_WEEK}")).json()["plan"]["projects"]
+    }
+    assert set(entries) == {"Garden"}  # recommitted, with its stored name
+    assert entries["Garden"]["orphaned"] is True and entries["Garden"]["rollover_count"] == 1
+    assert (await api.get(f"{V1}/weekly/history")).status_code == 200
 
 
 async def _container(api: AsyncClient) -> str:

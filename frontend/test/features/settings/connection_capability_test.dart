@@ -91,4 +91,42 @@ void main() {
     expect(
         find.textContaining('Reading the whole project tree'), findsOneWidget);
   });
+
+  testWidgets(
+      'a task app that cannot move tasks is connected, and the user '
+      'is told what is lost', (tester) async {
+    await _pump(tester, {
+      'POST /connections': {'id': 'c1'},
+      'POST /connections/c1/check': {
+        'status': 'ok',
+        'capabilities': {
+          'missing_required': <Object?>[],
+          'optional': {'create_tasks': true, 'move_tasks': false},
+        },
+      },
+    });
+    await _addVikunja(tester);
+    expect(find.byKey(const Key('missing-capability')), findsNothing);
+    expect(find.byKey(const Key('connection-optional-note')), findsOneWidget);
+    expect(find.textContaining('cannot move tasks between projects'),
+        findsOneWidget);
+    expect(find.textContaining('Close and return tasks'), findsOneWidget);
+  });
+
+  testWidgets('a task app that can move tasks gets no extra note',
+      (tester) async {
+    await _pump(tester, {
+      'POST /connections': {'id': 'c1'},
+      'POST /connections/c1/check': {
+        'status': 'ok',
+        'capabilities': {
+          'missing_required': <Object?>[],
+          'optional': {'move_tasks': true},
+        },
+      },
+    });
+    await _addVikunja(tester);
+    expect(find.byKey(const Key('connection-optional-note')), findsNothing);
+    expect(find.textContaining('cannot move tasks'), findsNothing);
+  });
 }
