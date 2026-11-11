@@ -5,7 +5,9 @@ from tefteri.domain.classification import (
     effective_label,
     is_eligible,
     is_weekly_eligible,
+    label_of,
     parent_theme,
+    proposal_of,
     propose,
 )
 from tefteri.domain.enums import ProjectLabel
@@ -84,8 +86,28 @@ def test_an_orphaned_project_is_not_eligible() -> None:
 def test_a_maintenance_project_is_eligible_but_not_weekly_eligible() -> None:
     tree = nodes(ProjectNode("a", None, R), ProjectNode("b", "a", M))
     assert is_eligible(tree, "a") and not is_weekly_eligible(tree, "a")
-    # Only the project itself is a routine: what is inside it is judged on its own label.
-    assert is_weekly_eligible(tree, "b")
+    # Work inside a routine project is routine work, whatever its own label says.
+    assert not is_weekly_eligible(tree, "b")
+    assert is_eligible(tree, "b")
+
+
+def test_an_unclassified_project_inside_a_routine_is_proposed_as_routine() -> None:
+    tree = nodes(
+        ProjectNode("a", None, R), ProjectNode("b", "a", None), ProjectNode("c", "b", None)
+    )
+    for key in ("b", "c"):
+        proposal = proposal_of(tree, key)
+        assert (proposal.label, proposal.reason) == (R, "inside_routine")
+        assert not is_weekly_eligible(tree, key)
+    # The user can still choose another label for it.
+    tree = nodes(ProjectNode("a", None, R), ProjectNode("b", "a", T))
+    assert label_of(tree, "b") == T
+
+
+def test_a_loop_in_the_parent_links_does_not_make_the_routine_rule_loop() -> None:
+    tree = nodes(ProjectNode("a", "b", None), ProjectNode("b", "a", None))
+    assert proposal_of(tree, "a").label in (T, M)
+    assert is_weekly_eligible(tree, "a")
 
 
 def test_an_ignored_project_is_not_weekly_eligible() -> None:
