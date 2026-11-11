@@ -19,9 +19,8 @@ class ThemeRef {
   const ThemeRef({required this.id, required this.name});
 
   /// Parses `{"id", "name"}`, or null for no theme.
-  static ThemeRef? fromJson(Object? j) => j is Map
-      ? ThemeRef(id: '${j['id']}', name: '${j['name'] ?? ''}')
-      : null;
+  static ThemeRef? fromJson(Object? j) =>
+      j is Map ? ThemeRef(id: '${j['id']}', name: '${j['name'] ?? ''}') : null;
 
   /// Project id of the theme.
   final String id;
@@ -131,8 +130,7 @@ class WeeklyProject {
           for (final t in (j['committed_tasks'] as List? ?? const []))
             WeeklyTask.fromJson(t as Map<String, dynamic>),
         ],
-        milestoneId:
-            j['milestone_id'] == null ? null : '${j['milestone_id']}',
+        milestoneId: j['milestone_id'] == null ? null : '${j['milestone_id']}',
         doneState: _text(j['done_state']),
         milestoneState: j['milestone_state'] as String?,
         theme: ThemeRef.fromJson(j['theme']),
@@ -425,8 +423,7 @@ class LookBackProject {
         done: _int(j['done']),
         completed: j['completed'] == true,
         outcome: j['outcome'] as String?,
-        milestoneId:
-            j['milestone_id'] == null ? null : '${j['milestone_id']}',
+        milestoneId: j['milestone_id'] == null ? null : '${j['milestone_id']}',
         doneState: _text(j['done_state']),
         theme: ThemeRef.fromJson(j['theme']),
         milestoneState: j['milestone_state'] as String?,
@@ -745,9 +742,9 @@ class MilestoneCandidate {
         openTasks: _int(j['open_tasks']),
         carriedTasks: _int(j['carried_tasks']),
         selected: j['selected'] == true,
-        kind: j['unsorted'] == true ? 'unsorted' : '${j['kind'] ?? 'milestone'}',
-        milestoneId:
-            j['milestone_id'] == null ? null : '${j['milestone_id']}',
+        kind:
+            j['unsorted'] == true ? 'unsorted' : '${j['kind'] ?? 'milestone'}',
+        milestoneId: j['milestone_id'] == null ? null : '${j['milestone_id']}',
         doneState: _text(j['done_state']),
         state: '${j['state'] ?? 'active'}',
         theme: ThemeRef.fromJson(j['theme']),
@@ -867,7 +864,9 @@ class ThemeGroup {
 class WeeklyThemes {
   /// Creates the answer.
   const WeeklyThemes(
-      {this.focusKnown = false, this.themes = const [], this.unsortedCount = 0});
+      {this.focusKnown = false,
+      this.themes = const [],
+      this.unsortedCount = 0});
 
   /// Parses the answer.
   factory WeeklyThemes.fromJson(Map<String, dynamic> j) => WeeklyThemes(
@@ -904,13 +903,11 @@ class HistoryMilestone {
   });
 
   /// Parses an entry.
-  factory HistoryMilestone.fromJson(Map<String, dynamic> j) =>
-      HistoryMilestone(
+  factory HistoryMilestone.fromJson(Map<String, dynamic> j) => HistoryMilestone(
         name: '${j['name']}',
         done: j['done'] == true,
         decision: Decision.parse(j['decision']),
-        milestoneId:
-            j['milestone_id'] == null ? null : '${j['milestone_id']}',
+        milestoneId: j['milestone_id'] == null ? null : '${j['milestone_id']}',
         themeName: j['theme_name'] as String?,
         doneOn: _day(j['done_on']),
         rolloverCount: _int(j['rollover_count']),
@@ -1101,7 +1098,7 @@ class LookBackAnswer {
   /// Creates an answer.
   const LookBackAnswer({
     required this.projectId,
-    this.decision = Decision.decideLater,
+    this.decision,
     this.expected = false,
     this.markDone = false,
     this.archive = false,
@@ -1110,8 +1107,9 @@ class LookBackAnswer {
   /// Id of the milestone in its plan.
   final String projectId;
 
-  /// What happens to the milestone.
-  final Decision decision;
+  /// What happens to the milestone; null while the user has not chosen. It is
+  /// sent as `decide_later`, which changes nothing.
+  final Decision? decision;
 
   /// The rollover is expected (used with a recommit only).
   final bool expected;
@@ -1122,15 +1120,20 @@ class LookBackAnswer {
   /// Archive the project in the task app when the review is saved.
   final bool archive;
 
+  /// A copy with [decision] set (null clears it).
+  LookBackAnswer withDecision(Decision? decision) => LookBackAnswer(
+        projectId: projectId,
+        decision: decision,
+        expected: expected,
+        markDone: markDone,
+        archive: archive,
+      );
+
   /// A copy with some fields changed.
-  LookBackAnswer copyWith(
-          {Decision? decision,
-          bool? expected,
-          bool? markDone,
-          bool? archive}) =>
+  LookBackAnswer copyWith({bool? expected, bool? markDone, bool? archive}) =>
       LookBackAnswer(
         projectId: projectId,
-        decision: decision ?? this.decision,
+        decision: decision,
         expected: expected ?? this.expected,
         markDone: markDone ?? this.markDone,
         archive: archive ?? this.archive,
@@ -1139,7 +1142,7 @@ class LookBackAnswer {
   /// The JSON body of the review request.
   Map<String, Object?> toJson() => {
         'plan_project_id': projectId,
-        'decision': decision.api,
+        'decision': (decision ?? Decision.decideLater).api,
         'expected': decision == Decision.recommit && expected,
         'mark_done': markDone,
         'archive': archive,
@@ -1153,9 +1156,9 @@ class MovedTask {
   const MovedTask(this.taskId, this.title, {this.reason});
 
   /// Parses `{task_id, title, reason?}`.
-  factory MovedTask.fromJson(Map<String, dynamic> j) => MovedTask(
-      '${j['task_id']}', '${j['title'] ?? ''}',
-      reason: j['reason'] as String?);
+  factory MovedTask.fromJson(Map<String, dynamic> j) =>
+      MovedTask('${j['task_id']}', '${j['title'] ?? ''}',
+          reason: j['reason'] as String?);
 
   /// Task id.
   final String taskId;

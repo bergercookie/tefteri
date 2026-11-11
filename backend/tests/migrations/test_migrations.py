@@ -284,6 +284,124 @@ def test_0018_creates_the_project_label_tables(
         assert conn.exec_driver_sql("select count(*) from connections").scalar() == 1
 
 
+def test_0019_adds_the_milestone_tables_and_keeps_the_old_weekly_rows(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0018")
+    user = "11111111-1111-1111-1111-111111111111"
+    alembic_runner.insert_into("users", {"id": user} | _USER)
+    plan = "22222222-0000-0000-0000-000000000001"
+    alembic_runner.insert_into(
+        "weekly_plans",
+        {
+            "id": plan,
+            "user_id": user,
+            "week_start": date(2026, 11, 2),
+            "status": "committed",
+            "retro_skipped": False,
+            "reflection": "Kept it small.",
+            "reviewed_at": datetime(2026, 11, 9),
+        },
+    )
+    old = {
+        "plan_id": plan,
+        "committed_task_ids": ["t1"],
+        "parked_task_ids": [],
+        "position": 0,
+        "created_here": False,
+        "reviewed_committed": 2,
+        "reviewed_done": 1,
+    }
+    rows = [
+        old
+        | {
+            "id": "33333333-0000-0000-0000-000000000001",
+            "name": "A",
+            "outcome": "not_done",
+            "leftover_action": "carry",
+        },
+        old
+        | {
+            "id": "33333333-0000-0000-0000-000000000002",
+            "name": "B",
+            "outcome": "done",
+            "leftover_action": "backlog",
+        },
+        old
+        | {
+            "id": "33333333-0000-0000-0000-000000000003",
+            "name": "C",
+            "outcome": "done",
+            "leftover_action": None,
+        },
+    ]
+    for row in rows:
+        alembic_runner.insert_into("weekly_plan_projects", row)
+    columns = (
+        "id, plan_id, container_id, name, position, created_here, committed_task_ids, "
+        "parked_task_ids, outcome, leftover_action, reviewed_committed, reviewed_done"
+    )
+    with alembic_engine.connect() as conn:
+        before = conn.exec_driver_sql(
+            f"select {columns} from weekly_plan_projects order by name"
+        ).fetchall()
+
+    alembic_runner.migrate_up_to("0019")
+    insp = inspect(alembic_engine)
+    assert {"milestones", "milestone_rollovers", "milestone_closures"} <= set(
+        insp.get_table_names()
+    )
+    new_columns = {c["name"]: c for c in insp.get_columns("weekly_plan_projects")}
+    for name in (
+        "milestone_id",
+        "theme_project_id",
+        "theme_name",
+        "decision",
+        "expected_rollover",
+        "decided_at",
+    ):
+        assert new_columns[name]["nullable"], name
+        assert new_columns[name]["default"] is None, name
+    uniques = [set(u["column_names"]) for u in insp.get_unique_constraints("milestones")]
+    assert {"project_id"} in uniques
+    plan_uniques = [
+        set(u["column_names"]) for u in insp.get_unique_constraints("weekly_plan_projects")
+    ]
+    assert {"plan_id", "milestone_id"} in plan_uniques
+    assert {"plan_id", "container_id"} in plan_uniques
+    milestone_columns = {c["name"]: c for c in insp.get_columns("milestones")}
+    assert milestone_columns["done_state"]["nullable"] and milestone_columns["done_on"]["nullable"]
+    assert not milestone_columns["state"]["nullable"]
+    assert not {c["name"]: c for c in insp.get_columns("milestone_rollovers")}["expected"][
+        "nullable"
+    ]
+
+    with alembic_engine.connect() as conn:
+        after = conn.exec_driver_sql(
+            f"select {columns} from weekly_plan_projects order by name"
+        ).fetchall()
+        fresh = conn.exec_driver_sql(
+            "select milestone_id, theme_project_id, theme_name, decision, expected_rollover, "
+            "decided_at from weekly_plan_projects"
+        ).fetchall()
+    assert after == before  # no old column of an old row changed
+    assert fresh == [(None,) * 6] * 3  # and the new ones are empty: no backfill
+
+    alembic_runner.migrate_down_one()
+    insp = inspect(alembic_engine)
+    assert not {"milestones", "milestone_rollovers", "milestone_closures"} & set(
+        insp.get_table_names()
+    )
+    assert "decision" not in {c["name"] for c in insp.get_columns("weekly_plan_projects")}
+    with alembic_engine.connect() as conn:
+        assert (
+            conn.exec_driver_sql(
+                f"select {columns} from weekly_plan_projects order by name"
+            ).fetchall()
+            == before
+        )
+
+
 _USER = {
     "username": "sam",
     "password_hash": None,

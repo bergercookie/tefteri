@@ -2,22 +2,40 @@
   "components": {
     "schemas": {
       "AnswerIn": {
-        "description": "The decisions about one project of the earlier week.",
+        "additionalProperties": false,
+        "description": "The decision about one milestone of the earlier week.",
         "properties": {
           "archive": {
             "default": false,
             "title": "Archive",
             "type": "boolean"
           },
-          "finished_anyway": {
+          "decision": {
+            "anyOf": [
+              {
+                "enum": [
+                  "recommit",
+                  "park",
+                  "close",
+                  "decide_later"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "expected": {
             "default": false,
-            "title": "Finished Anyway",
+            "title": "Expected",
             "type": "boolean"
           },
-          "leftover": {
-            "default": "backlog",
-            "title": "Leftover",
-            "type": "string"
+          "mark_done": {
+            "default": false,
+            "title": "Mark Done",
+            "type": "boolean"
           },
           "plan_project_id": {
             "format": "uuid",
@@ -223,8 +241,34 @@
         "title": "CalendarItemOut",
         "type": "object"
       },
+      "CanCloseOut": {
+        "description": "Whether the open tasks can go back to the theme.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "available",
+          "reason"
+        ],
+        "title": "CanCloseOut",
+        "type": "object"
+      },
       "CandidateOut": {
-        "description": "A project the user can pick.",
+        "description": "A project the user can commit.",
         "properties": {
           "carried_tasks": {
             "title": "Carried Tasks",
@@ -244,9 +288,55 @@
             "title": "Container Id",
             "type": "string"
           },
+          "decision_open": {
+            "title": "Decision Open",
+            "type": "boolean"
+          },
+          "done_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done State"
+          },
+          "in_focus": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Focus"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "needs_rescope": {
+            "title": "Needs Rescope",
+            "type": "boolean"
           },
           "open_tasks": {
             "title": "Open Tasks",
@@ -256,9 +346,27 @@
             "title": "Path",
             "type": "string"
           },
+          "rollover_count": {
+            "title": "Rollover Count",
+            "type": "integer"
+          },
           "selected": {
             "title": "Selected",
             "type": "boolean"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__weekly__ThemeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "unsorted": {
             "default": false,
@@ -272,6 +380,15 @@
           "connection_name",
           "name",
           "path",
+          "kind",
+          "milestone_id",
+          "done_state",
+          "state",
+          "theme",
+          "in_focus",
+          "rollover_count",
+          "needs_rescope",
+          "decision_open",
           "open_tasks",
           "carried_tasks",
           "selected"
@@ -588,6 +705,138 @@
         "title": "ClassifiedConnectionOut",
         "type": "object"
       },
+      "CloseDoneOut": {
+        "description": "The result of a close that worked.",
+        "properties": {
+          "closure_id": {
+            "format": "uuid",
+            "title": "Closure Id",
+            "type": "string"
+          },
+          "milestone": {
+            "$ref": "#/components/schemas/MilestoneOut"
+          },
+          "moved": {
+            "title": "Moved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "milestone",
+          "moved",
+          "closure_id"
+        ],
+        "title": "CloseDoneOut",
+        "type": "object"
+      },
+      "CloseIn": {
+        "description": "Close a milestone and return its open tasks to the parent theme.",
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          }
+        },
+        "title": "CloseIn",
+        "type": "object"
+      },
+      "CloseOut": {
+        "description": "Whether the tasks of a milestone can go back to its theme.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "theme_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Name"
+          }
+        },
+        "required": [
+          "available",
+          "reason",
+          "open_tasks",
+          "theme_name"
+        ],
+        "title": "CloseOut",
+        "type": "object"
+      },
+      "ClosePreviewOut": {
+        "description": "What a close would do (``dry_run``).",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "theme": {
+            "$ref": "#/components/schemas/tefteri__api__routers__milestones__ThemeOut"
+          }
+        },
+        "required": [
+          "open_tasks",
+          "theme",
+          "message"
+        ],
+        "title": "ClosePreviewOut",
+        "type": "object"
+      },
+      "ClosureOut": {
+        "description": "The newest close of a milestone.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "moved": {
+            "title": "Moved",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "moved"
+        ],
+        "title": "ClosureOut",
+        "type": "object"
+      },
       "ConflictOut": {
         "description": "An unresolved conflict with both versions.",
         "properties": {
@@ -635,6 +884,10 @@
       "ConnectionCapabilitiesOut": {
         "description": "The optional features of the task app.",
         "properties": {
+          "move_tasks": {
+            "title": "Move Tasks",
+            "type": "boolean"
+          },
           "rename": {
             "title": "Rename",
             "type": "boolean"
@@ -646,7 +899,8 @@
         },
         "required": [
           "rename",
-          "restore"
+          "restore",
+          "move_tasks"
         ],
         "title": "ConnectionCapabilitiesOut",
         "type": "object"
@@ -1025,6 +1279,60 @@
           "note"
         ],
         "title": "DayView",
+        "type": "object"
+      },
+      "DoneIn": {
+        "description": "Mark a milestone done by hand.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          }
+        },
+        "title": "DoneIn",
+        "type": "object"
+      },
+      "DoneOut": {
+        "description": "The effect of marking a milestone done by hand.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "milestone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MilestoneOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open_tasks",
+          "message"
+        ],
+        "title": "DoneOut",
+        "type": "object"
+      },
+      "DoneStateIn": {
+        "description": "The new done-state.",
+        "properties": {
+          "done_state": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Done State",
+            "type": "string"
+          }
+        },
+        "title": "DoneStateIn",
         "type": "object"
       },
       "DueFilter": {
@@ -1624,15 +1932,71 @@
         "type": "object"
       },
       "HistoryProjectOut": {
-        "description": "A project of a reviewed week.",
+        "description": "A milestone of a reviewed week.",
         "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
           "done": {
             "title": "Done",
             "type": "boolean"
           },
+          "done_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done On"
+          },
+          "legacy": {
+            "default": false,
+            "title": "Legacy",
+            "type": "boolean"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "rollover_count": {
+            "default": 0,
+            "title": "Rollover Count",
+            "type": "integer"
+          },
+          "theme_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Name"
           }
         },
         "required": [
@@ -1796,6 +2160,9 @@
             "title": "Reviewed",
             "type": "boolean"
           },
+          "summary": {
+            "$ref": "#/components/schemas/SummaryOut"
+          },
           "week_start": {
             "format": "date",
             "title": "Week Start",
@@ -1807,14 +2174,25 @@
           "week_start",
           "reviewed",
           "reflection",
+          "summary",
           "projects"
         ],
         "title": "LookBackOut",
         "type": "object"
       },
       "LookBackProjectOut": {
-        "description": "How a project of the earlier week went.",
+        "description": "How a milestone of the earlier week went.",
         "properties": {
+          "close": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CloseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "color": {
             "anyOf": [
               {
@@ -1834,9 +2212,42 @@
             "title": "Completed",
             "type": "boolean"
           },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
           "done": {
             "title": "Done",
             "type": "integer"
+          },
+          "done_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done State"
+          },
+          "expected_rollover": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Rollover"
           },
           "id": {
             "format": "uuid",
@@ -1850,7 +2261,23 @@
             "title": "Leftover",
             "type": "array"
           },
-          "leftover_action": {
+          "legacy": {
+            "title": "Legacy",
+            "type": "boolean"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
+          },
+          "milestone_state": {
             "anyOf": [
               {
                 "type": "string"
@@ -1859,11 +2286,15 @@
                 "type": "null"
               }
             ],
-            "title": "Leftover Action"
+            "title": "Milestone State"
           },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "needs_rescope": {
+            "title": "Needs Rescope",
+            "type": "boolean"
           },
           "outcome": {
             "anyOf": [
@@ -1875,16 +2306,44 @@
               }
             ],
             "title": "Outcome"
+          },
+          "outside_focus": {
+            "title": "Outside Focus",
+            "type": "boolean"
+          },
+          "rollover_count": {
+            "title": "Rollover Count",
+            "type": "integer"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__weekly__ThemeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
+          "milestone_id",
           "name",
+          "done_state",
+          "theme",
+          "milestone_state",
           "committed",
           "done",
           "completed",
           "outcome",
-          "leftover_action",
+          "decision",
+          "expected_rollover",
+          "legacy",
+          "rollover_count",
+          "needs_rescope",
+          "outside_focus",
+          "close",
           "leftover"
         ],
         "title": "LookBackProjectOut",
@@ -1932,6 +2391,200 @@
           "password"
         ],
         "title": "MethodsResponse",
+        "type": "object"
+      },
+      "MilestoneIn": {
+        "description": "A new milestone under a theme.",
+        "properties": {
+          "done_state": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Done State",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "format": "uuid",
+            "title": "Parent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id",
+          "name"
+        ],
+        "title": "MilestoneIn",
+        "type": "object"
+      },
+      "MilestoneOut": {
+        "description": "A milestone project.",
+        "properties": {
+          "can_close": {
+            "$ref": "#/components/schemas/CanCloseOut"
+          },
+          "done_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done By"
+          },
+          "done_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done On"
+          },
+          "done_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done State"
+          },
+          "done_theme_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done Theme Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_closure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClosureOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "needs_rescope": {
+            "title": "Needs Rescope",
+            "type": "boolean"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "orphaned": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orphaned"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "rollover_count": {
+            "title": "Rollover Count",
+            "type": "integer"
+          },
+          "rollovers": {
+            "items": {
+              "$ref": "#/components/schemas/RolloverOut"
+            },
+            "title": "Rollovers",
+            "type": "array"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__milestones__ThemeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "done_state",
+          "state",
+          "theme",
+          "rollover_count",
+          "needs_rescope",
+          "done_on",
+          "done_theme_name",
+          "done_by",
+          "orphaned",
+          "rollovers",
+          "open_tasks",
+          "can_close",
+          "last_closure"
+        ],
+        "title": "MilestoneOut",
+        "type": "object"
+      },
+      "NotMovedBackOut": {
+        "description": "A task that could not be moved back by a reopen.",
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "title",
+          "reason"
+        ],
+        "title": "NotMovedBackOut",
         "type": "object"
       },
       "NoteOut": {
@@ -1987,6 +2640,26 @@
         "title": "NoteOut",
         "type": "object"
       },
+      "NudgeOut": {
+        "description": "A milestone that should be shrunk, split or closed.",
+        "properties": {
+          "milestone_id": {
+            "format": "uuid",
+            "title": "Milestone Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "milestone_id",
+          "name"
+        ],
+        "title": "NudgeOut",
+        "type": "object"
+      },
       "OrphanedOut": {
         "description": "A project that is no longer in the task app.",
         "properties": {
@@ -2016,6 +2689,26 @@
           "at"
         ],
         "title": "OrphanedOut",
+        "type": "object"
+      },
+      "PaceOut": {
+        "description": "Completed committed tasks of one local day.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "done"
+        ],
+        "title": "PaceOut",
         "type": "object"
       },
       "ParkedIn": {
@@ -2293,6 +2986,32 @@
         "title": "RenameIn",
         "type": "object"
       },
+      "ReopenOut": {
+        "description": "The result of a reopen. A task that did not move back never fails it.",
+        "properties": {
+          "milestone": {
+            "$ref": "#/components/schemas/MilestoneOut"
+          },
+          "moved_back": {
+            "title": "Moved Back",
+            "type": "integer"
+          },
+          "not_moved_back": {
+            "items": {
+              "$ref": "#/components/schemas/NotMovedBackOut"
+            },
+            "title": "Not Moved Back",
+            "type": "array"
+          }
+        },
+        "required": [
+          "milestone",
+          "moved_back",
+          "not_moved_back"
+        ],
+        "title": "ReopenOut",
+        "type": "object"
+      },
       "Resolution": {
         "description": "How the user resolved a conflict.",
         "enum": [
@@ -2330,7 +3049,7 @@
         "type": "object"
       },
       "ReviewIn": {
-        "description": "The look-back.",
+        "description": "The review.",
         "properties": {
           "projects": {
             "items": {
@@ -2378,92 +3097,6 @@
         "title": "ReviewItemOut",
         "type": "object"
       },
-      "ReviewOut": {
-        "description": "The review of one plan: a snapshot taken at ``generated_at``.",
-        "properties": {
-          "carried_over": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Carried Over",
-            "type": "array"
-          },
-          "completed_count": {
-            "title": "Completed Count",
-            "type": "integer"
-          },
-          "generated_at": {
-            "format": "date-time",
-            "title": "Generated At",
-            "type": "string"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ReviewItemOut"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "period_end": {
-            "format": "date",
-            "title": "Period End",
-            "type": "string"
-          },
-          "period_ended": {
-            "title": "Period Ended",
-            "type": "boolean"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
-          },
-          "plan_id": {
-            "format": "uuid",
-            "title": "Plan Id",
-            "type": "string"
-          },
-          "plan_title": {
-            "title": "Plan Title",
-            "type": "string"
-          },
-          "planned_count": {
-            "title": "Planned Count",
-            "type": "integer"
-          },
-          "retrospective": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NoteOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "plan_id",
-          "plan_title",
-          "period_type",
-          "period_start",
-          "period_end",
-          "period_ended",
-          "generated_at",
-          "planned_count",
-          "completed_count",
-          "items",
-          "carried_over",
-          "retrospective"
-        ],
-        "title": "ReviewOut",
-        "type": "object"
-      },
       "ReviewSummaryOut": {
         "description": "Counts of a stored review, for the plan history.",
         "properties": {
@@ -2492,6 +3125,32 @@
           "has_retrospective"
         ],
         "title": "ReviewSummaryOut",
+        "type": "object"
+      },
+      "RolloverOut": {
+        "description": "One recommit of a milestone.",
+        "properties": {
+          "expected": {
+            "title": "Expected",
+            "type": "boolean"
+          },
+          "from_week": {
+            "format": "date",
+            "title": "From Week",
+            "type": "string"
+          },
+          "to_week": {
+            "format": "date",
+            "title": "To Week",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_week",
+          "to_week",
+          "expected"
+        ],
+        "title": "RolloverOut",
         "type": "object"
       },
       "ScheduleIn": {
@@ -2612,26 +3271,65 @@
         "title": "SettingsPatch",
         "type": "object"
       },
-      "SubprojectIn": {
-        "description": "A new project under an existing one.",
+      "SummaryOut": {
+        "description": "The numbers of the review. Time spent is never measured.",
         "properties": {
-          "name": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
+          "committed_tasks": {
+            "title": "Committed Tasks",
+            "type": "integer"
           },
-          "parent_id": {
-            "format": "uuid",
-            "title": "Parent Id",
-            "type": "string"
+          "done_tasks": {
+            "title": "Done Tasks",
+            "type": "integer"
+          },
+          "focus_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus Share"
+          },
+          "milestones_committed": {
+            "title": "Milestones Committed",
+            "type": "integer"
+          },
+          "milestones_done": {
+            "title": "Milestones Done",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "pace": {
+            "items": {
+              "$ref": "#/components/schemas/PaceOut"
+            },
+            "title": "Pace",
+            "type": "array"
           }
         },
         "required": [
-          "parent_id",
-          "name"
+          "committed_tasks",
+          "done_tasks",
+          "milestones_committed",
+          "milestones_done",
+          "pace",
+          "focus_share",
+          "note"
         ],
-        "title": "SubprojectIn",
+        "title": "SummaryOut",
         "type": "object"
       },
       "SyncResultOut": {
@@ -2738,78 +3436,6 @@
           "last_sync_outcome"
         ],
         "title": "SyncStatusOut",
-        "type": "object"
-      },
-      "TaskIn": {
-        "description": "Data to create a task.",
-        "properties": {
-          "connection_id": {
-            "format": "uuid",
-            "title": "Connection Id",
-            "type": "string"
-          },
-          "container_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Container Id"
-          },
-          "description": {
-            "default": "",
-            "title": "Description",
-            "type": "string"
-          },
-          "due_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due At"
-          },
-          "goal_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Goal Id"
-          },
-          "labels": {
-            "items": {
-              "maxLength": 100,
-              "type": "string"
-            },
-            "maxItems": 20,
-            "title": "Labels",
-            "type": "array"
-          },
-          "title": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "connection_id",
-          "title"
-        ],
-        "title": "TaskIn",
         "type": "object"
       },
       "TaskOut": {
@@ -2998,6 +3624,87 @@
           }
         },
         "title": "TaskPatch",
+        "type": "object"
+      },
+      "ThemeGroupOut": {
+        "description": "A theme for the picker headers.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "container_id": {
+            "format": "uuid",
+            "title": "Container Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "in_focus": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Focus"
+          },
+          "milestones": {
+            "title": "Milestones",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "open_milestones": {
+            "title": "Open Milestones",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "container_id",
+          "connection_id",
+          "name",
+          "in_focus",
+          "milestones",
+          "open_milestones"
+        ],
+        "title": "ThemeGroupOut",
+        "type": "object"
+      },
+      "ThemesOut": {
+        "description": "The themes of the picker.",
+        "properties": {
+          "focus_known": {
+            "title": "Focus Known",
+            "type": "boolean"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeGroupOut"
+            },
+            "title": "Themes",
+            "type": "array"
+          },
+          "unsorted_count": {
+            "title": "Unsorted Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "focus_known",
+          "themes",
+          "unsorted_count"
+        ],
+        "title": "ThemesOut",
         "type": "object"
       },
       "TickIn": {
@@ -3345,6 +4052,26 @@
         "maxItems": 50,
         "type": "array"
       },
+      "tefteri__api__routers__milestones__ThemeOut": {
+        "description": "The parent theme of a milestone.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ThemeOut",
+        "type": "object"
+      },
       "tefteri__api__routers__planning__PlanOut": {
         "description": "A plan and the goals of its period.",
         "properties": {
@@ -3534,6 +4261,164 @@
         "title": "ProjectOut",
         "type": "object"
       },
+      "tefteri__api__routers__reviews__ReviewOut": {
+        "description": "The review of one plan: a snapshot taken at ``generated_at``.",
+        "properties": {
+          "carried_over": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Carried Over",
+            "type": "array"
+          },
+          "completed_count": {
+            "title": "Completed Count",
+            "type": "integer"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_ended": {
+            "title": "Period Ended",
+            "type": "boolean"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_type": {
+            "title": "Period Type",
+            "type": "string"
+          },
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "plan_title": {
+            "title": "Plan Title",
+            "type": "string"
+          },
+          "planned_count": {
+            "title": "Planned Count",
+            "type": "integer"
+          },
+          "retrospective": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "plan_id",
+          "plan_title",
+          "period_type",
+          "period_start",
+          "period_end",
+          "period_ended",
+          "generated_at",
+          "planned_count",
+          "completed_count",
+          "items",
+          "carried_over",
+          "retrospective"
+        ],
+        "title": "ReviewOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__tasks__TaskIn": {
+        "description": "Data to create a task.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "container_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Id"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "goal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Id"
+          },
+          "labels": {
+            "items": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Labels",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection_id",
+          "title"
+        ],
+        "title": "TaskIn",
+        "type": "object"
+      },
       "tefteri__api__routers__weekly__PlanOut": {
         "description": "The plan of one week.",
         "properties": {
@@ -3549,15 +4434,32 @@
             ],
             "title": "Committed At"
           },
+          "focus_known": {
+            "title": "Focus Known",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
-          "max_projects": {
+          "milestone_cap": {
             "default": 3,
-            "title": "Max Projects",
+            "title": "Milestone Cap",
             "type": "integer"
+          },
+          "milestone_count": {
+            "title": "Milestone Count",
+            "type": "integer"
+          },
+          "month": {
+            "format": "date",
+            "title": "Month",
+            "type": "string"
+          },
+          "over_cap": {
+            "title": "Over Cap",
+            "type": "boolean"
           },
           "projects": {
             "items": {
@@ -3580,13 +4482,17 @@
           "status",
           "committed_at",
           "retro_skipped",
+          "milestone_count",
+          "over_cap",
+          "month",
+          "focus_known",
           "projects"
         ],
         "title": "PlanOut",
         "type": "object"
       },
       "tefteri__api__routers__weekly__ProjectIn": {
-        "description": "The project to add.",
+        "description": "The milestone to add.",
         "properties": {
           "container_id": {
             "format": "uuid",
@@ -3601,7 +4507,7 @@
         "type": "object"
       },
       "tefteri__api__routers__weekly__ProjectOut": {
-        "description": "A project of the plan.",
+        "description": "A milestone of the plan.",
         "properties": {
           "color": {
             "anyOf": [
@@ -3637,6 +4543,17 @@
             "title": "Created Here",
             "type": "boolean"
           },
+          "done_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done State"
+          },
           "done_tasks": {
             "title": "Done Tasks",
             "type": "integer"
@@ -3646,16 +4563,70 @@
             "title": "Id",
             "type": "string"
           },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
+          },
+          "milestone_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone State"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "needs_rescope": {
+            "default": false,
+            "title": "Needs Rescope",
+            "type": "boolean"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
           },
           "open_tasks": {
             "title": "Open Tasks",
             "type": "integer"
           },
+          "orphaned": {
+            "default": false,
+            "title": "Orphaned",
+            "type": "boolean"
+          },
+          "outside_focus": {
+            "default": false,
+            "title": "Outside Focus",
+            "type": "boolean"
+          },
           "parked_tasks": {
             "title": "Parked Tasks",
+            "type": "integer"
+          },
+          "rollover_count": {
+            "default": 0,
+            "title": "Rollover Count",
             "type": "integer"
           },
           "scheduled_tasks": {
@@ -3668,6 +4639,16 @@
             },
             "title": "Tasks",
             "type": "array"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__weekly__ThemeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "url": {
             "anyOf": [
@@ -3695,6 +4676,77 @@
           "committed_tasks"
         ],
         "title": "ProjectOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__weekly__ReviewOut": {
+        "description": "The history after a review, with what the review changed besides the decisions.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntryOut"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "nudges": {
+            "items": {
+              "$ref": "#/components/schemas/NudgeOut"
+            },
+            "title": "Nudges",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HistoryTotalsOut"
+          }
+        },
+        "required": [
+          "entries",
+          "totals"
+        ],
+        "title": "ReviewOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__weekly__TaskIn": {
+        "description": "A new task under a milestone.",
+        "properties": {
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "TaskIn",
+        "type": "object"
+      },
+      "tefteri__api__routers__weekly__ThemeOut": {
+        "description": "A theme project: the id of its label row (as in the project API) and its name.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ThemeOut",
         "type": "object"
       }
     }
@@ -5166,6 +6218,262 @@
         ]
       }
     },
+    "/api/v1/milestones/{milestone_id}": {
+      "get": {
+        "description": "Return one milestone with its theme, rollovers and close options. 404 if not the user's.",
+        "operationId": "get_milestone_api_v1_milestones__milestone_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Milestone",
+        "tags": [
+          "milestones"
+        ]
+      },
+      "patch": {
+        "description": "Set or change the done-state (422 ``done_state_required`` when blank).",
+        "operationId": "set_done_state_api_v1_milestones__milestone_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DoneStateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Done State",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
+    "/api/v1/milestones/{milestone_id}/close": {
+      "post": {
+        "description": "Close a milestone and move its open tasks to the parent theme.\n\n``dry_run`` says how many tasks would move. ``confirm`` moves them one by one and closes the\nmilestone after the last one. Neither is 422 ``confirm_required``. A failure part way is a\n502 that lists the tasks already moved (``moved``) and ``remaining``. Calling again finishes.",
+        "operationId": "close_milestone_api_v1_milestones__milestone_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClosePreviewOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CloseDoneOut"
+                    }
+                  ],
+                  "title": "Response Close Milestone Api V1 Milestones  Milestone Id  Close Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Milestone",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
+    "/api/v1/milestones/{milestone_id}/done": {
+      "post": {
+        "description": "Mark a milestone done by hand. Open tasks stay where they are.\n\nThe done day is today of the user. 422 ``not_unfinished`` if it is done or closed already.",
+        "operationId": "mark_done_api_v1_milestones__milestone_id__done_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Done",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
+    "/api/v1/milestones/{milestone_id}/reopen": {
+      "post": {
+        "description": "Make a closed or done milestone active again.\n\nA closed milestone gets back the tasks of its newest close that were not changed since. The\nothers are listed, and the reopen still works.",
+        "operationId": "reopen_milestone_api_v1_milestones__milestone_id__reopen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReopenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reopen Milestone",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
     "/api/v1/notes": {
       "get": {
         "description": "List the notes that tefteri created or opened (the note app is not copied).",
@@ -5476,7 +6784,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReviewOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__reviews__ReviewOut"
                 }
               }
             },
@@ -5530,7 +6838,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReviewOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__reviews__ReviewOut"
                 }
               }
             },
@@ -6107,7 +7415,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TaskIn"
+                "$ref": "#/components/schemas/tefteri__api__routers__tasks__TaskIn"
               }
             }
           },
@@ -6952,7 +8260,7 @@
     },
     "/api/v1/weekly/history": {
       "get": {
-        "description": "List the reviewed weeks: projects committed to versus projects done.",
+        "description": "List the reviewed weeks: milestones committed to versus milestones done.\n\nA decision shows under the new names, also for an old week (``carry`` as ``recommit``,\n``backlog`` as ``park``).",
         "operationId": "history_api_v1_weekly_history_get",
         "responses": {
           "200": {
@@ -6974,7 +8282,7 @@
     },
     "/api/v1/weekly/reviews/{plan_id}": {
       "post": {
-        "description": "Store the look-back at a week and return the history, with that week in it.",
+        "description": "Store the review of a week and return the history, with that week in it.\n\nEach unfinished milestone gets a decision (no answer means ``decide_later``). The answer\nlists ``notices`` and, for a recommit that now needs re-scoping, ``nudges``.",
         "operationId": "review_api_v1_weekly_reviews__plan_id__post",
         "parameters": [
           {
@@ -7003,7 +8311,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HistoryOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__weekly__ReviewOut"
                 }
               }
             },
@@ -7072,7 +8380,7 @@
     },
     "/api/v1/weekly/{day}/candidates": {
       "get": {
-        "description": "List the projects the user can pick, projects with carried-over tasks first.",
+        "description": "List the projects the user may commit: milestones and unsorted leaf projects.\n\nThemes, maintenance, ignored and orphaned projects are never listed. A project that is\nalready in the plan has ``selected`` set.",
         "operationId": "candidates_api_v1_weekly__day__candidates_get",
         "parameters": [
           {
@@ -7120,7 +8428,7 @@
     },
     "/api/v1/weekly/{day}/commit": {
       "post": {
-        "description": "Commit the plan: the tasks planned for the week are what the look-back measures.",
+        "description": "Commit the plan: the tasks planned for the week are what the review measures.\n\nA plan with no milestone can be committed.",
         "operationId": "commit_api_v1_weekly__day__commit_post",
         "parameters": [
           {
@@ -7162,9 +8470,63 @@
         ]
       }
     },
+    "/api/v1/weekly/{day}/milestones": {
+      "post": {
+        "description": "Create a milestone under a theme in the task app, label it and add it to the week.\n\n422 ``done_state_required`` for a blank done-state, before the task app is called. Nothing\nis recorded when the task app fails (409 ``not_supported`` or 502).",
+        "operationId": "create_milestone_api_v1_weekly__day__milestones_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MilestoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Milestone",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
     "/api/v1/weekly/{day}/projects": {
       "post": {
-        "description": "Add a project to the week (at most three).",
+        "description": "Add a milestone to the week. There is no limit: more than three only warns.\n\nA project with no label is labelled milestone first. 422 ``not_a_milestone`` for a theme\nor a project with subprojects, 422 ``not_eligible`` for a project that may not be planned.",
         "operationId": "add_project_api_v1_weekly__day__projects_post",
         "parameters": [
           {
@@ -7265,6 +8627,70 @@
           }
         },
         "summary": "Remove Project",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/projects/{plan_project_id}/tasks": {
+      "post": {
+        "description": "Create a task under a milestone of the plan in the task app.\n\nThe task is not committed until it has a day. A committed plan refuses it (422).",
+        "operationId": "add_task_api_v1_weekly__day__projects__plan_project_id__tasks_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "plan_project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/tefteri__api__routers__weekly__TaskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Task",
         "tags": [
           "weekly planning"
         ]
@@ -7490,63 +8916,9 @@
         ]
       }
     },
-    "/api/v1/weekly/{day}/subprojects": {
-      "post": {
-        "description": "Create a project under an existing one in the task app and add it to the week.",
-        "operationId": "create_subproject_api_v1_weekly__day__subprojects_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "day",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "title": "Day",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SubprojectIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeeklyStateOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Subproject",
-        "tags": [
-          "weekly planning"
-        ]
-      }
-    },
     "/api/v1/weekly/{day}/tasks/{task_id}/parked": {
       "put": {
-        "description": "Set a task aside for this plan, or put it back. The task app is not touched.",
+        "description": "Set a task aside for this plan (\"not this week\"), or put it back. The task app stays as is.",
         "operationId": "park_task_api_v1_weekly__day__tasks__task_id__parked_put",
         "parameters": [
           {
@@ -7603,6 +8975,50 @@
           }
         },
         "summary": "Park Task",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/{day}/themes": {
+      "get": {
+        "description": "List the live themes for the picker headers, focus themes first when focus data exists.",
+        "operationId": "themes_api_v1_weekly__day__themes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Themes",
         "tags": [
           "weekly planning"
         ]

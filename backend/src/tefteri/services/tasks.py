@@ -13,7 +13,7 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
 from tefteri.db.repositories.items import TaskRepository
-from tefteri.domain.entities import RemoteTask, TaskDraft, TaskPatch
+from tefteri.domain.entities import Container, RemoteTask, TaskDraft, TaskPatch
 from tefteri.domain.enums import Capability, ConnectionKind, SyncState
 from tefteri.domain.errors import NotSupported
 from tefteri.domain.planning_time import (
@@ -242,6 +242,31 @@ class TaskService:
         await guard(connection, (await self._backend(db, connection)).delete_task(task.remote_id))
         await TaskRepository(db, user_id).delete(task)
 
+    async def move_to_container(
+        self, db: AsyncSession, user_id: uuid.UUID, task: Task, container: SourceContainer
+    ) -> Task:
+        """Move a task to another project in the task app, then in the cache (spec 004).
+
+        The cache changes only after the app answered, so a refused move leaves both as they
+        were. The app needs the capability ``MOVE_TASKS``.
+        """
+        connection = await self._connection_of(db, user_id, task)
+        backend = await self._backend(db, connection)
+        if Capability.MOVE_TASKS not in backend.capabilities():
+            await guard(connection, _raise_unsupported(Capability.MOVE_TASKS))
+        remote = await guard(
+            connection,
+            backend.move_task(
+                task.remote_id,
+                Container(container.remote_id, container.name, container.parent_remote_id),
+                task.remote_version,
+            ),
+        )
+        task.container_id = container.id
+        self._apply(task, remote)
+        await db.flush()
+        return task
+
     async def schedule_at(
         self, db: AsyncSession, user_id: uuid.UUID, task: Task, start: datetime
     ) -> tuple[Task, list[CalendarEntry]]:
@@ -286,7 +311,7 @@ class TaskService:
         connection = await self._connection_of(db, user_id, task)
         backend = await self._backend(db, connection)
         if Capability.TASK_TIME not in backend.capabilities():
-            await guard(connection, _raise_unsupported())
+            await guard(connection, _raise_unsupported(Capability.TASK_TIME))
         try:
             remote = await guard(
                 connection,
@@ -345,5 +370,5 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
-async def _raise_unsupported() -> None:
-    raise NotSupported(Capability.TASK_TIME)
+async def _raise_unsupported(capability: Capability) -> None:
+    raise NotSupported(capability)

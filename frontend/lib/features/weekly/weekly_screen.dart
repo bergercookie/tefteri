@@ -1,5 +1,5 @@
 /// The weekly planning session: a checklist that leads through looking back,
-/// choosing up to three projects, giving their tasks a day, and committing.
+/// choosing milestones, giving their tasks a day, and committing.
 library;
 
 import 'dart:async';
@@ -28,8 +28,8 @@ enum WeeklyStep {
   /// Evaluate the week before.
   lookBack('Look back', 'How did last week go?'),
 
-  /// Pick up to three projects.
-  projects('Choose projects', 'Up to three for the week'),
+  /// Pick the milestones of the week.
+  projects('Choose milestones', 'What you want to finish'),
 
   /// Give the tasks a day.
   tasks('Give tasks a day', 'Spread the work over the week'),
@@ -143,6 +143,10 @@ class _WeeklyPlanningScreenState extends ConsumerState<WeeklyPlanningScreen> {
     return message == null;
   }
 
+  Future<String?> _tryRun(Future<dynamic> Function(WeeklyApi api) call) => ref
+      .read(weeklyStateProvider(_key).notifier)
+      .apply((api) async => await call(api) as WeeklyState);
+
   Future<void> _setDay(String taskId, DateTime? day) async {
     final message =
         await ref.read(weeklyStateProvider(_key).notifier).setDay(taskId, day);
@@ -157,6 +161,7 @@ class _WeeklyPlanningScreenState extends ConsumerState<WeeklyPlanningScreen> {
   WeeklyActions get _actions => WeeklyActions(
         week: _key,
         run: _run,
+        tryRun: _tryRun,
         setDay: _setDay,
         openUrl: (url) => ref.read(openUrlProvider)(Uri.parse(url)),
         changePlan: () => _run((api) => api.reopen(_key)),
@@ -397,7 +402,7 @@ String _detail(WeeklyStep step, WeeklyState s) {
       return step.hint;
     case WeeklyStep.projects:
       final n = plan?.projects.length ?? 0;
-      return n == 0 ? step.hint : '$n of ${plan?.maxProjects ?? 3} chosen';
+      return n == 0 ? step.hint : '${plural(n, 'milestone')} chosen';
     case WeeklyStep.tasks:
       if (plan == null || plan.projects.isEmpty) return step.hint;
       return '${plan.plannedTasks} of ${plan.openTasks} have a day';

@@ -28,7 +28,7 @@ from tefteri.domain.entities import (
     TaskPatch,
 )
 from tefteri.domain.enums import Capability, ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import AuthExpired, BackendUnavailable, NotSaved, RemoteConflict
 from tefteri.domain.ports import Backend, CalendarBackend, NoteBackend, TaskBackend
 from tests.fakes.http import FakeGoogleCalendar, FakeTrilium, FakeVikunja
 from tests.fakes.memory import FakeCalendarBackend, FakeNoteBackend, FakeTaskBackend
@@ -239,6 +239,62 @@ async def test_a_refused_rename_or_restore_changes_nothing(
     subject.switches.unavailable = False
     names = {c.remote_id: c.name for c in await tasks.list_containers()}
     assert names[created.remote_id] == "Garden"
+
+
+async def test_a_task_moves_to_another_project_and_keeps_its_identity(
+    tasks: TaskBackend,
+) -> None:
+    if Capability.MOVE_TASKS not in tasks.capabilities():
+        pytest.skip("the app cannot move tasks")
+    first = (await tasks.list_containers())[0]
+    other = await tasks.create_container("Garden", None)
+    task = await tasks.create_task(TaskDraft(first.remote_id, "Rake leaves"))
+    moved = await tasks.move_task(task.remote_id, other, task.version)
+    assert (moved.remote_id, moved.title) == (task.remote_id, "Rake leaves")
+    assert moved.container_id == other.remote_id
+    assert [t.remote_id for t in (await tasks.list_tasks(other, None)).items] == [task.remote_id]
+    assert (await tasks.list_tasks(first, None)).items == []
+    assert (await tasks.get_task(task.remote_id)).container_id == other.remote_id
+    # The new version is the one the next write needs.
+    back = await tasks.move_task(task.remote_id, first, moved.version)
+    assert back.container_id == first.remote_id
+
+
+@pytest.mark.parametrize("name", sorted(TASK_FACTORIES))
+async def test_a_refused_move_raises_and_changes_nothing(
+    name: str, http: tuple[Any, httpx.AsyncClient]
+) -> None:
+    subject = TASK_FACTORIES[name](*http)
+    tasks = subject.backend
+    if Capability.MOVE_TASKS not in tasks.capabilities():
+        pytest.skip("the app cannot move tasks")
+    first = (await tasks.list_containers())[0]
+    other = await tasks.create_container("Garden", None)
+    task = await tasks.create_task(TaskDraft(first.remote_id, "Rake leaves"))
+    subject.switches.unavailable = True
+    with pytest.raises(BackendUnavailable):
+        await tasks.move_task(task.remote_id, other, task.version)
+    subject.switches.unavailable = False
+    assert (await tasks.get_task(task.remote_id)).container_id == first.remote_id
+    # A move that the app keeps from happening is an error too, not a silent success.
+    switches: Any = subject.switches
+    switches.ignore_moves = True
+    with pytest.raises(NotSaved):
+        await tasks.move_task(task.remote_id, other, task.version)
+    switches.ignore_moves = False
+    assert (await tasks.get_task(task.remote_id)).container_id == first.remote_id
+
+
+async def test_a_move_with_a_stale_version_raises_conflict(tasks: TaskBackend) -> None:
+    if Capability.MOVE_TASKS not in tasks.capabilities():
+        pytest.skip("the app cannot move tasks")
+    first = (await tasks.list_containers())[0]
+    other = await tasks.create_container("Garden", None)
+    task = await tasks.create_task(TaskDraft(first.remote_id, "Rake leaves"))
+    await tasks.update_task(task.remote_id, TaskPatch(title="Rake"), task.version)
+    with pytest.raises(RemoteConflict):
+        await tasks.move_task(task.remote_id, other, task.version)
+    assert (await tasks.get_task(task.remote_id)).container_id == first.remote_id
 
 
 async def test_calendar_crud(calendar: CalendarBackend) -> None:

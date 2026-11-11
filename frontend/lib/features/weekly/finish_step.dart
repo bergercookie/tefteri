@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
+import 'cap_notice.dart';
+import 'rescope_nudge.dart';
 import 'weekly_models.dart';
 import 'weekly_widgets.dart';
 
@@ -35,22 +37,10 @@ class FinishStep extends StatelessWidget {
     final plan = state.plan;
     final text = Theme.of(context).textTheme;
     final colors = context.tefteri;
-    if (plan == null || plan.projects.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const StepHeading(title: 'Your week'),
-          const EmptyState(
-            icon: Icons.folder_open_outlined,
-            messageKey: Key('finish-no-projects'),
-            message: 'Choose a project first.',
-          ),
-          StepFooter(
-              nextLabel: 'Commit the plan', onNext: null, onBack: onBack),
-        ],
-      );
-    }
-    final committed = plan.committed;
+    final committed = plan?.committed ?? false;
+    final projects = plan?.projects ?? const <WeeklyProject>[];
+    final plannedTasks = plan?.plannedTasks ?? 0;
+    final unscheduled = plan?.unscheduledTasks ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -59,7 +49,8 @@ class FinishStep extends StatelessWidget {
           subtitle: committed
               ? 'When you plan the following week, you look back at this '
                   'plan and see how much of it you finished.'
-              : 'Check the plan. When it looks right, commit it.',
+              : 'Check the plan. When it looks right, commit it. A week with '
+                  'no milestone is fine too.',
         ),
         Card(
           child: Padding(
@@ -68,41 +59,48 @@ class FinishStep extends StatelessWidget {
               children: [
                 Counter(
                     key: const Key('total-projects'),
-                    label: noun(plan.projects.length, 'project'),
-                    value: plan.projects.length),
+                    label: noun(projects.length, 'milestone'),
+                    value: projects.length),
                 const SizedBox(width: Space.xl),
                 Counter(
                     key: const Key('total-tasks'),
                     label: committed
-                        ? (plan.committedCount == 1
+                        ? (plan!.committedCount == 1
                             ? 'task committed'
                             : 'tasks committed')
-                        : (plan.plannedTasks == 1 ? 'task' : 'tasks'),
-                    value: committed ? plan.committedCount : plan.plannedTasks,
+                        : (plannedTasks == 1 ? 'task' : 'tasks'),
+                    value: committed ? plan!.committedCount : plannedTasks,
                     accent: colors.task),
                 if (committed) ...[
                   const SizedBox(width: Space.xl),
                   Counter(
                       key: const Key('total-done'),
                       label: 'done so far',
-                      value: plan.committedDone,
+                      value: plan!.committedDone,
                       accent: colors.done),
                 ],
               ],
             ),
           ),
         ),
+        CapNotice(count: projects.length, cap: plan?.milestoneCap ?? 3),
         const SizedBox(height: Space.sm),
-        for (final p in plan.projects) _group(context, p, committed: committed),
-        if (plan.unscheduledTasks > 0 && !committed)
+        if (projects.isEmpty)
+          const EmptyState(
+            icon: Icons.folder_open_outlined,
+            messageKey: Key('finish-no-projects'),
+            message: 'No milestones this week. You can commit it like this.',
+          ),
+        for (final p in projects) _group(context, p, committed: committed),
+        if (unscheduled > 0 && !committed)
           Padding(
             padding: const EdgeInsets.only(top: Space.sm),
             child: Notice(
               key: const Key('unscheduled-warning'),
               icon: Icons.info_outline,
-              message: '${plural(plan.unscheduledTasks, 'open task')} in these '
-                  'projects ${plan.unscheduledTasks == 1 ? 'has' : 'have'} no '
-                  'day. ${plan.unscheduledTasks == 1 ? 'It is' : 'They are'} '
+              message: '${plural(unscheduled, 'open task')} in these '
+                  'milestones ${unscheduled == 1 ? 'has' : 'have'} no '
+                  'day. ${unscheduled == 1 ? 'It is' : 'They are'} '
                   'not part of this week\'s plan.',
               actions: [
                 OutlinedButton(
@@ -152,20 +150,26 @@ class FinishStep extends StatelessWidget {
               ),
               FilledButton(
                 key: const Key('commit'),
-                onPressed: plan.plannedTasks == 0
-                    ? null
-                    : () => actions.run((api) => api.commit(actions.week)),
+                onPressed: () => actions.run((api) async {
+                  // A week with no milestone has no plan yet. It can still be
+                  // committed, so the plan is started first.
+                  if (plan == null) await api.start(actions.week);
+                  return api.commit(actions.week);
+                }),
                 child: const Text('Commit the plan'),
               ),
             ],
           ),
-        if (!committed && plan.plannedTasks == 0)
+        if (!committed && projects.isNotEmpty && plannedTasks == 0)
           Padding(
             padding: const EdgeInsets.only(top: Space.xs),
             child: Align(
               alignment: Alignment.centerRight,
-              child: Text('Give at least one task a day to commit.',
-                  key: const Key('commit-hint'), style: text.bodySmall),
+              child: Text(
+                  'No task has a day yet. You can commit anyway, but then '
+                  'the week has no committed tasks.',
+                  key: const Key('commit-hint'),
+                  style: text.bodySmall),
             ),
           ),
       ],
@@ -197,6 +201,21 @@ class FinishStep extends StatelessWidget {
                     key: Key('summary-count-${p.id}'), style: text.titleSmall),
               ],
             ),
+            if (p.doneState != null)
+              Text('Done when: ${p.doneState}',
+                  key: Key('summary-done-state-${p.id}'),
+                  style: text.bodyMedium),
+            if (p.outsideFocus)
+              const Padding(
+                padding: EdgeInsets.only(top: Space.xs),
+                child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutsideFocusTag(show: true)),
+              ),
+            RescopeNudge(
+                show: p.needsRescope,
+                name: p.name,
+                nudgeKey: Key('summary-rescope-${p.id}')),
             const SizedBox(height: Space.xs),
             if (planned.isEmpty)
               Text('No task has a day yet.', style: text.bodySmall),

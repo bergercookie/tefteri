@@ -36,7 +36,11 @@ class CommitKind(StrEnum):
 
 
 def commit_kind(
-    nodes: Mapping[str, ProjectNode], key: str, state: MilestoneState | None = None
+    nodes: Mapping[str, ProjectNode],
+    key: str,
+    state: MilestoneState | None = None,
+    *,
+    has_children: bool | None = None,
 ) -> CommitKind | None:
     """Return how the picker offers a project, or ``None`` when it must not offer it.
 
@@ -44,7 +48,8 @@ def commit_kind(
     maintenance, not inside a routine or an ignored project. A project with the stored label
     ``milestone`` is offered when its ``state`` is not ``closed`` or ``done``. A project with no
     stored label is offered when it has no live subproject: choosing it labels it milestone. A
-    theme, and a project with no label that has subprojects, are never offered.
+    theme, and a project with no label that has subprojects, are never offered. A caller that
+    asks about many projects can pass ``has_children`` to save a scan of the tree.
     """
     if not is_weekly_eligible(nodes, key):
         return None
@@ -53,11 +58,13 @@ def commit_kind(
     label = nodes[key].label
     if label is ProjectLabel.MILESTONE:
         return CommitKind.MILESTONE
-    if label is None and not any(
-        n.parent_key == key and not n.orphaned and n.key != key for n in nodes.values()
-    ):
-        return CommitKind.LABEL_THEN_COMMIT
-    return None
+    if label is not None:
+        return None
+    if has_children is None:
+        has_children = any(
+            n.parent_key == key and not n.orphaned and n.key != key for n in nodes.values()
+        )
+    return None if has_children else CommitKind.LABEL_THEN_COMMIT
 
 
 def decision_of(decision: str | None, leftover_action: str | None) -> ReviewDecision | None:

@@ -5,6 +5,7 @@ from tefteri.db.models.checklist import ChecklistProgress
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.goal import Goal, Plan
 from tefteri.db.models.links import TaskNoteLink
+from tefteri.db.models.milestone import Milestone, MilestoneClosure, MilestoneRollover
 from tefteri.db.models.note import Note
 from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
 from tefteri.db.models.review import PeriodReview
@@ -20,6 +21,9 @@ __all__ = [
     "Conflict",
     "Connection",
     "Goal",
+    "Milestone",
+    "MilestoneClosure",
+    "MilestoneRollover",
     "Note",
     "PeriodReview",
     "Plan",

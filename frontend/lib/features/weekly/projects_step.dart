@@ -1,4 +1,4 @@
-/// Step 2: choose up to three projects, or create a subproject.
+/// Step 2: choose the milestones of the week, or create a milestone.
 library;
 
 import 'package:flutter/material.dart';
@@ -7,12 +7,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_error.dart';
 import '../../theme/theme.dart';
 import '../projects/rename_dialog.dart';
-import '../projects/unsorted_card.dart';
+import '../projects/term_hint.dart';
+import 'cap_notice.dart';
+import 'inline_add_task.dart';
+import 'milestone_picker.dart';
+import 'new_milestone_dialog.dart';
+import 'rescope_nudge.dart';
 import 'weekly_api.dart';
 import 'weekly_models.dart';
 import 'weekly_widgets.dart';
 
-/// Lets the user pick the projects of the week and add a new subproject.
+/// Lets the user pick the milestones of the week and create a new one.
 class ProjectsStep extends ConsumerStatefulWidget {
   /// Creates the step.
   const ProjectsStep({
@@ -40,27 +45,27 @@ class ProjectsStep extends ConsumerStatefulWidget {
 }
 
 class _ProjectsStepState extends ConsumerState<ProjectsStep> {
-  String _query = '';
-
   WeeklyPlan? get _plan => widget.state.plan;
   bool get _locked => _plan?.committed ?? false;
-  int get _max => _plan?.maxProjects ?? 3;
-  int get _count => _plan?.projects.length ?? 0;
-  bool get _full => _count >= _max;
 
-  Future<void> _add(WeeklyCandidate c) async {
+  void _refreshPicker() {
+    ref.invalidate(weeklyCandidatesProvider);
+    ref.invalidate(weeklyThemesProvider);
+  }
+
+  Future<void> _add(MilestoneCandidate c) async {
     await widget.actions
         .run((api) => api.addProject(widget.actions.week, c.containerId));
-    ref.invalidate(weeklyCandidatesProvider);
+    _refreshPicker();
   }
 
   Future<void> _remove(WeeklyProject p) async {
     await widget.actions
         .run((api) => api.removeProject(widget.actions.week, p.id));
-    ref.invalidate(weeklyCandidatesProvider);
+    _refreshPicker();
   }
 
-  Future<void> _archive(WeeklyCandidate c) async {
+  Future<void> _archive(MilestoneCandidate c) async {
     final sure = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -87,77 +92,116 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
       await api.archiveProject(c.connectionId, c.containerId);
       return api.state(widget.actions.week);
     });
-    ref.invalidate(weeklyCandidatesProvider);
+    _refreshPicker();
   }
 
-  Future<void> _newSubproject(
-      List<WeeklyCandidate> all, String? parentId) async {
-    final result = await showDialog<({String parent, String name})>(
+  Future<void> _newMilestone(List<ThemeGroup> themes, ThemeGroup? under) async {
+    final usable = [
+      for (final t in themes)
+        if (t.containerId.isNotEmpty) t,
+    ];
+    if (usable.isEmpty) return;
+    await showDialog<bool>(
       context: context,
-      builder: (_) =>
-          NewSubprojectDialog(candidates: all, initialParent: parentId),
+      builder: (_) => NewMilestoneDialog(
+        themes: usable,
+        initialParent: under?.containerId,
+        save: (m) => ref
+            .read(weeklyStateProvider(widget.actions.week).notifier)
+            .apply((api) => api.createMilestone(
+                widget.actions.week, m.parentId, m.name, m.doneState)),
+      ),
     );
-    if (result == null) return;
-    await widget.actions.run((api) =>
-        api.createSubproject(widget.actions.week, result.parent, result.name));
-    ref.invalidate(weeklyCandidatesProvider);
+    _refreshPicker();
   }
 
   @override
   Widget build(BuildContext context) {
-    final candidates = ref.watch(weeklyCandidatesProvider(widget.actions.week));
+    final week = widget.actions.week;
+    final candidates = ref.watch(weeklyCandidatesProvider(week));
+    final themes = ref.watch(weeklyThemesProvider(week));
     final projects = _plan?.projects ?? const <WeeklyProject>[];
+    final text = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        StepHeading(
-          title: 'Choose up to $_max projects',
-          subtitle: 'Pick what you want to move forward this week. '
-              'Fewer projects means more of them get done.',
+        const StepHeading(
+          title: 'Choose milestones',
+          subtitle: 'A milestone is a small project you can finish in about '
+              'a week. Pick what you want to move forward this week. '
+              'Fewer milestones usually means more of them get done.',
         ),
-        Text('$_count of $_max chosen',
-            key: const Key('chosen-count'),
-            style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          projects.isEmpty
+              ? 'No milestones chosen yet'
+              : '${plural(projects.length, 'milestone')} chosen',
+          key: const Key('chosen-count'),
+          style: text.titleSmall,
+        ),
+        CapNotice(count: projects.length, cap: _plan?.milestoneCap ?? 3),
         const SizedBox(height: Space.sm),
-        for (var i = 0; i < _max; i++)
-          i < projects.length
-              ? _chosen(context, projects[i])
-              : _emptySlot(context, i),
+        for (final p in projects) _chosen(context, p),
+        if (projects.any((p) => p.outsideFocus))
+          const TermHint(
+            id: 'weekly-outside-focus',
+            title: 'Outside focus',
+            compact: true,
+            terms: outsideFocusTerms,
+          ),
         const SizedBox(height: Space.lg),
         candidates.when(
           loading: () => const Padding(
               padding: EdgeInsets.all(Space.xl), child: Loading()),
-          error: (e, _) =>
+          error: (e, _) => Column(
+            children: [
               Text(apiErrorMessage(e), key: const Key('candidates-error')),
-          data: (all) => _picker(context, all),
+              TextButton(
+                key: const Key('candidates-retry'),
+                onPressed: _refreshPicker,
+                child: const Text('Try again'),
+              ),
+            ],
+          ),
+          data: (all) {
+            final t = themes.valueOrNull;
+            return MilestonePicker(
+              candidates: all,
+              themes: t,
+              chosenContainerIds: {
+                for (final p in projects)
+                  if (p.containerId != null) p.containerId!,
+                for (final c in all)
+                  if (c.selected) c.containerId,
+              },
+              locked: _locked,
+              onAdd: _add,
+              onArchive: _archive,
+              onNewMilestone: (under) =>
+                  _newMilestone(t?.themes ?? const [], under),
+              onCreateTheme: () async {
+                final made = await createTheme(context, ref);
+                if (made) _refreshPicker();
+              },
+            );
+          },
         ),
         StepFooter(
           onBack: widget.onBack,
           nextLabel: 'Give tasks a day',
-          onNext: _count == 0 ? null : widget.onNext,
-          hint: _count == 0 ? 'Choose at least one project to go on.' : null,
+          onNext: widget.onNext,
+          hint: projects.isEmpty
+              ? 'You can go on without a milestone. A week with none is valid.'
+              : null,
         ),
       ],
     );
   }
 
-  Widget _emptySlot(BuildContext context, int i) {
-    final colors = context.tefteri;
-    return Container(
-      key: Key('slot-$i'),
-      margin: const EdgeInsets.only(bottom: Space.sm),
-      padding: const EdgeInsets.all(Space.lg),
-      decoration: BoxDecoration(
-        border: Border.all(color: colors.rule),
-        borderRadius: BorderRadius.circular(Corner.lg),
-      ),
-      child: Text('Project ${i + 1}: choose one below',
-          style: Theme.of(context).textTheme.bodySmall),
-    );
-  }
-
   Widget _chosen(BuildContext context, WeeklyProject p) {
     final text = Theme.of(context).textTheme;
+    final colors = context.tefteri;
+    final scheme = Theme.of(context).colorScheme;
+    final quiet = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     return Card(
       key: Key('chosen-${p.id}'),
       child: Padding(
@@ -167,25 +211,49 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(p.name, style: text.titleMedium),
-                      Text(
-                        p.openTasks == 0
-                            ? 'No open tasks yet'
-                            : plural(p.openTasks, 'open task'),
-                        key: Key('chosen-tasks-${p.id}'),
-                        style: text.bodySmall,
+                      if (p.doneState != null)
+                        Text('Done when: ${p.doneState}',
+                            key: Key('chosen-done-state-${p.id}'),
+                            style: text.bodyMedium),
+                      const SizedBox(height: Space.xs),
+                      Wrap(
+                        spacing: Space.md,
+                        runSpacing: Space.xs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(p.theme?.name ?? 'No theme',
+                              key: Key('chosen-theme-${p.id}'),
+                              style: text.bodySmall),
+                          Text(
+                            p.openTasks == 0
+                                ? 'No open tasks yet'
+                                : plural(p.openTasks, 'open task'),
+                            key: Key('chosen-tasks-${p.id}'),
+                            style: text.bodySmall,
+                          ),
+                          if (p.rolloverCount > 0)
+                            Text(
+                                p.rolloverCount == 1
+                                    ? 'Rolled over once'
+                                    : 'Rolled over ${p.rolloverCount} times',
+                                style: text.bodySmall),
+                          OutsideFocusTag(show: p.outsideFocus),
+                          if (p.createdHere)
+                            Text('New',
+                                style: text.labelMedium
+                                    ?.copyWith(color: colors.task)),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                if (p.createdHere)
-                  const Chip(
-                      label: Text('New'), visualDensity: VisualDensity.compact),
                 if (!_locked)
                   IconButton(
                     key: Key('remove-${p.id}'),
@@ -195,155 +263,36 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
                   ),
               ],
             ),
-            if (p.openTasks == 0)
+            if (p.orphaned)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.xs),
+                child: Text(
+                    'This project is no longer in your task app. Tefteri keeps '
+                    'its name and history.',
+                    key: Key('orphaned-${p.id}'),
+                    style: quiet),
+              ),
+            if (p.notice == 'relabelled')
+              Padding(
+                padding: const EdgeInsets.only(top: Space.xs),
+                child: Text(
+                    'This project got another label after you chose it. It '
+                    'stays in this week, and is not offered as a milestone '
+                    'next time.',
+                    key: Key('relabelled-${p.id}'),
+                    style: quiet),
+              ),
+            RescopeNudge(
+                show: p.needsRescope,
+                name: p.name,
+                nudgeKey: Key('rescope-${p.id}')),
+            if (p.openTasks == 0 && !_locked)
               Padding(
                 padding: const EdgeInsets.only(top: Space.sm, right: Space.sm),
                 child: NoTasksNotice(project: p, actions: widget.actions),
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _picker(BuildContext context, List<WeeklyCandidate> all) {
-    final text = Theme.of(context).textTheme;
-    if (all.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const UnsortedCard(quiet: true),
-          EmptyState(
-            icon: Icons.folder_off_outlined,
-            messageKey: const Key('no-projects'),
-            message: 'No project can be planned yet. Label a project as a '
-                'theme, or create one.',
-            action: Wrap(
-              spacing: Space.sm,
-              runSpacing: Space.sm,
-              alignment: WrapAlignment.center,
-              children: [
-                FilledButton(
-                  key: const Key('label-a-theme'),
-                  onPressed: () => openProjects(context),
-                  child: const Text('Label a project as theme'),
-                ),
-                OutlinedButton(
-                  key: const Key('create-a-theme'),
-                  onPressed: () async {
-                    final made = await createTheme(context, ref);
-                    if (made) ref.invalidate(weeklyCandidatesProvider);
-                  },
-                  child: const Text('Create a theme'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-    final q = _query.trim().toLowerCase();
-    final shown = [
-      for (final c in all)
-        if (q.isEmpty || c.path.toLowerCase().contains(q)) c,
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SpreadRow(
-          children: [
-            Text('Your projects', style: text.titleMedium),
-            OutlinedButton.icon(
-              key: const Key('new-subproject'),
-              onPressed:
-                  _locked || _full ? null : () => _newSubproject(all, null),
-              icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-              label: const Text('New subproject'),
-            ),
-          ],
-        ),
-        const SizedBox(height: Space.sm),
-        const UnsortedCard(quiet: true),
-        TextField(
-          key: const Key('project-search'),
-          onChanged: (v) => setState(() => _query = v),
-          decoration: const InputDecoration(
-            hintText: 'Search projects',
-            prefixIcon: Icon(Icons.search),
-          ),
-        ),
-        const SizedBox(height: Space.sm),
-        if (shown.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(Space.lg),
-            child: Text('No project matches "${_query.trim()}".',
-                key: const Key('no-match'), style: text.bodySmall),
-          ),
-        for (final c in shown) _candidate(context, c, all),
-      ],
-    );
-  }
-
-  Widget _candidate(
-      BuildContext context, WeeklyCandidate c, List<WeeklyCandidate> all) {
-    final text = Theme.of(context).textTheme;
-    final colors = context.tefteri;
-    final chosen = _plan?.projects.any((p) => p.containerId == c.containerId) ??
-        c.selected;
-    return Container(
-      key: Key('candidate-${c.containerId}'),
-      decoration:
-          BoxDecoration(border: Border(bottom: BorderSide(color: colors.rule))),
-      padding: const EdgeInsets.symmetric(vertical: Space.sm),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(c.path, style: text.bodyMedium),
-                Wrap(
-                  spacing: Space.sm,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(plural(c.openTasks, 'open task'),
-                        style: text.bodySmall),
-                    if (c.carriedTasks > 0)
-                      Text(
-                        '${c.carriedTasks} carried over from last week',
-                        key: Key('carried-${c.containerId}'),
-                        style: text.bodySmall?.copyWith(color: colors.task),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            key: Key('archive-${c.containerId}'),
-            tooltip: 'Archive ${c.name}',
-            icon: const Icon(Icons.archive_outlined),
-            onPressed: () => _archive(c),
-          ),
-          IconButton(
-            key: Key('sub-${c.containerId}'),
-            tooltip: 'New subproject under ${c.name}',
-            icon: const Icon(Icons.create_new_folder_outlined),
-            onPressed: _locked || _full
-                ? null
-                : () => _newSubproject(all, c.containerId),
-          ),
-          chosen
-              ? Icon(Icons.check_circle,
-                  key: Key('chosen-mark-${c.containerId}'),
-                  color: colors.done,
-                  semanticLabel: 'Chosen')
-              : OutlinedButton(
-                  key: Key('add-${c.containerId}'),
-                  onPressed: _locked || _full ? null : () => _add(c),
-                  child: const Text('Add'),
-                ),
-        ],
       ),
     );
   }
@@ -367,103 +316,18 @@ class NoTasksNotice extends StatelessWidget {
     return Notice(
       key: Key('no-tasks-${project.id}'),
       icon: Icons.hourglass_empty,
-      message: 'Add tasks to "${project.name}" in your task app. '
-          'Tefteri checks every few seconds, and they show up here.',
+      message: 'Add a task here, or add tasks to "${project.name}" in your '
+          'task app. Tefteri checks every few seconds, and they show up here.',
       actions: [
         if (url != null)
-          FilledButton.icon(
+          OutlinedButton.icon(
             key: Key('open-project-${project.id}'),
             onPressed: () => actions.openUrl(url),
             icon: const Icon(Icons.open_in_new, size: 16),
             label: const Text('Open the project'),
           ),
       ],
-    );
-  }
-}
-
-/// Asks for the parent project and the name of a new subproject.
-class NewSubprojectDialog extends StatefulWidget {
-  /// Creates the dialog; [initialParent] is a candidate's container id.
-  const NewSubprojectDialog(
-      {required this.candidates, this.initialParent, super.key});
-
-  /// Projects that can be the parent.
-  final List<WeeklyCandidate> candidates;
-
-  /// The parent to start with.
-  final String? initialParent;
-
-  @override
-  State<NewSubprojectDialog> createState() => _NewSubprojectDialogState();
-}
-
-class _NewSubprojectDialogState extends State<NewSubprojectDialog> {
-  final _name = TextEditingController();
-  late String _parent =
-      widget.initialParent ?? widget.candidates.first.containerId;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final name = _name.text.trim();
-    if (name.isEmpty) return;
-    Navigator.of(context).pop((parent: _parent, name: name));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('New subproject'),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<String>(
-              key: const Key('parent-project'),
-              initialValue: _parent,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Inside project'),
-              items: [
-                for (final c in widget.candidates)
-                  DropdownMenuItem(value: c.containerId, child: Text(c.path)),
-              ],
-              onChanged: (v) => setState(() => _parent = v ?? _parent),
-            ),
-            const SizedBox(height: Space.md),
-            TextField(
-              key: const Key('subproject-name'),
-              controller: _name,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Name'),
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: Space.sm),
-            Text(
-              'It is created in your task app. You add its tasks there.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          key: const Key('subproject-cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          key: const Key('subproject-create'),
-          onPressed: _submit,
-          child: const Text('Create and add'),
-        ),
-      ],
+      below: InlineAddTask(project: project, actions: actions),
     );
   }
 }

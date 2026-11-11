@@ -20,7 +20,12 @@ def install_service_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(BackendProblem)
     async def _problem(_: Request, exc: BackendProblem) -> JSONResponse:
         return JSONResponse(
-            {"detail": exc.message, "code": exc.code, "connection": exc.connection_name},
+            {
+                "detail": exc.message,
+                "code": exc.code,
+                "connection": exc.connection_name,
+                **exc.extra,
+            },
             status_code=_STATUS.get(exc.code, 502),
         )
 
@@ -34,4 +39,4 @@ def install_service_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Invalid)
     async def _invalid(_: Request, exc: Invalid) -> JSONResponse:
-        return JSONResponse({"detail": str(exc), "code": "invalid"}, status_code=422)
+        return JSONResponse({"detail": str(exc), "code": exc.code}, status_code=422)

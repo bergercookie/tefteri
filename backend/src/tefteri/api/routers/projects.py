@@ -91,6 +91,7 @@ class ConnectionCapabilitiesOut(BaseModel):
 
     rename: bool
     restore: bool
+    move_tasks: bool
 
 
 class ClassifiedConnectionOut(BaseModel):
@@ -113,7 +114,9 @@ class ClassifiedConnectionOut(BaseModel):
             name=v.connection.display_name,
             status=v.connection.status,
             last_sync_outcome=v.connection.last_sync_outcome,
-            capabilities=ConnectionCapabilitiesOut(rename=v.rename, restore=v.restore),
+            capabilities=ConnectionCapabilitiesOut(
+                rename=v.rename, restore=v.restore, move_tasks=v.move_tasks
+            ),
             projects=[ProjectOut.of(p) for p in v.projects],
         )
 

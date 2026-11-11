@@ -12,13 +12,13 @@ import 'weekly_widgets.dart';
 
 /// The sentence that tells the user how realistic their plans are.
 ///
-/// Compares the share of committed projects that got done with two
+/// Compares the share of committed milestones that got done with two
 /// thresholds. It says nothing until there are at least two weeks.
 String? realismNote(WeeklyHistory h) {
   final rate = h.projectRate;
   if (rate == null || h.weeks < 2) return null;
   if (rate < 0.5) {
-    return 'You tend to plan more than you finish. Try fewer projects, '
+    return 'You tend to plan more than you finish. Try fewer milestones, '
         'or fewer tasks in each.';
   }
   if (rate >= 0.9) {
@@ -29,7 +29,7 @@ String? realismNote(WeeklyHistory h) {
 }
 
 /// Lists every reviewed week, newest first, with two counters each:
-/// projects committed to and projects done.
+/// milestones committed to and milestones done.
 class HistoryView extends ConsumerWidget {
   /// Creates the view. [history] overrides loading (right after a review).
   const HistoryView({this.history, super.key});
@@ -82,12 +82,12 @@ class HistoryView extends ConsumerWidget {
                     Counter(
                         key: const Key('total-committed'),
                         label:
-                            '${noun(h.committedProjects, 'project')} committed',
+                            '${noun(h.committedProjects, 'milestone')} committed',
                         value: h.committedProjects),
                     const SizedBox(width: Space.xl),
                     Counter(
                         key: const Key('total-done'),
-                        label: '${noun(h.doneProjects, 'project')} done',
+                        label: '${noun(h.doneProjects, 'milestone')} done',
                         value: h.doneProjects,
                         accent: context.tefteri.done),
                   ],
@@ -123,7 +123,6 @@ class _EntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = context.tefteri;
-    final scheme = Theme.of(context).colorScheme;
     return Card(
       key: Key('history-${entry.planId}'),
       child: Padding(
@@ -153,25 +152,20 @@ class _EntryCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Space.sm),
-            Wrap(
-              spacing: Space.sm,
-              runSpacing: Space.xs,
-              children: [
-                for (final p in entry.projects)
-                  Chip(
-                    avatar: Icon(
-                      p.done
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      size: 16,
-                      color: p.done ? colors.done : scheme.onSurfaceVariant,
-                      semanticLabel: p.done ? 'Done' : 'Not done',
-                    ),
-                    label: Text(p.name),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
+            if (entry.projects.any((p) => p.legacy))
+              Padding(
+                padding: const EdgeInsets.only(bottom: Space.xs),
+                child: Text(
+                  'This week was planned before milestones. Its projects are '
+                  'shown as they were.',
+                  key: Key('legacy-note-${entry.planId}'),
+                  style: text.bodySmall,
+                ),
+              ),
+            for (final (i, p) in entry.projects.indexed)
+              _MilestoneRow(
+                  milestone: p,
+                  rowKey: Key('history-milestone-${entry.planId}-$i')),
             if (entry.reflection.isNotEmpty) ...[
               const SizedBox(height: Space.sm),
               Text('“${entry.reflection}”',
@@ -180,6 +174,63 @@ class _EntryCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One milestone of an earlier week: its name as stored, whether it was done,
+/// and what the review decided, in the new words.
+class _MilestoneRow extends StatelessWidget {
+  const _MilestoneRow({required this.milestone, required this.rowKey});
+
+  final HistoryMilestone milestone;
+  final Key rowKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.tefteri;
+    final scheme = Theme.of(context).colorScheme;
+    final m = milestone;
+    final details = [
+      if (m.decision != null) m.decision!.label,
+      if (m.themeName != null) m.themeName!,
+      if (m.doneOn != null) 'done ${dayLong(m.doneOn!)}',
+      if (m.rolloverCount > 0)
+        m.rolloverCount == 1
+            ? 'rolled over once'
+            : 'rolled over ${m.rolloverCount} times',
+    ];
+    return Padding(
+      key: rowKey,
+      padding: const EdgeInsets.only(bottom: Space.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              m.done ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 16,
+              color: m.done ? colors.done : scheme.onSurfaceVariant,
+              semanticLabel: m.done ? 'Done' : 'Not done',
+            ),
+          ),
+          const SizedBox(width: Space.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(m.name, style: text.bodyMedium),
+                if (details.isNotEmpty)
+                  Text(details.join(' · '),
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

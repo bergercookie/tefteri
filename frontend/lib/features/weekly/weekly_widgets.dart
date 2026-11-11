@@ -46,6 +46,7 @@ class WeeklyActions {
   const WeeklyActions({
     required this.week,
     required this.run,
+    required this.tryRun,
     required this.setDay,
     required this.openUrl,
     required this.changePlan,
@@ -57,6 +58,11 @@ class WeeklyActions {
   /// Runs a change that answers with the new state; the screen shows the
   /// error message when it fails.
   final Future<bool> Function(Future<dynamic> Function(WeeklyApi api) call) run;
+
+  /// Like [run], but answers the error message (null on success) and leaves
+  /// it to the caller to show it, so a form can keep what the user typed.
+  final Future<String?> Function(Future<dynamic> Function(WeeklyApi api) call)
+      tryRun;
 
   /// Gives a task a day (null: no day).
   final Future<void> Function(String taskId, DateTime? day) setDay;
@@ -160,7 +166,8 @@ class Counter extends StatelessWidget {
 /// A tinted note with an icon, for what the user should do next.
 class Notice extends StatelessWidget {
   /// Creates the note.
-  const Notice({required this.message, this.icon, this.actions, super.key});
+  const Notice(
+      {required this.message, this.icon, this.actions, this.below, super.key});
 
   /// The text.
   final String message;
@@ -170,6 +177,9 @@ class Notice extends StatelessWidget {
 
   /// Buttons under the text.
   final List<Widget>? actions;
+
+  /// A widget under the buttons, such as a field.
+  final Widget? below;
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +205,10 @@ class Notice extends StatelessWidget {
                 if (actions != null) ...[
                   const SizedBox(height: Space.sm),
                   Wrap(spacing: Space.sm, children: actions!),
+                ],
+                if (below != null) ...[
+                  const SizedBox(height: Space.sm),
+                  below!,
                 ],
               ],
             ),

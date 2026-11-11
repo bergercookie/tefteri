@@ -216,6 +216,26 @@ List<String> missingCapabilitiesOf(Object? data) {
   return capabilitiesNamedIn(detail is Map ? detail['message'] : detail);
 }
 
+/// Optional capabilities of a task app and what the user loses without them.
+const optionalCapabilityNotes = <String, String>{
+  'move_tasks': 'Your task app cannot move tasks between projects, so the '
+      'weekly review will not offer "Close and return tasks". Everything else '
+      'works.',
+};
+
+/// Plain sentences about the optional capabilities that [data] (the answer of
+/// a connection check) reports as missing, in a stable order.
+List<String> missingOptionalNotes(Object? data) {
+  if (data is! Map) return const [];
+  final caps = data['capabilities'];
+  final optional = caps is Map ? caps['optional'] : null;
+  if (optional is! Map) return const [];
+  return [
+    for (final e in optionalCapabilityNotes.entries)
+      if (optional[e.key] == false) e.value,
+  ];
+}
+
 /// One sentence that names the [missing] capabilities in plain words.
 String missingCapabilitiesSentence(List<String> missing) {
   final words = [

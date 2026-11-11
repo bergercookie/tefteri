@@ -10,7 +10,7 @@ import '../../core/planning_models.dart';
 import '../planner/details_dialogs.dart';
 import '../../theme/theme.dart';
 import '../week/week_screen.dart';
-import 'projects_step.dart';
+import 'inline_add_task.dart';
 import 'weekly_models.dart';
 import 'weekly_widgets.dart';
 
@@ -47,13 +47,18 @@ class TasksStep extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const StepHeading(title: 'Give tasks a day'),
-          const EmptyState(
+          EmptyState(
             icon: Icons.folder_open_outlined,
-            messageKey: Key('tasks-no-projects'),
-            message: 'Choose a project first.',
+            messageKey: const Key('tasks-no-projects'),
+            message: 'No milestones this week, so there are no tasks to plan.',
+            action: OutlinedButton(
+              key: const Key('tasks-choose-milestones'),
+              onPressed: onBack,
+              child: const Text('Choose milestones'),
+            ),
           ),
           StepFooter(
-              nextLabel: 'Commit the plan', onNext: null, onBack: onBack),
+              nextLabel: 'Review the plan', onNext: onNext, onBack: onBack),
         ],
       );
     }
@@ -72,7 +77,8 @@ class TasksStep extends ConsumerWidget {
         const StepHeading(
           title: 'Give every task a day',
           subtitle: 'Tap a day for each task. The day becomes the due date '
-              'in your task app.',
+              'in your task app. A task without a day is not part of this '
+              'week\'s plan.',
         ),
         _WeekStrip(
             days: days,
@@ -229,16 +235,31 @@ class _ProjectTasks extends StatelessWidget {
                 Expanded(child: Text(project.name, style: text.titleMedium)),
                 Text(
                   project.openTasks == 0
-                      ? (project.parkedTasks > 0 ? 'All parked' : 'No tasks')
+                      ? (project.parkedTasks > 0 ? 'All set aside' : 'No tasks')
                       : '${project.scheduledTasks} of ${project.openTasks} have a day',
                   key: Key('project-progress-${project.id}'),
                   style: text.bodySmall,
                 ),
               ],
             ),
+            if (project.doneState != null)
+              Text('Done when: ${project.doneState}',
+                  key: Key('tasks-done-state-${project.id}'),
+                  style: text.bodyMedium),
             const SizedBox(height: Space.sm),
             if (project.openTasks == 0 && project.parkedTasks == 0)
-              NoTasksNotice(project: project, actions: actions),
+              EmptyState(
+                icon: Icons.checklist_outlined,
+                messageKey: Key('no-tasks-msg-${project.id}'),
+                message: 'No tasks in this milestone yet.',
+                action: locked
+                    ? null
+                    : ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child:
+                            InlineAddTask(project: project, actions: actions),
+                      ),
+              ),
             for (final t in project.activeTasks)
               _TaskRow(
                   task: t,
@@ -246,6 +267,12 @@ class _ProjectTasks extends StatelessWidget {
                   today: today,
                   locked: locked,
                   actions: actions),
+            if (!(project.openTasks == 0 && project.parkedTasks == 0) &&
+                !locked)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.sm),
+                child: InlineAddTask(project: project, actions: actions),
+              ),
           ],
         ),
       ),
@@ -320,7 +347,7 @@ class _TaskRow extends StatelessWidget {
               )),
               IconButton(
                 key: Key('task-park-${task.id}'),
-                tooltip: 'Park for later',
+                tooltip: 'Not this week',
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.inventory_2_outlined, size: 20),
                 onPressed: locked
@@ -390,7 +417,7 @@ class _ParkedSectionState extends State<_ParkedSection> {
                     const Icon(Icons.inventory_2_outlined, size: 20),
                     const SizedBox(width: Space.sm),
                     Expanded(
-                      child: Text('Parked (${parked.length})',
+                      child: Text('Not this week (${parked.length})',
                           style: text.titleMedium),
                     ),
                     Icon(_open ? Icons.expand_less : Icons.expand_more),
@@ -402,8 +429,9 @@ class _ParkedSectionState extends State<_ParkedSection> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Space.lg),
                 child: Text(
-                    'Not part of this plan. Tefteri does not give them a day '
-                    'and does not count them. Your task app keeps them.',
+                    'Not committed this week. Tefteri does not give them a day '
+                    'and does not count them. Your task app keeps them as '
+                    'they are.',
                     style: text.bodySmall),
               ),
               for (final (project, t) in parked)

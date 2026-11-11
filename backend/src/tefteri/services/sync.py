@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import Connection, SourceContainer
+from tefteri.db.models.milestone import Milestone
+from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
 from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
@@ -21,6 +23,7 @@ from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
 from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
+from tefteri.services.milestones import UNFINISHED, MilestoneService
 from tefteri.services.mirror import anchor_all_day, entry_values, task_values
 from tefteri.services.project_labels import reconcile
 
@@ -98,10 +101,15 @@ class SyncService:
         self,
         connections: ConnectionService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        milestones: MilestoneService | None = None,
     ) -> None:
-        """Use ``connections`` to build backends; ``clock`` is injectable for tests."""
+        """Use ``connections`` to build backends; ``clock`` is injectable for tests.
+
+        ``milestones`` settles the milestones of the connection after a full sync (spec 004).
+        """
         self._connections = connections
         self._clock = clock
+        self._milestones = milestones or MilestoneService(connections)
         self._locks: dict[uuid.UUID, asyncio.Lock] = {}
 
     async def sync_all(self, db: AsyncSession, user_id: uuid.UUID) -> list[SyncResult]:
@@ -138,6 +146,7 @@ class SyncService:
                     if kind is ConnectionKind.TASKS:
                         tasks = cast(TaskBackend, backend)
                         await self._sync_tasks(db, connection, tasks, containers, result.counts)
+                        await self._settle_milestones(db, connection)
                     else:
                         calendar = cast(CalendarBackend, backend)
                         await self._sync_calendar(
@@ -171,6 +180,34 @@ class SyncService:
         )
         await db.flush()
         return result
+
+    async def _settle_milestones(self, db: AsyncSession, connection: Connection) -> None:
+        """Mark the milestones whose tasks are all closed or dropped as done (spec 004, R-07).
+
+        After a full sync a task that the app no longer lists is gone for good, so it counts as
+        dropped.
+        """
+        owner = await db.get(User, connection.user_id)
+        milestones = list(
+            (
+                await db.execute(
+                    select(Milestone)
+                    .join(ProjectLabelRow, ProjectLabelRow.id == Milestone.project_id)
+                    .where(
+                        ProjectLabelRow.connection_id == connection.id,
+                        Milestone.state.in_(UNFINISHED),
+                    )
+                )
+            ).scalars()
+        )
+        await self._milestones.settle(
+            db,
+            connection.user_id,
+            owner.timezone if owner is not None else "UTC",
+            milestones,
+            full_sync=True,
+            now=self._clock(),
+        )
 
     async def sync_projects(
         self, db: AsyncSession, connection: Connection, rows: list[SourceContainer]
