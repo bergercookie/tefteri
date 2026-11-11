@@ -19,12 +19,13 @@ from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
 from tefteri.services.mirror import note_values
 
-# Kind of a note that sync found in the note app and tefteri did not create.
-DEFAULT_KIND = "custom"
-
 
 class NoteService:
-    """Read and write notes through the connected note app."""
+    """Read and write notes through the connected note app.
+
+    The note app is not copied. Tefteri keeps a row only for a note that it created or opened
+    (the daily note, a retrospective), so that a task or a review can point at it.
+    """
 
     def __init__(self, connections: ConnectionService) -> None:
         """Use ``connections`` to reach the note app."""
@@ -76,8 +77,6 @@ class NoteService:
             self._apply(note, remote)
             return await NoteRepository(db, user_id).add(note)
         self._apply(note, remote)
-        # Notes first seen by sync have the default kind; name them now.
-        note.kind = kind if note.kind == DEFAULT_KIND else note.kind
         await db.flush()
         return note
 

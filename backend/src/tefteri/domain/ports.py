@@ -148,10 +148,6 @@ class CalendarBackend(Backend, Protocol):
 class NoteBackend(Backend, Protocol):
     """Note taking application."""
 
-    async def list_notes(self, container: Container, since: str | None) -> list[RemoteNote]:
-        """List notes of a container."""
-        ...
-
     async def get_note(self, remote_id: str) -> RemoteNote:
         """Fetch one note."""
         ...

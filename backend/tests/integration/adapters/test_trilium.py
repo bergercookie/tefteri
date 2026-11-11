@@ -9,7 +9,7 @@ import respx
 
 from tefteri.adapters.trilium import TriliumNoteBackend
 from tefteri.adapters.trilium.adapter import clean_base_url
-from tefteri.domain.entities import Container, NoteDraft, NotePatch
+from tefteri.domain.entities import NoteDraft, NotePatch
 from tefteri.domain.enums import ConnectionStatus
 from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
 
@@ -27,21 +27,19 @@ async def backend() -> AsyncIterator[TriliumNoteBackend]:
 
 
 @respx.mock
-async def test_containers_and_listing(backend: TriliumNoteBackend) -> None:
+async def test_containers_are_the_root_and_its_children(backend: TriliumNoteBackend) -> None:
     root = {**meta("root", "Root"), "childNoteIds": ["w1"]}
     respx.get(f"{BASE}/notes/root").respond(json=root)
     respx.get(f"{BASE}/notes/w1").respond(json=meta("w1", "Work"))
     containers = await backend.list_containers()
     assert [c.name for c in containers] == ["Root", "Work"]
+    assert respx.calls[0].request.headers["authorization"] == "etoken"
 
-    search = respx.get(f"{BASE}/notes").respond(json={"results": [meta()]})
-    respx.get(f"{BASE}/notes/n1/content").respond(
-        text="<p>hi</p>", headers={"content-type": "text/html"}
-    )
-    notes = await backend.list_notes(Container("w1", "Work"), None)
-    assert notes[0].body == "<p>hi</p>" and notes[0].version == "v1"
-    assert search.calls[0].request.url.params["ancestorNoteId"] == "w1"
-    assert search.calls[0].request.headers["authorization"] == "etoken"
+
+@respx.mock
+async def test_the_adapter_does_not_search_or_list_notes(backend: TriliumNoteBackend) -> None:
+    """The note app is not copied: there is no call that lists its notes."""
+    assert not hasattr(backend, "list_notes")
 
 
 @respx.mock
@@ -130,13 +128,6 @@ async def test_system_notes_are_not_containers_or_notes(backend: TriliumNoteBack
     respx.get(f"{BASE}/notes/w1").respond(json=meta("w1", "Work"))
     assert [c.name for c in await backend.list_containers()] == ["Root", "Work"]
     assert not hidden.called  # not even read
-
-    respx.get(f"{BASE}/notes").respond(
-        json={"results": [meta("n1"), meta("_lbRoot", "Launch bar"), meta("_options")]}
-    )
-    respx.get(f"{BASE}/notes/n1/content").respond(text="hi", headers={"content-type": "text/html"})
-    notes = await backend.list_notes(Container("root", "Root"), None)
-    assert [n.remote_id for n in notes] == ["n1"]
 
 
 @respx.mock

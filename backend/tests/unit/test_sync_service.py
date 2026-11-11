@@ -1,6 +1,7 @@
 """Sync service: per-connection results, failure isolation, deletion marking."""
 
 from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
 from sqlalchemy import select
@@ -13,7 +14,7 @@ from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
 from tefteri.db.session import create_engine, create_session_factory
-from tefteri.domain.entities import TaskDraft
+from tefteri.domain.entities import RemoteNote, TaskDraft
 from tefteri.domain.enums import SyncState
 from tefteri.security.crypto import TokenCipher
 from tefteri.services.connections import ConnectionService
@@ -54,9 +55,10 @@ async def test_sync_all_reports_each_connection_and_stores_items(db: AsyncSessio
     _, sync, user = await _setup(db, world)
     results = await sync.sync_all(db, user.id)
     assert {r.name: r.outcome for r in results} == {"Tasks": "ok", "Cal": "ok", "Notes": "ok"}
-    assert [r.counts["created"] for r in results] == [1, 1, 1]
+    # The note app is not copied: its sync is a check, so it creates nothing.
+    assert [r.counts["created"] for r in results] == [1, 1, 0]
     assert (await db.execute(select(Task))).scalars().one().title == "Write report"
-    assert (await db.execute(select(Note))).scalars().one().body == "steps"
+    assert (await db.execute(select(Note))).scalars().all() == []
     assert len((await db.execute(select(SyncRun))).scalars().all()) == 3
 
 
@@ -83,6 +85,41 @@ async def test_expired_credentials_need_attention_then_recover(db: AsyncSession)
     world.notes["default"].auth_expired = False
     assert (await sync.sync_connection(db, notes_conn)).outcome == "ok"
     assert notes_conn.status == "ok"
+
+
+async def test_syncing_a_note_app_copies_no_notes_and_asks_for_none(db: AsyncSession) -> None:
+    world = FakeWorld()
+    world.notes["default"].notes = {
+        f"n{i}": RemoteNote(f"n{i}", f"Note {i}", "text", "v1") for i in range(200)
+    }
+    asked: list[str] = []
+    backend = world.notes["default"]
+    for name in ("get_note", "create_note", "update_note", "delete_note", "append"):
+        original = getattr(backend, name)
+
+        async def spy(*a: object, _name: str = name, _original: Any = original, **k: object) -> Any:
+            asked.append(_name)
+            return await _original(*a, **k)
+
+        setattr(backend, name, spy)
+    connections, sync, user = await _setup(db, world)
+    notes_conn = next(c for c in await connections.list(db, user.id) if c.display_name == "Notes")
+    result = await sync.sync_connection(db, notes_conn)
+    assert result.outcome == "ok" and result.counts == {"created": 0, "updated": 0, "deleted": 0}
+    assert (await db.execute(select(Note))).scalars().all() == []
+    assert asked == []  # not one note was read or written
+    assert notes_conn.status == "ok" and notes_conn.last_sync_at is not None
+
+
+async def test_a_note_app_that_is_down_or_refuses_shows_in_the_sync(db: AsyncSession) -> None:
+    world = FakeWorld()
+    connections, sync, user = await _setup(db, world)
+    notes_conn = next(c for c in await connections.list(db, user.id) if c.display_name == "Notes")
+    world.notes["default"].unavailable = True
+    down = await sync.sync_connection(db, notes_conn)
+    assert (down.outcome, down.reason) == ("error", "unreachable")
+    world.notes["default"].unavailable = False
+    assert (await sync.sync_connection(db, notes_conn)).outcome == "ok"
 
 
 async def test_unexpected_adapter_error_is_isolated(db: AsyncSession) -> None:

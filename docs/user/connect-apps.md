@@ -98,8 +98,12 @@ address or the token, and choose Save again.
 
 The base URL is the address that you use to open Trilium Next, for example
 `https://notes.example.com`. If you copy the address of a page, tefteri ignores the part after
-`#`, and it ignores `/etapi` at the end. Tefteri does not show the hidden notes of Trilium
-Next, such as the launch bar and the options.
+`#`, and it ignores `/etapi` at the end.
+
+Tefteri does not copy your notes. A sync only checks that the address and the token still work.
+Tefteri reads and writes a note only when it needs it. These are the daily note of a day, and the
+retrospective that you save from a review. Tefteri does not read your other notes, and it does not
+store them. If you used an older version, tefteri removes the copies that it made of your notes.
 
 ## Use Sync
 

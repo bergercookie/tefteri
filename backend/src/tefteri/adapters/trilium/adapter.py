@@ -104,19 +104,6 @@ class TriliumNoteBackend:
             )
         return ConnectionHealth(ConnectionStatus.OK)
 
-    async def list_notes(self, container: Container, since: str | None) -> list[RemoteNote]:  # noqa: ARG002
-        """List the notes below a container note."""
-        found = await self._call(
-            "GET",
-            "/notes",
-            params={"search": "note.noteId != ''", "ancestorNoteId": container.remote_id},
-        )
-        return [
-            await self._note(meta)
-            for meta in found.get("results", [])
-            if not is_system_note(meta["noteId"])
-        ]
-
     async def get_note(self, remote_id: str) -> RemoteNote:
         """Fetch one note with its content."""
         return await self._note(await self._call("GET", f"/notes/{remote_id}"))

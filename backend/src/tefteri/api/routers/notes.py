@@ -35,7 +35,7 @@ async def list_notes(
     kind: str | None = None,
     date_: Annotated[date | None, Query(alias="date")] = None,
 ) -> list[NoteOut]:
-    """List the user's notes from the cache."""
+    """List the notes that tefteri created or opened (the note app is not copied)."""
     query = select(Note).where(Note.user_id == user.id)
     if kind:
         query = query.where(Note.kind == kind)

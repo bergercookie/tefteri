@@ -67,7 +67,8 @@ async def test_sync_then_read_from_cache(api: AsyncClient, world: FakeWorld) -> 
     assert {r["name"]: r["outcome"] for r in results} == {"T": "ok", "C": "ok", "N": "ok"}
     assert [t["title"] for t in (await api.get(f"{V1}/tasks")).json()] == ["Write report"]
     assert [e["title"] for e in (await api.get(f"{V1}/calendar")).json()] == ["Standup"]
-    assert [n["title"] for n in (await api.get(f"{V1}/notes")).json()] == ["Process"]
+    # The note app is not copied: tefteri has no notes until it creates or opens one.
+    assert (await api.get(f"{V1}/notes")).json() == []
 
     status = (await api.get(f"{V1}/sync/status")).json()
     assert all(s["status"] == "ok" and s["last_sync_at"] for s in status)
@@ -214,12 +215,14 @@ async def test_a_new_connection_syncs_at_once(api: AsyncClient, world: FakeWorld
         assert r.status_code == 201, r.text
         body = r.json()
         # The answer carries the result of the first sync, and the connection shows it.
-        assert body["sync"]["outcome"] == "ok" and body["sync"]["counts"]["created"] >= 1
+        assert body["sync"]["outcome"] == "ok"
+        # A task app and a calendar are copied; a note app is only checked.
+        assert (body["sync"]["counts"]["created"] >= 1) == (provider != "trilium")
         assert body["status"] == "ok" and body["last_sync_at"] is not None
     # Nothing called /sync: the items are in the cache already.
     assert [t["title"] for t in (await api.get(f"{V1}/tasks")).json()] == ["Write report"]
     assert [e["title"] for e in (await api.get(f"{V1}/calendar")).json()] == ["Standup"]
-    assert [n["title"] for n in (await api.get(f"{V1}/notes")).json()] == ["Process"]
+    assert (await api.get(f"{V1}/notes")).json() == []
 
 
 async def test_a_connection_whose_first_sync_fails_is_still_created(

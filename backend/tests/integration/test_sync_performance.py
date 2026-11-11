@@ -1,4 +1,7 @@
-"""Sync volume target (SC-002): 2,000 tasks, 1,000 entries and 500 notes in under 30 seconds."""
+"""Sync volume target (SC-002): 2,000 tasks and 1,000 entries in under 30 seconds.
+
+The note app holds 500 notes too, to show that sync leaves them alone.
+"""
 
 import time
 from datetime import UTC, datetime, timedelta
@@ -49,7 +52,9 @@ async def test_full_sync_meets_the_target(api: AsyncClient, world: FakeWorld) ->
         assert r.status_code == 201, r.text
         created[provider] = r.json()["sync"]["counts"]["created"]
     first = time.perf_counter() - started
-    assert created == {"vikunja": 2000, "google_calendar": 1000, "trilium": 500}
+    # The 500 notes of the note app are not copied: its sync is only a check.
+    assert created == {"vikunja": 2000, "google_calendar": 1000, "trilium": 0}
+    assert (await api.get(f"{V1}/notes")).json() == []
     assert first < LIMIT_SECONDS, f"first sync took {first:.1f} s"
 
     # A second sync with every item changed is the worst case for updates.

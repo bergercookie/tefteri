@@ -322,15 +322,6 @@ class FakeNoteBackend(_FakeBase):
         super().__init__(containers)
         self.notes: dict[str, RemoteNote] = {}
 
-    async def list_notes(
-        self,
-        container: Container,  # noqa: ARG002
-        since: str | None,  # noqa: ARG002
-    ) -> list[RemoteNote]:
-        """List all notes."""
-        self._guard()
-        return list(self.notes.values())
-
     async def get_note(self, remote_id: str) -> RemoteNote:
         """Fetch a note."""
         self._guard()

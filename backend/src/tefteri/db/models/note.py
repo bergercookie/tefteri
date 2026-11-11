@@ -1,4 +1,4 @@
-"""Cached mirror of a note in the connected note app."""
+"""A note of the connected note app that tefteri created or opened."""
 
 import uuid
 from datetime import date
@@ -11,7 +11,11 @@ from tefteri.domain.enums import SyncState
 
 
 class Note(IdMixin, Base):
-    """A note copy. ``kind`` is daily, retrospective or ``custom`` (found by sync)."""
+    """A copy of one note that tefteri wrote or read: ``kind`` is ``daily`` or ``retrospective``.
+
+    The note app is not mirrored. Sync does not read its notes: a row exists only for a note that
+    a task link or a review points at.
+    """
 
     __tablename__ = "notes"
     __table_args__ = (UniqueConstraint("connection_id", "remote_id"),)

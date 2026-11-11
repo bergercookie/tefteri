@@ -4583,7 +4583,7 @@
     },
     "/api/v1/notes": {
       "get": {
-        "description": "List the user's notes from the cache.",
+        "description": "List the notes that tefteri created or opened (the note app is not copied).",
         "operationId": "list_notes_api_v1_notes_get",
         "parameters": [
           {
