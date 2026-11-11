@@ -33,7 +33,7 @@ Change the existing goals code in place so that goals exist only for a planning 
 | Principle | Status | How |
 |---|---|---|
 | I. Python backend, Flutter frontend | Pass | Same stack. |
-| II. Justfile is the single interface | Pass | Every command in the quickstart is a `just` recipe. The demo seed for the walkthrough gets the recipe `just backend::seed-demo` (task T086), not a raw script call. |
+| II. Justfile is the single interface | Pass | Every command in the quickstart is a `just` recipe. The demo seed for the walkthrough gets the recipe `just backend::seed-demo` (task T098), not a raw script call. |
 | III. Devbox | Pass | No new tool. The session helper `source /root/tefteri-env.sh` stands in for `devbox shell`. |
 | IV. Pluggable backends | Pass | The core (`domain`, `services`, `db`, `api`) never names a task app. Themes are read from `project_labels` (feature 003) and created through `ClassificationService.create_and_label`, which uses the `TaskBackend` port. The inbound push is a plain HTTP contract, not an adapter. Check: `grep -ri vikunja backend/src/tefteri --include=*.py -l` lists only `adapters/vikunja`, `config` and the registry, as before. |
 | V. Documented, tested, CI-verified | Pass | Tests first in every phase. Migration test with counts before and after (SC-004). OpenAPI snapshot. Docstrings on all public items. Regression tests for the three flags and for the limit of three under concurrency. |
@@ -63,7 +63,7 @@ The reasons and rejected options are in [research.md](research.md).
 
 ### Data migration plan for existing goals
 
-Migration `0020_annual_planning` runs in this order. Every step is covered by a test in `backend/tests/migrations/test_migrations.py` (T010 to T013).
+Migration `0020_annual_planning` runs in this order. Every step is covered by a test in `backend/tests/migrations/test_migrations.py` (T012 to T015).
 
 1. Add `updated_at`, `retired_at`, `retired_reason` and `position` to `goals`, and the index `ix_goals_user_period` on (`user_id`, `period_type`, `period_start`). `updated_at` is set to the migration time for every existing row.
 2. Create the five new tables.
