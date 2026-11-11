@@ -6,6 +6,7 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.goal import Goal, Plan
 from tefteri.db.models.links import TaskNoteLink
 from tefteri.db.models.note import Note
+from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
 from tefteri.db.models.review import PeriodReview
 from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
@@ -22,6 +23,8 @@ __all__ = [
     "Note",
     "PeriodReview",
     "Plan",
+    "ProjectLabel",
+    "ProjectLabelHistory",
     "SourceContainer",
     "SyncRun",
     "TaskNoteLink",

@@ -22,6 +22,7 @@ from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.mirror import anchor_all_day, entry_values, task_values
+from tefteri.services.project_labels import reconcile
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +256,9 @@ class SyncService:
             if remote_id not in listed:
                 await db.delete(row)
         await db.flush()
+        if connection.kind == ConnectionKind.TASKS.value:
+            # The label of a project outlives its container row (spec 003): keep it in step.
+            await reconcile(db, connection, remote, self._clock())
         return out
 
     async def _sync_tasks(

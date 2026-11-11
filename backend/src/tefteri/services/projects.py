@@ -1,6 +1,8 @@
 """Projects of a task app: archive one."""
 
 import uuid
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import cast
 
 from sqlalchemy import select
@@ -10,19 +12,25 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.db.models.weekly import WeeklyPlan, WeeklyPlanProject
 from tefteri.domain.entities import Container
-from tefteri.domain.enums import Capability, ConnectionKind, SyncState
+from tefteri.domain.enums import Capability, ConnectionKind, OrphanReason, SyncState
 from tefteri.domain.errors import NotSupported
 from tefteri.domain.ports import TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
+from tefteri.services.project_labels import ensure_row, mark_orphaned
 
 
 class ProjectService:
     """Change projects in the task app."""
 
-    def __init__(self, connections: ConnectionService) -> None:
-        """Use ``connections`` to reach each task app."""
+    def __init__(
+        self,
+        connections: ConnectionService,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
+        """Use ``connections`` to reach each task app; ``clock`` is injectable for tests."""
         self._connections = connections
+        self._clock = clock
 
     async def labels(
         self, db: AsyncSession, user_id: uuid.UUID, connection_id: uuid.UUID
@@ -35,11 +43,13 @@ class ProjectService:
         return await guard(connection, backend.list_labels())
 
     async def archive(self, db: AsyncSession, user_id: uuid.UUID, container_id: uuid.UUID) -> str:
-        """Archive a project in the task app, then forget it here. Returns its name.
+        """Archive a project in the task app and stop listing it here. Returns its name.
 
         The task app keeps the project and can restore it. Its subprojects go with it. Tefteri
         marks their tasks as deleted in the app, as the next sync would, and drops the
-        projects from draft plans. Committed plans keep the name of the project.
+        projects from draft plans. Committed plans keep the name of the project. The projects
+        stay known as orphaned with the reason ``archived``, with their label and history
+        (spec 003, FR-010), so that a restore can bring them back as they were.
 
         A project that is in a committed plan with no look-back yet is refused: its tasks
         are what the look-back counts.
@@ -88,6 +98,9 @@ class ProjectService:
                 Container(container.remote_id, container.name, container.parent_remote_id)
             ),
         )
+        for c in family:
+            label_row = await ensure_row(db, connection, c.remote_id, c.name, c.parent_remote_id)
+            mark_orphaned(label_row, OrphanReason.ARCHIVED, self._clock())
         ids = [c.id for c in family]
         # The database sets these references to NULL when the projects go. Do the same in
         # the session, so that rows that are already loaded do not keep a stale id.

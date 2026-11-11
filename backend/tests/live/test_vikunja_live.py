@@ -70,6 +70,41 @@ def _cached_due(task: dict[str, Any]) -> datetime | None:
 # --- the adapter alone ------------------------------------------------------------------
 
 
+async def test_a_project_can_be_renamed_and_keeps_its_id_and_parent(adapter: Adapter) -> None:
+    """Vikunja resets the fields that a write leaves out: the rename sends the whole project."""
+    backend = adapter("UTC")
+    parent = await backend.create_container(_title("Parent"), None)
+    child = await backend.create_container(_title("Child"), parent)
+    new_name = _title("Renamed")
+    renamed = await backend.rename_container(child, new_name)
+    assert (renamed.remote_id, renamed.name, renamed.parent_id) == (
+        child.remote_id,
+        new_name,
+        parent.remote_id,
+    )
+    listed = {c.remote_id: c for c in await backend.list_containers()}
+    assert listed[child.remote_id].name == new_name
+    assert listed[child.remote_id].parent_id == parent.remote_id
+
+
+async def test_an_archived_project_can_be_restored(adapter: Adapter) -> None:
+    """The project leaves Vikunja's list when archived and comes back, in place, when restored."""
+    backend = adapter("UTC")
+    parent = await backend.create_container(_title("Parent"), None)
+    child = await backend.create_container(_title("Child"), parent)
+    await backend.archive_container(child)
+    assert child.remote_id not in {c.remote_id for c in await backend.list_containers()}
+    await backend.restore_container(child)
+    back = {c.remote_id: c for c in await backend.list_containers()}
+    assert back[child.remote_id].parent_id == parent.remote_id
+    # Archiving the parent takes the subproject along; restoring both brings both back.
+    await backend.archive_container(parent)
+    await backend.restore_container(parent)
+    await backend.restore_container(child)
+    listed_ids = {c.remote_id for c in await backend.list_containers()}
+    assert {parent.remote_id, child.remote_id} <= listed_ids
+
+
 async def test_a_task_that_tefteri_created_can_be_moved_twice_in_a_row(
     adapter: Adapter, real: RealVikunja
 ) -> None:
@@ -376,3 +411,131 @@ async def test_a_task_created_with_labels_has_them_in_vikunja(
     assert second["labels"] == [one]
     listed = (await tefteri.get(f"{V1}/connections/{connection}/labels")).json()
     assert one in listed and two in listed and listed.count(one) == 1
+
+
+# --- project classification (spec 003) ---------------------------------------------------------
+
+
+async def _projects_by_name(tefteri: AsyncClient) -> dict[str, dict[str, Any]]:
+    r = await tefteri.get(f"{V1}/projects/classification")
+    assert r.status_code == 200, r.text
+    return {p["name"]: p for c in r.json()["connections"] for p in c["projects"]}
+
+
+async def _titles(real: RealVikunja) -> set[str]:
+    listed = await real.client.get(f"{real.base}/projects", headers=real.headers)
+    return {p["title"] for p in listed.json()}
+
+
+async def test_a_label_survives_a_rename_and_a_move_made_in_vikunja(
+    tefteri: AsyncClient, real: RealVikunja, adapter: Adapter
+) -> None:
+    """Labels are keyed on the Vikunja project id, so a rename or a move never loses one."""
+    backend = adapter("UTC")
+    top = await backend.create_container(_title("Theme"), None)
+    other = await backend.create_container(_title("Other"), None)
+    inner = await backend.create_container(_title("Inner"), top)
+    await _sync(tefteri)
+    projects = await _projects_by_name(tefteri)
+    assert projects[inner.name]["proposal"]["label"] == "milestone"  # nested
+    assert projects[top.name]["proposal"]["label"] == "theme"
+    saved = await tefteri.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": projects[inner.name]["id"], "label": "maintenance"}]},
+    )
+    assert saved.status_code == 200, saved.text
+    # Another client renames the project and moves it under another project.
+    project = (
+        await real.client.get(f"{real.base}/projects/{inner.remote_id}", headers=real.headers)
+    ).json()
+    renamed = _title("Renamed")
+    project |= {"title": renamed, "parent_project_id": int(other.remote_id)}
+    written = await real.client.post(
+        f"{real.base}/projects/{inner.remote_id}", headers=real.headers, json=project
+    )
+    assert written.status_code == 200, written.text
+    await _sync(tefteri)
+    moved = (await _projects_by_name(tefteri))[renamed]
+    assert moved["id"] == projects[inner.name]["id"]
+    assert (moved["label"], moved["orphaned"]) == ("maintenance", None)
+    parent = next(
+        p for p in (await _projects_by_name(tefteri)).values() if p["id"] == moved["parent_id"]
+    )
+    assert parent["name"] == other.name
+
+
+async def test_a_project_deleted_in_vikunja_is_orphaned_and_keeps_its_label(
+    tefteri: AsyncClient, real: RealVikunja, adapter: Adapter
+) -> None:
+    backend = adapter("UTC")
+    doomed = await backend.create_container(_title("Doomed"), None)
+    await _sync(tefteri)
+    project = (await _projects_by_name(tefteri))[doomed.name]
+    await tefteri.put(
+        f"{V1}/projects/labels", json={"changes": [{"id": project["id"], "label": "theme"}]}
+    )
+    gone = await real.client.delete(
+        f"{real.base}/projects/{doomed.remote_id}", headers=real.headers
+    )
+    assert gone.status_code == 200, gone.text
+    await _sync(tefteri)
+    orphan = (await _projects_by_name(tefteri))[doomed.name]
+    assert orphan["orphaned"]["reason"] == "missing" and orphan["label"] == "theme"
+    assert orphan["eligible"] is False
+    # Every screen that reads projects still works.
+    assert (await tefteri.get(f"{V1}/tasks", params={"due": "all"})).status_code == 200
+    assert (await tefteri.get(f"{V1}/weekly/2030-03-04/candidates")).status_code == 200
+
+
+async def test_rename_archive_and_restore_from_tefteri_change_vikunja(
+    tefteri: AsyncClient, real: RealVikunja, adapter: Adapter
+) -> None:
+    backend = adapter("UTC")
+    top = await backend.create_container(_title("Top"), None)
+    sub = await backend.create_container(_title("Sub"), top)
+    await _sync(tefteri)
+    projects = await _projects_by_name(tefteri)
+    await tefteri.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": projects[top.name]["id"], "label": "theme"}]},
+    )
+    new_name = _title("Better")
+    renamed = await tefteri.patch(
+        f"{V1}/projects/{projects[top.name]['id']}", json={"name": new_name}
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert new_name in await _titles(real)
+    assert top.name not in await _titles(real)
+
+    archived = await tefteri.post(f"{V1}/projects/{projects[top.name]['id']}/archive")
+    assert archived.status_code == 200, archived.text
+    assert {new_name, sub.name}.isdisjoint(await _titles(real))
+    await _sync(tefteri)  # a sync does not turn "archived" into "missing"
+    after = await _projects_by_name(tefteri)
+    assert after[new_name]["orphaned"]["reason"] == "archived"
+
+    restored = await tefteri.post(f"{V1}/projects/{projects[top.name]['id']}/restore")
+    assert restored.status_code == 200, restored.text
+    assert {new_name, sub.name} <= await _titles(real)
+    back = await _projects_by_name(tefteri)
+    assert (back[new_name]["orphaned"], back[new_name]["label"]) == (None, "theme")
+    assert back[sub.name]["orphaned"] is None
+
+
+async def test_create_a_project_and_label_it_creates_it_in_vikunja(
+    tefteri: AsyncClient, real: RealVikunja
+) -> None:
+    await _sync(tefteri)
+    connection = (await tefteri.get(f"{V1}/connections")).json()[0]["id"]
+    name = _title("Theme")
+    made = await tefteri.post(
+        f"{V1}/projects", json={"connection_id": connection, "name": name, "label": "theme"}
+    )
+    assert made.status_code == 201, made.text
+    assert name in await _titles(real)
+    assert made.json()["label"] == "theme"
+    await _sync(tefteri)
+    assert (await _projects_by_name(tefteri))[name]["label"] == "theme"
+    # No label is ever written to the task app: Vikunja has no label with that name.
+    labels = (await real.client.get(f"{real.base}/labels", headers=real.headers)).json() or []
+    assert "theme" not in {label["title"] for label in labels}

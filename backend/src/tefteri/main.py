@@ -24,6 +24,7 @@ from tefteri.api.routers import conflicts as conflicts_router
 from tefteri.api.routers import connections as connections_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
+from tefteri.api.routers import projects as projects_router
 from tefteri.api.routers import reviews as reviews_router
 from tefteri.api.routers import settings as settings_router
 from tefteri.api.routers import sync as sync_router
@@ -40,6 +41,7 @@ from tefteri.domain.enums import ConnectionKind
 from tefteri.security.crypto import TokenCipher
 from tefteri.services.background_sync import BackgroundSync
 from tefteri.services.calendar import CalendarService
+from tefteri.services.classification import ClassificationService
 from tefteri.services.conflicts import ConflictService
 from tefteri.services.connections import AdapterRegistry, ConnectionService
 from tefteri.services.goals import GoalService
@@ -146,6 +148,9 @@ def create_app(
     app.state.task_service = task_service
     project_service = ProjectService(connection_service)
     app.state.project_service = project_service
+    app.state.classification_service = ClassificationService(
+        connection_service, project_service, sync_service
+    )
     app.state.weekly_service = WeeklyService(
         task_service, connection_service, sync_service, project_service
     )
@@ -189,6 +194,7 @@ def create_app(
         planning_router,
         reviews_router,
         weekly_router,
+        projects_router,
         users_router,
         settings_router,
         checklists_router,

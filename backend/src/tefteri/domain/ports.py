@@ -52,6 +52,21 @@ class TaskBackend(Backend, Protocol):
         """Archive a project (needs ``ARCHIVE_PROJECTS``). The app can restore it."""
         ...
 
+    async def rename_container(self, container: Container, name: str) -> Container:
+        """Give a project a new title and return it (needs ``RENAME_PROJECTS``).
+
+        The identity and the place in the tree stay. The adapter reads the project back and
+        raises ``NotSaved`` when the app did not keep the title.
+        """
+        ...
+
+    async def restore_container(self, container: Container) -> None:
+        """Bring an archived project back (needs ``RESTORE_PROJECTS``).
+
+        The adapter reads the project back and raises ``NotSaved`` when it is still archived.
+        """
+        ...
+
     async def list_tasks(self, container: Container, since: str | None) -> TaskPage:
         """List tasks of a container, optionally only changes since a version."""
         ...

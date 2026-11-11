@@ -10,6 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.connection import Connection
 from tefteri.db.models.user import User
 from tefteri.db.repositories.connections import ConnectionRepository
+from tefteri.domain.capabilities import (
+    CapabilityReport,
+    missing_message,
+    missing_required,
+    report_for,
+)
 from tefteri.domain.entities import ConnectionHealth
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus
 from tefteri.domain.ports import Backend
@@ -25,6 +31,16 @@ class UnknownProvider(Exception):
 
 class InvalidConnection(Exception):
     """The connection data is not valid (for example a kind that does not match the provider)."""
+
+
+class MissingCapability(Exception):
+    """A task app lacks a capability that tefteri needs (spec 003, FR-015)."""
+
+    def __init__(self, missing: list[str], message: str) -> None:
+        """Keep the names of the missing capabilities and a message that names them."""
+        super().__init__(message)
+        self.missing = missing
+        self.message = message
 
 
 class AdapterRegistry:
@@ -105,9 +121,29 @@ class ConnectionService:
             health = ConnectionHealth(
                 ConnectionStatus.ERROR, "error", str(exc) or type(exc).__name__
             )
+        if health.status is ConnectionStatus.OK and connection.kind == ConnectionKind.TASKS.value:
+            missing = missing_required(backend.capabilities())
+            if missing:
+                health = ConnectionHealth(
+                    ConnectionStatus.ERROR, "missing_capability", missing_message(missing)
+                )
         connection.status = health.status.value
         await db.flush()
         return health
+
+    async def capability_report(self, db: AsyncSession, connection: Connection) -> CapabilityReport:
+        """Say which required capabilities a connection lacks and which optional ones it has.
+
+        Only a task connection has them. For any other kind, or when the adapter cannot be
+        built (a setting is missing), the report is empty.
+        """
+        if connection.kind != ConnectionKind.TASKS.value:
+            return CapabilityReport([], {})
+        try:
+            backend = await self.backend_of_owner(db, connection)
+        except Exception:  # noqa: BLE001 - a connection that cannot be built has no report
+            return CapabilityReport([], {})
+        return report_for(backend.capabilities())
 
     async def list(self, db: AsyncSession, user_id: uuid.UUID) -> Sequence[Connection]:
         """List the user's connections."""
@@ -131,6 +167,8 @@ class ConnectionService:
     ) -> Connection:
         """Create a connection. The kind follows from the provider."""
         kind = self.registry.kind_of(provider)
+        if kind is ConnectionKind.TASKS:
+            self._require_capabilities(provider, settings, credentials)
         connection = Connection(
             kind=kind.value,
             provider=provider,
@@ -140,6 +178,24 @@ class ConnectionService:
             status=ConnectionStatus.OK.value,
         )
         return await ConnectionRepository(db, user_id).add(connection)
+
+    def _require_capabilities(
+        self, provider: str, settings: dict[str, Any], credentials: dict[str, Any]
+    ) -> None:
+        """Refuse a task app that lacks a required capability, and name it (FR-015).
+
+        An adapter that cannot be built yet (a setting is missing) is not refused here: the
+        first sync and ``check`` report that problem.
+        """
+        try:
+            backend = self.registry.build(provider, {**settings, "timezone": "UTC"}, credentials)
+        except UnknownProvider:
+            raise
+        except Exception:  # noqa: BLE001 - the sync says what is wrong with the settings
+            return
+        missing = missing_required(backend.capabilities())
+        if missing:
+            raise MissingCapability([c.value for c in missing], missing_message(missing))
 
     async def update(
         self,

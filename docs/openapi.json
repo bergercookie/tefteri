@@ -104,6 +104,30 @@
         "title": "BreakdownOut",
         "type": "object"
       },
+      "ByChangeOut": {
+        "description": "How many projects go from one label to another.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "count"
+        ],
+        "title": "ByChangeOut",
+        "type": "object"
+      },
       "CalendarItemOut": {
         "description": "A calendar view item: an entry, or a scheduled task shown next to entries.",
         "properties": {
@@ -235,6 +259,11 @@
           "selected": {
             "title": "Selected",
             "type": "boolean"
+          },
+          "unsorted": {
+            "default": false,
+            "title": "Unsorted",
+            "type": "boolean"
           }
         },
         "required": [
@@ -248,6 +277,57 @@
           "selected"
         ],
         "title": "CandidateOut",
+        "type": "object"
+      },
+      "CapabilitiesOut": {
+        "description": "What a task app can do (spec 003). Other kinds of connection have an empty report.",
+        "properties": {
+          "missing_required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Required",
+            "type": "array"
+          },
+          "optional": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Optional",
+            "type": "object"
+          }
+        },
+        "required": [
+          "missing_required",
+          "optional"
+        ],
+        "title": "CapabilitiesOut",
+        "type": "object"
+      },
+      "ChangeIn": {
+        "description": "One label change. ``label=null`` puts the project back to unclassified.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "ChangeIn",
         "type": "object"
       },
       "ChecklistItemOut": {
@@ -437,6 +517,60 @@
         "title": "ChildTaskIn",
         "type": "object"
       },
+      "ClassificationOut": {
+        "description": "All projects with their labels.",
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/ClassifiedConnectionOut"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "unsorted_count": {
+            "title": "Unsorted Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "connections",
+          "unsorted_count"
+        ],
+        "title": "ClassificationOut",
+        "type": "object"
+      },
+      "ClassifiedConnectionOut": {
+        "description": "The projects of one task connection, in tree order.",
+        "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/ConnectionCapabilitiesOut"
+          },
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "connection_id",
+          "name",
+          "capabilities",
+          "projects"
+        ],
+        "title": "ClassifiedConnectionOut",
+        "type": "object"
+      },
       "ConflictOut": {
         "description": "An unresolved conflict with both versions.",
         "properties": {
@@ -481,9 +615,31 @@
         "title": "ConflictOut",
         "type": "object"
       },
+      "ConnectionCapabilitiesOut": {
+        "description": "The optional features of the task app.",
+        "properties": {
+          "rename": {
+            "title": "Rename",
+            "type": "boolean"
+          },
+          "restore": {
+            "title": "Restore",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rename",
+          "restore"
+        ],
+        "title": "ConnectionCapabilitiesOut",
+        "type": "object"
+      },
       "ConnectionCheckOut": {
         "description": "Whether a connection works, and if not, why.",
         "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/CapabilitiesOut"
+          },
           "message": {
             "anyOf": [
               {
@@ -514,7 +670,8 @@
         "required": [
           "status",
           "reason",
-          "message"
+          "message",
+          "capabilities"
         ],
         "title": "ConnectionCheckOut",
         "type": "object"
@@ -522,6 +679,9 @@
       "ConnectionCreatedOut": {
         "description": "A new connection and the result of its first sync.",
         "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/CapabilitiesOut"
+          },
           "display_name": {
             "title": "Display Name",
             "type": "string"
@@ -584,7 +744,8 @@
           "status",
           "last_sync_at",
           "last_sync_outcome",
-          "sync"
+          "sync",
+          "capabilities"
         ],
         "title": "ConnectionCreatedOut",
         "type": "object"
@@ -861,6 +1022,33 @@
         ],
         "title": "DueFilter",
         "type": "string"
+      },
+      "EffectOut": {
+        "description": "What a bulk change does (FR-023).",
+        "properties": {
+          "by_change": {
+            "items": {
+              "$ref": "#/components/schemas/ByChangeOut"
+            },
+            "title": "By Change",
+            "type": "array"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "in_committed_plan": {
+            "title": "In Committed Plan",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changed",
+          "by_change",
+          "in_committed_plan"
+        ],
+        "title": "EffectOut",
+        "type": "object"
       },
       "EnabledIn": {
         "description": "The calendars (containers) that tefteri syncs. Every other one of the connection is off.",
@@ -1471,6 +1659,64 @@
         "title": "HistoryTotalsOut",
         "type": "object"
       },
+      "LabelsIn": {
+        "description": "A bulk label change.",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeIn"
+            },
+            "maxItems": 1000,
+            "title": "Changes",
+            "type": "array"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "user",
+            "enum": [
+              "user",
+              "suggestion"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "title": "LabelsIn",
+        "type": "object"
+      },
+      "LabelsOut": {
+        "description": "The effect of a bulk change and, when it was written, its batch id for undo.",
+        "properties": {
+          "batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "effect": {
+            "$ref": "#/components/schemas/EffectOut"
+          }
+        },
+        "required": [
+          "batch_id",
+          "effect"
+        ],
+        "title": "LabelsOut",
+        "type": "object"
+      },
       "LoginRequest": {
         "description": "Username and password.",
         "properties": {
@@ -1724,6 +1970,37 @@
         "title": "NoteOut",
         "type": "object"
       },
+      "OrphanedOut": {
+        "description": "A project that is no longer in the task app.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "reason": {
+            "enum": [
+              "missing",
+              "archived"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "at"
+        ],
+        "title": "OrphanedOut",
+        "type": "object"
+      },
       "ParkedIn": {
         "description": "Set a task aside, or put it back.",
         "properties": {
@@ -1901,116 +2178,38 @@
         "title": "PlanIn",
         "type": "object"
       },
-      "ProjectIn": {
-        "description": "The project to add.",
-        "properties": {
-          "container_id": {
-            "format": "uuid",
-            "title": "Container Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "container_id"
+      "ProjectLabel": {
+        "description": "What a project is for the user. The label lives only in tefteri (spec 003).",
+        "enum": [
+          "theme",
+          "milestone",
+          "maintenance",
+          "ignored"
         ],
-        "title": "ProjectIn",
-        "type": "object"
+        "title": "ProjectLabel",
+        "type": "string"
       },
-      "ProjectOut": {
-        "description": "A project of the plan.",
+      "ProposalOut": {
+        "description": "The label that tefteri suggests, and why.",
         "properties": {
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "label": {
+            "$ref": "#/components/schemas/ProjectLabel"
+          },
+          "reason": {
+            "enum": [
+              "top_level",
+              "nested",
+              "was_committed"
             ],
-            "title": "Color"
-          },
-          "committed_tasks": {
-            "items": {
-              "$ref": "#/components/schemas/WeeklyTaskOut"
-            },
-            "title": "Committed Tasks",
-            "type": "array"
-          },
-          "container_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Container Id"
-          },
-          "created_here": {
-            "title": "Created Here",
-            "type": "boolean"
-          },
-          "done_tasks": {
-            "title": "Done Tasks",
-            "type": "integer"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
+            "title": "Reason",
             "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "open_tasks": {
-            "title": "Open Tasks",
-            "type": "integer"
-          },
-          "parked_tasks": {
-            "title": "Parked Tasks",
-            "type": "integer"
-          },
-          "scheduled_tasks": {
-            "title": "Scheduled Tasks",
-            "type": "integer"
-          },
-          "tasks": {
-            "items": {
-              "$ref": "#/components/schemas/WeeklyTaskOut"
-            },
-            "title": "Tasks",
-            "type": "array"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url"
           }
         },
         "required": [
-          "id",
-          "container_id",
-          "name",
-          "created_here",
-          "url",
-          "open_tasks",
-          "done_tasks",
-          "scheduled_tasks",
-          "parked_tasks",
-          "tasks",
-          "committed_tasks"
+          "label",
+          "reason"
         ],
-        "title": "ProjectOut",
+        "title": "ProposalOut",
         "type": "object"
       },
       "ReminderIn": {
@@ -2058,6 +2257,22 @@
           "minutes_before"
         ],
         "title": "ReminderOut",
+        "type": "object"
+      },
+      "RenameIn": {
+        "description": "The new name of a project.",
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameIn",
         "type": "object"
       },
       "Resolution": {
@@ -2789,6 +3004,35 @@
         "title": "TickIn",
         "type": "object"
       },
+      "UndoIn": {
+        "description": "The save to undo.",
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "title": "UndoIn",
+        "type": "object"
+      },
+      "UndoOut": {
+        "description": "How many projects got their earlier label back.",
+        "properties": {
+          "restored": {
+            "title": "Restored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "restored"
+        ],
+        "title": "UndoOut",
+        "type": "object"
+      },
       "UserIn": {
         "description": "Data to create a user.",
         "properties": {
@@ -3127,6 +3371,151 @@
         "title": "PlanOut",
         "type": "object"
       },
+      "tefteri__api__routers__projects__ProjectIn": {
+        "description": "A project to create in the task app and label.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "label": {
+            "$ref": "#/components/schemas/ProjectLabel"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "required": [
+          "connection_id",
+          "name",
+          "label"
+        ],
+        "title": "ProjectIn",
+        "type": "object"
+      },
+      "tefteri__api__routers__projects__ProjectOut": {
+        "description": "A project with its label, its proposal and the facts that the screen needs.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "effective_label": {
+            "$ref": "#/components/schemas/ProjectLabel"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "in_committed_plan": {
+            "title": "In Committed Plan",
+            "type": "boolean"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "orphaned": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrphanedOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "parent_theme_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Theme Id"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalOut"
+          },
+          "subprojects": {
+            "title": "Subprojects",
+            "type": "integer"
+          },
+          "unsorted": {
+            "title": "Unsorted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "connection_id",
+          "name",
+          "parent_id",
+          "label",
+          "proposal",
+          "effective_label",
+          "parent_theme_id",
+          "unsorted",
+          "orphaned",
+          "eligible",
+          "open_tasks",
+          "subprojects",
+          "in_committed_plan"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
       "tefteri__api__routers__weekly__PlanOut": {
         "description": "The plan of one week.",
         "properties": {
@@ -3154,7 +3543,7 @@
           },
           "projects": {
             "items": {
-              "$ref": "#/components/schemas/ProjectOut"
+              "$ref": "#/components/schemas/tefteri__api__routers__weekly__ProjectOut"
             },
             "title": "Projects",
             "type": "array"
@@ -3176,6 +3565,118 @@
           "projects"
         ],
         "title": "PlanOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__weekly__ProjectIn": {
+        "description": "The project to add.",
+        "properties": {
+          "container_id": {
+            "format": "uuid",
+            "title": "Container Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "container_id"
+        ],
+        "title": "ProjectIn",
+        "type": "object"
+      },
+      "tefteri__api__routers__weekly__ProjectOut": {
+        "description": "A project of the plan.",
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "committed_tasks": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyTaskOut"
+            },
+            "title": "Committed Tasks",
+            "type": "array"
+          },
+          "container_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Id"
+          },
+          "created_here": {
+            "title": "Created Here",
+            "type": "boolean"
+          },
+          "done_tasks": {
+            "title": "Done Tasks",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "open_tasks": {
+            "title": "Open Tasks",
+            "type": "integer"
+          },
+          "parked_tasks": {
+            "title": "Parked Tasks",
+            "type": "integer"
+          },
+          "scheduled_tasks": {
+            "title": "Scheduled Tasks",
+            "type": "integer"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "container_id",
+          "name",
+          "created_here",
+          "url",
+          "open_tasks",
+          "done_tasks",
+          "scheduled_tasks",
+          "parked_tasks",
+          "tasks",
+          "committed_tasks"
+        ],
+        "title": "ProjectOut",
         "type": "object"
       }
     }
@@ -5034,6 +5535,325 @@
         ]
       }
     },
+    "/api/v1/projects": {
+      "post": {
+        "description": "Create a project in the task app, then record its label (FR-024).\n\nWhen the task app fails nothing is recorded and the answer is the error.",
+        "operationId": "create_project_api_v1_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/classification": {
+      "get": {
+        "description": "Return the project tree of the user's task connections with labels and proposals.\n\nWithout ``connection_id`` every task connection is included. Orphaned projects are in the\nlist, with their stored name and the reason.",
+        "operationId": "classification_api_v1_projects_classification_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "connection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Classification",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/labels": {
+      "put": {
+        "description": "Set the labels of several projects at once, or preview that (``dry_run``).\n\nA real save adds one history entry for each project that changes, all with one\n``batch_id``. 404 when a project is not the user's.",
+        "operationId": "set_labels_api_v1_projects_labels_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Labels",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/labels/undo": {
+      "post": {
+        "description": "Undo a save: add history entries that restore the earlier labels.\n\n404 when the batch is not the user's, 409 (``already_undone``) when it was undone before.",
+        "operationId": "undo_labels_api_v1_projects_labels_undo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo Labels",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "patch": {
+        "description": "Rename a project in the task app first, then here.\n\n409 ``not_supported`` when the task app cannot rename; 502 when the task app fails (nothing\nchanges); 404 for an orphaned project.",
+        "operationId": "rename_project_api_v1_projects__project_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/archive": {
+      "post": {
+        "description": "Archive a project in the task app. Tefteri keeps it as orphaned (``archived``).",
+        "operationId": "archive_project_api_v1_projects__project_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/restore": {
+      "post": {
+        "description": "Restore an archived project in the task app first, then clear its orphaned mark.\n\n409 ``not_supported`` or 502 when the task app cannot; the project stays as it was.",
+        "operationId": "restore_project_api_v1_projects__project_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/api/v1/reviews/history": {
       "get": {
         "description": "List all plans, newest period first, each with its review summary when there is one.",
@@ -6344,7 +7164,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProjectIn"
+                "$ref": "#/components/schemas/tefteri__api__routers__weekly__ProjectIn"
               }
             }
           },
