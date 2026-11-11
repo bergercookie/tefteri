@@ -30,8 +30,11 @@ class WeeklyApi {
   /// `GET /weekly/{week}/candidates`.
   Future<List<WeeklyCandidate>> candidates(String week) async {
     final r = await _dio.get<Object?>('/weekly/$week/candidates');
+    // The list may come inside an object that also holds `unsorted_count`.
+    final data = r.data;
+    final list = data is Map ? data['candidates'] ?? data['items'] : data;
     return [
-      for (final c in (r.data as List? ?? const []))
+      for (final c in (list as List? ?? const []))
         WeeklyCandidate.fromJson(c as Map<String, dynamic>),
     ];
   }

@@ -11,10 +11,27 @@ import 'package:flutter/material.dart';
 String apiErrorMessage(Object error) {
   if (error is DioException) {
     final data = error.response?.data;
-    if (data is Map && data['detail'] != null) return '${data['detail']}';
+    if (data is Map) {
+      final detail = data['detail'];
+      // The classification routes answer {"detail": {"code", "message"}}.
+      if (detail is Map && detail['message'] != null) {
+        return '${detail['message']}';
+      }
+      if (detail != null && detail is! Map) return '$detail';
+    }
     return 'Cannot reach the server.';
   }
   return 'Something went wrong.';
+}
+
+/// The machine code of an API error (for example `not_supported`), or null.
+String? apiErrorCode(Object error) {
+  if (error is! DioException) return null;
+  final data = error.response?.data;
+  if (data is! Map) return null;
+  final detail = data['detail'];
+  if (detail is Map && detail['code'] != null) return '${detail['code']}';
+  return data['code'] == null ? null : '${data['code']}';
 }
 
 /// Banner that shows a failed action. The change is not queued.

@@ -180,3 +180,95 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     );
   }
 }
+
+/// What each required capability of a task app means, in plain words.
+const capabilityWords = <String, String>{
+  'subprojects': 'Nested projects (projects inside projects, at least two '
+      'levels)',
+  'project_tree': 'Reading the whole project tree, and noticing projects that '
+      'were moved or deleted',
+  'stable_project_ids': 'A stable identity for each project, so labels stay '
+      'on the right project after a rename',
+  'archive_projects': 'Creating and archiving projects',
+  'create_tasks': 'Creating tasks',
+  'completion_times': 'The time each task was completed',
+};
+
+/// The capability names in [text] (an API message or list), in a stable order.
+List<String> capabilitiesNamedIn(Object? text) {
+  final t = '$text'.toLowerCase().replaceAll(' ', '_');
+  return [
+    for (final k in capabilityWords.keys)
+      if (t.contains(k)) k,
+  ];
+}
+
+/// The missing capabilities of a connection result: from the list
+/// `capabilities.missing_required` of [data], or named in its message.
+List<String> missingCapabilitiesOf(Object? data) {
+  if (data is! Map) return const [];
+  final caps = data['capabilities'];
+  if (caps is Map && caps['missing_required'] is List) {
+    final names = (caps['missing_required'] as List).map((e) => '$e').toList();
+    if (names.isNotEmpty) return names;
+  }
+  final detail = data['detail'];
+  return capabilitiesNamedIn(detail is Map ? detail['message'] : detail);
+}
+
+/// One sentence that names the [missing] capabilities in plain words.
+String missingCapabilitiesSentence(List<String> missing) {
+  final words = [
+    for (final m in missing) (capabilityWords[m] ?? m.replaceAll('_', ' ')),
+  ];
+  return 'Tefteri needs a feature that your task app does not offer: '
+      '${words.join('; ')}.';
+}
+
+/// Tells the user which required capabilities the task app lacks and that the
+/// connection was not made.
+Future<void> showMissingCapabilities(BuildContext context,
+    {required String appName, required List<String> missing}) {
+  final text = Theme.of(context).textTheme;
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('missing-capability'),
+      title: const Text('This task app cannot be used yet'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tefteri did not connect $appName, because it lacks '
+                  'something Tefteri needs:'),
+              const SizedBox(height: 8),
+              for (final m in missing)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                      '•  ${capabilityWords[m] ?? m.replaceAll('_', ' ')}',
+                      key: Key('missing-$m')),
+                ),
+              const SizedBox(height: 8),
+              Text(
+                'Nothing was changed in your task app. Use a task app that '
+                'offers this, or ask its maker to add it.',
+                style: text.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        FilledButton(
+          key: const Key('missing-capability-close'),
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}

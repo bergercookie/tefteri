@@ -34,6 +34,7 @@ const appViews = [
   AppView('Month', '/month', 'm'),
   AppView('Year', '/year', 'y'),
   AppView('Goals', '/goals', 'g'),
+  AppView('Projects', '/projects', 'o'),
   AppView('Reviews', '/review', 'r'),
   AppView('Conflicts', '/conflicts', 'x'),
   AppView('Settings', '/settings'),
