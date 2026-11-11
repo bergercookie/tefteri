@@ -66,6 +66,21 @@ class ProjectView:
     """The tasks planned when the plan was committed, done or not (empty before the commit)."""
 
 
+@dataclass(frozen=True)
+class ExtraDone:
+    """A task that was completed during the week and was not in the committed plan."""
+
+    task: Task
+    completed_day: date
+    """The local day it was completed."""
+    project: str | None
+    color: str | None
+
+
+MAX_EXTRA_DONE = 200
+"""The most tasks that are listed as done outside the plan."""
+
+
 @dataclass
 class LookBackProject:
     """How one project of the earlier week went."""
@@ -623,6 +638,54 @@ class WeeklyService:
             if wish is not None and wish.archive and p.row.container_id is not None:
                 await self._projects.archive(db, user_id, p.row.container_id)
         return plan
+
+    async def done_outside_plan(
+        self, db: AsyncSession, user_id: uuid.UUID, plan: WeeklyPlan, tz: str
+    ) -> list[ExtraDone]:
+        """Return the tasks completed during the week of a committed plan that it did not promise.
+
+        These are the tasks that the plan did not commit to: from any project, also from a chosen
+        project when the task came after the commit. A task counts when the task app says that it
+        was completed on a day of the week (in the time zone of the user). A done task without a
+        completion time is left out, because the week of it is not known. The list is oldest
+        first, and it holds at most ``MAX_EXTRA_DONE`` tasks.
+        """
+        if plan.status != "committed":
+            return []
+        promised = {tid for row in await self._rows(db, plan) for tid in row.committed_task_ids}
+        zone = ZoneInfo(tz)
+        low = datetime.combine(plan.week_start, datetime.min.time(), tzinfo=zone)
+        high = datetime.combine(
+            plan.week_start + timedelta(days=7), datetime.min.time(), tzinfo=zone
+        )
+        containers = {
+            c.id: c
+            for c in (
+                await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
+            ).scalars()
+        }
+        found: list[ExtraDone] = []
+        for t in (
+            await db.execute(select(Task).where(Task.user_id == user_id, Task.status == "done"))
+        ).scalars():
+            if t.completed_at is None or str(t.id) in promised:
+                continue
+            if t.sync_state == SyncState.DELETED_REMOTELY.value:
+                continue
+            when = _aware(t.completed_at)
+            if not low <= when < high:
+                continue
+            container = containers.get(t.container_id) if t.container_id else None
+            found.append(
+                ExtraDone(
+                    t,
+                    when.astimezone(zone).date(),
+                    container.name if container else None,
+                    container.color if container else None,
+                )
+            )
+        found.sort(key=lambda e: (e.completed_day, e.task.title.casefold()))
+        return found[:MAX_EXTRA_DONE]
 
     async def history(self, db: AsyncSession, user_id: uuid.UUID) -> list[HistoryEntry]:
         """List the reviewed weeks, newest first."""

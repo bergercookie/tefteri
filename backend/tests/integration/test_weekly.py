@@ -1,7 +1,8 @@
 """The weekly planning workflow: choose projects, give tasks a day, commit, look back."""
 
 from collections.abc import Awaitable, Callable
-from datetime import date, timedelta
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from httpx import AsyncClient
@@ -210,6 +211,96 @@ async def test_a_done_task_reports_the_local_day_it_was_completed(
     # 22:30 UTC is already the next day in Athens (the test user's time zone), in March.
     assert days[first] == "2030-03-07"
     assert [d for i, d in days.items() if i != first] == [None]
+
+
+def _finish(world: FakeWorld, title: str, at: datetime | None) -> None:
+    """Mark a task done in the task app at ``at`` (``None``: done, but with no time)."""
+    backend = world.tasks["default"]
+    remote_id, task = next((i, t) for i, t in backend.tasks.items() if t.title == title)
+    backend.tasks[remote_id] = replace(task, done=True, done_at=at, version=task.version + "+")
+
+
+async def _extra(api: AsyncClient, week: date) -> list[dict[str, Any]]:
+    state = (await api.get(f"{V1}/weekly/{week}")).json()
+    extra: list[dict[str, Any]] = state["done_outside_plan"]
+    return extra
+
+
+async def _committed_website(api: AsyncClient, world: FakeWorld) -> dict[str, str]:
+    ids = await _setup(api, world)
+    await _add(api, FUTURE, ids["Website"])
+    await api.post(f"{V1}/weekly/{FUTURE}/spread")
+    await api.post(f"{V1}/weekly/{FUTURE}/commit")
+    return ids
+
+
+async def test_tasks_done_outside_the_plan_are_listed_with_their_day(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    await _committed_website(api, world)
+    assert await _extra(api, FUTURE) == []  # nothing is done yet
+
+    # A task of the plan: it counts for the plan, not as an extra.
+    _finish(world, "p2 task 1", datetime(2030, 3, 5, 10, tzinfo=UTC))
+    # Tasks that the plan did not promise: another project, and one added after the commit.
+    _finish(world, "p3 task 1", datetime(2030, 3, 6, 9, tzinfo=UTC))
+    await world.tasks["default"].create_task(TaskDraft("p2", "Added later"))
+    _finish(world, "Added later", datetime(2030, 3, 4, 8, tzinfo=UTC))
+    await api.post(f"{V1}/sync")
+    # Not in the list: done another week, done with no time, and still open.
+    _finish(world, "p1 task 1", datetime(2030, 3, 12, 9, tzinfo=UTC))
+    _finish(world, "p1 task 2", None)
+    await api.post(f"{V1}/sync")
+
+    extra = await _extra(api, FUTURE)
+    assert [(e["title"], e["completed_day"], e["project"]) for e in extra] == [
+        ("Added later", "2030-03-04", "Website"),
+        ("p3 task 1", "2030-03-06", "Garden"),
+    ]
+    state = (await api.get(f"{V1}/weekly/{FUTURE}")).json()
+    plan = state["plan"]["projects"][0]
+    assert sorted(t["title"] for t in plan["committed_tasks"] if t["done"]) == ["p2 task 1"]
+    # Another week has its own list, and the next week sees the task done in it.
+    assert await _extra(api, FUTURE + timedelta(days=7)) == []
+
+
+async def test_the_week_follows_the_time_zone_of_the_user(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    admin = (await api.get(f"{V1}/auth/me")).json()
+    await api.patch(f"{V1}/users/{admin['id']}", json={"timezone": "Europe/Athens"})
+    await _committed_website(api, world)
+    # Sunday 22:30 UTC before the week is Monday 00:30 in Athens: it belongs to the week.
+    _finish(world, "p3 task 1", datetime(2030, 3, 3, 22, 30, tzinfo=UTC))
+    # Sunday 22:30 UTC at the end of the week is Monday 00:30 in Athens: it belongs to the next.
+    _finish(world, "p3 task 2", datetime(2030, 3, 10, 22, 30, tzinfo=UTC))
+    await api.post(f"{V1}/sync")
+    extra = await _extra(api, FUTURE)
+    assert [(e["title"], e["completed_day"]) for e in extra] == [("p3 task 1", "2030-03-04")]
+    nxt = await _extra(api, FUTURE + timedelta(days=7))
+    assert nxt == []  # that week has no committed plan
+
+
+async def test_nothing_is_listed_before_the_plan_is_committed(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await _setup(api, world)
+    await _add(api, FUTURE, ids["Website"])  # a draft
+    _finish(world, "p3 task 1", datetime(2030, 3, 6, 9, tzinfo=UTC))
+    await api.post(f"{V1}/sync")
+    assert await _extra(api, FUTURE) == []
+    assert await _extra(api, FUTURE + timedelta(days=14)) == []  # no plan at all
+
+
+async def test_an_extra_task_has_its_project_color_and_link(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    await _committed_website(api, world)
+    _finish(world, "p3 task 1", datetime(2030, 3, 6, 9, tzinfo=UTC))
+    await api.post(f"{V1}/sync")
+    (one,) = await _extra(api, FUTURE)
+    assert set(one) == {"id", "title", "completed_day", "project", "project_color", "url"}
+    assert one["project"] == "Garden"
 
 
 async def test_commit_needs_a_project_and_a_started_plan(

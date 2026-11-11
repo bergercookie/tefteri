@@ -49,6 +49,33 @@ final _weeklyState = {
   'week_start': '2026-11-02',
   'week_end': '2026-11-09',
   'look_back': null,
+  // Done during the week, and not in the committed plan.
+  'done_outside_plan': [
+    {
+      'id': 'x1',
+      'title': 'Call the plumber',
+      'completed_day': '2026-11-03',
+      'project': 'Home',
+      'project_color': null,
+      'url': null,
+    },
+    {
+      'id': 'x2',
+      'title': 'Pay the electricity bill',
+      'completed_day': '2026-11-04',
+      'project': 'Taxes',
+      'project_color': null,
+      'url': null,
+    },
+    {
+      'id': 'x3',
+      'title': 'Reply to the landlord',
+      'completed_day': '2026-11-04',
+      'project': null,
+      'project_color': null,
+      'url': null,
+    },
+  ],
   'plan': {
     'id': 'plan1',
     'status': 'committed',
