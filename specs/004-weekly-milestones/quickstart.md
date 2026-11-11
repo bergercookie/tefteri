@@ -49,4 +49,4 @@ Goal: a user who knows feature 003 plans one week with milestones, reviews it, a
 
 - Screenshots from `just docs::screenshots` in light and dark and in both widths.
 - One screenshot per step of the browser walkthrough, kept in the session notes, not committed.
-- The list of usability findings and what fixed each one (task T080 and T081 of [tasks.md](tasks.md)).
+- The list of usability findings and what fixed each one (tasks T090 and T091 of [tasks.md](tasks.md)).

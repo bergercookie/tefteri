@@ -71,3 +71,10 @@ Each rule has ONE owner spec. The other specs reference it and do not restate it
 9. **Usability rules for every spec.** Every picker that can be empty offers an inline action ("label a project as theme" or "create a theme"). Every term is explained once, at first use. Every destructive choice shows its effect and can be undone. One owner per rule: orphans (003), goal removal from week and month flows (006), no time tracking (005).
 
 10. **Work inside a routine (owner 003).** A project inside a project labelled maintenance is routine work. It is proposed as maintenance when unclassified, and it is never offered in the weekly picker. Feature 005 counts the tasks of such a project as the work category maintenance, whatever the label of the project itself is.
+
+## Decisions on open points of the design of 004 (2026-11-11)
+
+- O-1: Parking a milestone does not clear the due dates of its tasks. The older rule that the backlog choice cleared stale due dates is dropped, and the test that asserted it changes.
+- O-2: The Week view and the period reviews keep showing goals until feature 006 removes them. The weekly planning flow has no goals today.
+- O-3: A "dropped task" is a task that the task app no longer lists (the task app has no "will not do" state). Dropped tasks never block the completion of a milestone.
+- The task-level "Park for later" is renamed "Not this week" in the UI, because "parked" now only means the state of a milestone.
