@@ -22,7 +22,7 @@ information. The intent flags `NEW_TASK`, `CLEAR_TOP` and `SINGLE_TOP` keep one 
 app. `go_router` then opens the view. No Dart code is special for the widget.
 
 | Button | Link path | View |
-|---|---|---|
+| --- | --- | --- |
 | Today | `/daily` | the plan of the day |
 | Week | `/week` | the week |
 | Month | `/month` | the month |

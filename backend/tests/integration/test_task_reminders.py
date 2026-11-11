@@ -25,7 +25,7 @@ def _backend(world: FakeWorld):  # type: ignore[no-untyped-def]
 
 
 def _remote_id(world: FakeWorld) -> str:
-    return next(iter(_backend(world).tasks))
+    return str(next(iter(_backend(world).tasks)))
 
 
 async def test_a_task_has_no_reminder_until_one_is_added(api: AsyncClient) -> None:
