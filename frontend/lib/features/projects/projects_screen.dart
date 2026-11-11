@@ -349,7 +349,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             Expanded(
               child: ListView.builder(
                 key: const Key('projects-list'),
-                padding: EdgeInsets.fromLTRB(side, Space.md, side, Space.xxl),
+                padding: EdgeInsets.fromLTRB(side, Space.sm, side, Space.xxl),
                 itemCount: top.length + items.length,
                 itemBuilder: (context, i) => i < top.length
                     ? top[i]
@@ -369,6 +369,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final total = [for (final k in c.connections) ...k.projects]
         .where((p) => p.orphaned == null)
         .length;
+    // Once a label is saved the user has seen the terms; a narrow screen has
+    // no room for the long texts. Both keep the top of the list short.
+    final compact = MediaQuery.sizeOf(context).width < 700 ||
+        c.connections.any((k) => k.projects.any((p) => p.label != null));
     return [
       if (_error != null)
         Padding(
@@ -379,15 +383,15 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       if (c.unsortedCount > 0)
         Container(
           key: const Key('accept-card'),
-          margin: const EdgeInsets.only(bottom: Space.lg),
-          padding: const EdgeInsets.all(Space.lg),
+          margin: EdgeInsets.only(bottom: compact ? Space.sm : Space.lg),
+          padding: EdgeInsets.all(compact ? Space.md : Space.lg),
           decoration: BoxDecoration(
             color: scheme.primaryContainer,
             borderRadius: BorderRadius.circular(Corner.md),
           ),
           child: Wrap(
-            spacing: Space.lg,
-            runSpacing: Space.md,
+            spacing: compact ? Space.md : Space.lg,
+            runSpacing: compact ? Space.xs : Space.md,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ConstrainedBox(
@@ -400,33 +404,43 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                           ? '1 project needs a label'
                           : '${c.unsortedCount} projects need a label',
                       key: const Key('unsorted-count'),
-                      style: text.titleMedium
+                      style: (compact ? text.titleSmall : text.titleMedium)
                           ?.copyWith(color: scheme.onPrimaryContainer),
                     ),
-                    const SizedBox(height: Space.xs),
-                    Text(
-                      'Tefteri has suggested a label for each one, marked '
-                      '"Suggestion" below. If they look right, accept them '
-                      'all. You can still change any project afterwards. '
-                      'Nothing changes in your task app.',
-                      style: text.bodyMedium
-                          ?.copyWith(color: scheme.onPrimaryContainer),
-                    ),
+                    if (!compact) ...[
+                      const SizedBox(height: Space.xs),
+                      Text(
+                        'Tefteri has suggested a label for each one, marked '
+                        '"Suggestion" below. If they look right, accept them '
+                        'all. You can still change any project afterwards. '
+                        'Nothing changes in your task app.',
+                        style: text.bodyMedium
+                            ?.copyWith(color: scheme.onPrimaryContainer),
+                      ),
+                    ],
                   ],
                 ),
               ),
               FilledButton.icon(
                 key: const Key('accept-suggestions'),
+                style: compact
+                    ? FilledButton.styleFrom(
+                        minimumSize: const Size(0, 36),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: Space.md),
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap)
+                    : null,
                 onPressed: () => _acceptAll(c),
                 icon: const Icon(Icons.check),
-                label: const Text('Accept suggestions'),
+                label: Text(compact ? 'Accept all' : 'Accept suggestions'),
               ),
             ],
           ),
         )
       else
         Padding(
-          padding: const EdgeInsets.only(bottom: Space.md),
+          padding: const EdgeInsets.only(bottom: Space.xs),
           child: Row(
             key: const Key('all-sorted'),
             children: [
@@ -449,10 +463,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           id: 'labels',
           title: 'What the labels mean',
           compactTitle: 'What do these labels mean?',
-          // Once a label is saved the user has seen the terms; a narrow
-          // screen has no room for the full box.
-          compact: MediaQuery.sizeOf(context).width < 700 ||
-              c.connections.any((k) => k.projects.any((p) => p.label != null)),
+          compact: compact,
           terms: projectTerms),
       if (_selecting) _selectBar(),
       if (recent.isNotEmpty) _recentChanges(recent),
@@ -460,9 +471,45 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   }
 
   static final _tight = TextButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: Space.sm));
+      padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+      minimumSize: const Size(0, 36),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap);
+
+  /// A toolbar button: icon and label, or only the icon (with the label as
+  /// its tooltip) when the screen is narrow, so the buttons share one line.
+  Widget _toolButton(bool narrow,
+      {required String key,
+      required IconData icon,
+      required String label,
+      required VoidCallback onPressed}) {
+    if (narrow) {
+      return IconButton(
+        key: Key(key),
+        tooltip: label,
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18),
+      );
+    }
+    return TextButton.icon(
+      style: _tight,
+      key: Key(key),
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+    );
+  }
 
   Widget _toolbar(Classification c, int total) {
+    final narrow = MediaQuery.sizeOf(context).width < 700;
+    void toggleAll() => setState(() {
+          final ids = collapsibleIds(c);
+          if (_collapsed.containsAll(ids)) {
+            _collapsed.clear();
+          } else {
+            _collapsed.addAll(ids);
+          }
+        });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -494,37 +541,29 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             runSpacing: Space.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              TextButton.icon(
-                style: _tight,
-                key: const Key('select-toggle'),
+              _toolButton(
+                narrow,
+                key: 'select-toggle',
+                icon: _selecting ? Icons.close : Icons.checklist_outlined,
+                label: _selecting ? 'Stop' : 'Select',
                 onPressed: () => setState(() {
                   _selecting = !_selecting;
                   _selected.clear();
                 }),
-                icon: Icon(_selecting ? Icons.close : Icons.checklist_outlined,
-                    size: 18),
-                label: Text(_selecting ? 'Stop' : 'Select'),
               ),
-              TextButton.icon(
-                style: _tight,
-                key: const Key('collapse-all'),
-                onPressed: () => setState(() {
-                  final ids = collapsibleIds(c);
-                  if (_collapsed.containsAll(ids)) {
-                    _collapsed.clear();
-                  } else {
-                    _collapsed.addAll(ids);
-                  }
-                }),
-                icon: const Icon(Icons.unfold_less, size: 18),
-                label: Text(_collapsed.isEmpty ? 'Collapse all' : 'Expand all'),
+              _toolButton(
+                narrow,
+                key: 'collapse-all',
+                icon: Icons.unfold_less,
+                label: _collapsed.isEmpty ? 'Collapse all' : 'Expand all',
+                onPressed: toggleAll,
               ),
-              TextButton.icon(
-                style: _tight,
-                key: const Key('create-theme'),
+              _toolButton(
+                narrow,
+                key: 'create-theme',
+                icon: Icons.create_new_folder_outlined,
+                label: 'New theme',
                 onPressed: _createTheme,
-                icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-                label: const Text('New theme'),
               ),
             ],
           ),
@@ -568,12 +607,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   Widget _recentChanges(List<RecentChange> recent) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: Space.md),
+      padding: const EdgeInsets.only(bottom: Space.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextButton.icon(
             key: const Key('recent-toggle'),
+            style: _tight,
             onPressed: () => setState(() => _showRecent = !_showRecent),
             icon: Icon(_showRecent ? Icons.expand_more : Icons.chevron_right,
                 size: 18),
@@ -647,7 +687,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final text = Theme.of(context).textTheme;
     final colors = context.tefteri;
     return Padding(
-      padding: const EdgeInsets.only(top: Space.xl),
+      padding: const EdgeInsets.only(top: Space.lg),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

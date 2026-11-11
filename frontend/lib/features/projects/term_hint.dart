@@ -131,7 +131,7 @@ class _TermHintState extends ConsumerState<TermHint> {
             key: Key('term-hint-open-${widget.id}'),
             style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: Space.sm),
-                minimumSize: const Size(0, 32),
+                minimumSize: const Size(0, 28),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             onPressed: () => setState(() => _open = true),
             icon: const Icon(Icons.help_outline, size: 18),
