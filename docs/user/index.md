@@ -13,6 +13,7 @@ android-widget
 daily-planning
 scheduling
 planning-goals
+organizing-projects
 weekly-planning
 reviews-and-retrospectives
 shortcuts

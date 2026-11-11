@@ -44,6 +44,12 @@ connection. The other connections still sync. The result names the connection an
 reason: `unreachable`, `auth_expired` or `error`. The connection status changes to `error` or
 `needs_attention`.
 
+After the sync lists the projects of a task connection, it calls `reconcile` to bring the
+`project_labels` rows in line. It updates the name and the parent of each project and adds a row for
+each new project. It marks a project that the app no longer lists as orphaned with the reason
+`missing`, and it clears the mark when the project returns. It never deletes a row and never
+changes a label. Read [Project classification](project-classification.md#orphans).
+
 The sync does not overwrite a row in the `conflict` state. The row stays as it is until the
 user solves the conflict.
 
