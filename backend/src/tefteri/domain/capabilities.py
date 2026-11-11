@@ -18,6 +18,7 @@ REQUIRED_TASK_CAPABILITIES: tuple[Capability, ...] = (
 OPTIONAL_PROJECT_CAPABILITIES: tuple[Capability, ...] = (
     Capability.RENAME_PROJECTS,
     Capability.RESTORE_PROJECTS,
+    Capability.MOVE_TASKS,
 )
 """Without these only the feature that needs them is hidden."""
 
@@ -35,8 +36,11 @@ DESCRIPTIONS: dict[Capability, str] = {
     Capability.STABLE_PROJECT_IDS: "stable project ids",
     Capability.CREATE_TASKS: "creating tasks",
     Capability.COMPLETION_TIMES: "task completion times",
+    Capability.RENAME_PROJECTS: "renaming projects",
+    Capability.RESTORE_PROJECTS: "restoring archived projects",
+    Capability.MOVE_TASKS: "moving a task to another project",
 }
-"""Plain words for each required capability, for the message that names what is missing."""
+"""Plain words for each capability, for the message that names what is missing."""
 
 
 def missing_message(missing: Collection[Capability]) -> str:
@@ -60,5 +64,6 @@ def report_for(capabilities: Collection[Capability]) -> CapabilityReport:
         {
             "rename": Capability.RENAME_PROJECTS in capabilities,
             "restore": Capability.RESTORE_PROJECTS in capabilities,
+            "move_tasks": Capability.MOVE_TASKS in capabilities,
         },
     )

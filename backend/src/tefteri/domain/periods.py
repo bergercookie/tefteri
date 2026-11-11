@@ -54,3 +54,11 @@ def child_fits(
         return False
     end = period_end(parent_kind, parent_start)
     return parent_start <= child_start < end
+
+
+def month_of_week(week_start: date) -> date:
+    """Return the first day of the month of the Monday of a week (spec 004, FR-038).
+
+    A week that ends in the next month still belongs to the month of its Monday.
+    """
+    return period_start(PeriodType.MONTH, period_start(PeriodType.WEEK, week_start))

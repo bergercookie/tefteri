@@ -28,18 +28,25 @@ class WeeklyApi {
       _state(await _dio.post<Object?>('/weekly/$week/refresh'));
 
   /// `GET /weekly/{week}/candidates`.
-  Future<List<WeeklyCandidate>> candidates(String week) async {
+  Future<List<MilestoneCandidate>> candidates(String week) async {
     final r = await _dio.get<Object?>('/weekly/$week/candidates');
     // The list may come inside an object that also holds `unsorted_count`.
     final data = r.data;
     final list = data is Map ? data['candidates'] ?? data['items'] : data;
     return [
       for (final c in (list as List? ?? const []))
-        WeeklyCandidate.fromJson(c as Map<String, dynamic>),
+        MilestoneCandidate.fromJson(c as Map<String, dynamic>),
     ];
   }
 
-  /// `POST /weekly/{week}/projects`.
+  /// `GET /weekly/{week}/themes`: the groups of the picker.
+  Future<WeeklyThemes> themes(String week) async => WeeklyThemes.fromJson(
+      (await _dio.get<Object?>('/weekly/$week/themes')).data!
+          as Map<String, dynamic>);
+
+  /// `POST /weekly/{week}/projects`: adds a milestone to the week. An
+  /// unsorted project is labelled milestone by the same call. The cap does
+  /// not apply.
   Future<WeeklyState> addProject(String week, String containerId) async =>
       _state(await _dio.post<Object?>('/weekly/$week/projects',
           data: {'container_id': containerId}));
@@ -48,11 +55,24 @@ class WeeklyApi {
   Future<WeeklyState> removeProject(String week, String projectId) async =>
       _state(await _dio.delete<Object?>('/weekly/$week/projects/$projectId'));
 
-  /// `POST /weekly/{week}/subprojects`.
-  Future<WeeklyState> createSubproject(
-          String week, String parentId, String name) async =>
-      _state(await _dio.post<Object?>('/weekly/$week/subprojects',
-          data: {'parent_id': parentId, 'name': name}));
+  /// `POST /weekly/{week}/milestones`: creates the sub-project under the theme
+  /// [parentId] in the task app, labels it milestone and adds it to the week.
+  Future<WeeklyState> createMilestone(
+          String week, String parentId, String name, String doneState) async =>
+      _state(await _dio.post<Object?>('/weekly/$week/milestones', data: {
+        'parent_id': parentId,
+        'name': name,
+        'done_state': doneState,
+      }));
+
+  /// `POST /weekly/{week}/projects/{planProjectId}/tasks`: creates a task
+  /// under the milestone in the task app. It is not committed until it has a
+  /// day.
+  Future<WeeklyState> addTask(
+          String week, String planProjectId, String title) async =>
+      _state(await _dio.post<Object?>(
+          '/weekly/$week/projects/$planProjectId/tasks',
+          data: {'title': title}));
 
   /// `POST /connections/{connectionId}/containers/{containerId}/archive`:
   /// archives the project in the task app. The task app can restore it.
@@ -92,15 +112,50 @@ class WeeklyApi {
       WeeklyHistory.fromJson((await _dio.get<Object?>('/weekly/history')).data!
           as Map<String, dynamic>);
 
-  /// `POST /weekly/reviews/{planId}`; answers with the new history.
-  Future<WeeklyHistory> review(String planId, List<LookBackAnswer> answers,
+  /// `POST /weekly/reviews/{planId}`; answers with the new history and what
+  /// the save changed.
+  Future<ReviewResult> review(String planId, List<LookBackAnswer> answers,
           String reflection) async =>
-      WeeklyHistory.fromJson(
+      ReviewResult.fromJson(
           (await _dio.post<Object?>('/weekly/reviews/$planId', data: {
         'projects': [for (final a in answers) a.toJson()],
         'reflection': reflection,
       }))
               .data! as Map<String, dynamic>);
+
+  /// `POST /milestones/{id}/close` as a dry run: what the close would move.
+  Future<ClosePreview> closePreview(String milestoneId) async =>
+      ClosePreview.fromJson((await _dio.post<Object?>(
+              '/milestones/$milestoneId/close',
+              data: {'dry_run': true, 'confirm': false}))
+          .data! as Map<String, dynamic>);
+
+  /// `POST /milestones/{id}/close` with `confirm`: moves the open tasks to the
+  /// theme, then closes. A failure part way throws [DioException]; read it with
+  /// [CloseFailure.fromBody].
+  Future<CloseResult> closeMilestone(String milestoneId) async =>
+      CloseResult.fromJson((await _dio.post<Object?>(
+              '/milestones/$milestoneId/close',
+              data: {'dry_run': false, 'confirm': true}))
+          .data! as Map<String, dynamic>);
+
+  /// `POST /milestones/{id}/reopen`: undoes a close.
+  Future<ReopenResult> reopenMilestone(String milestoneId) async =>
+      ReopenResult.fromJson(
+          (await _dio.post<Object?>('/milestones/$milestoneId/reopen')).data!
+              as Map<String, dynamic>);
+
+  /// `POST /milestones/{id}/done` as a dry run: what marking it done does.
+  Future<DonePreview> doneEffect(String milestoneId) async =>
+      DonePreview.fromJson((await _dio.post<Object?>(
+              '/milestones/$milestoneId/done',
+              data: {'dry_run': true}))
+          .data! as Map<String, dynamic>);
+
+  /// `POST /milestones/{id}/done`: marks the milestone done by hand.
+  Future<void> markDone(String milestoneId) => _dio.post<Object?>(
+      '/milestones/$milestoneId/done',
+      data: {'dry_run': false});
 }
 
 /// Provides the weekly API; override [dioProvider] in tests.
@@ -187,10 +242,16 @@ final weeklyStateProvider = StateNotifierProvider.autoDispose
       ref.watch(weeklyApiProvider), ref.watch(planningApiProvider), week),
 );
 
-/// Projects the user can pick for a week.
+/// Milestones the user can pick for a week.
 final weeklyCandidatesProvider = FutureProvider.autoDispose
-    .family<List<WeeklyCandidate>, String>((ref, week) {
+    .family<List<MilestoneCandidate>, String>((ref, week) {
   return ref.watch(weeklyApiProvider).candidates(week);
+});
+
+/// The themes of the picker for a week, and whether focus data exists.
+final weeklyThemesProvider =
+    FutureProvider.autoDispose.family<WeeklyThemes, String>((ref, week) {
+  return ref.watch(weeklyApiProvider).themes(week);
 });
 
 /// The reviewed weeks.
