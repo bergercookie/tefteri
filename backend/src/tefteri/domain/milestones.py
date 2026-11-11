@@ -23,7 +23,8 @@ MILESTONE_CAP = 3
 NUDGE_AFTER = 2
 """This many unmarked rollovers in a row make the nudge."""
 
-CloseReason = Literal["no_theme", "theme_unusable", "not_supported"]
+CloseReason = Literal["no_theme", "theme_unusable", "not_supported", "orphaned"]
+"""Why close and return is hidden. ``orphaned`` is set by the service: the project is gone."""
 
 
 class CommitKind(StrEnum):

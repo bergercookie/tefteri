@@ -361,7 +361,12 @@ class MilestoneService:
         *,
         can_move: bool | None = None,
     ) -> CloseOptions:
-        """Say whether the open tasks of the project can go back to its theme (FR-027)."""
+        """Say whether the open tasks of the project can go back to its theme (FR-027).
+
+        A project that is gone from the task app has nothing to move: the reason is ``orphaned``.
+        """
+        if project.orphaned_reason is not None:
+            return CloseOptions(False, "orphaned")
         if can_move is None:
             can_move = await self.can_move_tasks(
                 db, await db.get(Connection, project.connection_id)

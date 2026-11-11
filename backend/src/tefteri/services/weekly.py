@@ -1148,7 +1148,7 @@ class WeeklyService:
             db, project, theme, can_move=can_move[project.connection_id]
         )
         if project.orphaned_reason is not None:
-            return CloseInfo(False, options.reason or "theme_unusable", 0, theme_name)
+            return CloseInfo(False, options.reason, 0, theme_name)
         return CloseInfo(
             options.available,
             options.reason,

@@ -119,6 +119,34 @@ async def test_a_task_that_tefteri_created_can_be_moved_twice_in_a_row(
     assert _due(await real.get(created.remote_id)) == _at(6, 15)
 
 
+async def test_a_task_moves_to_another_project_and_back_and_keeps_what_it_has(
+    adapter: Adapter, real: RealVikunja
+) -> None:
+    """Vikunja moves a task with a normal update that has another ``project_id`` (spec 004)."""
+    backend = adapter("UTC")
+    one = await backend.create_container(_title("Move from"), None)
+    two = await backend.create_container(_title("Move to"), None)
+    created = await backend.create_task(
+        TaskDraft(one.remote_id, _title("Mover"), due_at=_at(5, 14))
+    )
+    moved = await backend.move_task(created.remote_id, two, created.version)
+    assert (moved.remote_id, moved.container_id, moved.title) == (
+        created.remote_id,
+        two.remote_id,
+        created.title,
+    )
+    assert moved.due_at == _at(5, 14)  # the day stays
+    assert [t.remote_id for t in (await backend.list_tasks(two, None)).items] == [created.remote_id]
+    assert (await backend.list_tasks(one, None)).items == []
+    raw = await real.get(created.remote_id)
+    assert str(raw["project_id"]) == two.remote_id
+    # The version that the move answered is the one the next write needs.
+    back = await backend.move_task(created.remote_id, one, moved.version)
+    assert back.container_id == one.remote_id
+    with pytest.raises(RemoteConflict):
+        await backend.move_task(created.remote_id, two, moved.version)  # it moved since
+
+
 async def test_the_version_of_a_task_is_the_same_in_every_answer(
     adapter: Adapter, real: RealVikunja
 ) -> None:
@@ -298,24 +326,36 @@ async def test_a_move_after_a_change_in_vikunja_is_a_conflict_and_changes_nothin
 # --- weekly planning --------------------------------------------------------------------
 
 
-async def test_weekly_planning_follows_a_new_subproject_in_vikunja(
+async def _label_inbox_as_theme(tefteri: AsyncClient) -> dict[str, Any]:
+    """Label Inbox as a theme and return its entry of the weekly picker's parent list."""
+    await _sync(tefteri)
+    projects = await _projects_by_name(tefteri)
+    r = await tefteri.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": projects["Inbox"]["id"], "label": "theme"}]},
+    )
+    assert r.status_code == 200, r.text
+    themes = (await tefteri.get(f"{V1}/weekly/2030-03-04/themes")).json()["themes"]
+    theme: dict[str, Any] = next(t for t in themes if t["name"] == "Inbox")
+    return theme
+
+
+async def test_weekly_planning_follows_a_new_milestone_in_vikunja(
     tefteri: AsyncClient, real: RealVikunja
 ) -> None:
-    """A subproject made by tefteri is a real subproject, and tasks added in Vikunja show up."""
-    await _sync(tefteri)
+    """A milestone made by tefteri is a real subproject, and tasks added in Vikunja show up."""
+    parent = await _label_inbox_as_theme(tefteri)
     week = "2030-03-04"
-    parent = next(
-        c
-        for c in (await tefteri.get(f"{V1}/weekly/{week}/candidates")).json()
-        if c["name"] == "Inbox"
-    )
     name = _title("Launch")
     made = await tefteri.post(
-        f"{V1}/weekly/{week}/subprojects", json={"parent_id": parent["container_id"], "name": name}
+        f"{V1}/weekly/{week}/milestones",
+        json={"parent_id": parent["container_id"], "name": name, "done_state": "Launched"},
     )
     assert made.status_code == 201, made.text
     project = made.json()["plan"]["projects"][0]
     assert project["name"] == name and project["open_tasks"] == 0
+    assert (project["done_state"], project["milestone_state"]) == ("Launched", "active")
+    assert project["theme"]["name"] == "Inbox"
     remote = next(
         p
         for p in (await real.client.get(f"{real.base}/projects", headers=real.headers)).json()
@@ -337,24 +377,81 @@ async def test_weekly_planning_follows_a_new_subproject_in_vikunja(
     assert None not in days and len(set(days)) == 3
     again = (await tefteri.post(f"{V1}/weekly/{week}/refresh")).json()
     assert [t["planned_day"] for t in again["plan"]["projects"][0]["tasks"]] == days
+    added = await tefteri.post(
+        f"{V1}/weekly/{week}/projects/{project['id']}/tasks", json={"title": f"{name} new"}
+    )
+    assert added.status_code == 201, added.text
+    assert f"{name} new" in {
+        t["title"]
+        for t in (
+            await real.client.get(
+                f"{real.base}/projects/{remote['id']}/tasks", headers=real.headers
+            )
+        ).json()
+    }
     committed = (await tefteri.post(f"{V1}/weekly/{week}/commit")).json()
     assert committed["plan"]["status"] == "committed"
+    assert len(committed["plan"]["projects"][0]["committed_tasks"]) == 3  # the new one has no day
+
+
+async def test_closing_a_milestone_moves_its_tasks_in_vikunja_and_reopen_moves_them_back(
+    tefteri: AsyncClient, real: RealVikunja
+) -> None:
+    """The move is a real update in Vikunja: tasks keep their ids and days, and come back."""
+    parent = await _label_inbox_as_theme(tefteri)
+    week = "2030-03-04"
+    name = _title("Close me")
+    made = await tefteri.post(
+        f"{V1}/weekly/{week}/milestones",
+        json={"parent_id": parent["container_id"], "name": name, "done_state": "Closed"},
+    )
+    assert made.status_code == 201, made.text
+    milestone = made.json()["plan"]["projects"][0]["milestone_id"]
+    remote = next(
+        p
+        for p in (await real.client.get(f"{real.base}/projects", headers=real.headers)).json()
+        if p["title"] == name
+    )
+    ids = []
+    for n in (1, 2, 3):
+        r = await real.client.put(
+            f"{real.base}/projects/{remote['id']}/tasks",
+            headers=real.headers,
+            json={"title": f"{name} task {n}", "due_date": "2030-03-06T00:00:00Z"},
+        )
+        assert r.status_code == 201, r.text
+        ids.append(r.json()["id"])
+    await tefteri.post(f"{V1}/weekly/{week}/refresh")
+    preview = await tefteri.post(f"{V1}/milestones/{milestone}/close", json={"dry_run": True})
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["message"] == "3 open tasks will move to Inbox."
+    assert {(await real.get(i))["project_id"] for i in ids} == {remote["id"]}
+    closed = await tefteri.post(f"{V1}/milestones/{milestone}/close", json={"confirm": True})
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["moved"] == 3 and closed.json()["milestone"]["state"] == "closed"
+    inbox = int(await real.inbox())
+    for i in ids:
+        moved = await real.get(i)
+        assert moved["project_id"] == inbox
+        assert moved["due_date"].startswith("2030-03-06")  # a moved task keeps its day
+    await _sync(tefteri)  # the next sync agrees with the local copy
+    assert (await tefteri.get(f"{V1}/milestones/{milestone}")).json()["state"] == "closed"
+    reopened = await tefteri.post(f"{V1}/milestones/{milestone}/reopen")
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["moved_back"] == 3 and reopened.json()["not_moved_back"] == []
+    assert {(await real.get(i))["project_id"] for i in ids} == {remote["id"]}
 
 
 async def test_archiving_a_project_from_tefteri_archives_it_in_vikunja(
     tefteri: AsyncClient, real: RealVikunja
 ) -> None:
     """The project and its subproject disappear from Vikunja's list, and tefteri forgets them."""
-    await _sync(tefteri)
+    parent = await _label_inbox_as_theme(tefteri)
     week = "2030-03-04"
-    parent = next(
-        c
-        for c in (await tefteri.get(f"{V1}/weekly/{week}/candidates")).json()
-        if c["name"] == "Inbox"
-    )
     name = _title("Archive me")
     made = await tefteri.post(
-        f"{V1}/weekly/{week}/subprojects", json={"parent_id": parent["container_id"], "name": name}
+        f"{V1}/weekly/{week}/milestones",
+        json={"parent_id": parent["container_id"], "name": name, "done_state": "Archived"},
     )
     assert made.status_code == 201, made.text
     sub = made.json()["plan"]["projects"][0]["container_id"]
@@ -485,6 +582,7 @@ async def test_a_project_deleted_in_vikunja_is_orphaned_and_keeps_its_label(
     # Every screen that reads projects still works.
     assert (await tefteri.get(f"{V1}/tasks", params={"due": "all"})).status_code == 200
     assert (await tefteri.get(f"{V1}/weekly/2030-03-04/candidates")).status_code == 200
+    assert (await tefteri.get(f"{V1}/weekly/2030-03-04/themes")).status_code == 200
 
 
 async def test_rename_archive_and_restore_from_tefteri_change_vikunja(

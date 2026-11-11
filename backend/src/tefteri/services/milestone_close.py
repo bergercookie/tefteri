@@ -184,10 +184,18 @@ class MilestoneCloseService:
             except BackendProblem as problem:
                 # Keep the moves that worked: the task app has them, so the log must too.
                 await db.commit()
-                problem.extra = {
-                    "moved": await self._moved_list(db, closure),
-                    "remaining": len(todo) - index,
-                }
+                moved = await self._moved_list(db, closure)
+                remaining = len(todo) - index
+                if moved:
+                    # "Nothing was changed" would be wrong: say what happened and what to do.
+                    core = problem.message.replace(" Nothing was changed in tefteri.", "")
+                    core = core.replace(" Nothing was changed.", "")
+                    problem.message = (
+                        f"{core} {len(moved)} of {len(moved) + remaining} tasks already moved to "
+                        f"{plan.theme.name}. The milestone is not closed. "
+                        "Try again to move the rest."
+                    )
+                problem.extra = {"moved": moved, "remaining": remaining}
                 raise
             closure.moved = [
                 *closure.moved,

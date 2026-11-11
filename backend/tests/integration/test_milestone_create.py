@@ -1,5 +1,6 @@
 """A milestone is created under a theme with a done-state (FR-009 to FR-011)."""
 
+from httpx import Response
 from sqlalchemy import select
 
 from tefteri.db.models.milestone import Milestone
@@ -20,7 +21,7 @@ async def _setup(env: ProjectsEnv) -> Weekly:
 
 async def _create(
     weekly: Weekly, done_state: str = "Users sign in with a passkey", name: str = "Login flow"
-):  # type: ignore[no-untyped-def]
+) -> Response:
     return await weekly.api.post(
         f"{V1}/weekly/{WEEK}/milestones",
         json={"parent_id": await weekly.cid("Open source"), "name": name, "done_state": done_state},
