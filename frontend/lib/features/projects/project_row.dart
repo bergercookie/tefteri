@@ -183,7 +183,10 @@ class ProjectRow extends StatelessWidget {
 
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= projectRowWideWidth;
-      final indent = item.depth * Space.xl;
+      // A phone has no room for a wide indent and a wide margin before the
+      // chips: all four chips must stay on one line, also in a nested row.
+      final narrow = c.maxWidth < 420;
+      final indent = item.depth * (narrow ? Space.md : Space.xl);
       return Container(
         key: Key('row-${p.id}'),
         padding: EdgeInsets.only(left: indent, right: Space.xs),
@@ -205,7 +208,8 @@ class ProjectRow extends StatelessWidget {
                   if (chips != null)
                     Padding(
                       padding: EdgeInsets.only(
-                          left: 32 + (selecting ? 40 : 0), bottom: Space.sm),
+                          left: (narrow ? Space.sm : 32) + (selecting ? 40 : 0),
+                          bottom: Space.sm),
                       child:
                           Align(alignment: Alignment.centerLeft, child: chips),
                     ),

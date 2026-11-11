@@ -388,4 +388,16 @@ void main() {
       });
     }
   });
+
+  testWidgets('on a phone all four chips of a nested row stay on one line',
+      (tester) async {
+    await loadFonts();
+    await pumpProjects(tester, ProjectsServer(), size: const Size(360, 700));
+    // p2 ('Website') is inside 'Open source' and has a suggestion (sparkle).
+    final theme = tester.getTopLeft(find.byKey(const Key('chip-p2-theme')));
+    final ignored =
+        tester.getTopRight(find.byKey(const Key('chip-p2-ignored')));
+    expect(ignored.dy, theme.dy);
+    expect(ignored.dx, lessThanOrEqualTo(360));
+  });
 }

@@ -14,6 +14,8 @@ Response:
     {
       "connection_id": "uuid",
       "name": "My Vikunja",
+      "status": "ok|needs_attention|error",
+      "last_sync_outcome": "ok|auth_expired|unreachable|error|null",
       "capabilities": {"rename": true, "restore": true},
       "projects": [
         {

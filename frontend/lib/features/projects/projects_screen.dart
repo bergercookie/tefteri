@@ -300,6 +300,34 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         ),
       );
     }
+    final broken = c.connections.where((k) => k.hasProblem).toList();
+    if (c.hasNoProjects && broken.isNotEmpty) {
+      return EmptyState(
+        icon: Icons.link_off_outlined,
+        messageKey: const Key('connection-problem'),
+        message: broken.first.problemMessage,
+        action: Wrap(
+          spacing: Space.sm,
+          runSpacing: Space.sm,
+          alignment: WrapAlignment.center,
+          children: [
+            FilledButton.icon(
+              key: const Key('open-connections'),
+              onPressed: () =>
+                  GoRouter.maybeOf(context)?.go('/settings/connections'),
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Open connections'),
+            ),
+            OutlinedButton.icon(
+              key: const Key('sync-now'),
+              onPressed: _syncNow,
+              icon: const Icon(Icons.sync),
+              label: const Text('Try again'),
+            ),
+          ],
+        ),
+      );
+    }
     if (c.hasNoProjects) {
       return EmptyState(
         icon: Icons.folder_open_outlined,
@@ -373,7 +401,24 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     // no room for the long texts. Both keep the top of the list short.
     final compact = MediaQuery.sizeOf(context).width < 700 ||
         c.connections.any((k) => k.projects.any((p) => p.label != null));
+    final broken = c.connections.where((k) => k.hasProblem).toList();
     return [
+      for (final k in broken)
+        Padding(
+          key: Key('connection-problem-${k.connectionId}'),
+          padding: const EdgeInsets.only(bottom: Space.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ErrorBanner(message: k.problemMessage),
+              TextButton(
+                onPressed: () =>
+                    GoRouter.maybeOf(context)?.go('/settings/connections'),
+                child: const Text('Open connections'),
+              ),
+            ],
+          ),
+        ),
       if (_error != null)
         Padding(
           padding: const EdgeInsets.only(bottom: Space.md),

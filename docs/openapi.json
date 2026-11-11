@@ -550,6 +550,17 @@
             "title": "Connection Id",
             "type": "string"
           },
+          "last_sync_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync Outcome"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -560,11 +571,17 @@
             },
             "title": "Projects",
             "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           }
         },
         "required": [
           "connection_id",
           "name",
+          "status",
+          "last_sync_outcome",
           "capabilities",
           "projects"
         ],
@@ -2199,7 +2216,8 @@
             "enum": [
               "top_level",
               "nested",
-              "was_committed"
+              "was_committed",
+              "inside_routine"
             ],
             "title": "Reason",
             "type": "string"

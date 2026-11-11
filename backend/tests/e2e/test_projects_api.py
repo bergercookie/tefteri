@@ -49,6 +49,8 @@ async def test_the_classification_lists_projects_with_proposals(
     (connection,) = tree["connections"]
     assert connection["connection_id"] == ids["connection"]
     assert connection["capabilities"] == {"rename": True, "restore": True}
+    # The screen shows a broken connection instead of a bare "no projects".
+    assert (connection["status"], connection["last_sync_outcome"]) == ("ok", "ok")
     assert [p["name"] for p in connection["projects"]] == ["Garden", "Inbox", "Website", "Launch"]
     website, launch = ids["Website"], ids["Launch"]
     assert website["label"] is None and website["unsorted"] is True
@@ -60,6 +62,22 @@ async def test_the_classification_lists_projects_with_proposals(
     assert website["orphaned"] is None and website["in_committed_plan"] is False
     only = await _tree(api, connection_id=ids["connection"])
     assert only == tree
+
+
+async def test_a_project_inside_a_routine_is_proposed_as_routine_and_not_listed_weekly(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await _setup(api, world)
+    r = await api.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": ids["Website"]["id"], "label": "maintenance"}]},
+    )
+    assert r.status_code == 200, r.text
+    launch = (await _projects(api))["Launch"]
+    assert launch["proposal"] == {"label": "maintenance", "reason": "inside_routine"}
+    assert launch["effective_label"] == "maintenance" and launch["label"] is None
+    week = await api.get(f"{V1}/weekly/2030-03-04/candidates")
+    assert {c["name"] for c in week.json()} == {"Inbox", "Garden"}
 
 
 async def test_labels_are_saved_previewed_and_undone(api: AsyncClient, world: FakeWorld) -> None:

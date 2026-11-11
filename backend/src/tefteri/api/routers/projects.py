@@ -29,7 +29,7 @@ class ProposalOut(BaseModel):
     """The label that tefteri suggests, and why."""
 
     label: ProjectLabel
-    reason: Literal["top_level", "nested", "was_committed"]
+    reason: Literal["top_level", "nested", "was_committed", "inside_routine"]
 
 
 class OrphanedOut(BaseModel):
@@ -98,6 +98,10 @@ class ClassifiedConnectionOut(BaseModel):
 
     connection_id: uuid.UUID
     name: str
+    status: str
+    """``ok``, ``needs_attention`` or ``error``: the health of the connection at the last sync."""
+    last_sync_outcome: str | None
+    """Why the last sync failed (for example ``auth_expired``), or ``ok``."""
     capabilities: ConnectionCapabilitiesOut
     projects: list[ProjectOut]
 
@@ -107,6 +111,8 @@ class ClassifiedConnectionOut(BaseModel):
         return cls(
             connection_id=v.connection.id,
             name=v.connection.display_name,
+            status=v.connection.status,
+            last_sync_outcome=v.connection.last_sync_outcome,
             capabilities=ConnectionCapabilitiesOut(rename=v.rename, restore=v.restore),
             projects=[ProjectOut.of(p) for p in v.projects],
         )

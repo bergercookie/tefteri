@@ -53,10 +53,12 @@ class LabelChips extends StatelessWidget {
           key: Key('chip-${project.id}-${l.name}'),
           selected: selected,
           materialTapTargetSize: MaterialTapTargetSize.padded,
+          visualDensity: VisualDensity.compact,
           avatar: suggested
               ? Icon(Icons.auto_awesome, size: 14, color: scheme.primary)
               : null,
-          labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           label: Text(l.title),
           labelStyle: suggested
               ? text.labelMedium?.copyWith(color: scheme.primary)

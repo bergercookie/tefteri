@@ -162,4 +162,32 @@ void main() {
       );
     });
   });
+
+  group('a broken connection', () {
+    testWidgets('explains itself instead of saying there are no projects',
+        (tester) async {
+      await pumpProjects(
+        tester,
+        ProjectsServer(
+          projects: [],
+          status: 'needs_attention',
+          lastSyncOutcome: 'auth_expired',
+        ),
+      );
+      expect(find.byKey(const Key('connection-problem')), findsOneWidget);
+      expect(find.textContaining('expired or was revoked'), findsOneWidget);
+      expect(find.byKey(const Key('open-connections')), findsOneWidget);
+      expect(find.byKey(const Key('no-projects-yet')), findsNothing);
+    });
+
+    testWidgets('shows a notice above the projects it still knows',
+        (tester) async {
+      await pumpProjects(
+        tester,
+        ProjectsServer(status: 'error', lastSyncOutcome: 'unreachable'),
+      );
+      expect(find.textContaining('cannot reach Vikunja'), findsOneWidget);
+      expect(find.text('Open source'), findsOneWidget);
+    });
+  });
 }
