@@ -97,6 +97,17 @@ class TaskBackend(Backend, Protocol):
         """Mark a done task open again."""
         ...
 
+    async def move_task(
+        self, remote_id: str, container: Container, expected_version: str
+    ) -> RemoteTask:
+        """Move a task to another project and return it (needs ``MOVE_TASKS``).
+
+        The task keeps its identity, its title and its due date. The adapter reads the task back
+        and raises ``NotSaved`` when it is not in ``container``, and ``RemoteConflict`` when the
+        task changed since ``expected_version``.
+        """
+        ...
+
     async def get_reminder(self, remote_id: str) -> int | None:
         """Return the minutes before its due time that the task reminds, or ``None``.
 

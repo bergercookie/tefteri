@@ -49,6 +49,7 @@ class Capability(StrEnum):
     STABLE_PROJECT_IDS = "stable_project_ids"
     CREATE_TASKS = "create_tasks"
     COMPLETION_TIMES = "completion_times"
+    MOVE_TASKS = "move_tasks"
 
 
 class ProjectLabel(StrEnum):
@@ -65,3 +66,21 @@ class OrphanReason(StrEnum):
 
     MISSING = "missing"
     ARCHIVED = "archived"
+
+
+class MilestoneState(StrEnum):
+    """Where a milestone project stands (spec 004)."""
+
+    ACTIVE = "active"
+    PARKED = "parked"
+    CLOSED = "closed"
+    DONE = "done"
+
+
+class ReviewDecision(StrEnum):
+    """What the weekly review decides for an unfinished milestone (spec 004)."""
+
+    RECOMMIT = "recommit"
+    PARK = "park"
+    CLOSE = "close"
+    DECIDE_LATER = "decide_later"
