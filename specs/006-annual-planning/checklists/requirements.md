@@ -1,0 +1,40 @@
+# Specification Quality Checklist: Annual Planning, Goals and Key Results
+
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+
+**Created**: 2026-11-11
+
+**Feature**: [spec.md](../spec.md)
+
+## Content Quality
+
+- [x] No implementation details (languages, frameworks, APIs)
+- [x] Focused on user value and business needs
+- [x] Written for non-technical stakeholders
+- [x] All mandatory sections completed
+
+## Requirement Completeness
+
+- [x] No [NEEDS CLARIFICATION] markers remain
+- [x] Requirements are testable and unambiguous
+- [x] Success criteria are measurable
+- [x] Success criteria are technology-agnostic (no implementation details)
+- [x] All acceptance scenarios are defined
+- [x] Edge cases are identified
+- [x] Scope is clearly bounded
+- [x] Dependencies and assumptions identified
+
+## Feature Readiness
+
+- [x] All functional requirements have clear acceptance criteria
+- [x] User scenarios cover primary flows
+- [x] Feature meets measurable outcomes defined in Success Criteria
+- [x] No implementation details leak into specification
+
+## Notes
+
+- This feature changes existing behaviour: month and week goals leave the flow, the Goals screen is replaced by annual planning, and existing tests and docs change (see Assumptions).
+- "Retire" and "restore" are the product words for ending and reviving a goal or key result. Nothing is deleted.
+- The way an outside source pushes a value (FR-010) is defined only as a requirement. Its shape is for the plan.
+- Vikunja is mentioned only in Assumptions.
+- Unresolved: none. The year starts on 1 January by default (documented in Assumptions).
