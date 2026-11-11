@@ -30,7 +30,7 @@ class LabelChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Wrap(
-      spacing: 6,
+      spacing: 4,
       runSpacing: 4,
       children: [
         for (final l in ProjectLabel.values) _chip(context, scheme, l),
@@ -56,6 +56,7 @@ class LabelChips extends StatelessWidget {
           avatar: suggested
               ? Icon(Icons.auto_awesome, size: 14, color: scheme.primary)
               : null,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 2),
           label: Text(l.title),
           labelStyle: suggested
               ? text.labelMedium?.copyWith(color: scheme.primary)
@@ -67,7 +68,12 @@ class LabelChips extends StatelessWidget {
           tooltip: suggested
               ? 'Accept the suggestion: ${l.title}'
               : 'Label as ${l.title}: ${l.sentence}',
-          onSelected: enabled && !selected ? (_) => onPick(l, suggested) : null,
+          // The saved label stays enabled, so it keeps its full contrast.
+          onSelected: enabled
+              ? (_) {
+                  if (!selected) onPick(l, suggested);
+                }
+              : null,
         ),
       ),
     );

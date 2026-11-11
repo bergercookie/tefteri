@@ -452,6 +452,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     ];
   }
 
+  static final _tight = TextButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: Space.sm));
+
   Widget _toolbar(Classification c, int total) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -478,13 +481,14 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: Space.sm),
+          padding: const EdgeInsets.symmetric(vertical: Space.xs),
           child: Wrap(
-            spacing: Space.sm,
+            spacing: Space.xs,
             runSpacing: Space.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TextButton.icon(
+                style: _tight,
                 key: const Key('select-toggle'),
                 onPressed: () => setState(() {
                   _selecting = !_selecting;
@@ -492,9 +496,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                 }),
                 icon: Icon(_selecting ? Icons.close : Icons.checklist_outlined,
                     size: 18),
-                label: Text(_selecting ? 'Stop selecting' : 'Select several'),
+                label: Text(_selecting ? 'Stop' : 'Select'),
               ),
               TextButton.icon(
+                style: _tight,
                 key: const Key('collapse-all'),
                 onPressed: () => setState(() {
                   final ids = collapsibleIds(c);
@@ -508,10 +513,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                 label: Text(_collapsed.isEmpty ? 'Collapse all' : 'Expand all'),
               ),
               TextButton.icon(
+                style: _tight,
                 key: const Key('create-theme'),
                 onPressed: _createTheme,
                 icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-                label: const Text('Create a theme'),
+                label: const Text('New theme'),
               ),
             ],
           ),
