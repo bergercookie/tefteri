@@ -1,6 +1,6 @@
 """Migration tests: pytest-alembic's built-in checks plus per-revision data checks."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pytest_alembic import MigrationContext
 from pytest_alembic.tests import (
@@ -134,6 +134,93 @@ def test_0016_adds_checklists_and_keeps_users(
     assert "checklists" not in {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     with alembic_engine.connect() as conn:
         assert conn.exec_driver_sql("select count(*) from users").scalar() == 1
+
+
+def test_0017_drops_the_note_copies_that_sync_made(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0016")
+    user = "11111111-1111-1111-1111-111111111111"
+    alembic_runner.insert_into("users", {"id": user} | _USER)
+    conn = {
+        "user_id": user,
+        "provider": "x",
+        "settings": {},
+        "status": "ok",
+        "created_at": datetime(2026, 11, 1),
+    }
+    tasks_conn, notes_conn = (
+        "aaaaaaaa-0000-0000-0000-000000000001",
+        "aaaaaaaa-0000-0000-0000-000000000002",
+    )
+    alembic_runner.insert_into(
+        "connections", conn | {"id": tasks_conn, "kind": "tasks", "display_name": "T"}
+    )
+    alembic_runner.insert_into(
+        "connections", conn | {"id": notes_conn, "kind": "notes", "display_name": "N"}
+    )
+    for n, owner_conn in ((1, tasks_conn), (2, notes_conn)):
+        alembic_runner.insert_into(
+            "source_containers",
+            {
+                "id": f"bbbbbbbb-0000-0000-0000-00000000000{n}",
+                "user_id": user,
+                "connection_id": owner_conn,
+                "remote_id": f"c{n}",
+                "name": f"C{n}",
+            },
+        )
+    note = {"user_id": user, "connection_id": notes_conn, "body": "", "remote_version": "v1"}
+    note |= {"sync_state": "synced"}
+    for n, kind in ((1, "custom"), (2, "custom"), (3, "daily")):
+        alembic_runner.insert_into(
+            "notes",
+            note
+            | {
+                "id": f"cccccccc-0000-0000-0000-00000000000{n}",
+                "remote_id": f"n{n}",
+                "kind": kind,
+                "title": f"Note {n}",
+            },
+        )
+    # Note 2 is the retrospective of a review, so something points at it.
+    alembic_runner.insert_into(
+        "plans",
+        {
+            "id": "dddddddd-0000-0000-0000-000000000001",
+            "user_id": user,
+            "period_type": "year",
+            "period_start": date(2026, 1, 1),
+            "title": "2026",
+            "summary": "",
+        },
+    )
+    alembic_runner.insert_into(
+        "period_reviews",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000001",
+            "user_id": user,
+            "plan_id": "dddddddd-0000-0000-0000-000000000001",
+            "generated_at": datetime(2026, 11, 1),
+            "planned_count": 0,
+            "completed_count": 0,
+            "carried_over": [],
+            "items": [],
+            "retrospective_note_id": "cccccccc-0000-0000-0000-000000000002",
+        },
+    )
+
+    alembic_runner.migrate_up_to("0017")
+    with alembic_engine.connect() as c:
+        notes = {r[0] for r in c.exec_driver_sql("select remote_id from notes")}
+        containers = {r[0] for r in c.exec_driver_sql("select remote_id from source_containers")}
+        users = c.exec_driver_sql("select count(*) from users").scalar()
+    assert notes == {"n2", "n3"}  # the unreferenced copy is gone; what tefteri points at stays
+    assert containers == {"c1"}  # the containers of the note app are gone, those of tasks stay
+    assert users == 1
+    alembic_runner.migrate_down_one()  # nothing to undo: the copies were a cache
+    with alembic_engine.connect() as c:
+        assert c.exec_driver_sql("select count(*) from notes").scalar() == 2
 
 
 _USER = {

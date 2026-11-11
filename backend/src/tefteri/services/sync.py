@@ -6,14 +6,13 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import Connection, SourceContainer
-from tefteri.db.models.note import Note
 from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.user import User
@@ -22,7 +21,7 @@ from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
 from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
 from tefteri.services.connections import ConnectionService
-from tefteri.services.mirror import anchor_all_day, entry_values, note_values, task_values
+from tefteri.services.mirror import anchor_all_day, entry_values, task_values
 
 logger = logging.getLogger(__name__)
 
@@ -127,14 +126,22 @@ class SyncService:
         try:
             async with db.begin_nested():
                 backend = await self._connections.backend_of_owner(db, connection)
-                containers = await self._sync_containers(db, connection, backend)
                 kind = ConnectionKind(connection.kind)
-                if kind is ConnectionKind.TASKS:
-                    await self._sync_tasks(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
-                elif kind is ConnectionKind.CALENDAR:
-                    await self._sync_calendar(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
+                if kind is ConnectionKind.NOTES:
+                    # A note app is not copied: tefteri reads and writes the few notes it needs
+                    # (the daily note, a retrospective) when it needs them. A sync only checks
+                    # that the address and the token still work.
+                    await self._check_notes(cast(NoteBackend, backend))
                 else:
-                    await self._sync_notes(db, connection, backend, containers, result.counts)  # type: ignore[arg-type]
+                    containers = await self._sync_containers(db, connection, backend)
+                    if kind is ConnectionKind.TASKS:
+                        tasks = cast(TaskBackend, backend)
+                        await self._sync_tasks(db, connection, tasks, containers, result.counts)
+                    else:
+                        calendar = cast(CalendarBackend, backend)
+                        await self._sync_calendar(
+                            db, connection, calendar, containers, result.counts
+                        )
         except AuthExpired as exc:
             result.outcome, result.reason = ConnectionStatus.NEEDS_ATTENTION.value, "auth_expired"
             result.detail = str(exc)
@@ -334,32 +341,14 @@ class SyncService:
                 )
         _mark_deleted(existing, seen, counts)
 
-    async def _sync_notes(
-        self,
-        db: AsyncSession,
-        connection: Connection,
-        backend: NoteBackend,
-        containers: dict[str, tuple[Container, uuid.UUID]],
-        counts: dict[str, int],
-    ) -> None:
-        existing = {
-            n.remote_id: n
-            for n in (
-                await db.execute(select(Note).where(Note.connection_id == connection.id))
-            ).scalars()
-        }
-        seen: set[str] = set()
-        for container, _ in containers.values():
-            for item in await backend.list_notes(container, None):
-                _upsert(
-                    db,
-                    existing,
-                    seen,
-                    counts,
-                    Note,
-                    connection,
-                    item.remote_id,
-                    item.version,
-                    note_values(item),
-                )
-        _mark_deleted(existing, seen, counts)
+    async def _check_notes(self, backend: NoteBackend) -> None:
+        """Raise what is wrong with a note connection; return when it works."""
+        health = await backend.check_connection()
+        if health.status is ConnectionStatus.OK:
+            return
+        message = health.message or health.detail or "the note app did not answer"
+        if health.detail == "auth_expired":
+            raise AuthExpired(message)
+        if health.detail == "unreachable":
+            raise BackendUnavailable(message)
+        raise BackendError(message)
