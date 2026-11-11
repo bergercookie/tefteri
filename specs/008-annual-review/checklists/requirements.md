@@ -34,7 +34,10 @@
 ## Notes
 
 - The spec depends on the content of the monthly snapshot (feature 007), which is not written yet. Assumptions say that 007 must store key result values, per-theme milestone results and work kind counts. Check this when 007 is final.
-- The "hit" rule (last stored value reached the target) is a documented default, not a user decision. Confirm during clarify.
-- FR-012 lets the user mark a key result as final in an unfinished year. Confirm during clarify that this is wanted.
+- The "hit" rule (last value in the year reached the target) plus the "reached by deadline" line and the 25% "differ strongly" rule are decided in the cross-spec resolutions (item 8 of `decisions.md`).
+- The "marked final" control is removed (resolution 8). A year in progress shows no final result.
+- Seeding of the next year is owned by feature 006. This spec only links to it (FR-018 to FR-020). Orphan rules are owned by 003, past-year rules by 006.
+- Totals and the bar come from snapshots only. The drill-down is live and labelled (FR-009).
+- Usability: terms explained once (FR-028), inline actions in empty and missing states (FR-010, FR-011), never blocks, note delete has undo (FR-027).
 - The Year view and the goal review history change (FR-021). Existing tests and docs for them will change.
 - The spec mentions Vikunja only in Assumptions.

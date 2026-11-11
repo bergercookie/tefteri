@@ -37,4 +37,6 @@
 - "Retire" and "restore" are the product words for ending and reviving a goal or key result. Nothing is deleted.
 - The way an outside source pushes a value (FR-010) is defined only as a requirement. Its shape is for the plan.
 - Vikunja is mentioned only in Assumptions.
+- Cross-spec resolutions 6, 9 and 4 applied: three flags and seeding (with "from year N" and "unmet") are owned here, goal removal is owned here, the create-and-label and eligible-picker rules are referenced from feature 003, snapshot rules are left to 007, the push contract is named (inputs in FR-010, exact shape in the plan).
+- Usability: terms explained at first use (FR-035), inline actions on empty picker and flags, effect before destructive choices with undo (FR-032), nothing blocks the user.
 - Unresolved: none. The year starts on 1 January by default (documented in Assumptions).
