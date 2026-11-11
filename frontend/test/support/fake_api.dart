@@ -9,11 +9,18 @@ import 'package:tefteri/core/api_client.dart';
 
 /// Route value that makes the fake answer with an API error.
 class ApiFailure {
-  const ApiFailure(this.status, this.detail, this.code);
+  const ApiFailure(this.status, this.detail, this.code) : nested = false;
+
+  /// The error shape of the classification routes:
+  /// `{"detail": {"code": ..., "message": ...}}`.
+  const ApiFailure.contract(this.status, this.code, String message)
+      : detail = message,
+        nested = true;
 
   final int status;
   final String detail;
   final String code;
+  final bool nested;
 }
 
 /// Route value that makes the fake answer 204 with no body.
@@ -62,9 +69,12 @@ class FakeApi implements HttpClientAdapter {
       Headers.contentTypeHeader: ['application/json'],
     };
     if (route is ApiFailure) {
-      return ResponseBody.fromString(
-          jsonEncode({'detail': route.detail, 'code': route.code}),
-          route.status,
+      final body = route.nested
+          ? {
+              'detail': {'code': route.code, 'message': route.detail},
+            }
+          : {'detail': route.detail, 'code': route.code};
+      return ResponseBody.fromString(jsonEncode(body), route.status,
           headers: json);
     }
     if (route is NoContent) return ResponseBody.fromString('', 204);
@@ -75,14 +85,23 @@ class FakeApi implements HttpClientAdapter {
 
 /// Pumps [home] with a fake backend and a tall surface.
 Future<void> pumpWithApi(WidgetTester tester, FakeApi api, Widget home,
-    {List<Override> overrides = const []}) async {
-  tester.view.physicalSize = const Size(1000, 2400);
+    {List<Override> overrides = const [],
+    Size size = const Size(1000, 2400),
+    ThemeData? theme,
+    ThemeMode themeMode = ThemeMode.light,
+    ThemeData? darkTheme}) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final dio = Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = api;
+  // The default transformer decodes a large answer in another isolate, which
+  // a widget test cannot wait for.
+  final dio = Dio(BaseOptions(baseUrl: 'http://test'))
+    ..httpClientAdapter = api
+    ..transformer = SyncTransformer();
   await tester.pumpWidget(ProviderScope(
     overrides: [dioProvider.overrideWithValue(dio), ...overrides],
-    child: MaterialApp(home: home),
+    child: MaterialApp(
+        theme: theme, darkTheme: darkTheme, themeMode: themeMode, home: home),
   ));
   await tester.pumpAndSettle();
 }
@@ -147,3 +166,35 @@ Map<String, Object?> periodJson(String type, String start, String end,
       'tasks': tasks,
       'entries': entries,
     };
+
+/// A project of `GET /projects/classification`. [label] null means unsorted;
+/// the proposal follows the default rule (top level: theme, else milestone).
+Map<String, Object?> classifiedJson(String id, String name,
+    {String? parent,
+    String? label,
+    String? parentTheme,
+    Map<String, Object?>? orphaned,
+    int tasks = 0,
+    int subprojects = 0,
+    bool eligible = true,
+    bool inPlan = false}) {
+  final proposal = parent == null ? 'theme' : 'milestone';
+  return {
+    'id': id,
+    'name': name,
+    'parent_id': parent,
+    'label': label,
+    'proposal': {
+      'label': proposal,
+      'reason': parent == null ? 'top_level' : 'nested',
+    },
+    'effective_label': label ?? proposal,
+    'parent_theme_id': parentTheme,
+    'unsorted': label == null,
+    'orphaned': orphaned,
+    'eligible': eligible,
+    'open_tasks': tasks,
+    'subprojects': subprojects,
+    'in_committed_plan': inPlan,
+  };
+}

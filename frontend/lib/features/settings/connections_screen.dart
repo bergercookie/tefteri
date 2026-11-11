@@ -16,6 +16,8 @@ import 'connection_dialog.dart';
 import 'connection_models.dart';
 import 'failure_card.dart';
 import 'planner_settings_card.dart';
+import '../projects/projects_api.dart';
+import '../projects/unsorted_card.dart';
 import 'sync_controller.dart';
 
 /// Formats a sync time for display, for example `2026-11-01 09:30`.
@@ -52,6 +54,12 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
   @override
   Widget build(BuildContext context) {
     final sync = ref.watch(syncControllerProvider);
+    ref.listen<SyncState>(syncControllerProvider, (prev, next) {
+      // New projects may have come in: update the reminder to label them.
+      if (prev != null && prev.busy && !next.busy) {
+        ref.invalidate(unsortedCountProvider);
+      }
+    });
     final connections = ref.watch(connectionsProvider);
     final choose = widget.choose;
     final target = (choose == null || _autoOpened)
@@ -134,6 +142,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
             child: Text(sync.error!, key: const Key('sync-error')),
           ),
         const SizedBox(height: 12),
+        const UnsortedCard(),
         for (final entry in failing.entries)
           if (byId[entry.key] != null || sync.results[entry.key] != null)
             FailureCard(
@@ -269,12 +278,21 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
         ));
       }
     } on DioException catch (e) {
-      messenger.showSnackBar(SnackBar(
-        key: const Key('connection-error'),
-        content: Text(apiErrorMessage(e)),
-      ));
+      final missing = apiErrorCode(e) == 'missing_capability'
+          ? missingCapabilitiesOf(e.response?.data)
+          : const <String>[];
+      if (missing.isNotEmpty && mounted) {
+        await showMissingCapabilities(context,
+            appName: name ?? 'The task app', missing: missing);
+      } else {
+        messenger.showSnackBar(SnackBar(
+          key: const Key('connection-error'),
+          content: Text(apiErrorMessage(e)),
+        ));
+      }
     }
     ref.invalidate(connectionsProvider);
+    ref.invalidate(unsortedCountProvider);
   }
 
   /// Reads the result of the first sync from the answer to `POST /connections`:
@@ -292,6 +310,8 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
     try {
       final r = await dio.post<Map<String, dynamic>>('/connections/$id/check');
       final data = r.data ?? const {};
+      final missing = missingCapabilitiesOf(data);
+      if (missing.isNotEmpty) return missingCapabilitiesSentence(missing);
       if (data['status'] == 'ok') return null;
       final message = data['message'] as String?;
       if (message != null && message.isNotEmpty) return message;

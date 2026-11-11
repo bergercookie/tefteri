@@ -19,6 +19,7 @@ import 'features/conflicts/conflicts_screen.dart';
 import 'features/daily/daily_screen.dart';
 import 'features/goals/goals_screen.dart';
 import 'features/month/month_screen.dart';
+import 'features/projects/projects_screen.dart';
 import 'features/review/plan_history_screen.dart';
 import 'features/review/review_screen.dart';
 import 'features/settings/checklists_screen.dart';
@@ -113,6 +114,7 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/month', builder: (_, __) => const MonthScreen()),
       GoRoute(path: '/year', builder: (_, __) => const YearScreen()),
       GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
+      GoRoute(path: '/projects', builder: (_, __) => const ProjectsScreen()),
       GoRoute(
         path: '/conflicts',
         builder: (_, __) => const ConflictsScreen(),

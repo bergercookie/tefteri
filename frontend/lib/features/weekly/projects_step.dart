@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../theme/theme.dart';
+import '../projects/rename_dialog.dart';
+import '../projects/unsorted_card.dart';
 import 'weekly_api.dart';
 import 'weekly_models.dart';
 import 'weekly_widgets.dart';
@@ -207,10 +209,37 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
   Widget _picker(BuildContext context, List<WeeklyCandidate> all) {
     final text = Theme.of(context).textTheme;
     if (all.isEmpty) {
-      return const EmptyState(
-        icon: Icons.folder_off_outlined,
-        messageKey: Key('no-projects'),
-        message: 'No projects found. Connect your task app and sync.',
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const UnsortedCard(quiet: true),
+          EmptyState(
+            icon: Icons.folder_off_outlined,
+            messageKey: const Key('no-projects'),
+            message: 'No project can be planned yet. Label a project as a '
+                'theme, or create one.',
+            action: Wrap(
+              spacing: Space.sm,
+              runSpacing: Space.sm,
+              alignment: WrapAlignment.center,
+              children: [
+                FilledButton(
+                  key: const Key('label-a-theme'),
+                  onPressed: () => openProjects(context),
+                  child: const Text('Label a project as theme'),
+                ),
+                OutlinedButton(
+                  key: const Key('create-a-theme'),
+                  onPressed: () async {
+                    final made = await createTheme(context, ref);
+                    if (made) ref.invalidate(weeklyCandidatesProvider);
+                  },
+                  child: const Text('Create a theme'),
+                ),
+              ],
+            ),
+          ),
+        ],
       );
     }
     final q = _query.trim().toLowerCase();
@@ -234,6 +263,7 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
           ],
         ),
         const SizedBox(height: Space.sm),
+        const UnsortedCard(quiet: true),
         TextField(
           key: const Key('project-search'),
           onChanged: (v) => setState(() => _query = v),
