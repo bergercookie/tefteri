@@ -5,6 +5,26 @@ import 'package:flutter/foundation.dart';
 
 DateTime? _day(Object? v) => v == null ? null : DateTime.tryParse('$v');
 
+int _int(Object? v) => (v as num? ?? 0).toInt();
+
+/// A theme as a milestone card shows it: an id and a name.
+@immutable
+class ThemeRef {
+  /// Creates a theme reference.
+  const ThemeRef({required this.id, required this.name});
+
+  /// Parses `{"id", "name"}`, or null for no theme.
+  static ThemeRef? fromJson(Object? j) => j is Map
+      ? ThemeRef(id: '${j['id']}', name: '${j['name'] ?? ''}')
+      : null;
+
+  /// Project id of the theme.
+  final String id;
+
+  /// Theme name.
+  final String name;
+}
+
 /// A task of a chosen project.
 @immutable
 class WeeklyTask {
@@ -58,7 +78,7 @@ class WeeklyTask {
   final String? url;
 }
 
-/// A project chosen for the week.
+/// A milestone project chosen for the week.
 @immutable
 class WeeklyProject {
   /// Creates a project.
@@ -75,6 +95,15 @@ class WeeklyProject {
     this.containerId,
     this.color,
     this.url,
+    this.milestoneId,
+    this.doneState,
+    this.milestoneState,
+    this.theme,
+    this.outsideFocus = false,
+    this.rolloverCount = 0,
+    this.needsRescope = false,
+    this.orphaned = false,
+    this.notice,
   });
 
   /// Parses a project JSON object.
@@ -97,7 +126,44 @@ class WeeklyProject {
           for (final t in (j['committed_tasks'] as List? ?? const []))
             WeeklyTask.fromJson(t as Map<String, dynamic>),
         ],
+        milestoneId:
+            j['milestone_id'] == null ? null : '${j['milestone_id']}',
+        doneState: _text(j['done_state']),
+        milestoneState: j['milestone_state'] as String?,
+        theme: ThemeRef.fromJson(j['theme']),
+        outsideFocus: j['outside_focus'] == true,
+        rolloverCount: _int(j['rollover_count']),
+        needsRescope: j['needs_rescope'] == true,
+        orphaned: j['orphaned'] == true,
+        notice: j['notice'] as String?,
       );
+
+  /// Id of the milestone, or null for an entry from before milestones.
+  final String? milestoneId;
+
+  /// One sentence that says when the milestone is finished.
+  final String? doneState;
+
+  /// `active`, `parked`, `closed` or `done`, or null for an old entry.
+  final String? milestoneState;
+
+  /// The theme it belongs to, or null for "no theme".
+  final ThemeRef? theme;
+
+  /// The theme is not in the month's focus. Computed by the server.
+  final bool outsideFocus;
+
+  /// How often the milestone was recommitted.
+  final int rolloverCount;
+
+  /// Two unmarked rollovers in a row: the milestone is too big.
+  final bool needsRescope;
+
+  /// The project is gone from the task app. The stored name stays.
+  final bool orphaned;
+
+  /// `relabelled` when the project got another label after the commit.
+  final String? notice;
 
   /// Id of the project in this plan.
   final String id;
@@ -153,9 +219,11 @@ class WeeklyPlan {
     required this.id,
     required this.status,
     required this.retroSkipped,
-    required this.maxProjects,
     required this.projects,
     this.committedAt,
+    this.milestoneCap = 3,
+    this.focusKnown = false,
+    this.month,
   });
 
   /// Parses a plan JSON object.
@@ -164,7 +232,9 @@ class WeeklyPlan {
         status: '${j['status']}',
         committedAt: _day(j['committed_at']),
         retroSkipped: j['retro_skipped'] == true,
-        maxProjects: (j['max_projects'] as num? ?? 3).toInt(),
+        milestoneCap: _int(j['milestone_cap'] ?? 3),
+        focusKnown: j['focus_known'] == true,
+        month: _day(j['month']),
         projects: [
           for (final p in (j['projects'] as List? ?? const []))
             WeeklyProject.fromJson(p as Map<String, dynamic>),
@@ -183,11 +253,23 @@ class WeeklyPlan {
   /// The user chose not to look back at the week before.
   final bool retroSkipped;
 
-  /// How many projects a week can hold.
-  final int maxProjects;
+  /// How many milestones a week usually holds. A warning, never a limit.
+  final int milestoneCap;
 
-  /// The chosen projects.
+  /// The monthly focus is known, so "outside focus" can be shown.
+  final bool focusKnown;
+
+  /// The month of the Monday of the week.
+  final DateTime? month;
+
+  /// The chosen milestones.
   final List<WeeklyProject> projects;
+
+  /// How many milestones the week holds.
+  int get milestoneCount => projects.length;
+
+  /// More milestones than the cap.
+  bool get overCap => milestoneCount > milestoneCap;
 
   /// True after the commit.
   bool get committed => status == 'committed';
