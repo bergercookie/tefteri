@@ -23,7 +23,7 @@ class Proposal:
     """The label that tefteri suggests for an unclassified project, and why."""
 
     label: ProjectLabel
-    reason: str  # 'top_level' | 'nested' | 'was_committed'
+    reason: str  # 'top_level' | 'nested' | 'was_committed' | 'inside_routine'
 
 
 @dataclass(frozen=True)
@@ -43,8 +43,9 @@ def propose(depth: int, was_committed: bool = False) -> Proposal:
     """Propose a label. ``depth`` is 0 for a top-level project.
 
     A project that was in a past weekly plan is a milestone, even at top level. Otherwise a top
-    level project is a theme and a deeper one is a milestone. The proposal is never
-    ``maintenance`` or ``ignored``: only the user decides that.
+    level project is a theme and a deeper one is a milestone. ``propose`` never gives
+    ``maintenance`` or ``ignored``: only the user decides that. A project inside a routine project
+    is the one exception, and ``proposal_of`` handles it.
     """
     if was_committed:
         return Proposal(ProjectLabel.MILESTONE, "was_committed")
@@ -78,8 +79,25 @@ def depth_of(nodes: Mapping[str, ProjectNode], key: str) -> int:
     return len(_ancestors(nodes, key))
 
 
+def _inside_routine(nodes: Mapping[str, ProjectNode], key: str) -> bool:
+    """Return whether an ancestor has the stored label ``maintenance``.
+
+    Only a stored label can start a routine: a proposal of ``maintenance`` itself comes from a
+    stored one higher up the same chain. So this never needs the labels of the ancestors to be
+    worked out, and a loop in the parent links cannot make it loop.
+    """
+    return any(a.label is ProjectLabel.MAINTENANCE for a in _ancestors(nodes, key))
+
+
 def proposal_of(nodes: Mapping[str, ProjectNode], key: str) -> Proposal:
-    """Return the proposal for one project of the tree."""
+    """Return the proposal for one project of the tree.
+
+    Work inside a routine project is routine work: an unclassified project that sits inside a
+    project with the effective label ``maintenance`` is proposed as ``maintenance`` (reason
+    ``inside_routine``). The user can still choose another label.
+    """
+    if _inside_routine(nodes, key):
+        return Proposal(ProjectLabel.MAINTENANCE, "inside_routine")
     return propose(depth_of(nodes, key), nodes[key].was_committed)
 
 
@@ -116,6 +134,9 @@ def is_eligible(nodes: Mapping[str, ProjectNode], key: str) -> bool:
 def is_weekly_eligible(nodes: Mapping[str, ProjectNode], key: str) -> bool:
     """Return whether the weekly project picker lists the project (FR-008).
 
-    It is eligible and its own label is not ``maintenance``.
+    It is eligible, its own label is not ``maintenance`` and it is not inside a ``maintenance``
+    project: work inside a routine project is routine work, whatever its own label says.
     """
-    return is_eligible(nodes, key) and label_of(nodes, key) is not ProjectLabel.MAINTENANCE
+    if not is_eligible(nodes, key) or label_of(nodes, key) is ProjectLabel.MAINTENANCE:
+        return False
+    return not _inside_routine(nodes, key)

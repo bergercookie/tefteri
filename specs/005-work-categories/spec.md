@@ -177,6 +177,7 @@ The user does groceries and chores from a maintenance project. These tasks appea
 - **FR-026**: This feature MUST NOT work without feature 004 (the weekly commitment). There is no fallback to the old weekly commitment of the current app. If feature 004 is not available, the views MUST say so and MUST NOT show guessed numbers.
 - **FR-027**: Every empty view MUST offer an inline action next to the message (for example "Label your projects" or "Plan your week"). Every term (goal-aligned, maintenance, off-plan, unsorted, hidden) MUST be explained once, in one plain sentence, at its first use.
 - **FR-028**: This feature has no destructive choice, because categories are results and not settings. No view MUST block the user: while a sync runs or has failed, the views MUST show the last stored numbers and the time of the last sync.
+- **FR-029**: A task in a project that sits inside a maintenance project (at any depth) MUST be counted as maintenance, whatever the label of its own project is (decision 10 of `specs/planning-cycles/decisions.md`; the project labels are owned by feature 003).
 
 ### Key Entities *(include if feature involves data)*
 

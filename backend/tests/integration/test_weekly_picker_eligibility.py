@@ -47,9 +47,9 @@ async def test_ignored_projects_their_descendants_and_maintenance_are_not_listed
         },
     )
     found = await _candidates(env.api)
-    # Ignored, what is inside an ignored project, and maintenance are out. A project inside a
-    # maintenance project is judged on its own label.
-    assert set(found) == {"Inbox", "Release", "Website"}
+    # Ignored, what is inside an ignored project, maintenance, and what is inside a maintenance
+    # project are out: work inside a routine project is routine work.
+    assert set(found) == {"Inbox", "Website"}
 
 
 async def test_unclassified_projects_are_listed_and_marked_unsorted(env: ProjectsEnv) -> None:
