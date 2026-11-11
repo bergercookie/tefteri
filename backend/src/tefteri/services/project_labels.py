@@ -13,10 +13,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.connection import Connection, SourceContainer
+from tefteri.db.models.milestone import Milestone
 from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
 from tefteri.db.models.project_label import ProjectLabelHistory
 from tefteri.db.models.weekly import WeeklyPlan, WeeklyPlanProject
-from tefteri.domain.classification import ProjectNode
+from tefteri.domain.classification import ProjectNode, is_eligible, parent_theme
 from tefteri.domain.entities import Container
 from tefteri.domain.enums import ConnectionKind, OrphanReason, ProjectLabel
 
@@ -171,6 +172,27 @@ class ConnectionTree:
     key_by_remote: dict[str, str] = field(default_factory=dict)
     in_committed_plan: set[str] = field(default_factory=set)
     """Keys of the projects in a committed plan that has no look-back yet."""
+    by_key: dict[str, ProjectLabelRow] = field(default_factory=dict)
+    """The label rows by ``str(row.id)``."""
+
+    def theme_of(self, key: str) -> "ThemeRef | None":
+        """Return the parent theme of a project of the tree, or ``None`` when it has none."""
+        theme_key = parent_theme(self.nodes, key)
+        if theme_key is None:
+            return None
+        row = self.by_key[theme_key]
+        return ThemeRef(row.id, row.name, is_eligible(self.nodes, theme_key))
+
+
+@dataclass(frozen=True)
+class ThemeRef:
+    """The parent theme of a project (spec 004)."""
+
+    id: uuid.UUID
+    """The id of its label row, which is also its public id in the API."""
+    name: str
+    usable: bool
+    """It is live and neither it nor an ancestor is ignored: it can take tasks back."""
 
 
 async def load_trees(
@@ -240,6 +262,46 @@ async def load_trees(
                 nodes,
                 key_by_remote,
                 {str(r.id) for r in ordered if (connection.id, r.remote_id) in pending_remote},
+                {str(r.id): r for r in ordered},
             )
         )
     return trees
+
+
+async def tree_of(
+    db: AsyncSession, user_id: uuid.UUID, connection_id: uuid.UUID
+) -> ConnectionTree | None:
+    """Load the project tree of one task connection (``None`` for another kind of connection)."""
+    trees = await load_trees(db, user_id, connection_id)
+    return trees[0] if trees else None
+
+
+async def container_of(db: AsyncSession, row: ProjectLabelRow) -> SourceContainer | None:
+    """Return the cached container of a project, or ``None`` when the project is gone."""
+    return (
+        await db.execute(
+            select(SourceContainer).where(
+                SourceContainer.connection_id == row.connection_id,
+                SourceContainer.remote_id == row.remote_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def project_of(db: AsyncSession, container: SourceContainer) -> ProjectLabelRow:
+    """Return the label row of a container, adding an unclassified one when there is none."""
+    connection = await db.get(Connection, container.connection_id)
+    assert connection is not None  # noqa: S101 - a container always has its connection
+    return await ensure_row(
+        db, connection, container.remote_id, container.name, container.parent_remote_id
+    )
+
+
+async def milestones_by_project(
+    db: AsyncSession, user_id: uuid.UUID, project_ids: Iterable[uuid.UUID] | None = None
+) -> dict[uuid.UUID, Milestone]:
+    """Return the milestone rows of the user by the id of their project (label row)."""
+    query = select(Milestone).where(Milestone.user_id == user_id)
+    if project_ids is not None:
+        query = query.where(Milestone.project_id.in_(list(project_ids)))
+    return {m.project_id: m for m in (await db.execute(query)).scalars()}

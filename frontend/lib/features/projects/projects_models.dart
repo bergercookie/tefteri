@@ -254,6 +254,7 @@ class ConnectionProjects {
     required this.name,
     this.canRename = false,
     this.canRestore = false,
+    this.canMoveTasks = false,
     this.status = 'ok',
     this.lastSyncOutcome,
     this.projects = const [],
@@ -287,6 +288,7 @@ class ConnectionProjects {
       name: '${j['name'] ?? ''}',
       canRename: caps['rename'] == true,
       canRestore: caps['restore'] == true,
+      canMoveTasks: caps['move_tasks'] == true,
       status: '${j['status'] ?? 'ok'}',
       lastSyncOutcome: j['last_sync_outcome'] as String?,
       projects: [
@@ -307,6 +309,10 @@ class ConnectionProjects {
 
   /// Whether the task app can restore archived projects.
   final bool canRestore;
+
+  /// Whether the task app can move tasks between projects. Without it, a
+  /// weekly review cannot close a milestone and return its tasks.
+  final bool canMoveTasks;
 
   /// The projects, in tree order.
   final List<ClassifiedProject> projects;

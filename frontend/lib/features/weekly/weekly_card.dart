@@ -44,13 +44,13 @@ class WeeklyPlanningCard extends ConsumerWidget {
       null => (
           upcoming ? 'Plan next week' : 'Plan this week',
           s.lookBack != null && !s.lookBack!.reviewed
-              ? 'Look back at the last plan, then choose up to three projects.'
-              : 'Choose up to three projects and give their tasks a day.',
+              ? 'Look back at the last plan, then choose your milestones.'
+              : 'Choose the milestones to finish and give their tasks a day.',
           'Start planning'
         ),
       WeeklyPlan(committed: true) => (
           upcoming ? 'Next week is planned' : 'This week is planned',
-          '${plural(plan.projects.length, 'project')} and '
+          '${plural(plan.projects.length, 'milestone')} and '
               '${plural(plan.committedCount, 'task')} committed, '
               '${plan.committedDone} done.',
           'Open the plan'
@@ -59,7 +59,7 @@ class WeeklyPlanningCard extends ConsumerWidget {
           upcoming
               ? 'Planning next week is in progress'
               : 'Planning is in progress',
-          '${plan.projects.length} of ${plan.maxProjects} projects chosen, '
+          '${plural(plan.projects.length, 'milestone')} chosen, '
               '${plan.plannedTasks} of ${plural(plan.openTasks, 'task')} have a day.',
           'Continue planning'
         ),

@@ -75,6 +75,7 @@ class ConnectionView:
     connection: Connection
     rename: bool
     restore: bool
+    move_tasks: bool
     projects: list[ProjectView] = field(default_factory=list)
 
 
@@ -164,14 +165,18 @@ class ClassificationService:
                     return project
         raise NotFound
 
-    async def _flags(self, db: AsyncSession, connection: Connection) -> tuple[bool, bool]:
-        """Return whether the task app can rename and restore projects."""
+    async def _flags(self, db: AsyncSession, connection: Connection) -> tuple[bool, bool, bool]:
+        """Return whether the task app can rename projects, restore them and move tasks."""
         try:
             backend = await self._connections.backend_of_owner(db, connection)
             caps = backend.capabilities()
-        except Exception:  # noqa: BLE001 - a connection that cannot be built offers neither
-            return False, False
-        return Capability.RENAME_PROJECTS in caps, Capability.RESTORE_PROJECTS in caps
+        except Exception:  # noqa: BLE001 - a connection that cannot be built offers none
+            return False, False, False
+        return (
+            Capability.RENAME_PROJECTS in caps,
+            Capability.RESTORE_PROJECTS in caps,
+            Capability.MOVE_TASKS in caps,
+        )
 
     async def _projects_of(self, db: AsyncSession, tree: ConnectionTree) -> list[ProjectView]:
         containers = {

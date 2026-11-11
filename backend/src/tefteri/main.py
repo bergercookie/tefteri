@@ -22,6 +22,7 @@ from tefteri.api.routers import calendar as calendar_router
 from tefteri.api.routers import checklists as checklists_router
 from tefteri.api.routers import conflicts as conflicts_router
 from tefteri.api.routers import connections as connections_router
+from tefteri.api.routers import milestones as milestones_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
@@ -44,8 +45,11 @@ from tefteri.services.calendar import CalendarService
 from tefteri.services.classification import ClassificationService
 from tefteri.services.conflicts import ConflictService
 from tefteri.services.connections import AdapterRegistry, ConnectionService
+from tefteri.services.focus import NoFocus
 from tefteri.services.goals import GoalService
 from tefteri.services.google_oauth import GoogleOAuth
+from tefteri.services.milestone_close import MilestoneCloseService
+from tefteri.services.milestones import MilestoneService
 from tefteri.services.notes import NoteService
 from tefteri.services.projects import ProjectService
 from tefteri.services.reviews import ReviewService
@@ -142,17 +146,29 @@ def create_app(
     app.state.session_factory = factory
     app.state.auth_service = auth_service
     app.state.connection_service = connection_service
-    sync_service = SyncService(connection_service)
+    milestone_service = MilestoneService(connection_service)
+    app.state.milestone_service = milestone_service
+    sync_service = SyncService(connection_service, milestones=milestone_service)
     app.state.sync_service = sync_service
     task_service = TaskService(connection_service)
     app.state.task_service = task_service
     project_service = ProjectService(connection_service)
     app.state.project_service = project_service
-    app.state.classification_service = ClassificationService(
+    classification_service = ClassificationService(
         connection_service, project_service, sync_service
     )
+    app.state.classification_service = classification_service
+    close_service = MilestoneCloseService(task_service, milestone_service)
+    app.state.milestone_close_service = close_service
     app.state.weekly_service = WeeklyService(
-        task_service, connection_service, sync_service, project_service
+        task_service,
+        connection_service,
+        sync_service,
+        project_service,
+        classification_service,
+        milestone_service,
+        close_service,
+        NoFocus(),  # feature 007 supplies the monthly focus here
     )
     app.state.goal_service = GoalService(task_service)
     app.state.calendar_service = CalendarService(connection_service)
@@ -194,6 +210,7 @@ def create_app(
         planning_router,
         reviews_router,
         weekly_router,
+        milestones_router,
         projects_router,
         users_router,
         settings_router,

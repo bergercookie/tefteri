@@ -74,6 +74,27 @@ const projectTerms = [
       'Deleted or archived. Tefteri keeps its name, label and history.'),
 ];
 
+/// The terms of the weekly picker, explained once at their first use.
+const weeklyPickerTerms = [
+  Term('Milestone', 'A small project you can finish in about a week.'),
+  Term('Done-state', 'One sentence that says when a milestone is finished.'),
+  Term('Committed', 'Chosen for this week\'s plan.'),
+  Term('Parked', 'Set aside by a review. It comes back in this list later.'),
+];
+
+/// The terms of the weekly review.
+const weeklyReviewTerms = [
+  Term('Rollover', 'A milestone you recommit because it was not finished.'),
+  Term('Parked', 'Set aside by a review. It comes back in the picker later.'),
+  Term('Decide later', 'Changes nothing. The picker reminds you next time.'),
+];
+
+/// The term for a milestone under a theme that is not in the month's focus.
+const outsideFocusTerms = [
+  Term('Outside focus',
+      'Its theme is not one of the themes you chose for this month.'),
+];
+
 /// A closable box that lists [terms]. It shows until the user closes it.
 ///
 /// With [compact] it starts as one tappable line that opens in place, so the

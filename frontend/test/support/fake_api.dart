@@ -9,18 +9,24 @@ import 'package:tefteri/core/api_client.dart';
 
 /// Route value that makes the fake answer with an API error.
 class ApiFailure {
-  const ApiFailure(this.status, this.detail, this.code) : nested = false;
+  const ApiFailure(this.status, this.detail, this.code, {this.extra = const {}})
+      : nested = false;
 
   /// The error shape of the classification routes:
   /// `{"detail": {"code": ..., "message": ...}}`.
   const ApiFailure.contract(this.status, this.code, String message)
       : detail = message,
-        nested = true;
+        nested = true,
+        extra = const {};
 
   final int status;
   final String detail;
   final String code;
   final bool nested;
+
+  /// More fields of the body, such as the tasks that a failed move had
+  /// already moved.
+  final Map<String, Object?> extra;
 }
 
 /// Route value that makes the fake answer 204 with no body.
@@ -73,7 +79,7 @@ class FakeApi implements HttpClientAdapter {
           ? {
               'detail': {'code': route.code, 'message': route.detail},
             }
-          : {'detail': route.detail, 'code': route.code};
+          : {'detail': route.detail, 'code': route.code, ...route.extra};
       return ResponseBody.fromString(jsonEncode(body), route.status,
           headers: json);
     }

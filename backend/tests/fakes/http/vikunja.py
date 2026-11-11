@@ -60,6 +60,10 @@ class FakeVikunja(FakeHttpServer):
         self.tasks: dict[int, dict[str, Any]] = {}
         self.labels: dict[int, dict[str, Any]] = {}
         self._next_id = 1
+        self.refuse_moves = False
+        """Answer a task update that changes the project with 403."""
+        self.ignore_moves = False
+        """Accept a task update that changes the project, but keep the task where it was."""
         self.add_project("Inbox")
         api = base_url + "/api/v1"
         self.route("GET", f"{api}/projects", self._list_projects)
@@ -273,8 +277,10 @@ class FakeVikunja(FakeHttpServer):
         moved_to = int(body.get("project_id", 0) or 0)
         if moved_to and moved_to not in self.projects:
             return self._error(404, 3001, "The project does not exist.")
+        if moved_to and moved_to != task["project_id"] and self.refuse_moves:
+            return self._error(403, 3003, "You do not have the permission to move this task.")
         self._write(task, body)
-        if moved_to:
+        if moved_to and not self.ignore_moves:
             task["project_id"] = moved_to
         return json_response(200, self._task_json(task))
 

@@ -1,6 +1,7 @@
 """Errors raised by services and mapped to HTTP answers by the API layer."""
 
 from collections.abc import Awaitable
+from typing import Any
 
 from tefteri.db.models.connection import Connection
 from tefteri.domain.errors import (
@@ -21,6 +22,8 @@ class BackendProblem(Exception):
         self.code = code
         self.connection_name = connection_name
         self.message = message
+        self.extra: dict[str, Any] = {}
+        """More fields for the body of the answer (for example the tasks a close already moved)."""
 
 
 class NotFound(Exception):
@@ -28,7 +31,12 @@ class NotFound(Exception):
 
 
 class Invalid(Exception):
-    """The request is not valid."""
+    """The request is not valid. ``code`` is the stable code of the 422 answer."""
+
+    def __init__(self, message: str = "", code: str = "invalid") -> None:
+        """Store the ``message`` for the user and a stable ``code`` (default ``invalid``)."""
+        super().__init__(message)
+        self.code = code
 
 
 class Conflict(Exception):

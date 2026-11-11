@@ -40,6 +40,13 @@ class ConnectionsScreen extends ConsumerStatefulWidget {
   ConsumerState<ConnectionsScreen> createState() => _ConnectionsScreenState();
 }
 
+/// The result of testing a connection: what is wrong (null when nothing), and
+/// notes about optional features that the task app lacks.
+typedef _Check = ({String? problem, List<String> notes});
+
+_Check _check(String? problem, [List<String> notes = const []]) =>
+    (problem: problem, notes: notes);
+
 class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
   bool _autoOpened = false;
 
@@ -258,7 +265,8 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
     try {
       final dio = ref.read(dioProvider);
       final id = await request(dio);
-      final problem = id == null ? null : await _problemWith(dio, id);
+      final check = id == null ? null : await _problemWith(dio, id);
+      final problem = check?.problem;
       final syncFailed = syncProblem?.call();
       if (problem == null && syncFailed != null) {
         messenger.showSnackBar(SnackBar(
@@ -268,7 +276,12 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
               'first sync failed. $syncFailed'),
         ));
       } else if (problem == null) {
-        messenger.showSnackBar(SnackBar(content: Text(done)));
+        final notes = check?.notes ?? const <String>[];
+        messenger.showSnackBar(SnackBar(
+          key: notes.isEmpty ? null : const Key('connection-optional-note'),
+          duration: Duration(seconds: notes.isEmpty ? 4 : 12),
+          content: Text([done, ...notes].join(' ')),
+        ));
       } else {
         messenger.showSnackBar(SnackBar(
           key: const Key('connection-check-failed'),
@@ -306,16 +319,22 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
 
   /// Asks the server to test connection [id]. Returns what is wrong, or null
   /// when it works (or when the test itself cannot run: the save went well).
-  Future<String?> _problemWith(Dio dio, String id) async {
+  Future<_Check?> _problemWith(Dio dio, String id) async {
     try {
       final r = await dio.post<Map<String, dynamic>>('/connections/$id/check');
       final data = r.data ?? const {};
       final missing = missingCapabilitiesOf(data);
-      if (missing.isNotEmpty) return missingCapabilitiesSentence(missing);
-      if (data['status'] == 'ok') return null;
+      if (missing.isNotEmpty) {
+        return _check(missingCapabilitiesSentence(missing));
+      }
+      // Optional features that the task app lacks are no problem, but the
+      // user should know what they lose.
+      if (data['status'] == 'ok') {
+        return _check(null, missingOptionalNotes(data));
+      }
       final message = data['message'] as String?;
-      if (message != null && message.isNotEmpty) return message;
-      return FailureReason.parse(data['reason']).message;
+      if (message != null && message.isNotEmpty) return _check(message);
+      return _check(FailureReason.parse(data['reason']).message);
     } on DioException {
       return null;
     }

@@ -1,14 +1,17 @@
-/// Step 1: look back at the week before. For each project the user decides
-/// whether it is done, and what happens to the tasks that are left.
+/// Step 1: the weekly review. The summary of the week comes first, then one
+/// card per milestone where the user decides what happens to it.
 library;
 
 import 'package:flutter/material.dart';
 
-import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/theme.dart';
+import '../projects/term_hint.dart';
+import 'decision_card.dart';
 import 'history_view.dart';
+import 'rescope_nudge.dart';
+import 'review_summary.dart';
 import 'weekly_api.dart';
 import 'weekly_models.dart';
 import 'weekly_widgets.dart';
@@ -29,7 +32,7 @@ class LookBackStep extends ConsumerStatefulWidget {
   /// What the step can ask the screen to do.
   final WeeklyActions actions;
 
-  /// Goes on to choosing projects.
+  /// Goes on to choosing milestones.
   final VoidCallback onNext;
 
   @override
@@ -39,7 +42,7 @@ class LookBackStep extends ConsumerStatefulWidget {
 class _LookBackStepState extends ConsumerState<LookBackStep> {
   final _reflection = TextEditingController();
   final Map<String, LookBackAnswer> _answers = {};
-  WeeklyHistory? _saved;
+  ReviewResult? _saved;
   bool _saving = false;
 
   @override
@@ -51,22 +54,18 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
   LookBackAnswer _answer(LookBackProject p) =>
       _answers[p.id] ?? LookBackAnswer(projectId: p.id);
 
-  void _set(LookBackProject p,
-          {bool? finished, String? leftover, bool? archive}) =>
-      setState(() => _answers[p.id] = LookBackAnswer(
-            projectId: p.id,
-            finishedAnyway: finished ?? _answer(p).finishedAnyway,
-            leftover: leftover ?? _answer(p).leftover,
-            archive: archive ?? _answer(p).archive,
-          ));
+  /// What is sent for [p]: a milestone that was closed here has the decision
+  /// close, whatever the card says.
+  LookBackAnswer _toSend(LookBackProject p) =>
+      p.closed ? _answer(p).withDecision(Decision.close) : _answer(p);
 
   Future<void> _save(LookBack back) async {
     setState(() => _saving = true);
-    WeeklyHistory? history;
+    ReviewResult? result;
     final ok = await widget.actions.run((api) async {
-      history = await api.review(
+      result = await api.review(
         back.planId,
-        [for (final p in back.projects) _answer(p)],
+        [for (final p in back.projects) _toSend(p)],
         _reflection.text,
       );
       return api.state(widget.actions.week);
@@ -74,10 +73,11 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
     if (!mounted) return;
     setState(() {
       _saving = false;
-      if (ok) _saved = history;
+      if (ok) _saved = result;
     });
     ref.invalidate(weeklyHistoryProvider);
     ref.invalidate(weeklyCandidatesProvider);
+    ref.invalidate(weeklyThemesProvider);
   }
 
   @override
@@ -100,12 +100,13 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
                 'Next week, you will see here how this one went.',
           ),
           const HistoryView(),
-          StepFooter(nextLabel: 'Choose projects', onNext: widget.onNext),
+          StepFooter(nextLabel: 'Choose milestones', onNext: widget.onNext),
         ],
       );
 
   Widget _afterwards(BuildContext context, LookBack back) {
     final skipped = !back.reviewed;
+    final saved = _saved;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -117,48 +118,86 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
               : 'Here is how your earlier weeks went: what you committed '
                   'to, and what you finished.',
         ),
-        HistoryView(history: _saved),
-        StepFooter(nextLabel: 'Choose projects', onNext: widget.onNext),
+        if (saved != null) _result(context, saved),
+        HistoryView(history: saved?.history),
+        StepFooter(nextLabel: 'Choose milestones', onNext: widget.onNext),
       ],
+    );
+  }
+
+  /// What saving the review changed, and the milestones that need a closer
+  /// look. It does not block anything.
+  Widget _result(BuildContext context, ReviewResult r) {
+    if (r.notices.isEmpty && r.nudges.isEmpty) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.md),
+      child: Card(
+        key: const Key('review-result'),
+        child: Padding(
+          padding: const EdgeInsets.all(Space.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final n in r.notices)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.xs),
+                  child: Text(n,
+                      key: const Key('review-notice'), style: text.bodyMedium),
+                ),
+              if (r.nudges.isNotEmpty) ...[
+                Text('Worth a closer look', style: text.titleSmall),
+                for (final n in r.nudges)
+                  RescopeNudge(
+                      show: true,
+                      name: n.name,
+                      nudgeKey: Key('result-nudge-${n.milestoneId}')),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _form(BuildContext context, LookBack back) {
     final text = Theme.of(context).textTheme;
-    final committed = back.projects.length;
-    final done = back.projects
-        .where((p) => p.completed || _answer(p).finishedAnyway)
-        .length;
+    final open = [
+      for (final p in back.projects)
+        if (needsDecision(p, _answer(p))) p,
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         StepHeading(
           title: 'How did ${weekPhrase(back.weekStart)} go?',
-          subtitle: 'For each project, decide if it is done and what '
-              'happens to the tasks that are left.',
+          subtitle: 'See how the week went, then decide what happens to each '
+              'milestone that is not finished.',
         ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(Space.lg),
-            child: Wrap(
-              spacing: Space.xl,
-              runSpacing: Space.sm,
-              children: [
-                Counter(
-                    key: const Key('look-committed'),
-                    label: '${noun(committed, 'project')} committed',
-                    value: committed),
-                Counter(
-                    key: const Key('look-done'),
-                    label: '${noun(done, 'project')} done',
-                    value: done,
-                    accent: context.tefteri.done),
-              ],
-            ),
-          ),
-        ),
+        ReviewSummaryCard(summary: back.summary),
         const SizedBox(height: Space.sm),
-        for (final p in back.projects) _project(context, p),
+        const TermHint(
+          id: 'weekly-review',
+          title: 'Words used here',
+          compactTitle: 'What do rollover and decide later mean?',
+          compact: true,
+          terms: weeklyReviewTerms,
+        ),
+        if (back.projects.isEmpty)
+          const EmptyState(
+            icon: Icons.folder_open_outlined,
+            messageKey: Key('look-no-milestones'),
+            message: 'No milestone was committed that week.',
+          ),
+        for (final p in back.projects)
+          DecisionCard(
+            key: ValueKey('decision-card-${p.id}'),
+            project: p,
+            answer: _answer(p),
+            actions: widget.actions,
+            onChanged: (a) => setState(() => _answers[p.id] = a),
+          ),
+        if (open.isNotEmpty) _undecided(context, open),
         const SizedBox(height: Space.md),
         Text('Anything to remember? (optional)', style: text.titleSmall),
         const SizedBox(height: Space.xs),
@@ -195,118 +234,32 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
     );
   }
 
-  Widget _project(BuildContext context, LookBackProject p) {
-    final text = Theme.of(context).textTheme;
-    final colors = context.tefteri;
-    final answer = _answer(p);
-    final left = p.leftover.length;
-    final ratio = p.committed == 0 ? 0.0 : p.done / p.committed;
-    return ProjectCard(
-      name: p.name,
-      color: p.color,
-      key: Key('look-project-${p.id}'),
-      child: Padding(
-        padding: const EdgeInsets.all(Space.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(p.name, style: text.titleMedium)),
-                if (p.completed)
-                  Chip(
-                    key: Key('look-finished-${p.id}'),
-                    avatar:
-                        Icon(Icons.check_circle, size: 16, color: colors.done),
-                    label: const Text('All done'),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
-            Text(
-              p.committed == 0
-                  ? 'No tasks were planned for this project.'
-                  : '${p.done} of ${plural(p.committed, 'task')} done',
-              key: Key('look-count-${p.id}'),
-              style: text.bodySmall,
-            ),
-            if (p.committed > 0) ...[
-              const SizedBox(height: Space.xs),
-              LinearProgressIndicator(value: ratio, minHeight: 4),
-            ],
-            if (!p.completed) ...[
-              if (left > 0) ...[
-                const SizedBox(height: Space.md),
-                for (final t in p.leftover.take(4))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.radio_button_unchecked, size: 14),
-                        const SizedBox(width: Space.sm),
-                        Expanded(child: Text(t.title, style: text.bodyMedium)),
-                      ],
-                    ),
-                  ),
-                if (left > 4)
-                  Text('and ${left - 4} more', style: text.bodySmall),
-                const SizedBox(height: Space.md),
-                Text(
-                    'What happens to the ${left == 1 ? 'task' : '$left tasks'} '
-                    'left?',
-                    style: text.titleSmall),
-                RadioGroup<String>(
-                  groupValue: answer.leftover,
-                  onChanged: (v) => _set(p, leftover: v),
-                  child: Column(
-                    children: [
-                      RadioListTile<String>(
-                        key: Key('carry-${p.id}'),
-                        value: 'carry',
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Carry them over'),
-                        subtitle: const Text(
-                            'Suggest this project again for the new week.'),
-                      ),
-                      RadioListTile<String>(
-                        key: Key('backlog-${p.id}'),
-                        value: 'backlog',
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Back to the backlog'),
-                        subtitle: const Text(
-                            'Remove their old day. They stay open in the project.'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              SwitchListTile(
-                key: Key('finished-${p.id}'),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                value: answer.finishedAnyway,
-                onChanged: (v) => _set(p, finished: v),
-                title: Text(left > 0
-                    ? 'Count this project as done anyway'
-                    : 'Count this project as done'),
-              ),
-            ],
-            // Any project can be archived, a finished one most of all.
-            SwitchListTile(
-              key: Key('archive-${p.id}'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              value: answer.archive,
-              onChanged: (v) => _set(p, archive: v),
-              title: const Text('Archive the project in your task app'),
-              subtitle: const Text(
-                  'It happens when you save. You can restore it in your task '
-                  'app.'),
-            ),
-          ],
-        ),
+  /// Names the milestones without a choice. Saving never waits for them: they
+  /// stay as they are ("decide later").
+  Widget _undecided(BuildContext context, List<LookBackProject> open) {
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.sm),
+      child: Notice(
+        key: const Key('undecided'),
+        icon: Icons.help_outline,
+        message: open.length == 1
+            ? '"${open.first.name}" has no choice yet. You can save anyway: '
+                'it stays as it is and the picker reminds you next time.'
+            : '${open.length} milestones have no choice yet: '
+                '${[for (final p in open) '"${p.name}"'].join(', ')}. You can '
+                'save anyway: they stay as they are and the picker reminds '
+                'you next time.',
+        actions: [
+          OutlinedButton(
+            key: const Key('decide-later-all'),
+            onPressed: () => setState(() {
+              for (final p in open) {
+                _answers[p.id] = _answer(p).withDecision(Decision.decideLater);
+              }
+            }),
+            child: const Text('Decide later for all of these'),
+          ),
+        ],
       ),
     );
   }

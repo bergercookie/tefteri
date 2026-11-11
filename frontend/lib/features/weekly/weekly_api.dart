@@ -95,6 +95,11 @@ class WeeklyApi {
   Future<WeeklyState> spread(String week) async =>
       _state(await _dio.post<Object?>('/weekly/$week/spread'));
 
+  /// `POST /weekly/{week}/start`: starts the plan of the week (does nothing
+  /// when it exists). A week with no milestone needs it before the commit.
+  Future<WeeklyState> start(String week) async =>
+      _state(await _dio.post<Object?>('/weekly/$week/start'));
+
   /// `POST /weekly/{week}/commit`.
   Future<WeeklyState> commit(String week) async =>
       _state(await _dio.post<Object?>('/weekly/$week/commit'));
@@ -153,9 +158,8 @@ class WeeklyApi {
           .data! as Map<String, dynamic>);
 
   /// `POST /milestones/{id}/done`: marks the milestone done by hand.
-  Future<void> markDone(String milestoneId) => _dio.post<Object?>(
-      '/milestones/$milestoneId/done',
-      data: {'dry_run': false});
+  Future<void> markDone(String milestoneId) => _dio
+      .post<Object?>('/milestones/$milestoneId/done', data: {'dry_run': false});
 }
 
 /// Provides the weekly API; override [dioProvider] in tests.

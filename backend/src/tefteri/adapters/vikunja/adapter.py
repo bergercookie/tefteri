@@ -130,6 +130,7 @@ class VikunjaTaskBackend:
             Capability.STABLE_PROJECT_IDS,  # the numeric project id never changes
             Capability.CREATE_TASKS,
             Capability.COMPLETION_TIMES,  # ``done_at``
+            Capability.MOVE_TASKS,  # a task update with another ``project_id`` moves it
         }
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
@@ -333,6 +334,24 @@ class VikunjaTaskBackend:
         if patch.due_at is not None:
             changes["due_date"] = _fmt(patch.due_at)
         return await self._update(remote_id, expected_version, changes)
+
+    async def move_task(
+        self, remote_id: str, container: Container, expected_version: str
+    ) -> RemoteTask:
+        """Move a task to another project: an update with the new ``project_id``.
+
+        Vikunja keeps the id, the title and the due date of the task. The task is read back, and
+        a task that is not in the new project is an error, not a success.
+        """
+        task = await self._update(
+            remote_id, expected_version, {"project_id": int(container.remote_id)}
+        )
+        if task.container_id != container.remote_id:
+            raise NotSaved(
+                f"asked to move task {remote_id} to project {container.remote_id}, "
+                f"but Vikunja has it in project {task.container_id}"
+            )
+        return task
 
     async def get_reminder(self, remote_id: str) -> int | None:
         """Return the minutes before the due date of the task's reminder, if it has one."""

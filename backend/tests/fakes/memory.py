@@ -24,6 +24,7 @@ from tefteri.domain.errors import (
     AuthExpired,
     BackendError,
     BackendUnavailable,
+    NotSaved,
     NotSupported,
     RemoteConflict,
 )
@@ -93,6 +94,10 @@ class FakeTaskBackend(_FakeBase):
         self.archived: list[Container] = []
         self.known_labels: set[str] = set()
         self.reminders: dict[str, int] = {}
+        self.moves_allowed: int | None = None
+        """Moves that still work before the app goes down (``None``: no limit)."""
+        self.ignore_moves = False
+        """The app answers a move but keeps the task where it was."""
 
     async def create_container(self, name: str, parent: Container | None) -> Container:
         """Create a project (a subproject of ``parent`` when given)."""
@@ -185,6 +190,24 @@ class FakeTaskBackend(_FakeBase):
             due_at=patch.due_at if patch.due_at is not None else current.due_at,
             version=self._new_version(),
         )
+        self.tasks[remote_id] = updated
+        return updated
+
+    async def move_task(
+        self, remote_id: str, container: Container, expected_version: str
+    ) -> RemoteTask:
+        """Move a task to another project, checking the version."""
+        self._guard()
+        self._require(Capability.MOVE_TASKS)
+        current = self.tasks[remote_id]
+        self._check_version(current.version, expected_version)
+        if self.moves_allowed is not None:
+            if self.moves_allowed <= 0:
+                raise BackendUnavailable("fake backend went down during the move")
+            self.moves_allowed -= 1
+        if self.ignore_moves:
+            raise NotSaved(f"task {remote_id} is still in project {current.container_id}")
+        updated = replace(current, container_id=container.remote_id, version=self._new_version())
         self.tasks[remote_id] = updated
         return updated
 

@@ -89,7 +89,7 @@ class CapabilitiesOut(BaseModel):
     missing_required: list[str]
     """Required capabilities that the app lacks. A task app with any is refused."""
     optional: dict[str, bool]
-    """Optional features: ``rename`` and ``restore``. The client hides a feature that is off."""
+    """Optional features: ``rename``, ``restore``, ``move_tasks``. The client hides one that is off."""
 
     @classmethod
     def of(cls, report: CapabilityReport) -> "CapabilitiesOut":

@@ -21,7 +21,7 @@ from tefteri.db.base import Base, IdMixin
 
 
 class WeeklyPlan(IdMixin, Base):
-    """The plan of one week (Monday start): at most three projects, then the look-back.
+    """The plan of one week (Monday start): the milestones committed to, then the look-back.
 
     ``status`` is ``draft`` while the user plans and ``committed`` after the commit. The
     look-back (``reviewed_at``) happens at the start of the next week's planning.
@@ -43,14 +43,19 @@ class WeeklyPlan(IdMixin, Base):
 
 
 class WeeklyPlanProject(IdMixin, Base):
-    """A project chosen for a week.
+    """The weekly commitment of one milestone project (spec 004).
 
     ``committed_task_ids`` is the list of tasks planned for the week when the plan was
-    committed. The ``reviewed_*`` columns are the counts that the look-back stored.
+    committed. The ``reviewed_*`` columns are the counts that the look-back stored, ``decision``
+    is what the review decided. An entry from before spec 004 has no ``milestone_id`` and keeps
+    ``leftover_action``; it is read under the new names and never rewritten.
     """
 
     __tablename__ = "weekly_plan_projects"
-    __table_args__ = (UniqueConstraint("plan_id", "container_id"),)
+    __table_args__ = (
+        UniqueConstraint("plan_id", "container_id"),
+        UniqueConstraint("plan_id", "milestone_id"),
+    )
 
     plan_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("weekly_plans.id", ondelete="CASCADE"), index=True
@@ -68,3 +73,18 @@ class WeeklyPlanProject(IdMixin, Base):
     leftover_action: Mapped[str | None] = mapped_column(String(8), nullable=True)  # carry|backlog
     reviewed_committed: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reviewed_done: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    milestone_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("milestones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    """``None`` for an entry from before spec 004."""
+    theme_project_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("project_labels.id", ondelete="SET NULL"), nullable=True
+    )
+    """The parent theme at the time of the commitment."""
+    theme_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    """A copy of its name. ``None`` means no theme, or an entry from before spec 004."""
+    decision: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    """``recommit``, ``park``, ``close`` or ``decide_later``. ``None`` before the review."""
+    expected_rollover: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    """The marker given with a ``recommit``. Copied to the rollover event."""
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -9,6 +9,7 @@ import pytest
 import respx
 
 from tefteri.adapters.vikunja import VikunjaTaskBackend
+from tefteri.adapters.vikunja.adapter import _version
 from tefteri.domain.capabilities import missing_required
 from tefteri.domain.entities import Container, TaskDraft, TaskPatch
 from tefteri.domain.enums import Capability, ConnectionStatus
@@ -211,11 +212,13 @@ async def test_a_restore_that_vikunja_did_not_keep_is_an_error(
         await backend.restore_container(Container("2", "Work"))
 
 
-def test_vikunja_declares_the_capabilities_of_spec_003(backend: VikunjaTaskBackend) -> None:
+def test_vikunja_declares_the_capabilities_of_specs_003_and_004(
+    backend: VikunjaTaskBackend,
+) -> None:
     caps = backend.capabilities()
     assert missing_required(caps) == []
     assert {Capability.RENAME_PROJECTS, Capability.RESTORE_PROJECTS} <= caps
-    assert "move_tasks" not in {c.value for c in caps}  # feature 004 adds it
+    assert Capability.MOVE_TASKS in caps  # feature 004
 
 
 @respx.mock
@@ -585,3 +588,41 @@ async def test_the_color_of_a_project_is_read_as_rrggbb(backend: VikunjaTaskBack
         ("Missing", None),
         ("Odd", None),
     ]
+
+
+@respx.mock
+async def test_a_move_sends_the_whole_task_with_the_new_project_and_reads_it_back(
+    backend: VikunjaTaskBackend,
+) -> None:
+    current = task_json(title="Move me", due_date="2026-11-05T00:00:00Z")
+    moved = {**current, "project_id": 9, "updated": "2026-11-01T10:00:05Z"}
+    reads = respx.get(f"{BASE}/tasks/7")
+    reads.side_effect = [
+        httpx.Response(200, json=current),
+        httpx.Response(200, json=moved),
+    ]
+    write = respx.post(f"{BASE}/tasks/7").respond(json=moved)
+    version = _version(current)
+    task = await backend.move_task("7", Container("9", "Garden"), version)
+    sent = json.loads(write.calls[0].request.content)
+    assert sent["project_id"] == 9
+    assert sent["title"] == "Move me" and sent["due_date"] == "2026-11-05T00:00:00Z"
+    assert (task.remote_id, task.container_id, task.title) == ("7", "9", "Move me")
+
+
+@respx.mock
+async def test_a_move_that_vikunja_did_not_keep_is_an_error(backend: VikunjaTaskBackend) -> None:
+    current = task_json()
+    respx.get(f"{BASE}/tasks/7").respond(json=current)  # still in project 2 after the write
+    respx.post(f"{BASE}/tasks/7").respond(json=current)
+    with pytest.raises(NotSaved):
+        await backend.move_task("7", Container("9", "Garden"), _version(current))
+
+
+@respx.mock
+async def test_a_move_of_a_task_that_changed_is_a_conflict(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/tasks/7").respond(json=task_json(updated="2026-11-01T11:00:00Z"))
+    write = respx.post(f"{BASE}/tasks/7").respond(json=task_json())
+    with pytest.raises(RemoteConflict):
+        await backend.move_task("7", Container("9", "Garden"), _version(task_json()))
+    assert write.call_count == 0
