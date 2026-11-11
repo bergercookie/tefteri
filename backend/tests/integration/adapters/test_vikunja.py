@@ -9,8 +9,9 @@ import pytest
 import respx
 
 from tefteri.adapters.vikunja import VikunjaTaskBackend
+from tefteri.domain.capabilities import missing_required
 from tefteri.domain.entities import Container, TaskDraft, TaskPatch
-from tefteri.domain.enums import ConnectionStatus
+from tefteri.domain.enums import Capability, ConnectionStatus
 from tefteri.domain.errors import (
     AuthExpired,
     BackendError,
@@ -144,6 +145,77 @@ async def test_archive_that_vikunja_did_not_keep_is_an_error(
     respx.post(f"{BASE}/projects/2").respond(json=project)
     with pytest.raises(NotSaved):
         await backend.archive_container(Container("2", "Work"))
+
+
+@respx.mock
+async def test_rename_sends_the_title_and_reads_the_project_back(
+    backend: VikunjaTaskBackend,
+) -> None:
+    project = {"id": 2, "title": "Work", "parent_project_id": 0, "is_archived": False}
+    reads = respx.get(f"{BASE}/projects/2")
+    reads.side_effect = [
+        httpx.Response(200, json=project),
+        httpx.Response(200, json={**project, "title": "Job"}),
+    ]
+    write = respx.post(f"{BASE}/projects/2").respond(json={**project, "title": "Job"})
+    renamed = await backend.rename_container(Container("2", "Work"), "Job")
+    assert renamed == Container("2", "Job")
+    sent = json.loads(write.calls[0].request.content)
+    assert sent["title"] == "Job"
+    assert sent["parent_project_id"] == 0 and sent["is_archived"] is False  # nothing else changes
+
+
+@respx.mock
+async def test_a_rename_that_vikunja_did_not_keep_is_an_error(
+    backend: VikunjaTaskBackend,
+) -> None:
+    project = {"id": 2, "title": "Work", "is_archived": False}
+    respx.get(f"{BASE}/projects/2").respond(json=project)
+    respx.post(f"{BASE}/projects/2").respond(json=project)
+    with pytest.raises(NotSaved):
+        await backend.rename_container(Container("2", "Work"), "Job")
+
+
+@respx.mock
+async def test_a_refused_rename_raises(backend: VikunjaTaskBackend) -> None:
+    respx.get(f"{BASE}/projects/2").respond(json={"id": 2, "title": "Work"})
+    respx.post(f"{BASE}/projects/2").respond(401, json={"message": "no"})
+    with pytest.raises(AuthExpired):
+        await backend.rename_container(Container("2", "Work"), "Job")
+
+
+@respx.mock
+async def test_restore_sends_is_archived_false_and_checks_that_it_stuck(
+    backend: VikunjaTaskBackend,
+) -> None:
+    project = {"id": 2, "title": "Work", "is_archived": True}
+    reads = respx.get(f"{BASE}/projects/2")
+    reads.side_effect = [
+        httpx.Response(200, json=project),
+        httpx.Response(200, json={**project, "is_archived": False}),
+    ]
+    write = respx.post(f"{BASE}/projects/2").respond(json={**project, "is_archived": False})
+    await backend.restore_container(Container("2", "Work"))
+    sent = json.loads(write.calls[0].request.content)
+    assert sent["is_archived"] is False and sent["title"] == "Work"
+
+
+@respx.mock
+async def test_a_restore_that_vikunja_did_not_keep_is_an_error(
+    backend: VikunjaTaskBackend,
+) -> None:
+    project = {"id": 2, "title": "Work", "is_archived": True}
+    respx.get(f"{BASE}/projects/2").respond(json=project)
+    respx.post(f"{BASE}/projects/2").respond(json=project)
+    with pytest.raises(NotSaved):
+        await backend.restore_container(Container("2", "Work"))
+
+
+def test_vikunja_declares_the_capabilities_of_spec_003(backend: VikunjaTaskBackend) -> None:
+    caps = backend.capabilities()
+    assert missing_required(caps) == []
+    assert {Capability.RENAME_PROJECTS, Capability.RESTORE_PROJECTS} <= caps
+    assert "move_tasks" not in {c.value for c in caps}  # feature 004 adds it
 
 
 @respx.mock

@@ -14,7 +14,8 @@ from tefteri.api.errors import ApiError
 from tefteri.api.routers.sync import SyncResultOut
 from tefteri.api.schemas import UtcDatetime
 from tefteri.db.models.connection import Connection, SourceContainer
-from tefteri.services.connections import ConnectionService, UnknownProvider
+from tefteri.domain.capabilities import CapabilityReport
+from tefteri.services.connections import ConnectionService, MissingCapability, UnknownProvider
 from tefteri.services.google_oauth import GoogleOAuth, InvalidState
 from tefteri.services.projects import ProjectService
 from tefteri.services.sync import SyncService
@@ -82,10 +83,25 @@ class ConnectionOut(BaseModel):
         )
 
 
+class CapabilitiesOut(BaseModel):
+    """What a task app can do (spec 003). Other kinds of connection have an empty report."""
+
+    missing_required: list[str]
+    """Required capabilities that the app lacks. A task app with any is refused."""
+    optional: dict[str, bool]
+    """Optional features: ``rename`` and ``restore``. The client hides a feature that is off."""
+
+    @classmethod
+    def of(cls, report: CapabilityReport) -> "CapabilitiesOut":
+        """Build from the domain report."""
+        return cls(missing_required=report.missing_required, optional=report.optional)
+
+
 class ConnectionCreatedOut(ConnectionOut):
     """A new connection and the result of its first sync."""
 
     sync: SyncResultOut
+    capabilities: CapabilitiesOut
 
 
 async def _create_and_sync(
@@ -107,6 +123,7 @@ class ConnectionCheckOut(BaseModel):
     status: str
     reason: str | None
     message: str | None
+    capabilities: CapabilitiesOut
 
 
 @router.post("/{connection_id}/check")
@@ -114,11 +131,13 @@ async def check_connection(
     connection_id: uuid.UUID, db: Db, user: CurrentUser, service: ConnectionService = Service
 ) -> ConnectionCheckOut:
     """Test the address and the credentials now, and say what is wrong when they fail."""
-    health = await service.check(db, await _own(service, db, user, connection_id))
+    connection = await _own(service, db, user, connection_id)
+    health = await service.check(db, connection)
     return ConnectionCheckOut(
         status=health.status.value,
         reason=health.detail or None,
         message=health.message or None,
+        capabilities=CapabilitiesOut.of(await service.capability_report(db, connection)),
     )
 
 
@@ -174,7 +193,14 @@ async def create_connection(
         )
     except UnknownProvider as exc:
         raise ApiError(422, "unknown_provider", f"Unknown provider: {body.provider}") from exc
-    return ConnectionCreatedOut(**ConnectionOut.of(connection).model_dump(), sync=sync)
+    except MissingCapability as exc:
+        raise ApiError(422, "missing_capability", exc.message) from exc
+    report = await service.capability_report(db, connection)
+    return ConnectionCreatedOut(
+        **ConnectionOut.of(connection).model_dump(),
+        sync=sync,
+        capabilities=CapabilitiesOut.of(report),
+    )
 
 
 @router.get("/google/authorize")

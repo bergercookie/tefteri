@@ -200,6 +200,47 @@ async def test_task_stale_version_raises_conflict(tasks: TaskBackend) -> None:
         await tasks.update_task(task.remote_id, TaskPatch(title="z"), task.version)
 
 
+async def test_task_rename_and_restore_a_project(tasks: TaskBackend) -> None:
+    if Capability.RENAME_PROJECTS not in tasks.capabilities():
+        pytest.skip("the app cannot rename projects")
+    created = await tasks.create_container("Garden", None)
+    sub = await tasks.create_container("Beds", created)
+
+    renamed = await tasks.rename_container(created, "Allotment")
+    assert (renamed.remote_id, renamed.name) == (created.remote_id, "Allotment")
+    listed = {c.remote_id: c for c in await tasks.list_containers()}
+    assert listed[created.remote_id].name == "Allotment"
+    assert listed[sub.remote_id].parent_id == created.remote_id  # the tree is kept
+
+    if Capability.RESTORE_PROJECTS in tasks.capabilities():
+        await tasks.archive_container(sub)
+        assert sub.remote_id not in {c.remote_id for c in await tasks.list_containers()}
+        await tasks.restore_container(sub)
+        back = {c.remote_id: c for c in await tasks.list_containers()}
+        assert back[sub.remote_id].name == "Beds"
+        assert back[sub.remote_id].parent_id == created.remote_id
+
+
+@pytest.mark.parametrize("name", sorted(TASK_FACTORIES))
+async def test_a_refused_rename_or_restore_changes_nothing(
+    name: str, http: tuple[Any, httpx.AsyncClient]
+) -> None:
+    subject = TASK_FACTORIES[name](*http)
+    tasks = subject.backend
+    if Capability.RENAME_PROJECTS not in tasks.capabilities():
+        pytest.skip("the app cannot rename projects")
+    created = await tasks.create_container("Garden", None)
+    await tasks.create_container("Other", None)
+    subject.switches.unavailable = True
+    with pytest.raises(BackendUnavailable):
+        await tasks.rename_container(created, "Allotment")
+    with pytest.raises(BackendUnavailable):
+        await tasks.restore_container(created)
+    subject.switches.unavailable = False
+    names = {c.remote_id: c.name for c in await tasks.list_containers()}
+    assert names[created.remote_id] == "Garden"
+
+
 async def test_calendar_crud(calendar: CalendarBackend) -> None:
     container = (await calendar.list_containers())[0]
     entry = await calendar.create_entry(

@@ -123,6 +123,27 @@ class FakeTaskBackend(_FakeBase):
         self.archived.extend(c for c in self.containers if c.remote_id in gone)
         self.containers = [c for c in self.containers if c.remote_id not in gone]
 
+    async def rename_container(self, container: Container, name: str) -> Container:
+        """Give a project a new title; its id and parent stay."""
+        self._guard()
+        self._require(Capability.RENAME_PROJECTS)
+        for index, c in enumerate(self.containers):
+            if c.remote_id == container.remote_id:
+                self.containers[index] = replace(c, name=name)
+                return self.containers[index]
+        raise BackendError(f"no project {container.remote_id}")
+
+    async def restore_container(self, container: Container) -> None:
+        """Bring an archived project back into the list."""
+        self._guard()
+        self._require(Capability.RESTORE_PROJECTS)
+        for c in self.archived:
+            if c.remote_id == container.remote_id:
+                self.archived.remove(c)
+                self.containers.append(c)
+                return
+        raise BackendError(f"project {container.remote_id} is not archived")
+
     async def list_tasks(self, container: Container, since: str | None) -> TaskPage:  # noqa: ARG002
         """List the tasks of a container."""
         self._guard()

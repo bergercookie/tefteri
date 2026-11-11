@@ -154,6 +154,8 @@ class CandidateOut(BaseModel):
     open_tasks: int
     carried_tasks: int
     selected: bool
+    unsorted: bool = False
+    """The project has no label yet (spec 003). It is listed as its proposal."""
 
 
 class ProjectIn(BaseModel):
@@ -401,6 +403,7 @@ async def candidates(
             open_tasks=c.open_tasks,
             carried_tasks=c.carried_tasks,
             selected=c.selected,
+            unsorted=c.unsorted,
         )
         for c in found
     ]

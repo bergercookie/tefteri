@@ -43,3 +43,25 @@ class Capability(StrEnum):
     SUBPROJECTS = "subprojects"
     ARCHIVE_PROJECTS = "archive_projects"
     TASK_REMINDERS = "task_reminders"
+    RENAME_PROJECTS = "rename_projects"
+    RESTORE_PROJECTS = "restore_projects"
+    PROJECT_TREE = "project_tree"
+    STABLE_PROJECT_IDS = "stable_project_ids"
+    CREATE_TASKS = "create_tasks"
+    COMPLETION_TIMES = "completion_times"
+
+
+class ProjectLabel(StrEnum):
+    """What a project is for the user. The label lives only in tefteri (spec 003)."""
+
+    THEME = "theme"
+    MILESTONE = "milestone"
+    MAINTENANCE = "maintenance"
+    IGNORED = "ignored"
+
+
+class OrphanReason(StrEnum):
+    """Why a project that tefteri knows is no longer in the task app."""
+
+    MISSING = "missing"
+    ARCHIVED = "archived"

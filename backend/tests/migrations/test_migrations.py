@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 
+import pytest
 from pytest_alembic import MigrationContext
 from pytest_alembic.tests import (
     test_model_definitions_match_ddl,
@@ -10,6 +11,7 @@ from pytest_alembic.tests import (
     test_upgrade,
 )
 from sqlalchemy import Engine, inspect
+from sqlalchemy.exc import IntegrityError
 
 __all__ = [
     "test_model_definitions_match_ddl",
@@ -221,6 +223,65 @@ def test_0017_drops_the_note_copies_that_sync_made(
     alembic_runner.migrate_down_one()  # nothing to undo: the copies were a cache
     with alembic_engine.connect() as c:
         assert c.exec_driver_sql("select count(*) from notes").scalar() == 2
+
+
+def test_0018_creates_the_project_label_tables(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0017")
+    user = "11111111-1111-1111-1111-111111111111"
+    connection = "aaaaaaaa-0000-0000-0000-000000000001"
+    alembic_runner.insert_into("users", {"id": user} | _USER)
+    alembic_runner.insert_into(
+        "connections",
+        {
+            "id": connection,
+            "user_id": user,
+            "kind": "tasks",
+            "provider": "x",
+            "display_name": "T",
+            "settings": {},
+            "status": "ok",
+            "created_at": datetime(2026, 11, 1),
+        },
+    )
+    alembic_runner.migrate_up_to("0018")
+    insp = inspect(alembic_engine)
+    assert {"project_labels", "project_label_history"} <= set(insp.get_table_names())
+    uniques = [set(u["column_names"]) for u in insp.get_unique_constraints("project_labels")]
+    assert {"connection_id", "remote_id"} in uniques
+    for table, column, target in (
+        ("project_labels", "connection_id", "connections"),
+        ("project_labels", "user_id", "users"),
+        ("project_label_history", "project_id", "project_labels"),
+    ):
+        keys = [k for k in insp.get_foreign_keys(table) if k["constrained_columns"] == [column]]
+        assert [k["referred_table"] for k in keys] == [target]
+        assert keys[0]["options"].get("ondelete") == "CASCADE"
+    columns = {c["name"]: c for c in insp.get_columns("project_labels")}
+    assert columns["label"]["nullable"] and columns["orphaned_reason"]["nullable"]
+    assert columns["parent_remote_id"]["nullable"]
+
+    row = {
+        "user_id": user,
+        "connection_id": connection,
+        "remote_id": "p1",
+        "name": "Open source",
+        "created_at": datetime(2026, 11, 1),
+    }
+    alembic_runner.insert_into(
+        "project_labels", row | {"id": "dddddddd-0000-0000-0000-000000000001"}
+    )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "project_labels", row | {"id": "dddddddd-0000-0000-0000-000000000002"}
+        )
+
+    alembic_runner.migrate_down_one()
+    tables = set(inspect(alembic_engine).get_table_names())
+    assert not {"project_labels", "project_label_history"} & tables
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from connections").scalar() == 1
 
 
 _USER = {

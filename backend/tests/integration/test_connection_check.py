@@ -41,7 +41,12 @@ async def test_a_working_connection_is_ok(api: AsyncClient) -> None:
     connection = await _create(api)
     r = await api.post(f"{V1}/connections/{connection}/check")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "reason": None, "message": None}
+    assert r.json() == {
+        "status": "ok",
+        "reason": None,
+        "message": None,
+        "capabilities": {"missing_required": [], "optional": {}},  # a note app has none
+    }
 
 
 async def test_a_failure_gives_the_reason_and_is_stored(api: AsyncClient, world: FakeWorld) -> None:

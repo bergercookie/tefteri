@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.db.models.weekly import WeeklyPlan, WeeklyPlanProject
+from tefteri.domain.classification import is_weekly_eligible
 from tefteri.domain.entities import Container
 from tefteri.domain.enums import Capability, ConnectionKind, SyncState
 from tefteri.domain.errors import NotSupported
@@ -19,6 +20,7 @@ from tefteri.domain.periods import PeriodType, period_start
 from tefteri.domain.ports import TaskBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
+from tefteri.services.project_labels import ensure_row, load_trees
 from tefteri.services.projects import ProjectService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
@@ -113,6 +115,8 @@ class Candidate:
     open_tasks: int
     carried_tasks: int
     selected: bool
+    unsorted: bool = False
+    """The project has no label yet (spec 003): it is listed as its proposal."""
 
 
 @dataclass
@@ -258,8 +262,14 @@ class WeeklyService:
         user_id: uuid.UUID,
         week: date,
     ) -> list[Candidate]:
-        """List the projects of the task apps, carried-over ones first."""
+        """List the projects of the task apps that the user can pick, carried-over ones first.
+
+        Only weekly-eligible projects are listed (spec 003, FR-008): not ignored, not inside an
+        ignored project, not maintenance. A project with no label yet is listed and flagged
+        ``unsorted``, and counts as its proposal.
+        """
         plan = await self.find(db, user_id, week)
+        chosen = {r.container_id for r in await self._rows(db, plan)} if plan else set()
         chosen = {r.container_id for r in await self._rows(db, plan)} if plan else set()
         connections = {
             c.id: c
@@ -278,6 +288,15 @@ class WeeklyService:
             ).scalars()
         )
         by_remote = {(c.connection_id, c.remote_id): c for c in containers}
+        eligible: set[tuple[uuid.UUID, str]] = set()
+        unsorted: set[tuple[uuid.UUID, str]] = set()
+        for tree in await load_trees(db, user_id):
+            for row in tree.rows:
+                at = (tree.connection.id, row.remote_id)
+                if is_weekly_eligible(tree.nodes, tree.key_by_remote[row.remote_id]):
+                    eligible.add(at)
+                if row.label is None:
+                    unsorted.add(at)
         tasks = list(
             (
                 await db.execute(
@@ -297,7 +316,7 @@ class WeeklyService:
         out = []
         for c in containers:
             connection = connections.get(c.connection_id)
-            if connection is None:
+            if connection is None or (c.connection_id, c.remote_id) not in eligible:
                 continue
             names = [c.name]
             parent = by_remote.get((c.connection_id, c.parent_remote_id or ""))
@@ -314,6 +333,7 @@ class WeeklyService:
                     open_count.get(c.id, 0),
                     carried.get(c.id, 0),
                     c.id in chosen,
+                    (c.connection_id, c.remote_id) in unsorted,
                 )
             )
         out.sort(key=lambda x: (x.carried_tasks == 0, x.path.casefold()))
@@ -432,6 +452,9 @@ class WeeklyService:
         )
         db.add(container)
         await db.flush()
+        await ensure_row(
+            db, connection, container.remote_id, container.name, container.parent_remote_id
+        )
         return await self._add(db, plan, container, rows, created_here=True)
 
     # -- reading the task app again -----------------------------------------------------------

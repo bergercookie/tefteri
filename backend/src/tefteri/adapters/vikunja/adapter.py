@@ -124,6 +124,12 @@ class VikunjaTaskBackend:
             Capability.SUBPROJECTS,
             Capability.ARCHIVE_PROJECTS,
             Capability.TASK_REMINDERS,
+            Capability.RENAME_PROJECTS,
+            Capability.RESTORE_PROJECTS,
+            Capability.PROJECT_TREE,  # ``GET /projects`` lists the whole tree
+            Capability.STABLE_PROJECT_IDS,  # the numeric project id never changes
+            Capability.CREATE_TASKS,
+            Capability.COMPLETION_TIMES,  # ``done_at``
         }
 
     async def _call(self, method: str, path: str, **kwargs: Any) -> Any:
@@ -185,6 +191,36 @@ class VikunjaTaskBackend:
         # Read it back: a change that Vikunja did not keep must not look like a success.
         if not (await self._call("GET", path)).get("is_archived"):
             raise NotSaved(f"project {container.remote_id} is not archived")
+
+    async def _write_project(self, container: Container, **changes: Any) -> dict[str, Any]:
+        """Change fields of a project and read it back.
+
+        Vikunja resets the fields that a write leaves out, so the write sends the whole project.
+        """
+        path = f"/projects/{container.remote_id}"
+        project = await self._call("GET", path)
+        project.update(changes)
+        await self._call("POST", path, json=project)
+        # Read it back: a change that Vikunja did not keep must not look like a success.
+        stored: dict[str, Any] = await self._call("GET", path)
+        for field, value in changes.items():
+            if stored.get(field) != value:
+                raise NotSaved(f"project {container.remote_id} did not keep {field}")
+        return stored
+
+    async def rename_container(self, container: Container, name: str) -> Container:
+        """Give a project a new title. It keeps its id and its parent."""
+        stored = await self._write_project(container, title=name)
+        return Container(
+            container.remote_id,
+            stored["title"],
+            str(stored["parent_project_id"]) if stored.get("parent_project_id") else None,
+            color=normalize_color(stored.get("hex_color")),
+        )
+
+    async def restore_container(self, container: Container) -> None:
+        """Bring an archived project back."""
+        await self._write_project(container, is_archived=False)
 
     async def create_container(self, name: str, parent: Container | None) -> Container:
         """Create a project, as a subproject of ``parent`` when given."""

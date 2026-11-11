@@ -31,6 +31,16 @@ class Invalid(Exception):
     """The request is not valid."""
 
 
+class Conflict(Exception):
+    """The request clashes with the state of the data (for example an undo done twice)."""
+
+    def __init__(self, code: str, message: str) -> None:
+        """Store a stable ``code`` and a message that says what the user can do."""
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 async def guard[T](connection: Connection, call: Awaitable[T]) -> T:
     """Await a backend call and turn adapter errors into ``BackendProblem``."""
     name = connection.display_name

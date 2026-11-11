@@ -52,6 +52,26 @@ async def test_archive_hides_the_project_and_its_tasks(api: AsyncClient, world: 
     assert "Garden" not in await _names(api, connection)
 
 
+async def test_archive_keeps_the_project_as_orphaned_with_its_label(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    """The project is not forgotten: it is orphaned with the reason ``archived`` (FR-010)."""
+    from sqlalchemy import select
+
+    from tefteri.db.models.project_label import ProjectLabel as Row
+    from tefteri.db.session import session_scope
+
+    connection, ids = await _setup(api, world)
+    assert await _archive(api, connection, ids["Garden"]) == 204
+    async with session_scope(api.app.state.session_factory) as db:  # type: ignore[attr-defined]
+        rows = {r.name: r for r in (await db.execute(select(Row))).scalars()}
+    assert (rows["Garden"].orphaned_reason, rows["Garden"].orphaned_at is None) == (
+        "archived",
+        False,
+    )
+    assert {r.orphaned_reason for r in rows.values() if r.name in ("Website", "Launch")} == {None}
+
+
 async def test_archive_takes_the_subprojects_along(api: AsyncClient, world: FakeWorld) -> None:
     connection, ids = await _setup(api, world)
     assert await _archive(api, connection, ids["Website"]) == 204

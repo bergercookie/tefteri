@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from tefteri.services.errors import BackendProblem, Invalid, NotFound
+from tefteri.services.errors import BackendProblem, Conflict, Invalid, NotFound
 
 _STATUS = {
     "backend_unavailable": 502,
@@ -15,7 +15,7 @@ _STATUS = {
 
 
 def install_service_error_handlers(app: FastAPI) -> None:
-    """Register handlers for ``BackendProblem``, ``NotFound`` and ``Invalid``."""
+    """Register handlers for ``BackendProblem``, ``NotFound``, ``Conflict`` and ``Invalid``."""
 
     @app.exception_handler(BackendProblem)
     async def _problem(_: Request, exc: BackendProblem) -> JSONResponse:
@@ -27,6 +27,10 @@ def install_service_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(NotFound)
     async def _not_found(_: Request, __: NotFound) -> JSONResponse:
         return JSONResponse({"detail": "Not found", "code": "not_found"}, status_code=404)
+
+    @app.exception_handler(Conflict)
+    async def _conflict(_: Request, exc: Conflict) -> JSONResponse:
+        return JSONResponse({"detail": exc.message, "code": exc.code}, status_code=409)
 
     @app.exception_handler(Invalid)
     async def _invalid(_: Request, exc: Invalid) -> JSONResponse:
