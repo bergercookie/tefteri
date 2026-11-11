@@ -98,7 +98,8 @@ async def test_main_flow_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> N
         )
     ).json()
     review = (await pg_api.get(f"{V1}/plans/{plan['id']}/review")).json()
-    assert (review["planned_count"], review["completed_count"]) == (2, 2)
+    # A review counts the goals of the period. The task only feeds the progress of its goal.
+    assert (review["planned_count"], review["completed_count"]) == (1, 1)
     saved = await pg_api.put(
         f"{V1}/plans/{plan['id']}/review/retrospective", json={"body": "Good year."}
     )
