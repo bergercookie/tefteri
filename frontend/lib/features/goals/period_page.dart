@@ -4,7 +4,6 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/calendar_color.dart';
 import '../../core/project_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,7 +17,7 @@ import 'goal_providers.dart';
 import 'goal_widgets.dart';
 import 'periods.dart';
 
-/// Page with goals (and progress), entries and tasks of one period.
+/// Page with goals (and progress) and, for a week, the tasks of one period.
 ///
 /// From here the user can schedule a task onto a day and time, remove its
 /// time, or link it to a goal. Failed writes show the server message.
@@ -176,8 +175,6 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
 
   Widget _content(PeriodView v) {
     final titles = {for (final g in v.goals) g.id: g.title};
-    final entries = [...v.entries]..sort(
-        (a, b) => (a.start ?? DateTime(0)).compareTo(b.start ?? DateTime(0)));
     final heading = Theme.of(context).textTheme.titleMedium;
     return ListView(
       padding: const EdgeInsets.all(8),
@@ -195,21 +192,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           else
             GoalTile(goal: g, onChanged: widget.onReload),
         const SizedBox(height: 8),
-        // The week page is about the plan, so it leaves the events out.
-        if (v.periodType == 'month') ...[
-          Text('Events', style: heading),
-          if (entries.isEmpty) const Text('No events.', key: Key('no-events')),
-          for (final e in entries)
-            ListTile(
-              key: Key('entry-${e.id}'),
-              dense: true,
-              leading: Icon(Icons.event, color: parseCalendarColor(e.color)),
-              title: Text(e.title),
-              subtitle: Text(_when(e.start, e.allDay)),
-            ),
-          const SizedBox(height: 8),
-        ],
-        // The month and year views show goals, not single tasks.
+        // These views are about the plan, not the calendar, so they list no events. The month
+        // and year views show goals, not single tasks.
         if (v.periodType == 'week') ...[
           Text('Tasks', style: heading),
           if (v.tasks.isEmpty) const Text('No tasks.', key: Key('no-tasks')),

@@ -23,8 +23,10 @@ You can keep your goals after the period ends.
 
 ![The Year view for 2026 with two goals and their progress.](../images/planning-year.png)
 
-The Week view shows the plan you committed to, the goals of the week and its tasks. It does not
-show calendar events. The Month view shows the goals of the month. The Year view shows the goals of the year.
+The Week view shows the plan you committed to, the goals of the week and its tasks. The Month view
+shows the goals of the month. The Year view shows the goals of the year. These views do not list
+calendar events: the list is long, and it does not help in an overview. To see your events, use the
+Planner or the Today view.
 
 ## Make a checklist
 
