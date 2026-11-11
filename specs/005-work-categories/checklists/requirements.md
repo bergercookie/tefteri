@@ -33,9 +33,11 @@
 
 ## Notes
 
-- Four defaults are documented in Clarifications for the owner to confirm: the project at completion decides the kind; unclassified or no-project tasks are off-plan with an "unsorted" note; ignored-project tasks are hidden but counted in one quiet line; past kinds stay stable when labels change.
+- Cross-spec resolutions of 2026-11-11 applied (5, 2, 9): the category is stored at first sight of the completion and never recomputed; month is the sum of days and year the sum of months; 005 needs 004 with no fallback; counts and the hidden count are stored, never shares; words are "work categories" with a helper line for goal-aligned; no-time-tracking is owned here (FR-014); orphans refer to 003.
+- Four defaults are documented in Clarifications for the owner to confirm: the project at completion decides the category; unclassified or no-project tasks are off-plan with an "unsorted" note; ignored-project tasks are hidden but counted in one quiet line; past categories stay stable when labels change or commitments are edited.
 - FR-011 says "on the server". This states where the shared definition lives, not a stack choice. Review during planning if it is seen as too technical.
 - The assumption about recording the project at first sight of completion depends on what the task manager reports. Check this in the plan for Vikunja.
-- Feature 004 must say how a commitment edited after the week is treated (FR-007). This spec recomputes that week.
+- An edited past commitment does not change stored categories (FR-007). Feature 004 must use the weekly list from this feature and must not restate the 200-task cap; its current text (kept limit of 200, FR-022) still needs that fix.
+- Usability: empty-state action, term explanations and never-block rules are in FR-027 and FR-028. This feature has no destructive choice, so no undo is needed.
 - The spec mentions Vikunja only in Assumptions.
 - This feature modifies existing behaviour: 200-task cap, client-side calculations, week/month/year views. Existing tests and docs will change.

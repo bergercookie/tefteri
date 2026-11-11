@@ -37,6 +37,7 @@
 - The spec mentions Vikunja only in Assumptions.
 - The spec changes existing behaviour: the goal-based Month view is replaced (FR-033, FR-035). Existing tests and docs for it will change. The monthly checklist stays.
 - The new review snapshot is a separate record from the existing period review (FR-028).
+- Cross-spec resolutions of 2026-11-11 applied (7 all, 6, 5, 1, 2, 9): empty target is none and 0 is real; manual review values go into the 006 series and 007 never pulls; snapshots store counts per work category plus a hidden count, no shares; done date and theme at done come from 004; swap (mid-month) vs replace (month end); no-theme entry in the outside-focus list; picker empty state with inline actions; snapshot versions owned here. New FR-042 to FR-044 cover usability (terms, inline actions, effect before destructive choices, undo, never block).
 - Defaults to confirm during clarify: the rising off-plan rule (higher than each of the two previous months), the three to five soft range for themes, and the start value of a key result for a month.
-- Depends on 003 (labels), 004 (milestone done rule, focus use), 005 (work-kind shares), 006 (key results and links) and is read by 008. These specs may still change.
+- Depends on 003 (labels), 004 (milestone done rule, focus use), 005 (counts per work category), 006 (key results and links) and is read by 008. These specs may still change.
 - No open [NEEDS CLARIFICATION] items.

@@ -34,4 +34,5 @@
 ## Notes
 
 - FR-016 makes "nested projects" required. The source spec allowed a flat fallback. The decisions file puts that fallback out of scope.
+- Updated 2026-11-11 for the cross-spec resolutions 2, 4 and 9: FR-007 and FR-008 are the named rules "eligible per 003" and "weekly-eligible per 003"; FR-021 to FR-028 were appended; the flat-list edge case was removed (a flat list is refused).
 - The spec mentions Vikunja only in Assumptions, as the first supported connector.
