@@ -238,7 +238,7 @@ The existing look-back asks, per project, whether leftover work is carried to ne
 
 **Milestone state and completion**
 
-- **FR-016**: The system MUST keep a state for each milestone: active, parked, closed or done. Parked is set only by the park decision in the review.
+- **FR-016**: The system MUST keep a state for each milestone: active, parked, closed or done. Parked is set only by the park decision in the review. A parked milestone that goes into a week's plan again (picked in the picker or recommitted) becomes active again.
 - **FR-017**: A milestone MUST be considered done automatically when all its open tasks are closed or dropped AND at least one of its tasks was closed (completed). A milestone with no tasks, or with only dropped tasks, MUST NOT be done automatically. The user MAY always mark a milestone done by hand. Dropped tasks MUST NOT block completion.
 - **FR-018**: When a milestone is marked done by hand while it has open tasks, the system MUST leave the tasks unchanged and show a notice.
 - **FR-019**: The system MUST keep a rollover count for each milestone and MUST store the expected-rollover marker per rollover event (not one marker for the milestone). It MUST keep the count and the events as history after the milestone is done or closed.
