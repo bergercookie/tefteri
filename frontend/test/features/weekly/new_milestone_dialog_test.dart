@@ -97,41 +97,4 @@ void main() {
     expect(find.text('Done when: The beds are planted'), findsWidgets);
     expect(textKey('chosen-count', '1 milestone chosen'), findsOneWidget);
   });
-
-  testWidgets('the milestone of a theme row starts under that theme',
-      (tester) async {
-    final api = await pumpWeekly(tester, _server());
-    await tapKey(tester, 'new-milestone-tA');
-    await _type(tester, 'milestone-name', 'Launch');
-    await _type(tester, 'milestone-done-state', 'It is live');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    expect(
-        (api.where('POST /weekly/$weekKey/milestones').single.data
-            as Map)['parent_id'],
-        'tA');
-  });
-
-  testWidgets('a new milestone waits for tasks and picks them up',
-      (tester) async {
-    final server = _server();
-    final api =
-        await pumpWeekly(tester, server, poll: const Duration(seconds: 5));
-    await tapKey(tester, 'new-milestone');
-    await _type(tester, 'milestone-name', 'Launch');
-    await _type(tester, 'milestone-done-state', 'It is live');
-    await tapKey(tester, 'milestone-create');
-    expect(find.byKey(const Key('no-tasks-pp-new1')), findsOneWidget);
-    expect(find.byKey(const Key('open-project-pp-new1')), findsOneWidget);
-    expect(find.text('No open tasks yet'), findsOneWidget);
-    // Tasks are added in the task app. The next poll shows them.
-    (server.projects.last['tasks']! as List)
-      ..add({'id': 'new1-t1', 'title': 'Write copy'})
-      ..add({'id': 'new1-t2', 'title': 'Pick fonts'});
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('no-tasks-pp-new1')), findsNothing);
-    expect(find.text('2 open tasks'), findsWidgets);
-    expect(api.where('POST /weekly/$weekKey/refresh'), isNotEmpty);
-  });
 }

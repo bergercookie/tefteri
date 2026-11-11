@@ -48,7 +48,7 @@ async def test_the_classification_lists_projects_with_proposals(
     assert tree["unsorted_count"] == 4
     (connection,) = tree["connections"]
     assert connection["connection_id"] == ids["connection"]
-    assert connection["capabilities"] == {"rename": True, "restore": True}
+    assert connection["capabilities"] == {"rename": True, "restore": True, "move_tasks": True}
     # The screen shows a broken connection instead of a bare "no projects".
     assert (connection["status"], connection["last_sync_outcome"]) == ("ok", "ok")
     assert [p["name"] for p in connection["projects"]] == ["Garden", "Inbox", "Website", "Launch"]
@@ -292,7 +292,7 @@ async def test_capability_fields_on_connect_and_check(api: AsyncClient, world: F
     assert made.status_code == 201
     assert made.json()["capabilities"] == {
         "missing_required": [],
-        "optional": {"rename": True, "restore": False},
+        "optional": {"rename": True, "restore": False, "move_tasks": True},
     }
     checked = (await api.post(f"{V1}/connections/{made.json()['id']}/check")).json()
     assert checked["capabilities"] == made.json()["capabilities"]
@@ -320,8 +320,6 @@ async def test_the_weekly_candidates_say_which_projects_are_unsorted(
         json={"changes": [{"id": ids["Garden"]["id"], "label": "ignored"}]},
     )
     found = (await api.get(f"{V1}/weekly/2030-03-04/candidates")).json()
-    assert {c["name"]: c["unsorted"] for c in found} == {
-        "Inbox": True,
-        "Launch": True,
-        "Website": True,
-    }
+    # Website is unclassified but has a subproject, so it is no milestone (spec 004).
+    assert {c["name"]: c["unsorted"] for c in found} == {"Inbox": True, "Launch": True}
+    assert {c["kind"] for c in found} == {"unsorted"}

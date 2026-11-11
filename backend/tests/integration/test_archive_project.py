@@ -24,6 +24,13 @@ async def _setup(api: AsyncClient, world: FakeWorld) -> tuple[str, dict[str, str
         await backend.create_task(TaskDraft(project, f"{project} task"))
     ids = await connect_all(api)
     await api.post(f"{V1}/sync")
+    # Website has a subproject, so the picker offers it only once it is a milestone (spec 004).
+    tree = (await api.get(f"{V1}/projects/classification")).json()
+    website = next(p["id"] for p in tree["connections"][0]["projects"] if p["name"] == "Website")
+    labelled = await api.put(
+        f"{V1}/projects/labels", json={"changes": [{"id": website, "label": "milestone"}]}
+    )
+    assert labelled.status_code == 200, labelled.text
     found = (await api.get(f"{V1}/weekly/{WEEK}/candidates")).json()
     return ids["vikunja"], {c["name"]: c["container_id"] for c in found}
 
@@ -127,7 +134,8 @@ async def test_the_look_back_can_archive_a_project_and_keeps_its_counts(
     entry = done.json()["entries"][0]
     assert (entry["committed_projects"], entry["done_projects"]) == (1, 1)
     assert (entry["committed_tasks"], entry["done_tasks"]) == (1, 1)
-    assert entry["projects"] == [{"name": "Garden", "done": True}]
+    (kept,) = entry["projects"]
+    assert (kept["name"], kept["done"]) == ("Garden", True)
     # Once the week is reviewed, the project is archived and the name stays in the history.
     assert "Garden" not in await _names(api, connection)
 

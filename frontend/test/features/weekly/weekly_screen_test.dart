@@ -50,6 +50,23 @@ Future<void> _tap(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+/// Two themes and the four milestones of the default server under them.
+WeeklyServer _themed() {
+  final s = WeeklyServer(projects: [
+    WeeklyServer.project('tA', 'Work', kind: 'theme'),
+    WeeklyServer.project('tB', 'Home', kind: 'theme'),
+    WeeklyServer.project('p1', 'Website',
+        tasks: 2, theme: 'tA', themeName: 'Work', doneState: 'The site is up'),
+    WeeklyServer.project('p2', 'Garden',
+        tasks: 1, theme: 'tB', themeName: 'Home'),
+  ]);
+  s.themes = [
+    WeeklyServer.theme('tA', 'Work'),
+    WeeklyServer.theme('tB', 'Home')
+  ];
+  return s;
+}
+
 void main() {
   testWidgets('starts at the first open step and lists the checklist',
       (tester) async {
@@ -65,47 +82,53 @@ void main() {
     // Nothing to look back on: the look-back counts as settled, so the
     // session opens at the project step.
     expect(find.byKey(const Key('done-lookBack')), findsOneWidget);
-    expect(find.text('Choose up to 3 projects'), findsOneWidget);
-    expect(_text('chosen-count', '0 of 3 chosen'), findsOneWidget);
+    expect(find.text('Choose milestones'), findsWidgets);
+    expect(_text('chosen-count', 'No milestones chosen yet'), findsOneWidget);
     expect(find.byKey(const Key('checklist-progress')), findsOneWidget);
     expect(find.text('1 of 4 done'), findsOneWidget);
   });
 
-  testWidgets('chooses at most three projects', (tester) async {
+  testWidgets('chooses four milestones, sees the warning and commits',
+      (tester) async {
     final (api, server) = await _pump(tester);
+    // Zero milestones can go on: the step is not blocked.
     expect(
         tester
             .widget<FilledButton>(find.byKey(const Key('step-next')))
             .onPressed,
-        isNull);
+        isNotNull);
     expect(find.byKey(const Key('step-hint')), findsOneWidget);
     for (final id in ['p4', 'p1', 'p2']) {
       await _tap(tester, 'add-$id');
     }
     expect(server.chosen, ['p4', 'p1', 'p2']);
-    expect(_text('chosen-count', '3 of 3 chosen'), findsOneWidget);
+    expect(_text('chosen-count', '3 milestones chosen'), findsOneWidget);
     expect(find.text('3 open tasks'), findsWidgets);
-    // Full: the remaining Add button and the subproject button are off.
+    expect(find.byKey(const Key('cap-notice')), findsNothing);
+    // A fourth one is not refused: the button stays on and a quiet warning
+    // appears.
     expect(
         tester
             .widget<OutlinedButton>(find.byKey(const Key('add-p3')))
             .onPressed,
-        isNull);
-    expect(
-        tester
-            .widget<OutlinedButton>(find.byKey(const Key('new-subproject')))
-            .onPressed,
-        isNull);
-    expect(api.where('POST /weekly/$weekKey/projects'), hasLength(3));
-    // Removing one makes room again.
-    await _tap(tester, 'remove-pp-p1');
-    expect(_text('chosen-count', '2 of 3 chosen'), findsOneWidget);
-    expect(find.byKey(const Key('add-p1')), findsOneWidget);
-    expect(
-        tester
-            .widget<OutlinedButton>(find.byKey(const Key('add-p1')))
-            .onPressed,
         isNotNull);
+    await _tap(tester, 'add-p3');
+    expect(server.chosen, ['p4', 'p1', 'p2', 'p3']);
+    expect(api.where('POST /weekly/$weekKey/projects'), hasLength(4));
+    expect(_text('chosen-count', '4 milestones chosen'), findsOneWidget);
+    expect(find.byKey(const Key('cap-notice')), findsOneWidget);
+    expect(find.byKey(const Key('error-banner')), findsNothing);
+    // Removing one takes the warning away again.
+    await _tap(tester, 'remove-pp-p1');
+    expect(_text('chosen-count', '3 milestones chosen'), findsOneWidget);
+    expect(find.byKey(const Key('cap-notice')), findsNothing);
+    expect(find.byKey(const Key('add-p1')), findsOneWidget);
+    // Put it back and commit the four.
+    await _tap(tester, 'add-p1');
+    await _tap(tester, 'check-finish');
+    await _tap(tester, 'commit');
+    expect(api.where('POST /weekly/$weekKey/commit'), hasLength(1));
+    expect(find.byKey(const Key('committed-note')), findsOneWidget);
   });
 
   testWidgets('a project that the server refuses shows its message',
@@ -113,28 +136,36 @@ void main() {
     final s = WeeklyServer()..chosen.add('p1');
     final api = FakeApi({
       ...s.allRoutes(),
-      'POST /weekly/$weekKey/projects':
-          const ApiFailure(422, 'Choose at most 3 projects.', 'invalid'),
+      'POST /weekly/$weekKey/projects': const ApiFailure(
+          422,
+          'This project is a theme, so it is not a milestone.',
+          'not_a_milestone'),
     });
     await pumpWithApi(tester, api, WeeklyPlanningScreen(initialDate: _anyDay),
         overrides: [weeklyPollIntervalProvider.overrideWithValue(null)]);
     await _tap(tester, 'check-projects');
     await _tap(tester, 'add-p2');
-    expect(find.text('Choose at most 3 projects.'), findsOneWidget);
-    expect(_text('chosen-count', '1 of 3 chosen'), findsOneWidget);
+    expect(find.text('This project is a theme, so it is not a milestone.'),
+        findsOneWidget);
+    expect(_text('chosen-count', '1 milestone chosen'), findsOneWidget);
   });
 
-  testWidgets('a new subproject waits for tasks and picks them up',
+  testWidgets('a new milestone waits for tasks and picks them up',
       (tester) async {
-    final (api, server) = await _pump(tester, poll: const Duration(seconds: 5));
-    await _tap(tester, 'new-subproject');
-    await tester.enterText(find.byKey(const Key('subproject-name')), 'Launch');
-    await _tap(tester, 'subproject-create');
+    final s = _themed();
+    final (api, server) =
+        await _pump(tester, server: s, poll: const Duration(seconds: 5));
+    await _tap(tester, 'new-milestone');
+    await tester.enterText(find.byKey(const Key('milestone-name')), 'Launch');
+    await tester.enterText(
+        find.byKey(const Key('milestone-done-state')), 'The site is live');
+    await _tap(tester, 'milestone-create');
     final body =
-        api.where('POST /weekly/$weekKey/subprojects').single.data! as Map;
+        api.where('POST /weekly/$weekKey/milestones').single.data! as Map;
     expect(body['name'], 'Launch');
-    expect(body['parent_id'], 'p1'); // the first project is the default parent
-    expect(_text('chosen-count', '1 of 3 chosen'), findsOneWidget);
+    expect(body['done_state'], 'The site is live');
+    expect(body['parent_id'], 'tA'); // the first theme is the default parent
+    expect(_text('chosen-count', '1 milestone chosen'), findsOneWidget);
     expect(find.byKey(const Key('no-tasks-pp-new1')), findsOneWidget);
     expect(find.byKey(const Key('open-project-pp-new1')), findsOneWidget);
     expect(find.text('No open tasks yet'), findsOneWidget);
@@ -149,17 +180,22 @@ void main() {
     expect(api.where('POST /weekly/$weekKey/refresh'), isNotEmpty);
   });
 
-  testWidgets('a subproject can be created under a chosen parent row',
+  testWidgets('a milestone can be created under a chosen theme row',
       (tester) async {
-    final (api, _) = await _pump(tester);
-    await _tap(tester, 'sub-p2');
+    final (api, _) = await _pump(tester, server: _themed());
+    await _tap(tester, 'new-milestone-tB');
+    await tester.enterText(find.byKey(const Key('milestone-name')), '  Beds  ');
     await tester.enterText(
-        find.byKey(const Key('subproject-name')), '  Beds  ');
+        find.byKey(const Key('milestone-done-state')), ' Beds are planted ');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     final body =
-        api.where('POST /weekly/$weekKey/subprojects').single.data! as Map;
-    expect(body, {'parent_id': 'p2', 'name': 'Beds'});
+        api.where('POST /weekly/$weekKey/milestones').single.data! as Map;
+    expect(body, {
+      'parent_id': 'tB',
+      'name': 'Beds',
+      'done_state': 'Beds are planted',
+    });
   });
 
   testWidgets('searching narrows the project list', (tester) async {
@@ -248,7 +284,7 @@ void main() {
     // Out of the list and the counts, in the closed section at the end.
     expect(find.byKey(const Key('task-p1-t1')), findsNothing);
     expect(_text('day-progress', '0 of 1 task have a day'), findsOneWidget);
-    expect(find.text('Parked (1)'), findsOneWidget);
+    expect(find.text('Not this week (1)'), findsOneWidget);
     expect(find.byKey(const Key('parked-p1-t1')), findsNothing);
     // The spread leaves it alone.
     await _tap(tester, 'spread');
@@ -317,7 +353,7 @@ void main() {
     expect(find.byKey(const Key('unscheduled-warning')), findsOneWidget);
     expect(
         find.text(
-            '2 open tasks in these projects have no day. They are not part of this week\'s plan.'),
+            '2 open tasks in these milestones have no day. They are not part of this week\'s plan.'),
         findsOneWidget);
     await _tap(tester, 'commit');
     expect(api.where('POST /weekly/$weekKey/commit'), hasLength(1));
@@ -348,14 +384,33 @@ void main() {
     expect(find.text('Website task 1'), findsOneWidget);
   });
 
-  testWidgets('committing needs at least one planned task', (tester) async {
+  testWidgets('a week with no milestone can be committed', (tester) async {
+    final (api, _) = await _pump(tester);
+    await _tap(tester, 'check-finish');
+    expect(find.byKey(const Key('finish-no-projects')), findsOneWidget);
+    expect(
+        tester.widget<FilledButton>(find.byKey(const Key('commit'))).onPressed,
+        isNotNull);
+    await _tap(tester, 'commit');
+    // There is no plan yet, so it is started first.
+    expect(api.where('POST /weekly/$weekKey/start'), hasLength(1));
+    expect(api.where('POST /weekly/$weekKey/commit'), hasLength(1));
+    expect(find.byKey(const Key('committed-note')), findsOneWidget);
+  });
+
+  testWidgets(
+      'a milestone without a task day can still be committed, with a '
+      'quiet hint', (tester) async {
     final s = WeeklyServer()..chosen.add('p1');
-    await _pump(tester, server: s);
+    final (api, _) = await _pump(tester, server: s);
     await _tap(tester, 'check-finish');
     expect(
         tester.widget<FilledButton>(find.byKey(const Key('commit'))).onPressed,
-        isNull);
+        isNotNull);
     expect(find.byKey(const Key('commit-hint')), findsOneWidget);
+    await _tap(tester, 'commit');
+    expect(api.where('POST /weekly/$weekKey/commit'), hasLength(1));
+    expect(api.where('POST /weekly/$weekKey/start'), isEmpty);
   });
 
   testWidgets('a committed plan cannot be edited from the project step',
@@ -475,20 +530,11 @@ void main() {
       final s = WeeklyServer(lookBack: sampleLookBack());
       final api = FakeApi({
         ...s.allRoutes(),
-        'POST /weekly/reviews/old1': {
-          'entries': <Object?>[],
-          'totals': {
-            'weeks': 0,
-            'committed_projects': 0,
-            'done_projects': 0,
-            'committed_tasks': 0,
-            'done_tasks': 0,
-          },
-        },
+        'POST /weekly/reviews/old1': reviewAnswer(),
       });
       await pumpWithApi(tester, api, WeeklyPlanningScreen(initialDate: _anyDay),
           overrides: [weeklyPollIntervalProvider.overrideWithValue(null)]);
-      // Off by default, and offered for a finished project too.
+      // Off by default, and offered for a finished milestone too.
       expect(
           tester
               .widget<SwitchListTile>(find.byKey(const Key('archive-op1')))
@@ -511,25 +557,26 @@ void main() {
   });
 
   group('look back', () {
-    testWidgets('asks about each project and shows the counters',
+    testWidgets('asks about each milestone and shows the counters',
         (tester) async {
       final s = WeeklyServer(lookBack: sampleLookBack());
       await _pump(tester, server: s);
       expect(find.text('How did the week of 25 Feb go?'), findsOneWidget);
-      // Website is all done: no question. Garden has two tasks left.
+      // Website is done: no question. Garden has two tasks left.
       expect(find.byKey(const Key('look-finished-op1')), findsOneWidget);
-      expect(find.byKey(const Key('carry-op2')), findsOneWidget);
+      expect(find.byKey(const Key('decision-recommit-op2')), findsOneWidget);
       expect(find.text('Prune roses'), findsOneWidget);
       expect(find.text('1 of 3 tasks done'), findsOneWidget);
-      expect(find.byKey(const Key('carry-op1')), findsNothing);
-      Text counter(String key) => tester.widget<Text>(find
-          .descendant(of: find.byKey(Key(key)), matching: find.byType(Text))
-          .first);
-      expect(counter('look-committed').data, '2');
-      expect(counter('look-done').data, '1');
-      // Counting Garden as done anyway moves the second counter.
-      await _tap(tester, 'finished-op2');
-      expect(counter('look-done').data, '2');
+      expect(find.byKey(const Key('decision-recommit-op1')), findsNothing);
+      // The summary has the numbers of the week.
+      expect(find.byKey(const Key('review-summary')), findsOneWidget);
+      expect(find.byKey(const Key('review-tasks')), findsOneWidget);
+      expect(find.byKey(const Key('review-milestones')), findsOneWidget);
+      // Marking Garden as done takes its question away.
+      await _tap(tester, 'mark-done-op2');
+      await _tap(tester, 'mark-done-confirm');
+      expect(find.byKey(const Key('marked-done-op2')), findsOneWidget);
+      expect(find.byKey(const Key('decision-recommit-op2')), findsNothing);
     });
 
     testWidgets('saves the decisions and then shows the earlier weeks',
@@ -550,8 +597,13 @@ void main() {
                 'done_tasks': 5,
                 'reflection': 'Too much gardening.',
                 'projects': [
-                  {'name': 'Website', 'done': true},
-                  {'name': 'Garden', 'done': true},
+                  {'name': 'Website', 'done': true, 'milestone_id': 'm-op1'},
+                  {
+                    'name': 'Garden',
+                    'done': false,
+                    'decision': 'park',
+                    'milestone_id': 'm-op2'
+                  },
                 ],
               },
             ],
@@ -562,13 +614,14 @@ void main() {
               'committed_tasks': 7,
               'done_tasks': 5,
             },
+            'notices': <Object?>[],
+            'nudges': <Object?>[],
           };
         },
       });
       await pumpWithApi(tester, api, WeeklyPlanningScreen(initialDate: _anyDay),
           overrides: [weeklyPollIntervalProvider.overrideWithValue(null)]);
-      await _tap(tester, 'backlog-op2');
-      await _tap(tester, 'finished-op2');
+      await _tap(tester, 'decision-park-op2');
       await tester.enterText(
           find.byKey(const Key('reflection')), 'Too much gardening.');
       await _tap(tester, 'save-look-back');
@@ -577,14 +630,16 @@ void main() {
       expect(body['projects'], [
         {
           'plan_project_id': 'op1',
-          'finished_anyway': false,
-          'leftover': 'carry',
+          'decision': 'decide_later',
+          'expected': false,
+          'mark_done': false,
           'archive': false,
         },
         {
           'plan_project_id': 'op2',
-          'finished_anyway': true,
-          'leftover': 'backlog',
+          'decision': 'park',
+          'expected': false,
+          'mark_done': false,
           'archive': false,
         },
       ]);
@@ -602,6 +657,7 @@ void main() {
               .data,
           '2');
       expect(find.text('“Too much gardening.”'), findsOneWidget);
+      expect(find.textContaining('Keep but park'), findsOneWidget);
       expect(find.byKey(const Key('done-lookBack')), findsOneWidget);
     });
 
@@ -610,7 +666,7 @@ void main() {
       final (api, _) = await _pump(tester, server: s);
       await _tap(tester, 'skip-look-back');
       expect(api.where('POST /weekly/$weekKey/skip-look-back'), hasLength(1));
-      expect(find.text('Choose up to 3 projects'), findsOneWidget);
+      expect(find.byKey(const Key('chosen-count')), findsOneWidget);
       await _tap(tester, 'check-lookBack');
       expect(find.text('Look-back skipped'), findsOneWidget);
     });

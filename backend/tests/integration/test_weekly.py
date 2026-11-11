@@ -38,37 +38,67 @@ async def _containers(api: AsyncClient) -> dict[str, str]:
     return {c["name"]: c["container_id"] for c in out.json()}
 
 
+async def _label(api: AsyncClient, **labels: str) -> None:
+    """Label projects by name through the project API (spec 003)."""
+    tree = (await api.get(f"{V1}/projects/classification")).json()
+    by_name = {p["name"]: p["id"] for c in tree["connections"] for p in c["projects"]}
+    r = await api.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": by_name[n], "label": label} for n, label in labels.items()]},
+    )
+    assert r.status_code == 200, r.text
+
+
 async def _add(api: AsyncClient, week: date, container_id: str) -> Any:
     r = await api.post(f"{V1}/weekly/{week}/projects", json={"container_id": container_id})
     assert r.status_code == 201, r.text
     return r.json()
 
 
-async def test_candidates_list_task_projects_with_open_task_counts(
+async def test_candidates_list_milestones_and_unsorted_leaf_projects_with_task_counts(
     api: AsyncClient, world: FakeWorld
 ) -> None:
     await _setup(api, world)
+    await _label(api, Garden="theme", Taxes="milestone")
     found = (await api.get(f"{V1}/weekly/{FUTURE}/candidates")).json()
     by_name = {c["name"]: c for c in found}
-    assert set(by_name) == {"Inbox", "Website", "Garden", "Taxes"}
+    assert set(by_name) == {"Inbox", "Website", "Taxes"}  # a labelled theme is not listed
     assert by_name["Website"]["open_tasks"] == 2 and by_name["Taxes"]["open_tasks"] == 0
+    assert by_name["Website"]["kind"] == "unsorted" and by_name["Website"]["unsorted"] is True
+    taxes = by_name["Taxes"]
+    assert (taxes["kind"], taxes["state"], taxes["unsorted"]) == ("milestone", "active", False)
+    assert taxes["theme"] is None and taxes["in_focus"] is None  # no theme, no focus data
+    assert (taxes["rollover_count"], taxes["needs_rescope"], taxes["decision_open"]) == (
+        0,
+        False,
+        False,
+    )
     assert not any(c["selected"] for c in found)
 
 
-async def test_a_week_holds_at_most_three_projects(api: AsyncClient, world: FakeWorld) -> None:
+async def test_more_than_three_milestones_are_accepted_and_only_warn(
+    api: AsyncClient, world: FakeWorld
+) -> None:
     ids = await _setup(api, world)
     for name in ("Inbox", "Website", "Garden"):
         state = await _add(api, FUTURE, ids[name])
     assert [p["name"] for p in state["plan"]["projects"]] == ["Inbox", "Website", "Garden"]
+    assert state["plan"]["over_cap"] is False and state["plan"]["milestone_cap"] == 3
+    assert "max_projects" not in state["plan"]
     again = await api.post(f"{V1}/weekly/{FUTURE}/projects", json={"container_id": ids["Garden"]})
     assert again.status_code == 201  # adding twice changes nothing
+    assert len(again.json()["plan"]["projects"]) == 3
     fourth = await api.post(f"{V1}/weekly/{FUTURE}/projects", json={"container_id": ids["Taxes"]})
-    assert fourth.status_code == 422 and "at most 3" in fourth.json()["detail"]
-    removed = await api.delete(
-        f"{V1}/weekly/{FUTURE}/projects/{state['plan']['projects'][0]['id']}"
-    )
-    assert [p["name"] for p in removed.json()["plan"]["projects"]] == ["Website", "Garden"]
-    assert (await _add(api, FUTURE, ids["Taxes"]))["plan"]["projects"][-1]["name"] == "Taxes"
+    assert fourth.status_code == 201, fourth.text  # no hard cap any more
+    plan = fourth.json()["plan"]
+    assert (plan["milestone_count"], plan["over_cap"]) == (4, True)
+    removed = await api.delete(f"{V1}/weekly/{FUTURE}/projects/{plan['projects'][0]['id']}")
+    plan = removed.json()["plan"]
+    assert [p["name"] for p in plan["projects"]] == ["Website", "Garden", "Taxes"]
+    assert (plan["milestone_count"], plan["over_cap"]) == (3, False)
+    # Picking labelled the unsorted projects milestone (spec 004, R-05).
+    found = {c["name"]: c for c in (await api.get(f"{V1}/weekly/{FUTURE}/candidates")).json()}
+    assert found["Garden"]["kind"] == "milestone" and found["Garden"]["selected"] is True
 
 
 async def test_a_project_of_another_user_cannot_be_chosen(
@@ -80,61 +110,72 @@ async def test_a_project_of_another_user_cannot_be_chosen(
     assert r.status_code == 404
 
 
-async def test_new_subproject_is_created_in_the_task_app_and_added(
+async def test_new_milestone_is_created_in_the_task_app_labelled_and_added(
     api: AsyncClient, world: FakeWorld
 ) -> None:
     ids = await _setup(api, world)
+    await _label(api, Website="theme")
     r = await api.post(
-        f"{V1}/weekly/{FUTURE}/subprojects", json={"parent_id": ids["Website"], "name": "Launch"}
+        f"{V1}/weekly/{FUTURE}/milestones",
+        json={
+            "parent_id": ids["Website"],
+            "name": "Launch",
+            "done_state": "The site is live",
+        },
     )
     assert r.status_code == 201, r.text
     project = r.json()["plan"]["projects"][0]
     assert project["name"] == "Launch" and project["created_here"] is True
-    assert project["open_tasks"] == 0
+    assert project["open_tasks"] == 0 and project["done_state"] == "The site is live"
+    assert project["milestone_state"] == "active" and project["theme"]["name"] == "Website"
     created = world.tasks["default"].containers[-1]
     assert (created.name, created.parent_id) == ("Launch", "p2")
     found = {c["name"]: c for c in (await api.get(f"{V1}/weekly/{FUTURE}/candidates")).json()}
     assert found["Launch"]["path"] == "Website › Launch" and found["Launch"]["selected"]
+    assert (found["Launch"]["kind"], found["Launch"]["done_state"]) == (
+        "milestone",
+        "The site is live",
+    )
     blank = await api.post(
-        f"{V1}/weekly/{FUTURE}/subprojects", json={"parent_id": ids["Website"], "name": "   "}
+        f"{V1}/weekly/{FUTURE}/milestones",
+        json={"parent_id": ids["Website"], "name": "   ", "done_state": "x"},
     )
     assert blank.status_code == 422
+    old = await api.post(
+        f"{V1}/weekly/{FUTURE}/subprojects", json={"parent_id": ids["Website"], "name": "Launch"}
+    )
+    assert old.status_code in (404, 405)  # the old route is gone
 
 
-async def test_subproject_needs_room_and_support_and_creates_nothing_otherwise(
+async def test_milestone_needs_a_done_state_and_support_and_creates_nothing_otherwise(
     api: AsyncClient, world: FakeWorld
 ) -> None:
     ids = await _setup(api, world)
+    await _label(api, Inbox="theme")
+    body = {"parent_id": ids["Inbox"], "name": "x", "done_state": "x is done"}
     before = len(world.tasks["default"].containers)
     world.tasks["default"].supported.discard(Capability.SUBPROJECTS)
-    unsupported = await api.post(
-        f"{V1}/weekly/{FUTURE}/subprojects", json={"parent_id": ids["Inbox"], "name": "x"}
-    )
+    unsupported = await api.post(f"{V1}/weekly/{FUTURE}/milestones", json=body)
     assert unsupported.status_code == 409 and unsupported.json()["code"] == "not_supported"
     world.tasks["default"].supported.add(Capability.SUBPROJECTS)
     world.tasks["default"].unavailable = True
-    down = await api.post(
-        f"{V1}/weekly/{FUTURE}/subprojects", json={"parent_id": ids["Inbox"], "name": "x"}
-    )
+    down = await api.post(f"{V1}/weekly/{FUTURE}/milestones", json=body)
     assert down.status_code == 502
     world.tasks["default"].unavailable = False
-    for name in ("Inbox", "Website", "Garden"):
-        await _add(api, FUTURE, ids[name])
-    full = await api.post(
-        f"{V1}/weekly/{FUTURE}/subprojects", json={"parent_id": ids["Inbox"], "name": "x"}
-    )
-    assert full.status_code == 422
-    assert len(world.tasks["default"].containers) == before
+    blank = await api.post(f"{V1}/weekly/{FUTURE}/milestones", json={**body, "done_state": "  "})
+    assert blank.status_code == 422 and blank.json()["code"] == "done_state_required"
+    assert len(world.tasks["default"].containers) == before  # nothing was created in the app
 
 
 async def test_refresh_shows_tasks_added_in_the_task_app(
     api: AsyncClient, world: FakeWorld
 ) -> None:
     ids = await _setup(api, world)
+    await _label(api, Website="theme")
     state = (
         await api.post(
-            f"{V1}/weekly/{FUTURE}/subprojects",
-            json={"parent_id": ids["Website"], "name": "Launch"},
+            f"{V1}/weekly/{FUTURE}/milestones",
+            json={"parent_id": ids["Website"], "name": "Launch", "done_state": "Launched"},
         )
     ).json()
     new_id = world.tasks["default"].containers[-1].remote_id
@@ -303,14 +344,15 @@ async def test_an_extra_task_has_its_project_color_and_link(
     assert one["project"] == "Garden"
 
 
-async def test_commit_needs_a_project_and_a_started_plan(
+async def test_commit_needs_a_started_plan_but_not_a_milestone(
     api: AsyncClient, world: FakeWorld
 ) -> None:
     await _setup(api, world)
     assert (await api.post(f"{V1}/weekly/{FUTURE}/commit")).status_code == 404
     await api.post(f"{V1}/weekly/{FUTURE}/start")
     empty = await api.post(f"{V1}/weekly/{FUTURE}/commit")
-    assert empty.status_code == 422 and "at least one project" in empty.json()["detail"]
+    assert empty.status_code == 200, empty.text  # a week with zero milestones is valid
+    assert empty.json()["plan"]["status"] == "committed" and empty.json()["plan"]["projects"] == []
 
 
 async def test_the_week_is_the_monday_week_of_any_day(api: AsyncClient, world: FakeWorld) -> None:
@@ -353,17 +395,20 @@ async def test_look_back_counts_what_was_done_and_applies_the_decisions(
         "Website": (1, 2, False),
         "Garden": (0, 2, False),
     }
+    assert back["summary"]["committed_tasks"] == 6 and back["summary"]["done_tasks"] == 3
+    assert (back["summary"]["milestones_committed"], back["summary"]["milestones_done"]) == (3, 1)
     ids = {p["name"]: p["id"] for p in back["projects"]}
     answers = {
         "projects": [
-            {"plan_project_id": ids["Website"], "finished_anyway": True, "leftover": "backlog"},
-            {"plan_project_id": ids["Garden"], "leftover": "carry"},
+            {"plan_project_id": ids["Website"], "mark_done": True},
+            {"plan_project_id": ids["Garden"], "decision": "recommit"},
         ],
         "reflection": "Too much gardening.",
     }
     reviewed = await api.post(f"{V1}/weekly/reviews/{back['plan_id']}", json=answers)
     assert reviewed.status_code == 200, reviewed.text
     history = reviewed.json()
+    assert "1 open task stays" in history["notices"][0]  # Website was marked done by hand
     assert history["totals"] == {
         "weeks": 1,
         "committed_projects": 3,
@@ -378,9 +423,14 @@ async def test_look_back_counts_what_was_done_and_applies_the_decisions(
         "Website": True,
         "Garden": False,
     }
+    assert {p["name"]: p["decision"] for p in entry["projects"]} == {
+        "Inbox": None,  # finished: no decision
+        "Website": None,  # marked done: no decision
+        "Garden": "recommit",
+    }
     remote = {t.title: t for t in world.tasks["default"].tasks.values()}
-    assert remote["p2 task 2"].due_at is None  # backlog: the old day is gone
-    assert remote["p3 task 1"].due_at is not None  # carried over: left as it was
+    assert remote["p2 task 2"].due_at is not None  # park and mark done leave the days alone
+    assert remote["p3 task 1"].due_at is not None  # recommitted: left as it was
     again = await api.post(f"{V1}/weekly/reviews/{back['plan_id']}", json=answers)
     assert again.status_code == 422
     after = (await api.get(f"{V1}/weekly/{NEXT_AFTER_PAST}")).json()["look_back"]
@@ -388,6 +438,27 @@ async def test_look_back_counts_what_was_done_and_applies_the_decisions(
     assert {p["name"]: p["outcome"] for p in after["projects"]}["Website"] == "done"
     suggested = (await api.get(f"{V1}/weekly/{NEXT_AFTER_PAST}/candidates")).json()
     assert suggested[0]["name"] == "Garden" and suggested[0]["carried_tasks"] == 2
+
+
+async def test_park_leaves_the_due_dates_of_the_leftover_tasks(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    """The old backlog choice cleared the days (O-1). Parking a milestone does not."""
+    await _committed_past_week(api, world)
+    back = (await api.get(f"{V1}/weekly/{NEXT_AFTER_PAST}")).json()["look_back"]
+    ids = {p["name"]: p["id"] for p in back["projects"]}
+    done = await api.post(
+        f"{V1}/weekly/reviews/{back['plan_id']}",
+        json={"projects": [{"plan_project_id": ids["Website"], "decision": "park"}]},
+    )
+    assert done.status_code == 200, done.text
+    remote = {t.title: t for t in world.tasks["default"].tasks.values()}
+    assert remote["p2 task 1"].due_at is not None and remote["p2 task 2"].due_at is not None
+    candidates = {
+        c["name"]: c for c in (await api.get(f"{V1}/weekly/{NEXT_AFTER_PAST}/candidates")).json()
+    }
+    assert candidates["Website"]["state"] == "parked"
+    assert candidates["Website"]["rollover_count"] == 0
 
 
 async def test_look_back_ignores_draft_weeks_and_can_be_skipped(
@@ -416,7 +487,7 @@ async def test_review_of_unknown_or_uncommitted_week_is_refused(
     bad = await api.post(
         f"{V1}/weekly/reviews/{state['plan']['id']}",
         json={
-            "projects": [{"plan_project_id": state["plan"]["projects"][0]["id"], "leftover": "x"}]
+            "projects": [{"plan_project_id": state["plan"]["projects"][0]["id"], "decision": "x"}]
         },
     )
     assert bad.status_code == 422

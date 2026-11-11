@@ -778,7 +778,7 @@ class ParkedIn(BaseModel):
 async def park_task(
     day: date, task_id: uuid.UUID, body: ParkedIn, request: Request, db: Db, user: CurrentUser
 ) -> WeeklyStateOut:
-    """Set a task aside for this plan ("not this week"), or put it back. The task app stays as is."""
+    """Set a task aside for this plan ("not this week"), or put it back. The app is not touched."""
     week = normalize_week(day)
     await _service(request).set_parked(
         db, user.id, await _draft(request, db, user.id, week), task_id, body.parked

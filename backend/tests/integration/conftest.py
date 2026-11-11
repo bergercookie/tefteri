@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from httpx import AsyncClient
@@ -18,6 +18,9 @@ from tefteri.domain.entities import Container, TaskDraft
 from tefteri.services.classification import ClassificationService
 from tests.conftest import V1, connect_all
 from tests.fakes.world import FakeWorld
+
+if TYPE_CHECKING:
+    from tests.integration.weekly_helpers import Weekly
 
 
 class ProjectsEnv:
@@ -87,3 +90,10 @@ class ProjectsEnv:
 @pytest.fixture
 def env(api: AsyncClient, world: FakeWorld) -> ProjectsEnv:
     return ProjectsEnv(api, world)
+
+
+@pytest.fixture
+def weekly(env: ProjectsEnv) -> "Weekly":
+    from tests.integration.weekly_helpers import Weekly
+
+    return Weekly(env)

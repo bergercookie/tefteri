@@ -46,7 +46,7 @@ async def test_a_missing_optional_capability_only_turns_its_flag_off(
     assert r.status_code == 201  # type: ignore[attr-defined]
     assert r.json()["capabilities"] == {  # type: ignore[attr-defined]
         "missing_required": [],
-        "optional": {"rename": False, "restore": True},
+        "optional": {"rename": False, "restore": True, "move_tasks": True},
     }
 
 
@@ -59,7 +59,7 @@ async def test_check_reports_a_capability_that_went_missing(
     assert ok["status"] == "ok"
     assert ok["capabilities"] == {
         "missing_required": [],
-        "optional": {"rename": True, "restore": True},
+        "optional": {"rename": True, "restore": True, "move_tasks": True},
     }
     world.tasks["default"].supported.discard(Capability.ARCHIVE_PROJECTS)
     bad = (await api.post(f"{V1}/connections/{connection}/check")).json()
@@ -84,3 +84,18 @@ async def test_a_calendar_has_no_capability_report_to_worry_about(
     assert r.status_code == 201
     assert r.json()["capabilities"] == {"missing_required": [], "optional": {}}
     assert ConnectionKind.NOTES.value == "notes"
+
+
+async def test_a_task_app_that_cannot_move_tasks_connects_and_only_loses_the_close_option(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    world.tasks["default"].supported -= {Capability.MOVE_TASKS}
+    r = await _connect(api)
+    assert r.status_code == 201  # type: ignore[attr-defined]
+    assert r.json()["capabilities"] == {  # type: ignore[attr-defined]
+        "missing_required": [],
+        "optional": {"rename": True, "restore": True, "move_tasks": False},
+    }
+    connection = r.json()["id"]  # type: ignore[attr-defined]
+    checked = (await api.post(f"{V1}/connections/{connection}/check")).json()
+    assert checked["status"] == "ok" and checked["capabilities"]["optional"]["move_tasks"] is False
