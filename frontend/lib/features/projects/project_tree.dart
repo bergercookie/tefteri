@@ -12,6 +12,9 @@ enum GroupKind {
   /// Themes, with their milestones inside.
   themes('Themes'),
 
+  /// Milestones whose parent is not a theme.
+  noThemeMilestones('Milestones without a theme'),
+
   /// Routine (maintenance) projects.
   routines('Routines'),
 
@@ -35,6 +38,9 @@ enum GroupKind {
           'A theme is a long-running home for related work. Milestones are '
               'small outcomes you can finish in a week, shown inside their '
               'theme.',
+        GroupKind.noThemeMilestones =>
+          'These milestones are not inside a theme. Move them under a theme '
+              'in your task app, or change their label.',
         GroupKind.routines =>
           'Routines are work that repeats and never finishes, like chores or '
               'admin. Their tasks stay in your daily lists, but they are not '
@@ -163,7 +169,10 @@ List<TreeItem> buildTreeItems(
       if (p.orphaned != null) return GroupKind.orphaned;
       return switch (p.label) {
         null => GroupKind.unsorted,
-        ProjectLabel.theme || ProjectLabel.milestone => GroupKind.themes,
+        ProjectLabel.theme => GroupKind.themes,
+        ProjectLabel.milestone => p.parentThemeId == null
+            ? GroupKind.noThemeMilestones
+            : GroupKind.themes,
         ProjectLabel.maintenance => GroupKind.routines,
         ProjectLabel.ignored => GroupKind.ignored,
       };
@@ -179,9 +188,11 @@ List<TreeItem> buildTreeItems(
       final members = groups[kind]!;
       if (members.isEmpty) continue;
       final List<TreeItem> body;
-      if (kind == GroupKind.themes) {
-        body = _themeRows(members, conn, byId, ancestors, matches, q,
-            collapsedNodes: collapsedNodes);
+      if (kind == GroupKind.themes ||
+          kind == GroupKind.unsorted ||
+          kind == GroupKind.noThemeMilestones) {
+        body = _treeRows(kind, members, conn, byId, ancestors, pathOf, matches,
+            q, collapsedNodes: collapsedNodes);
       } else {
         body = [
           for (final p in members)
@@ -196,7 +207,11 @@ List<TreeItem> buildTreeItems(
       }
       if (body.isEmpty) continue;
       final collapsed = !searching && collapsedGroups.contains(kind);
-      rows.add(GroupItem(kind, members.length, collapsed: collapsed));
+      // Themes count themselves; their milestones are listed inside.
+      final count = kind == GroupKind.themes
+          ? members.where((p) => p.label == ProjectLabel.theme).length
+          : members.length;
+      rows.add(GroupItem(kind, count, collapsed: collapsed));
       if (!collapsed) rows.addAll(body);
     }
     if (rows.isNotEmpty && c.connections.length > 1) {
@@ -208,11 +223,15 @@ List<TreeItem> buildTreeItems(
   return out;
 }
 
-List<TreeItem> _themeRows(
+/// The rows of a group shown as a tree: children sit under their nearest
+/// ancestor in the same group, parent first.
+List<TreeItem> _treeRows(
+  GroupKind kind,
   List<ClassifiedProject> members,
   ConnectionProjects conn,
   Map<String, ClassifiedProject> byId,
   List<ClassifiedProject> Function(ClassifiedProject) ancestors,
+  String Function(ClassifiedProject) pathOf,
   bool Function(ClassifiedProject) matches,
   String q, {
   required Set<String> collapsedNodes,
@@ -252,8 +271,11 @@ List<TreeItem> _themeRows(
     out.add(ProjectItem(
       project: p,
       connection: conn,
-      group: GroupKind.themes,
+      group: kind,
       depth: depth,
+      // A row under its parent in the group needs no path; a top row shows
+      // the parent that lives in another group.
+      path: depth == 0 && kind != GroupKind.themes ? pathOf(p) : '',
       hasChildren: kids.isNotEmpty,
       collapsed: collapsed,
       themeName: byId[p.parentThemeId]?.name,

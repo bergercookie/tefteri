@@ -66,7 +66,9 @@ class ProjectRow extends StatelessWidget {
 
     final details = <String>[
       if (item.group != GroupKind.themes && item.path.isNotEmpty) item.path,
-      if (p.label == ProjectLabel.milestone && orphan == null)
+      if (p.label == ProjectLabel.milestone &&
+          orphan == null &&
+          item.group != GroupKind.noThemeMilestones)
         item.themeName == null ? 'No theme' : 'Theme: ${item.themeName}',
       if (p.openTasks > 0)
         '${p.openTasks} open ${p.openTasks == 1 ? 'task' : 'tasks'}',
