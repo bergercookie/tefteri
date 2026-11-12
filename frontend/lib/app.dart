@@ -25,6 +25,7 @@ import 'features/review/review_screen.dart';
 import 'features/settings/checklists_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/statistics/drilldown_screen.dart';
 import 'features/week/week_screen.dart';
 import 'features/weekly/weekly_screen.dart';
 import 'features/year/year_screen.dart';
@@ -111,8 +112,19 @@ GoRouter buildRouter(Ref ref) {
           ),
         ],
       ),
-      GoRoute(path: '/month', builder: (_, __) => const MonthScreen()),
-      GoRoute(path: '/year', builder: (_, __) => const YearScreen()),
+      GoRoute(
+        path: '/month',
+        builder: (_, s) => MonthScreen(
+            initialDate:
+                DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
+      ),
+      GoRoute(
+        path: '/year',
+        builder: (_, s) => YearScreen(
+            initialYear:
+                DateTime.tryParse(s.uri.queryParameters['date'] ?? '')?.year),
+      ),
+      statisticsRoute(),
       GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
       GoRoute(path: '/projects', builder: (_, __) => const ProjectsScreen()),
       GoRoute(

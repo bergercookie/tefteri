@@ -5,18 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_models.dart';
-import '../../core/project_chip.dart';
 import '../../theme/theme.dart';
+import '../statistics/category_style.dart';
+import '../statistics/statistics_models.dart';
+import '../statistics/statistics_providers.dart';
 import 'week_progress.dart';
 import 'weekly_api.dart';
-import 'weekly_models.dart';
 import 'weekly_widgets.dart';
 
 /// What the user committed to for [week], and how far they have come.
 ///
 /// Shows done and left counts, tasks completed on each day, the cadence and a
-/// burndown chart. Shows nothing until the week has a committed plan, and
-/// nothing when the plan cannot be loaded: the page works without it.
+/// burndown chart. Every number comes from the server (`progress` of the
+/// statistics), so every client says the same. The days also show the three
+/// work categories. Shows nothing until the week has a committed plan, and
+/// nothing when the numbers cannot be loaded: the page works without them.
 class WeekProgressCard extends ConsumerWidget {
   /// Creates the card for the week that starts on [week] (a Monday).
   ///
@@ -31,13 +34,20 @@ class WeekProgressCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(weeklyStateProvider(dateKey(week))).valueOrNull;
-    final plan = state?.plan;
-    if (state == null || plan == null || !plan.committed) {
-      return const SizedBox.shrink();
-    }
-    final progress = WeekProgress.of(plan, week, today ?? DateTime.now(),
-        extra: state.doneOutsidePlan);
+    final summary = ref
+        .watch(statisticsProvider(StatsQuery('week', dateKey(week))))
+        .valueOrNull;
+    final progress = summary?.progress;
+    if (summary == null || progress == null) return const SizedBox.shrink();
+    final names = [
+      for (final p in ref
+              .watch(weeklyStateProvider(dateKey(week)))
+              .valueOrNull
+              ?.plan
+              ?.projects ??
+          const [])
+        p.name,
+    ];
     final colors = context.tefteri;
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
@@ -63,12 +73,13 @@ class WeekProgressCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: Space.xs),
-          Text(
-            '${plural(plan.projects.length, 'project')}: '
-            '${plan.projects.map((p) => p.name).join(', ')}',
-            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-          ),
+          if (names.isNotEmpty) ...[
+            const SizedBox(height: Space.xs),
+            Text(
+              '${plural(names.length, 'project')}: ${names.join(', ')}',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
           const SizedBox(height: Space.md),
           ClipRRect(
             borderRadius: BorderRadius.circular(Corner.pill),
@@ -83,11 +94,11 @@ class WeekProgressCard extends ConsumerWidget {
           const SizedBox(height: Space.lg),
           _Stats(progress: progress),
           const SizedBox(height: Space.lg),
-          _DoneByDay(progress: progress, today: today ?? DateTime.now()),
-          if (state.doneOutsidePlan.isNotEmpty) ...[
-            const SizedBox(height: Space.lg),
-            _DoneOutsidePlan(tasks: state.doneOutsidePlan),
-          ],
+          _DoneByDay(
+              progress: progress,
+              parts: summary.parts,
+              week: week,
+              today: today ?? DateTime.now()),
           const SizedBox(height: Space.lg),
           Text('Burndown', style: text.titleMedium),
           const SizedBox(height: Space.sm),
@@ -146,12 +157,6 @@ class _Stats extends StatelessWidget {
             label: 'Left',
             value: '${progress.left}',
             color: colors.task),
-        if (progress.extraDone > 0)
-          _Stat(
-              key: const Key('stat-extra'),
-              label: 'Outside the plan',
-              value: '+${progress.extraDone}',
-              color: Theme.of(context).colorScheme.primary),
         _Stat(
             key: const Key('stat-cadence'),
             label: 'Cadence',
@@ -194,11 +199,19 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// Tasks completed on each day, with the total.
+/// Tasks of the plan completed on each day, with the total, and under each
+/// day the three work categories of everything that was completed.
 class _DoneByDay extends StatelessWidget {
-  const _DoneByDay({required this.progress, required this.today});
+  const _DoneByDay({
+    required this.progress,
+    required this.parts,
+    required this.week,
+    required this.today,
+  });
 
   final WeekProgress progress;
+  final List<StatPart> parts;
+  final DateTime week;
   final DateTime today;
 
   @override
@@ -207,6 +220,7 @@ class _DoneByDay extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final now = DateTime(today.year, today.month, today.day);
+    final monday = DateTime(week.year, week.month, week.day);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -216,26 +230,22 @@ class _DoneByDay extends StatelessWidget {
                 child: Text('Completed per day',
                     style: text.labelSmall
                         ?.copyWith(color: scheme.onSurfaceVariant))),
-            Text(
-                progress.extraDone > 0
-                    ? 'Total ${progress.doneInWeek} + ${progress.extraDone} '
-                        'outside the plan'
-                    : 'Total ${progress.doneInWeek}',
-                key: const Key('done-total'),
-                style: text.labelSmall),
+            Text('Total ${progress.doneInWeek}',
+                key: const Key('done-total'), style: text.labelSmall),
           ],
         ),
         const SizedBox(height: Space.xs),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (var i = 0; i < 7; i++)
               Expanded(
                 child: Builder(builder: (context) {
-                  final day = DateTime(progress.monday.year,
-                      progress.monday.month, progress.monday.day + i);
+                  final day =
+                      DateTime(monday.year, monday.month, monday.day + i);
                   final isToday = day == now;
                   final n = progress.doneByDay[i];
-                  final extra = progress.extraByDay[i];
+                  final counts = i < parts.length ? parts[i].counts : null;
                   return Container(
                     key: Key('done-day-$i'),
                     margin: const EdgeInsets.symmetric(horizontal: 2),
@@ -258,16 +268,10 @@ class _DoneByDay extends StatelessWidget {
                         Text('$n',
                             style: text.titleMedium?.copyWith(
                                 color: n > 0 ? colors.done : scheme.outline)),
-                        // Tasks done that day that the plan did not promise.
-                        SizedBox(
-                          height: 14,
-                          child: extra > 0
-                              ? Text('+$extra',
-                                  key: Key('extra-day-$i'),
-                                  style: text.labelSmall
-                                      ?.copyWith(color: scheme.primary))
-                              : null,
-                        ),
+                        if (counts != null) ...[
+                          const SizedBox(height: Space.xs),
+                          _DayCounts(day: i, counts: counts),
+                        ],
                       ],
                     ),
                   );
@@ -275,99 +279,79 @@ class _DoneByDay extends StatelessWidget {
               ),
           ],
         ),
+        const SizedBox(height: Space.sm),
+        Text(
+          'Large number: tasks from your plan. Small numbers: everything that '
+          'was completed, by category.',
+          style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Space.xs),
+        Wrap(
+          spacing: Space.md,
+          runSpacing: Space.xs,
+          children: [
+            for (final c in Category.work)
+              Builder(builder: (context) {
+                final style = categoryStyle(context, c);
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(style.icon, size: 12, color: style.accent),
+                    const SizedBox(width: 2),
+                    Text(style.name,
+                        style: text.labelSmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                );
+              }),
+          ],
+        ),
       ],
     );
   }
 }
 
-/// The tasks done during the week that the plan did not promise.
-///
-/// Shows the first few; the rest open on a tap.
-class _DoneOutsidePlan extends StatefulWidget {
-  const _DoneOutsidePlan({required this.tasks});
+/// The three counts of one day, a small icon and a number each.
+class _DayCounts extends StatelessWidget {
+  const _DayCounts({required this.day, required this.counts});
 
-  final List<ExtraDoneTask> tasks;
-
-  @override
-  State<_DoneOutsidePlan> createState() => _DoneOutsidePlanState();
-}
-
-/// How many tasks show before the user asks for all of them.
-const int _extraShown = 5;
-
-class _DoneOutsidePlanState extends State<_DoneOutsidePlan> {
-  bool _all = false;
+  final int day;
+  final CategoryCounts counts;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final colors = context.tefteri;
-    final tasks = widget.tasks;
-    final shown = _all ? tasks : tasks.take(_extraShown).toList();
-    return Column(
-      key: const Key('done-outside-plan'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
+    return Semantics(
+      container: true,
+      label: '${weekdayShort(day)}: ${counts.goalAligned} goal-aligned, '
+          '${counts.maintenance} maintenance, ${counts.offPlan} off-plan',
+      child: ExcludeSemantics(
+        child: Column(
           children: [
-            Expanded(
-                child: Text('Done outside the plan', style: text.titleMedium)),
-            Text(plural(tasks.length, 'task'),
-                key: const Key('extra-count'),
-                style:
-                    text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            for (final c in Category.work)
+              Builder(builder: (context) {
+                final style = categoryStyle(context, c);
+                final n = counts.of(c);
+                return Row(
+                  key: Key('day-${c.json}-$day'),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(style.icon,
+                        size: 12, color: n > 0 ? style.accent : scheme.outline),
+                    const SizedBox(width: 2),
+                    Text('$n',
+                        style: text.labelSmall?.copyWith(
+                            color: n > 0
+                                ? scheme.onSurface
+                                : scheme.onSurfaceVariant)),
+                  ],
+                );
+              }),
           ],
         ),
-        Text(
-          'Finished this week, but they were not in the plan that you '
-          'committed to.',
-          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: Space.xs),
-        for (final t in shown)
-          Container(
-            key: Key('extra-${t.id}'),
-            padding: const EdgeInsets.symmetric(vertical: Space.sm),
-            decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.rule))),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.check_circle, size: 18, color: colors.done),
-                const SizedBox(width: Space.sm),
-                SizedBox(
-                  width: 56,
-                  child: Text(
-                      '${weekdayShort(t.completedDay.weekday - 1)} '
-                      '${t.completedDay.day}',
-                      key: Key('extra-day-label-${t.id}'),
-                      style: text.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
-                ),
-                Expanded(child: Text(t.title, style: text.bodyMedium)),
-                if (t.project != null && t.project!.isNotEmpty) ...[
-                  const SizedBox(width: Space.sm),
-                  // The title takes the room; the project name is capped, so it
-                  // stays next to the end of the row.
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 140),
-                    child: ProjectChip(name: t.project!, color: t.projectColor),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        if (tasks.length > _extraShown)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              key: const Key('extra-toggle'),
-              onPressed: () => setState(() => _all = !_all),
-              child: Text(_all ? 'Show fewer' : 'Show all ${tasks.length}'),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

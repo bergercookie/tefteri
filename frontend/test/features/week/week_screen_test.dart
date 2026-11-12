@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tefteri/features/week/week_screen.dart';
 
 import '../../support/fake_api.dart';
@@ -40,11 +41,55 @@ Map<String, Object?> _week() => periodJson(
       ],
     );
 
-FakeApi _api([Map<String, Object?> extra = const {}]) =>
-    FakeApi({_path: _week(), ...extra});
+final _done = [
+  statTaskJson('d1', 'Write the spec',
+      category: 'goal_aligned', project: 'Website'),
+  statTaskJson('d2', 'Take out the bins',
+      category: 'maintenance', project: 'Chores'),
+  for (var i = 0; i < 7; i++)
+    statTaskJson('o$i', 'Errand $i', category: 'off_plan', project: 'Home'),
+];
 
-Future<void> _pump(WidgetTester tester, FakeApi api) =>
-    pumpWithApi(tester, api, WeekScreen(initialDate: _day));
+FakeApi _api([Map<String, Object?> extra = const {}]) => FakeApi({
+      _path: _week(),
+      'GET /statistics': statisticsJson(
+        goalAligned: 1,
+        maintenance: 1,
+        offPlan: 7,
+        progress: weekProgressJson(),
+      ),
+      'GET /statistics/tasks': fakeStatisticsTasks(_done),
+      'GET /weekly/2026-11-02': _weekly(),
+      ...extra,
+    });
+
+Map<String, Object?> _weekly() => {
+      'week_start': '2026-11-02',
+      'week_end': '2026-11-09',
+      'look_back': null,
+      'plan': {
+        'id': 'p',
+        'status': 'committed',
+        'max_projects': 3,
+        'projects': [
+          {
+            'id': 'a',
+            'name': 'Website',
+            'created_here': false,
+            'open_tasks': 6,
+            'done_tasks': 4,
+            'scheduled_tasks': 0,
+            'tasks': <Object?>[],
+            'committed_tasks': <Object?>[],
+          },
+        ],
+      },
+    };
+
+Future<void> _pump(WidgetTester tester, FakeApi api) {
+  SharedPreferences.setMockInitialValues({});
+  return pumpWithApi(tester, api, WeekScreen(initialDate: _day));
+}
 
 void main() {
   testWidgets('shows goals with progress and tasks, but no events',
@@ -62,6 +107,60 @@ void main() {
     expect(find.text('Write plan'), findsOneWidget);
     expect(find.textContaining('Goal: Ship beta'), findsOneWidget);
     expect(find.textContaining('Not scheduled'), findsOneWidget);
+  });
+
+  testWidgets('says what goal-aligned means in one line', (tester) async {
+    await _pump(tester, _api());
+    expect(
+        find.text(
+            'Goal-aligned means work in a milestone you committed to this week.'),
+        findsOneWidget);
+  });
+
+  testWidgets('shows the categories card and the completed list',
+      (tester) async {
+    final api = _api();
+    await _pump(tester, api);
+    expect(find.byKey(const Key('categories-card')), findsOneWidget);
+    expect(find.byKey(const Key('proportion-bar')), findsOneWidget);
+    for (final c in ['goal_aligned', 'maintenance', 'off_plan']) {
+      expect(find.byKey(Key('completed-group-$c')), findsOneWidget);
+    }
+    expect(find.text('Write the spec'), findsOneWidget);
+    expect(find.text('Take out the bins'), findsOneWidget);
+    expect(api.where('GET /statistics').first.query,
+        {'period': 'week', 'day': '2026-11-02'});
+  });
+
+  testWidgets('the progress card draws the numbers of the server',
+      (tester) async {
+    await _pump(
+        tester,
+        _api({
+          'GET /statistics': statisticsJson(
+            goalAligned: 1,
+            progress: weekProgressJson(
+                committed: 9, done: 7, doneByDay: const [3, 2, 2, 0, 0, 0, 0]),
+          ),
+        }));
+    expect(find.text('7 of 9 tasks done'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('stat-left')), matching: find.text('2')),
+        findsOneWidget);
+    expect(find.text('Total 7'), findsOneWidget);
+  });
+
+  testWidgets('there is no "outside the plan" list with a limit of five',
+      (tester) async {
+    await _pump(tester, _api());
+    expect(find.byKey(const Key('done-outside-plan')), findsNothing);
+    expect(find.text('Done outside the plan'), findsNothing);
+    expect(find.byKey(const Key('extra-toggle')), findsNothing);
+    // All 7 off-plan tasks show, not the first five.
+    for (var i = 0; i < 7; i++) {
+      expect(find.text('Errand $i'), findsOneWidget);
+    }
   });
 
   testWidgets('a task with only a day shows that day as planned',

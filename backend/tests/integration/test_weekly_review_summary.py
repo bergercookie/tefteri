@@ -7,7 +7,6 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.domain.entities import Container
-from tefteri.services.weekly import MAX_EXTRA_DONE
 from tests.conftest import V1
 from tests.integration.conftest import ProjectsEnv
 from tests.integration.weekly_helpers import NEXT, WEEK, Weekly
@@ -92,7 +91,7 @@ async def test_with_nothing_committed_there_are_no_ratios_and_a_note(env: Projec
     assert again["committed_tasks"] == 0 and again["note"] and again["focus_share"] is None
 
 
-async def test_the_weekly_flow_has_no_goal_field_and_done_outside_the_plan_is_unchanged(
+async def test_the_weekly_flow_has_no_goal_field_and_done_outside_the_plan_moved_to_statistics(
     env: ProjectsEnv,
 ) -> None:
     weekly = await _setup(env)
@@ -100,8 +99,14 @@ async def test_the_weekly_flow_has_no_goal_field_and_done_outside_the_plan_is_un
     await weekly.complete("p5 task 0")  # not committed: done outside the plan
     await env.sync()
     state = await weekly.state(WEEK)
-    assert [e["title"] for e in state["done_outside_plan"]] == ["p5 task 0"]
-    assert MAX_EXTRA_DONE == 200
+    assert "done_outside_plan" not in state  # feature 005: the statistics list it, with no cap
+    listed = (
+        await weekly.api.get(
+            f"{V1}/statistics/tasks",
+            params={"period": "week", "day": str(WEEK), "category": "off_plan"},
+        )
+    ).json()
+    assert [e["title"] for e in listed["items"]] == ["p5 task 0"]
     await weekly.review(WEEK, {"name": "Login flow", "decision": "decide_later"})
     texts = [
         json.dumps(await weekly.state(WEEK)),

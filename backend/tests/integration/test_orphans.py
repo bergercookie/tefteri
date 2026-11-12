@@ -134,3 +134,33 @@ async def test_a_project_that_returns_clears_the_mark(env: ProjectsEnv, world: F
     await env.sync()
     back = (await env.rows())["Garden again"]
     assert (back.orphaned_reason, back.orphaned_at, back.label) == (None, None, "milestone")
+
+
+async def test_every_statistics_route_works_with_an_orphaned_ignored_unclassified_and_moved_project(
+    env: ProjectsEnv,
+) -> None:
+    from tests.integration.stats_helpers import WEEK, Stats, at
+
+    s = Stats(env)
+    await s.standard()
+    await s.done("p3", "In a project that goes", at(5))
+    await s.done("p7", "In an ignored project", at(5))
+    await s.done("p9", "In an unclassified project", at(5))
+    await s.add("p9", "Moved away")
+    await s.sync()
+    s.move("Moved away", "p5")
+    s.finish("Moved away", at(6))
+    s.backend.containers = [c for c in s.backend.containers if c.remote_id != "p3"]
+    await s.sync()
+    for period in ("week", "month", "year"):
+        assert (await s.stats(period, WEEK))["total"] >= 1
+        for category in (None, "goal_aligned", "maintenance", "off_plan", "hidden"):
+            for order in ("newest", "project"):
+                params = {"period": period, "day": str(WEEK), "order": order}
+                if category:
+                    params["category"] = category
+                r = await env.api.get(f"{V1}/statistics/tasks", params=params)
+                assert r.status_code == 200, (period, category, order, r.text)
+    rows = await s.rows()
+    assert rows["Moved away"].project_name == "Misc"  # the project the task was seen open in
+    assert rows["In an ignored project"].category == "hidden"

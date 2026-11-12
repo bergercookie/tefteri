@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.schemas import UtcDatetime
-from tefteri.db.models.connection import Connection
+from tefteri.api.task_links import task_base_url
 from tefteri.db.models.weekly import WeeklyPlan
 from tefteri.services.errors import NotFound
 from tefteri.services.weekly import (
@@ -231,18 +231,6 @@ class LookBackOut(BaseModel):
     projects: list[LookBackProjectOut]
 
 
-class ExtraDoneOut(BaseModel):
-    """A task that was completed during the week and was not in the committed plan."""
-
-    id: uuid.UUID
-    title: str
-    completed_day: date
-    """The day it was completed, in the time zone of the user."""
-    project: str | None = None
-    project_color: str | None = None
-    url: str | None = None
-
-
 class WeeklyStateOut(BaseModel):
     """Everything the planning page shows for one week."""
 
@@ -250,8 +238,6 @@ class WeeklyStateOut(BaseModel):
     week_end: date
     plan: PlanOut | None
     look_back: LookBackOut | None
-    done_outside_plan: list[ExtraDoneOut] = Field(default_factory=list)
-    """Tasks completed during the week that the committed plan did not promise (oldest first)."""
 
 
 class CandidateOut(BaseModel):
@@ -432,16 +418,8 @@ class ReviewOut(HistoryOut):
     nudges: list[NudgeOut] = Field(default_factory=list)
 
 
-def _task_base_url(connection: Connection | None) -> str | None:
-    """The address of the task app, when it has pages for projects and tasks."""
-    if connection is not None and connection.provider == "vikunja":
-        base = str(connection.settings.get("base_url", "")).rstrip("/")
-        return base or None
-    return None
-
-
 def _base_url(view: ProjectView) -> str | None:
-    return _task_base_url(view.connection)
+    return task_base_url(view.connection)
 
 
 def _project_out(v: ProjectView) -> ProjectOut:
@@ -524,33 +502,11 @@ async def _state(
         views = await service.project_views(db, user_id, plan, tz)
         plan_out = PlanOut.of(plan, await service.plan_facts(db, user_id, plan, views), views)
     back = await service.look_back(db, user_id, week, tz)
-    extra = await service.done_outside_plan(db, user_id, plan, tz) if plan is not None else []
-    bases: dict[uuid.UUID, str | None] = {}
-    for e in extra:
-        if e.task.connection_id not in bases:
-            bases[e.task.connection_id] = _task_base_url(
-                await db.get(Connection, e.task.connection_id)
-            )
     return WeeklyStateOut(
         week_start=week,
         week_end=week + timedelta(days=7),
         plan=plan_out,
         look_back=_look_back_out(back) if back else None,
-        done_outside_plan=[
-            ExtraDoneOut(
-                id=e.task.id,
-                title=e.task.title,
-                completed_day=e.completed_day,
-                project=e.project,
-                project_color=e.color,
-                url=(
-                    f"{bases[e.task.connection_id]}/tasks/{e.task.remote_id}"
-                    if bases.get(e.task.connection_id)
-                    else None
-                ),
-            )
-            for e in extra
-        ],
     )
 
 

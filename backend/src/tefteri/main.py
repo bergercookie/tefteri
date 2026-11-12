@@ -28,6 +28,7 @@ from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
 from tefteri.api.routers import reviews as reviews_router
 from tefteri.api.routers import settings as settings_router
+from tefteri.api.routers import statistics as statistics_router
 from tefteri.api.routers import sync as sync_router
 from tefteri.api.routers import tasks as tasks_router
 from tefteri.api.routers import users as users_router
@@ -42,7 +43,9 @@ from tefteri.domain.enums import ConnectionKind
 from tefteri.security.crypto import TokenCipher
 from tefteri.services.background_sync import BackgroundSync
 from tefteri.services.calendar import CalendarService
+from tefteri.services.category_recorder import CategoryRecorder
 from tefteri.services.classification import ClassificationService
+from tefteri.services.commitments import WeeklyCommitments
 from tefteri.services.conflicts import ConflictService
 from tefteri.services.connections import AdapterRegistry, ConnectionService
 from tefteri.services.focus import NoFocus
@@ -53,6 +56,7 @@ from tefteri.services.milestones import MilestoneService
 from tefteri.services.notes import NoteService
 from tefteri.services.projects import ProjectService
 from tefteri.services.reviews import ReviewService
+from tefteri.services.statistics import StatisticsService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 from tefteri.services.users import UserService
@@ -148,9 +152,14 @@ def create_app(
     app.state.connection_service = connection_service
     milestone_service = MilestoneService(connection_service)
     app.state.milestone_service = milestone_service
-    sync_service = SyncService(connection_service, milestones=milestone_service)
+    commitments = WeeklyCommitments()
+    app.state.commitment_provider = commitments
+    recorder = CategoryRecorder(commitments)
+    app.state.category_recorder = recorder
+    app.state.statistics_service = StatisticsService(commitments)
+    sync_service = SyncService(connection_service, milestones=milestone_service, recorder=recorder)
     app.state.sync_service = sync_service
-    task_service = TaskService(connection_service)
+    task_service = TaskService(connection_service, recorder=recorder)
     app.state.task_service = task_service
     project_service = ProjectService(connection_service)
     app.state.project_service = project_service
@@ -210,6 +219,7 @@ def create_app(
         planning_router,
         reviews_router,
         weekly_router,
+        statistics_router,
         milestones_router,
         projects_router,
         users_router,

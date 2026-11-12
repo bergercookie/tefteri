@@ -7,12 +7,17 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import respx
 from httpx import AsyncClient
+from sqlalchemy import event
 
 from tefteri.config import Settings
-from tefteri.domain.entities import Container, RemoteEntry
+from tefteri.domain.entities import Container, RemoteEntry, RemoteTask
+from tefteri.domain.enums import ProjectLabel
+from tefteri.domain.work_categories import ProjectContext, categorize
 from tefteri.main import create_app
 from tests.conftest import connect_all
 from tests.fakes.world import FakeWorld
+from tests.integration.conftest import ProjectsEnv
+from tests.integration.stats_helpers import Stats
 
 V1 = "/api/v1"
 NEW = {
@@ -263,3 +268,55 @@ async def test_one_refused_calendar_does_not_stop_the_others(
         "in mine",
         "in #daynum@group",
     }
+
+
+async def test_the_first_sync_after_the_upgrade_records_every_done_task_in_batches(
+    env: ProjectsEnv,
+) -> None:
+    """2,500 done tasks: the queries do not grow with the tasks, and a second sync adds nothing."""
+    s = Stats(env)
+    await env.connect(Container("p2", "Chores"), Container("p3", "Garden"))
+    await s.weekly.label(Chores="maintenance", Garden="theme")
+    day = datetime(2030, 3, 5, 9, tzinfo=UTC)
+    for i in range(2500):
+        project = ("p1", "p2", "p3")[i % 3]
+        s.backend.tasks[f"t{i}"] = RemoteTask(
+            f"t{i}", project, f"Task {i}", "v1", done=True, done_at=day + timedelta(minutes=i)
+        )
+    statements: list[str] = []
+    engine = env.app.state.session_factory.kw["bind"].sync_engine
+
+    def record(_c: object, _cur: object, statement: str, *_a: object) -> None:
+        statements.append(statement.lstrip())
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        await s.sync()
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    selects = sum(q.upper().startswith("SELECT") for q in statements)
+    assert selects < 60, selects  # a fixed number of queries, not one per task
+    rows = await s.rows()
+    assert len(rows) == 2500
+    expected = {
+        "p1": categorize(ProjectContext(True, None), False),
+        "p2": categorize(ProjectContext(True, ProjectLabel.MAINTENANCE), False),
+        "p3": categorize(ProjectContext(True, ProjectLabel.THEME), False),
+    }
+    for i in range(2500):
+        row = rows[f"Task {i}"]
+        want = expected[("p1", "p2", "p3")[i % 3]]
+        assert (row.category, row.reason, row.unsorted) == (
+            want.category.value,
+            want.reason.value,
+            want.unsorted,
+        )
+    before = await s.snapshot()
+    statements.clear()
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        await s.sync()
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert not [q for q in statements if "task_categories" in q and not q.startswith("SELECT")]
+    assert await s.snapshot() == before
