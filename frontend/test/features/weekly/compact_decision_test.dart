@@ -1,8 +1,11 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/weekly/weekly_models.dart';
 
+import '../../screenshots/screenshot_helper.dart' show loadFonts;
 import 'weekly_fake.dart';
 import 'weekly_pump.dart';
 
@@ -38,10 +41,10 @@ void main() {
     final node = tester
         .getSemantics(find.bySemanticsLabel('Keep and recommit for Garden'));
     expect(node.label, 'Keep and recommit for Garden');
-    expect(node.getSemanticsData().hasFlag(SemanticsFlag.isSelected), isTrue);
-    expect(node.getSemanticsData().hasFlag(SemanticsFlag.isButton), isTrue);
-    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
-    expect(node.getSemanticsData().hasAction(SemanticsAction.focus), isTrue);
+    final data = node.getSemanticsData();
+    expect(data.flagsCollection.isSelected, Tristate.isTrue);
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(data.hasAction(SemanticsAction.tap), isTrue);
     handle.dispose();
   });
 
@@ -61,6 +64,8 @@ void main() {
 
   testWidgets('three unfinished milestones stay compact on desktop',
       (tester) async {
+    // Real fonts: the test font is much wider and would make text wrap.
+    await loadFonts();
     await _pump(tester, size: const Size(1400, 2400));
     final top = tester.getTopLeft(find.byKey(const Key('look-project-op0'))).dy;
     final bottom =

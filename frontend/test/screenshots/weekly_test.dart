@@ -58,7 +58,7 @@ final _checklist = {
 };
 
 Future<void> _pump(WidgetTester tester, WeeklyServer s,
-        {Map<String, Object?> extra = const {}}) =>
+        {Map<String, Object?> extra = const {}, Size size = screenshotSize}) =>
     pumpScreen(
         tester,
         FakeApi({
@@ -75,7 +75,8 @@ Future<void> _pump(WidgetTester tester, WeeklyServer s,
           ]),
         }),
         WeeklyPlanningScreen(initialDate: DateTime(2030, 3, 6)),
-        overrides: _noPolling);
+        overrides: _noPolling,
+        size: size);
 
 Future<void> _open(WidgetTester tester, String step) async {
   await tester.tap(find.byKey(Key('check-$step')));
@@ -84,7 +85,8 @@ Future<void> _open(WidgetTester tester, String step) async {
 
 void main() {
   testWidgets('look back', (tester) async {
-    await _pump(tester, _server(lookBack: sampleLookBack()));
+    await _pump(tester, _server(lookBack: sampleLookBack()),
+        size: const Size(1100, 1000));
     await saveScreenshot('weekly-look-back');
   });
 
@@ -187,15 +189,19 @@ void main() {
 
   testWidgets('close a milestone', (tester) async {
     final s = _server(lookBack: sampleLookBack());
-    await _pump(tester, s, extra: {
+    await _pump(tester, s, size: const Size(1100, 1000), extra: {
       'POST /milestones/m-op2/close': {
         'open_tasks': 2,
         'theme': {'id': 'th-work', 'name': 'Work'},
         'message': '2 open tasks will move to Work.',
       },
     });
-    await tester.tap(find.byKey(const Key('decision-close-op2')));
+    final close = find.byKey(const Key('decision-close-op2'));
+    await tester.ensureVisible(close);
     await tester.pumpAndSettle();
+    await tester.tap(close);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('will move to'), findsWidgets);
     await saveScreenshot('weekly-close');
   });
 
