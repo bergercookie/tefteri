@@ -4,10 +4,17 @@ from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.checklist import ChecklistProgress
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.goal import Goal, Plan
+from tefteri.db.models.key_result import (
+    KeyResult,
+    KeyResultTheme,
+    KeyResultValue,
+    PlanChange,
+)
 from tefteri.db.models.links import TaskNoteLink
 from tefteri.db.models.milestone import Milestone, MilestoneClosure, MilestoneRollover
 from tefteri.db.models.note import Note
 from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
+from tefteri.db.models.push_token import ValuePushToken
 from tefteri.db.models.review import PeriodReview
 from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
@@ -22,12 +29,16 @@ __all__ = [
     "Conflict",
     "Connection",
     "Goal",
+    "KeyResult",
+    "KeyResultTheme",
+    "KeyResultValue",
     "Milestone",
     "MilestoneClosure",
     "MilestoneRollover",
     "Note",
     "PeriodReview",
     "Plan",
+    "PlanChange",
     "ProjectLabel",
     "ProjectLabelHistory",
     "SourceContainer",
@@ -36,6 +47,7 @@ __all__ = [
     "TaskNoteLink",
     "Task",
     "User",
+    "ValuePushToken",
     "WeeklyPlan",
     "WeeklyPlanProject",
 ]

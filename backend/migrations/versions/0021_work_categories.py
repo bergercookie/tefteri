@@ -1,21 +1,19 @@
 """work categories: the stored category of each completed task
 
 Revision ID: 0021
-Revises: 0019
+Revises: 0020
 
 Adds one table. It copies no data and runs no UPDATE: the first sync after the upgrade records
 every completed task (spec 005, research R-15).
 
-The plan numbers this revision after 0020, which feature 006 reserves. Feature 006 is not built
-yet, so this revision follows 0019. When feature 006 adds 0020, it must make 0020 revise 0019
-and this revision revise 0020 (change ``down_revision`` below).
+Feature 006 reserved 0020, so this revision follows 0020 (and 0020 follows 0019).
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "0021"
-down_revision = "0019"
+down_revision = "0020"
 branch_labels = None
 depends_on = None
 

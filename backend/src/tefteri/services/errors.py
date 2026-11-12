@@ -42,11 +42,15 @@ class Invalid(Exception):
 class Conflict(Exception):
     """The request clashes with the state of the data (for example an undo done twice)."""
 
-    def __init__(self, code: str, message: str) -> None:
-        """Store a stable ``code`` and a message that says what the user can do."""
+    def __init__(self, code: str, message: str, *, extra: dict[str, Any] | None = None) -> None:
+        """Store a stable ``code``, a user-facing message and extra body fields.
+
+        The extra fields are things like the existing project of ``theme_exists``.
+        """
         super().__init__(message)
         self.code = code
         self.message = message
+        self.extra: dict[str, Any] = extra or {}
 
 
 async def guard[T](connection: Connection, call: Awaitable[T]) -> T:
