@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import 'statistics_api.dart';
 import 'statistics_models.dart';
 

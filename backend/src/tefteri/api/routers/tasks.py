@@ -17,7 +17,6 @@ from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.services import task_filters
 from tefteri.services.errors import Invalid
-from tefteri.services.goals import GoalService
 from tefteri.services.settings import MAX_REMINDER_MINUTES
 from tefteri.services.task_filters import DueFilter
 from tefteri.services.tasks import UNSET, TaskService
@@ -31,11 +30,6 @@ def _opt_aware(value: datetime | None) -> datetime | None:
 
 def _tasks(request: Request) -> TaskService:
     service: TaskService = request.app.state.task_service
-    return service
-
-
-def _goals(request: Request) -> GoalService:
-    service: GoalService = request.app.state.goal_service
     return service
 
 
@@ -185,7 +179,17 @@ async def task_counts(
 
 @router.post("", status_code=201)
 async def create_task(body: TaskIn, request: Request, db: Db, user: CurrentUser) -> TaskOut:
-    """Create a task in the connected task app."""
+    """Create a task in the connected task app.
+
+    ``goal_id`` must be an active annual goal of the current year (FR-026).
+    """
+    if body.goal_id is not None and (
+        await request.app.state.annual_service.linkable_goal(
+            db, user.id, body.goal_id, tz=user.timezone
+        )
+        is None
+    ):
+        raise Invalid("Only goals of this year's annual plan can be linked.", "goal_not_linkable")
     task = await _tasks(request).create(
         db,
         user.id,
@@ -220,7 +224,12 @@ async def update_task(
         goal_uuid = uuid.UUID(str(goal_id))
         if task.goal_id == goal_uuid:
             pass
-        elif await request.app.state.annual_service.linkable_goal(db, user.id, goal_uuid) is None:
+        elif (
+            await request.app.state.annual_service.linkable_goal(
+                db, user.id, goal_uuid, tz=user.timezone
+            )
+            is None
+        ):
             raise Invalid(
                 "Only goals of this year's annual plan can be linked.", "goal_not_linkable"
             )

@@ -155,7 +155,9 @@ def validate(
 
 
 def stamp_manual_value(
-    value_date: date, today: date, tz: ZoneInfo | timezone  # noqa: A002
+    value_date: date,
+    today: date,
+    tz: ZoneInfo | timezone,  # noqa: A002
 ) -> datetime:
     """Return the time stamp of a manually entered value (R-08).
 

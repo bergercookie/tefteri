@@ -26,6 +26,16 @@ The arrows show the allowed imports. The core code (`api`, `services`, `domain`)
 get a backend for a connection from this registry. Refer to [Sync](sync.md) for the sync flow
 and the conflict flow.
 
+## Monthly planning and review
+
+Monthly planning and review use five tables for focus entries, change history, review headers
+and immutable snapshot versions. `MonthlyFocusService` also implements the focus-provider seam
+used by weekly planning. `MonthlyReviewService` reads milestone facts from 004, category counts
+from 005 and key result data from 006. Its only write outside its own tables is a manual value
+that the user enters into a key result series. Feature 008 reads current monthly snapshot
+versions without recalculating them. Read [Monthly planning and review](monthly-cycle.md) for
+the tables and contracts.
+
 ## The planned time of a task
 
 The due date of a task is its planned time. For Vikunja it is the only date that tefteri stores

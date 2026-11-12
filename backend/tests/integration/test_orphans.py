@@ -5,7 +5,7 @@ from datetime import date
 from httpx import AsyncClient
 
 from tefteri.domain.entities import Container
-from tefteri.domain.enums import ProjectLabel
+from tefteri.domain.enums import OrphanReason, ProjectLabel
 from tests.conftest import V1
 from tests.fakes.world import FakeWorld
 from tests.integration.conftest import ProjectsEnv
@@ -134,6 +134,150 @@ async def test_a_project_that_returns_clears_the_mark(env: ProjectsEnv, world: F
     await env.sync()
     back = (await env.rows())["Garden again"]
     assert (back.orphaned_reason, back.orphaned_at, back.label) == (None, None, "milestone")
+
+
+async def test_monthly_focus_keeps_an_orphaned_theme_and_excludes_it_from_picker(
+    env: ProjectsEnv, world: FakeWorld
+) -> None:
+    from datetime import UTC, datetime
+
+    from tefteri.db.models.monthly import MonthlyFocusEntry
+    from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
+    from tefteri.services.project_labels import mark_orphaned
+    from tests.integration.monthly_helpers import MONTH, setup_month
+
+    rows = await setup_month(env, Container("p2", "Long-running theme"))
+    service = env.app.state.monthly_focus_service
+    user_id = await env.user_id()
+    async with env.db() as db:
+        await service.save_plan(db, user_id, MONTH, [(rows["Long-running theme"].id, 3)], tz="UTC")
+    async with env.db() as db:
+        await env.app.state.monthly_review_service.store(
+            db,
+            user_id,
+            MONTH,
+            tz="UTC",
+            decisions=[{"project_id": rows["Long-running theme"].id, "decision": "carry"}],
+        )
+    async with env.db() as db:
+        row = await db.get(ProjectLabelRow, rows["Long-running theme"].id)
+        assert row is not None
+        mark_orphaned(row, OrphanReason.MISSING, datetime.now(UTC))
+
+    backend = world.tasks["default"]
+    backend.containers = [c for c in backend.containers if c.remote_id != "p2"]
+    await env.sync()
+    async with env.db() as db:
+        plan = await service.plan(db, user_id, MONTH, tz="UTC")
+        focus_entry = await db.get(MonthlyFocusEntry, plan.entries[0].id)
+    assert plan.entries[0].name == "Long-running theme"
+    assert plan.entries[0].orphaned["reason"] == "missing"
+    assert focus_entry is not None
+    async with env.db() as db:
+        picker = await service.themes(db, user_id, MONTH)
+    assert all(theme.project_id != rows["Long-running theme"].id for theme in picker.themes)
+    async with env.db() as db:
+        suggestions = await env.app.state.monthly_review_service.suggestions(
+            db, user_id, date(2030, 4, 1)
+        )
+    assert suggestions.from_month == MONTH
+    assert suggestions.suggestions == ()
+    assert suggestions.skipped == (
+        {
+            "project_id": str(rows["Long-running theme"].id),
+            "name": "Long-running theme",
+            "reason": "orphaned",
+        },
+    )
+
+
+async def test_archived_focus_theme_remains_readable_but_is_not_suggested(
+    env: ProjectsEnv,
+) -> None:
+    from datetime import UTC, datetime
+
+    from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
+    from tefteri.domain.enums import OrphanReason
+    from tefteri.services.project_labels import mark_orphaned
+    from tests.integration.monthly_helpers import MONTH, setup_month
+
+    rows = await setup_month(env, Container("p2", "Archived theme"))
+    user_id = await env.user_id()
+    service = env.app.state.monthly_focus_service
+    async with env.db() as db:
+        await service.save_plan(db, user_id, MONTH, [(rows["Archived theme"].id, 1)], tz="UTC")
+    async with env.db() as db:
+        await env.app.state.monthly_review_service.store(
+            db,
+            user_id,
+            MONTH,
+            tz="UTC",
+            decisions=[{"project_id": rows["Archived theme"].id, "decision": "carry"}],
+        )
+    async with env.db() as db:
+        project = await db.get(ProjectLabelRow, rows["Archived theme"].id)
+        assert project is not None
+        mark_orphaned(project, OrphanReason.ARCHIVED, datetime.now(UTC))
+    async with env.db() as db:
+        plan = await service.plan(db, user_id, MONTH, tz="UTC")
+        picker = await service.themes(db, user_id, MONTH)
+        suggestions = await env.app.state.monthly_review_service.suggestions(
+            db, user_id, date(2030, 4, 1)
+        )
+    assert plan.entries[0].name == "Archived theme"
+    assert plan.entries[0].orphaned is not None
+    assert plan.entries[0].orphaned["reason"] == "archived"
+    assert all(item.project_id != rows["Archived theme"].id for item in picker.themes)
+    assert suggestions.suggestions == ()
+    assert suggestions.skipped[0]["reason"] == "orphaned"
+
+
+async def test_monthly_focus_marks_a_theme_relabelled_after_save(env: ProjectsEnv) -> None:
+    from tests.integration.monthly_helpers import MONTH, setup_month
+
+    rows = await setup_month(env, Container("p2", "Long-running theme"))
+    service = env.app.state.monthly_focus_service
+    async with env.db() as db:
+        await service.save_plan(
+            db, await env.user_id(), MONTH, [(rows["Long-running theme"].id, 3)], tz="UTC"
+        )
+    await _label(env, "Long-running theme", ProjectLabel.MAINTENANCE)
+    async with env.db() as db:
+        plan = await service.plan(db, await env.user_id(), MONTH, tz="UTC")
+    assert plan.entries[0].label_changed == "maintenance"
+    async with env.db() as db:
+        picker = await service.themes(db, await env.user_id(), MONTH)
+    assert all(theme.project_id != rows["Long-running theme"].id for theme in picker.themes)
+
+
+async def test_ignored_theme_stays_in_focus_and_is_skipped_from_suggestions(
+    env: ProjectsEnv,
+) -> None:
+    from tests.integration.monthly_helpers import MONTH, setup_month
+
+    rows = await setup_month(env, Container("p2", "Long-running theme"))
+    service = env.app.state.monthly_focus_service
+    user_id = await env.user_id()
+    async with env.db() as db:
+        await service.save_plan(db, user_id, MONTH, [(rows["Long-running theme"].id, 3)], tz="UTC")
+    async with env.db() as db:
+        await env.app.state.monthly_review_service.store(
+            db,
+            user_id,
+            MONTH,
+            tz="UTC",
+            decisions=[{"project_id": rows["Long-running theme"].id, "decision": "carry"}],
+        )
+    await _label(env, "Long-running theme", ProjectLabel.IGNORED)
+    async with env.db() as db:
+        plan = await service.plan(db, user_id, MONTH, tz="UTC")
+        suggestions = await env.app.state.monthly_review_service.suggestions(
+            db, user_id, date(2030, 4, 1)
+        )
+    assert plan.entries[0].name == "Long-running theme"
+    assert plan.entries[0].label_changed == "ignored"
+    assert suggestions.suggestions == ()
+    assert suggestions.skipped[0]["reason"] == "ignored"
 
 
 async def test_every_statistics_route_works_with_an_orphaned_ignored_unclassified_and_moved_project(

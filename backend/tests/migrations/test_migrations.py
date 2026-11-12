@@ -714,6 +714,299 @@ def test_0020_refuses_two_active_key_results_in_one_slot(
         )
 
 
+_MONTHLY_TABLES = {
+    "monthly_focuses",
+    "monthly_focus_entries",
+    "focus_changes",
+    "monthly_reviews",
+    "monthly_review_snapshots",
+}
+
+
+def _monthly_focus_rows(alembic_runner: MigrationContext) -> None:
+    """Insert a valid saved focus and entries to exercise constraints and cascades."""
+    focus = "eeeeeeee-0000-0000-0000-000000000011"
+    alembic_runner.insert_into(
+        "monthly_focuses",
+        {
+            "id": focus,
+            "user_id": _U1,
+            "month": date(2030, 3, 1),
+            "created_at": datetime(2030, 2, 1),
+            "updated_at": datetime(2030, 2, 1),
+        },
+    )
+    alembic_runner.insert_into(
+        "monthly_focus_entries",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000012",
+            "focus_id": focus,
+            "project_id": _LABEL,
+            "name": "Home",
+            "target": 0,
+            "counts_from": date(2030, 3, 1),
+            "position": 0,
+            "created_at": datetime(2030, 2, 1),
+        },
+    )
+    alembic_runner.insert_into(
+        "monthly_reviews",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000013",
+            "user_id": _U1,
+            "month": date(2030, 3, 1),
+            "current_version": 1,
+            "current_changed_at": datetime(2030, 4, 1),
+            "created_at": datetime(2030, 4, 1),
+        },
+    )
+    alembic_runner.insert_into(
+        "monthly_review_snapshots",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000014",
+            "review_id": "eeeeeeee-0000-0000-0000-000000000013",
+            "version": 1,
+            "schema_version": 1,
+            "payload": {},
+            "values_written": [],
+            "created_at": datetime(2030, 4, 1),
+        },
+    )
+    alembic_runner.insert_into(
+        "focus_changes",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000020",
+            "focus_id": focus,
+            "kind": "add",
+            "changed_on": date(2030, 3, 10),
+            "batch_id": "eeeeeeee-0000-0000-0000-000000000021",
+            "source": "user",
+            "created_at": datetime(2030, 3, 10),
+        },
+    )
+
+
+def test_0022_creates_only_monthly_tables_with_constraints_and_user_cascade(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0019")
+    _seed_0019(alembic_runner)
+    alembic_runner.migrate_up_to("0021")
+    for n in (2, 3):
+        alembic_runner.insert_into(
+            "project_labels",
+            {
+                "id": f"cccccccc-0000-0000-0000-00000000000{n}",
+                "user_id": _U1,
+                "connection_id": _CONN,
+                "remote_id": f"p{n}",
+                "name": f"Theme {n}",
+                "created_at": datetime(2030, 2, 1),
+            },
+        )
+    before = set(inspect(alembic_engine).get_table_names())
+    alembic_runner.migrate_up_to("0022")
+    insp = inspect(alembic_engine)
+    assert set(insp.get_table_names()) >= _MONTHLY_TABLES
+    assert set(insp.get_table_names()) - before == _MONTHLY_TABLES
+
+    for table in ("monthly_focuses", "monthly_reviews"):
+        uniques = [set(u["column_names"]) for u in insp.get_unique_constraints(table)]
+        assert {"user_id", "month"} in uniques
+    entry_uniques = [
+        set(u["column_names"]) for u in insp.get_unique_constraints("monthly_focus_entries")
+    ]
+    assert {"focus_id", "project_id"} in entry_uniques
+    snapshot_uniques = [
+        set(u["column_names"]) for u in insp.get_unique_constraints("monthly_review_snapshots")
+    ]
+    assert {"review_id", "version"} in snapshot_uniques
+    user_cascades = [
+        key
+        for table in ("monthly_focuses", "monthly_reviews")
+        for key in insp.get_foreign_keys(table)
+        if key["constrained_columns"] == ["user_id"]
+    ]
+    assert len(user_cascades) == 2
+    assert all(key["options"].get("ondelete") == "CASCADE" for key in user_cascades)
+
+    _monthly_focus_rows(alembic_runner)
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "monthly_focuses",
+            {
+                "id": "eeeeeeee-0000-0000-0000-000000000022",
+                "user_id": _U1,
+                "month": date(2030, 3, 1),
+                "created_at": datetime(2030, 2, 1),
+                "updated_at": datetime(2030, 2, 1),
+            },
+        )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "monthly_reviews",
+            {
+                "id": "eeeeeeee-0000-0000-0000-000000000023",
+                "user_id": _U1,
+                "month": date(2030, 3, 1),
+                "current_version": 1,
+                "current_changed_at": datetime(2030, 4, 1),
+                "created_at": datetime(2030, 4, 1),
+            },
+        )
+    invalid_entry = {
+        "id": "eeeeeeee-0000-0000-0000-000000000015",
+        "focus_id": "eeeeeeee-0000-0000-0000-000000000011",
+        "project_id": _LABEL,
+        "name": "Duplicate",
+        "counts_from": date(2030, 3, 1),
+        "position": 1,
+        "created_at": datetime(2030, 2, 1),
+    }
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into("monthly_focus_entries", invalid_entry | {"target": -1})
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into("monthly_focus_entries", invalid_entry | {"target": None})
+    for n, target, project_number in ((16, None, 2), (17, 0, 3)):
+        alembic_runner.insert_into(
+            "monthly_focus_entries",
+            invalid_entry
+            | {
+                "id": f"eeeeeeee-0000-0000-0000-0000000000{n}",
+                "project_id": f"cccccccc-0000-0000-0000-00000000000{project_number}",
+                "target": target,
+            },
+        )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "monthly_focus_entries",
+            invalid_entry
+            | {
+                "id": "eeeeeeee-0000-0000-0000-000000000018",
+                "project_id": "cccccccc-0000-0000-0000-000000000003",
+                "left_on": date(2030, 3, 20),
+                "left_reason": None,
+            },
+        )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "monthly_review_snapshots",
+            {
+                "id": "eeeeeeee-0000-0000-0000-000000000019",
+                "review_id": "eeeeeeee-0000-0000-0000-000000000013",
+                "version": 1,
+                "schema_version": 1,
+                "payload": {},
+                "values_written": [],
+                "created_at": datetime(2030, 4, 1),
+            },
+        )
+
+    with alembic_engine.connect() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        conn.exec_driver_sql(f"delete from users where id = '{_U1}'")
+        conn.commit()
+        for table in _MONTHLY_TABLES:
+            assert conn.exec_driver_sql(f"select count(*) from {table}").scalar() == 0
+
+
+def test_0022_preserves_existing_month_data_and_downgrade_drops_only_new_tables(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0019")
+    _seed_0019(alembic_runner)
+    alembic_runner.migrate_up_to("0021")
+    month_goal = "eeeeeeee-0000-0000-0000-000000000024"
+    plan_id = "eeeeeeee-0000-0000-0000-000000000025"
+    review_id = "eeeeeeee-0000-0000-0000-000000000026"
+    alembic_runner.insert_into(
+        "goals",
+        _goal(
+            month_goal,
+            period_type="month",
+            period_start=date(2030, 3, 1),
+            title="Old monthly goal",
+        ),
+    )
+    alembic_runner.insert_into(
+        "plans",
+        {
+            "id": plan_id,
+            "user_id": _U1,
+            "period_type": "month",
+            "period_start": date(2030, 3, 1),
+            "title": "March",
+            "summary": "",
+        },
+    )
+    alembic_runner.insert_into(
+        "period_reviews",
+        {
+            "id": review_id,
+            "user_id": _U1,
+            "plan_id": plan_id,
+            "generated_at": datetime(2030, 4, 1),
+            "planned_count": 1,
+            "completed_count": 1,
+            "carried_over": [{"name": "A"}],
+            "items": [{"name": "B"}],
+        },
+    )
+    with alembic_engine.connect() as conn:
+        conn.exec_driver_sql(
+            "update users set checklists = ? where id = ?",
+            ('{"month":"kept"}', _U1),
+        )
+        conn.commit()
+    before_tables = set(inspect(alembic_engine).get_table_names())
+    with alembic_engine.connect() as conn:
+        before = {
+            "goal": conn.exec_driver_sql(
+                "select id, period_start, title from goals where id = ?", (month_goal,)
+            ).fetchone(),
+            "review": conn.exec_driver_sql(
+                "select id, plan_id, items from period_reviews where id = ?", (review_id,)
+            ).fetchone(),
+            "checklists": conn.exec_driver_sql(
+                "select checklists from users where id = ?", (_U1,)
+            ).scalar(),
+        }
+
+    alembic_runner.migrate_up_to("0022")
+    with alembic_engine.connect() as conn:
+        assert (
+            conn.exec_driver_sql(
+                "select id, period_start, title from goals where id = ?", (month_goal,)
+            ).fetchone()
+            == before["goal"]
+        )
+        assert (
+            conn.exec_driver_sql(
+                "select id, plan_id, items from period_reviews where id = ?", (review_id,)
+            ).fetchone()
+            == before["review"]
+        )
+        assert (
+            conn.exec_driver_sql("select checklists from users where id = ?", (_U1,)).scalar()
+            == before["checklists"]
+        )
+    alembic_runner.migrate_down_one()
+    assert set(inspect(alembic_engine).get_table_names()) == before_tables
+    with alembic_engine.connect() as conn:
+        assert (
+            conn.exec_driver_sql(
+                "select id, period_start, title from goals where id = ?", (month_goal,)
+            ).fetchone()
+            == before["goal"]
+        )
+        assert (
+            conn.exec_driver_sql(
+                "select id, plan_id, items from period_reviews where id = ?", (review_id,)
+            ).fetchone()
+            == before["review"]
+        )
+
+
 _OLD_GOAL_COLUMNS = (
     "id, user_id, parent_id, period_type, period_start, title, description, criteria, status"
 )
@@ -921,16 +1214,17 @@ def test_0020_downgrade_restores_the_old_schema(
     assert links == 2  # the goals and the task links are kept
 
 
-def test_the_head_revision_is_0021_and_it_follows_0019() -> None:
+def test_the_head_revision_is_0022_and_it_follows_0021() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0021"
-    revision = script.get_revision("0021")
+    assert script.get_current_head() == "0022"
+    revision = script.get_revision("0022")
     assert revision is not None
-    # Feature 006 owns 0020, so 0021 follows it and 0020 follows 0019.
-    assert revision.down_revision == "0020"
+    assert revision.down_revision == "0021"
+    assert script.get_revision("0021").down_revision == "0020"
+    # Feature 006 owns 0020, and 0020 follows 0019.
     assert script.get_revision("0020").down_revision == "0019"

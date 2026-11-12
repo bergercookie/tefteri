@@ -115,6 +115,27 @@ const outsideFocusTerms = [
       'Its theme is not one of the themes you chose for this month.'),
 ];
 
+/// Terms used on the monthly planning screen.
+const monthlyFocusTerms = [
+  Term('Theme project', 'A long-running home for related work.'),
+  Term('Milestone project',
+      'A small outcome that you can finish in about a week.'),
+  Term('Monthly focus',
+      'The theme projects you choose for this month, each with a milestone target.'),
+  Term('Key result', 'A measurable result linked to an annual goal.'),
+];
+
+/// Terms used on the monthly review screen.
+const monthlyReviewTerms = [
+  Term('Review snapshot',
+      'A saved version of this review. It keeps its names and numbers.'),
+  Term('Outside focus',
+      'A finished milestone whose theme was not in this month’s focus.'),
+  Term('Work categories',
+      'Goal-aligned, maintenance and off-plan work, counted by the server.'),
+  Term('Key result', 'A measurable result linked to an annual goal.'),
+];
+
 /// A closable box that lists [terms]. It shows until the user closes it.
 ///
 /// With [compact] it starts as one tappable line that opens in place, so the

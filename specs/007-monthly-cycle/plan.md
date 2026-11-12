@@ -2,7 +2,7 @@
 
 **Branch**: `007-monthly-cycle` (developed on the session branch) | **Date**: 2026-11-11 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/007-monthly-cycle/spec.md`, the decisions in `specs/planning-cycles/decisions.md`, and the design of features 003, 004 and 006 (`specs/003-project-classification/`, `specs/004-weekly-milestones/`, `specs/006-annual-planning/`). Feature 005 has a spec only, so its numbers are read through a small reader (research R-08).
+**Input**: Feature specification from `/specs/007-monthly-cycle/spec.md`, the decisions in `specs/planning-cycles/decisions.md`, and the design of features 003, 004, 005 and 006 (`specs/003-project-classification/`, `specs/004-weekly-milestones/`, `specs/005-work-categories/`, `specs/006-annual-planning/`). Feature 005 is implemented; its monthly counts are read through a small adapter over `StatisticsService.summary` (research R-08).
 
 ## Summary
 

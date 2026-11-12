@@ -19,7 +19,9 @@ required=(
     user/daily-planning.md
     user/scheduling.md
     user/conflicts.md
-    user/planning-goals.md
+    user/annual-planning.md
+    user/planning-checklists.md
+    user/monthly-planning.md
     user/weekly-planning.md
     user/accounts-and-sign-in.md
     user/reviews-and-retrospectives.md
@@ -27,6 +29,7 @@ required=(
     user/troubleshooting.md
     developer/setup.md
     developer/testing.md
+    developer/monthly-cycle.md
     developer/releases.md
 )
 for page in "${required[@]}"; do

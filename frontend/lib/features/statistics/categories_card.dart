@@ -12,7 +12,7 @@ import '../../theme/theme.dart';
 import '../projects/term_hint.dart';
 import '../projects/unsorted_card.dart';
 import '../settings/sync_controller.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import '../weekly/weekly_widgets.dart';
 import 'category_counts_row.dart';
 import 'drilldown_screen.dart';

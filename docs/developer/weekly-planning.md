@@ -194,16 +194,17 @@ at that moment goes with it. A later change of theme never changes these fields.
 
 ## The focus seam
 
-The monthly focus belongs to a later feature (007). Weekly planning only reads it through
-`FocusProvider` in `services/focus.py`:
+Monthly planning (feature 007) supplies the real focus provider. Weekly planning reads the
+focus through `FocusProvider` in `services/focus.py`:
 
 ```python
 async def themes_for_month(db, user_id, month_start) -> set[UUID] | None
 ```
 
-The default is `NoFocus`, which returns `None`. `None` means that no focus data exists. Then the
-picker highlights no theme, no milestone is outside focus, and the review has no focus share. `main.py` wires the
-provider. Feature 007 supplies its own class and changes only that line.
+The default `NoFocus` returns `None`, which means no focus data exists. The application wires
+`MonthlyFocusService` as the real provider. It returns `None` when no plan is saved, or a set of
+theme ids when a plan exists. An empty set is a saved empty focus. The picker puts focus themes
+first. Read [Monthly planning and review](monthly-cycle.md) for the provider and its storage.
 Tefteri never stores "outside focus". Tefteri computes it on each read, from the focus of the month of
 the Monday of the week.
 

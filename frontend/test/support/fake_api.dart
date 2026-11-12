@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/api_client.dart';
 
@@ -95,7 +96,8 @@ Future<void> pumpWithApi(WidgetTester tester, FakeApi api, Widget home,
     Size size = const Size(1000, 2400),
     ThemeData? theme,
     ThemeMode themeMode = ThemeMode.light,
-    ThemeData? darkTheme}) async {
+    ThemeData? darkTheme,
+    GoRouter? router}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -106,8 +108,19 @@ Future<void> pumpWithApi(WidgetTester tester, FakeApi api, Widget home,
     ..transformer = SyncTransformer();
   await tester.pumpWidget(ProviderScope(
     overrides: [dioProvider.overrideWithValue(dio), ...overrides],
-    child: MaterialApp(
-        theme: theme, darkTheme: darkTheme, themeMode: themeMode, home: home),
+    child: router == null
+        ? MaterialApp(
+            theme: theme,
+            darkTheme: darkTheme,
+            themeMode: themeMode,
+            home: home,
+          )
+        : MaterialApp.router(
+            theme: theme,
+            darkTheme: darkTheme,
+            themeMode: themeMode,
+            routerConfig: router,
+          ),
   ));
   await tester.pumpAndSettle();
 }
@@ -138,40 +151,547 @@ Map<String, Object?> taskJson(String id, String title,
       'sync_state': 'synced',
     };
 
-/// A goal JSON object.
-Map<String, Object?> goalJson(String id, String title,
-        {String periodType = 'year',
-        String periodStart = '2026-01-01',
-        String? parentId,
-        String status = 'active',
-        String description = '',
-        String criteria = '',
-        double progress = 0}) =>
-    {
-      'id': id,
-      'parent_id': parentId,
-      'period_type': periodType,
-      'period_start': periodStart,
-      'title': title,
-      'description': description,
-      'criteria': criteria,
-      'status': status,
-      'progress': progress,
-    };
-
 /// A period view JSON object (`GET /views/week|month|year`).
 Map<String, Object?> periodJson(String type, String start, String end,
-        {List<Object?> goals = const [],
+        {Map<String, Object?> goalTitles = const {},
         List<Object?> tasks = const [],
         List<Object?> entries = const []}) =>
     {
       'period_type': type,
       'start': start,
       'end': end,
-      'goals': goals,
+      'goal_titles': goalTitles,
       'tasks': tasks,
       'entries': entries,
     };
+
+/// One flag of the annual plan, such as `no_usable_theme`.
+Map<String, Object?> flagJson(String code,
+        {List<String>? actions, List<Object?> reasons = const []}) =>
+    {
+      'code': code,
+      'actions': actions ??
+          switch (code) {
+            'no_key_result' => ['add_key_result'],
+            'no_usable_theme' => ['link_theme', 'create_theme'],
+            _ => ['update_value'],
+          },
+      if (code == 'no_usable_theme') 'reasons': reasons,
+    };
+
+/// A link of a key result to a theme.
+Map<String, Object?> linkJson(String projectId, String name,
+        {bool active = true,
+        bool usable = true,
+        String state = 'ok',
+        String? label = 'theme'}) =>
+    {
+      'id': 'l-$projectId',
+      'project_id': projectId,
+      'name': name,
+      'active': active,
+      'usable': usable,
+      'state': state,
+      'label': label,
+      'started_at': '2030-01-05T10:00:00Z',
+      'ended_at': active ? null : '2030-02-05T10:00:00Z',
+    };
+
+/// A key result of `GET /annual/{year}`.
+Map<String, Object?> keyResultJson(String id, String metric,
+    {String goalId = 'g1',
+    num start = 0,
+    num target = 10,
+    num? current,
+    String? currentAt,
+    String deadline = '2030-12-31',
+    String source = 'manual',
+    String status = 'active',
+    List<Object?> flags = const [],
+    List<Object?> links = const []}) {
+  final now = current ?? start;
+  final progress = target == start ? 0 : (now - start) / (target - start);
+  return {
+    'id': id,
+    'goal_id': goalId,
+    'metric': metric,
+    'start_value': start,
+    'target': target,
+    'deadline': deadline,
+    'update_source': source,
+    'status': status,
+    'current_value': now,
+    'current_at': currentAt,
+    'progress': progress,
+    'met': progress >= 1,
+    'retired_at': status == 'retired' ? '2030-03-01T10:00:00Z' : null,
+    'flags': flags,
+    'links': links,
+  };
+}
+
+/// A goal of `GET /annual/{year}`.
+Map<String, Object?> annualGoalJson(String id, String title,
+        {List<Object?> keyResults = const [],
+        List<Object?>? flags,
+        List<String> notes = const [],
+        String status = 'active',
+        bool legacyDone = false,
+        String? criteria}) =>
+    {
+      'id': id,
+      'title': title,
+      'status': status,
+      'legacy_done': legacyDone,
+      'criteria_suggestion': criteria,
+      'progress': 0,
+      'flags': flags ??
+          (keyResults.isEmpty && status == 'active'
+              ? [flagJson('no_key_result')]
+              : const []),
+      'notes': notes,
+      'updated_at': '2030-01-05T10:00:00Z',
+      'key_results': keyResults,
+    };
+
+/// The plan of a year (`GET /annual/{year}`).
+Map<String, Object?> annualPlanJson(
+        {int year = 2030,
+        String state = 'current',
+        bool? editable,
+        List<Object?> goals = const [],
+        List<Object?> retiredGoals = const []}) =>
+    {
+      'year': year,
+      'state': state,
+      'editable': editable ?? state != 'past',
+      'goals': goals,
+      'retired_goals': retiredGoals,
+      'theme_usage': const [],
+    };
+
+/// One theme of `GET /annual/themes`.
+Map<String, Object?> themeJson(String id, String name,
+        {String connectionId = 'c1',
+        String connectionName = 'Vikunja',
+        List<String> keyResultIds = const []}) =>
+    {
+      'project_id': id,
+      'connection_id': connectionId,
+      'connection_name': connectionName,
+      'name': name,
+      'key_result_ids': keyResultIds,
+    };
+
+/// The answer of `GET /annual/themes`.
+Map<String, Object?> themesJson(
+        {List<Object?> themes = const [],
+        int unsorted = 0,
+        List<Object?> connections = const [
+          {'id': 'c1', 'name': 'Vikunja', 'can_create': true},
+        ]}) =>
+    {
+      'themes': themes,
+      'unsorted_count': unsorted,
+      'task_connections': connections,
+    };
+
+/// One line of `GET /annual/{year}/history`.
+Map<String, Object?> changeJson(String id, String kind,
+        {String batch = 'b1',
+        String? goalId,
+        String? keyResultId,
+        String? field,
+        String? oldValue,
+        String? newValue,
+        String? reason,
+        String source = 'user',
+        String at = '2030-03-01T10:00:00Z',
+        bool undone = false}) =>
+    {
+      'id': id,
+      'kind': kind,
+      'goal_id': goalId,
+      'key_result_id': keyResultId,
+      'field': field,
+      'old_value': oldValue,
+      'new_value': newValue,
+      'reason': reason,
+      'batch_id': batch,
+      'source': source,
+      'at': at,
+      'undone': undone,
+    };
+
+/// The answer of `GET /annual/{year}/history`.
+Map<String, Object?> historyJson(List<Object?> changes, {int year = 2030}) =>
+    {'year': year, 'changes': changes};
+
+/// The answer of `GET /annual/{year}/suggestions`.
+Map<String, Object?> suggestionsJson(
+        {int year = 2031,
+        int fromYear = 2030,
+        bool hasPlan = true,
+        List<Object?> goals = const []}) =>
+    {
+      'year': year,
+      'from_year': fromYear,
+      'has_plan': hasPlan,
+      'goals': goals,
+    };
+
+/// One suggested goal, with its unmet key results.
+Map<String, Object?> suggestedGoalJson(String id, String title,
+        {List<Object?> keyResults = const []}) =>
+    {'goal_id': id, 'title': title, 'key_results': keyResults};
+
+/// One suggested key result.
+Map<String, Object?> suggestedKeyResultJson(String id, String metric,
+        {num start = 0,
+        num target = 10,
+        String deadline = '2031-12-31',
+        List<Object?> themes = const []}) =>
+    {
+      'key_result_id': id,
+      'metric': metric,
+      'start_value': start,
+      'target': target,
+      'deadline': deadline,
+      'update_source': 'manual',
+      'themes': themes,
+    };
+
+/// One old goal row of `GET /goals/history`.
+Map<String, Object?> legacyGoalJson(String id, String title,
+        {String periodType = 'month',
+        String periodStart = '2026-11-01',
+        String? parentId,
+        String status = 'active',
+        int linkedTasks = 0}) =>
+    {
+      'id': id,
+      'parent_id': parentId,
+      'period_type': periodType,
+      'period_start': periodStart,
+      'title': title,
+      'description': '',
+      'criteria': '',
+      'status': status,
+      'linked_tasks': linkedTasks,
+    };
+
+/// One monthly focus entry. This helper mirrors `/api/v1/monthly/{month}`.
+Map<String, Object?> monthlyEntryJson(
+  String id,
+  String projectId,
+  String name, {
+  String connectionId = 'c1',
+  int? target,
+  String countsFrom = '2030-03-01',
+  String? leftOn,
+  String status = 'in_focus',
+  int done = 0,
+  int earlierNotCounted = 0,
+  String? marker,
+  Map<String, Object?>? orphaned,
+  String? labelChanged,
+  int linkedKeyResults = 0,
+  int lastMonthDone = 0,
+}) =>
+    {
+      'id': id,
+      'project_id': projectId,
+      'connection_id': connectionId,
+      'name': name,
+      'target': target,
+      'counts_from': countsFrom,
+      'left_on': leftOn,
+      'status': status,
+      'done': done,
+      'earlier_not_counted': earlierNotCounted,
+      'marker': marker,
+      'orphaned': orphaned,
+      'label_changed': labelChanged,
+      'linked_key_results': linkedKeyResults,
+      'last_month_done': lastMonthDone,
+    };
+
+/// A key result in a monthly planning read model.
+Map<String, Object?> monthlyKeyResultJson({
+  String id = 'kr1',
+  String goalId = 'g1',
+  String goalTitle = 'Build a useful product',
+  String metric = 'Active users',
+  num startValue = 10,
+  num currentValue = 18,
+  String? currentAt = '2030-03-20T09:00:00Z',
+  num target = 30,
+  String deadline = '2030-12-31',
+  String updateSource = 'manual',
+  bool pastDeadline = false,
+  List<String> themeIds = const ['p1'],
+  List<Object?> flags = const [],
+}) =>
+    {
+      'id': id,
+      'goal_id': goalId,
+      'goal_title': goalTitle,
+      'metric': metric,
+      'start_value': startValue,
+      'current_value': currentValue,
+      'current_at': currentAt,
+      'target': target,
+      'deadline': deadline,
+      'update_source': updateSource,
+      'past_deadline': pastDeadline,
+      'theme_ids': themeIds,
+      'flags': flags,
+    };
+
+/// The monthly plan read model for widget tests.
+Map<String, Object?> monthlyJson({
+  String month = '2030-03',
+  String state = 'current',
+  bool focusKnown = true,
+  String? countNote,
+  List<Object?> entries = const [],
+  List<Object?> keyResults = const [],
+  List<String> themesWithoutKeyResult = const [],
+  Map<String, Object?> review = const {
+    'stored': false,
+    'current_version': null,
+    'versions': 0,
+  },
+  bool earlierFormat = false,
+}) =>
+    {
+      'month': month,
+      'start': '$month-01',
+      'end': _nextMonthKey(month),
+      'state': state,
+      'planning_year': int.parse(month.substring(0, 4)),
+      'focus_known': focusKnown,
+      'count_note': countNote,
+      'entries': entries,
+      'key_results': keyResults,
+      'themes_without_key_result': themesWithoutKeyResult,
+      'review': review,
+      'earlier_format': earlierFormat,
+    };
+
+/// Picker option in a monthly theme list.
+Map<String, Object?> monthlyThemeJson(
+  String id,
+  String name, {
+  String connectionId = 'c1',
+  String connectionName = 'Work',
+  bool inFocus = false,
+  bool leftThisMonth = false,
+  int lastMonthDone = 0,
+  List<String> keyResultIds = const [],
+}) =>
+    {
+      'project_id': id,
+      'connection_id': connectionId,
+      'connection_name': connectionName,
+      'name': name,
+      'in_focus': inFocus,
+      'left_this_month': leftThisMonth,
+      'last_month_done': lastMonthDone,
+      'key_result_ids': keyResultIds,
+    };
+
+/// `GET /monthly/{month}/themes` answer.
+Map<String, Object?> monthlyPickerJson({
+  List<Object?> themes = const [],
+  int unsortedCount = 0,
+  List<Object?> taskConnections = const [
+    {'id': 'c1', 'name': 'Work', 'can_create': true},
+  ],
+}) =>
+    {
+      'themes': themes,
+      'unsorted_count': unsortedCount,
+      'task_connections': taskConnections,
+    };
+
+/// An editable carried-forward theme suggestion.
+Map<String, Object?> monthlySuggestionJson(
+  String projectId,
+  String name, {
+  int? target,
+  String reason = 'carry',
+  Map<String, Object?>? replaces,
+}) =>
+    {
+      'project_id': projectId,
+      'name': name,
+      'target': target,
+      'reason': reason,
+      'replaces': replaces,
+    };
+
+/// `GET /monthly/{month}/suggestions` answer.
+Map<String, Object?> monthlySuggestionsJson({
+  String? fromMonth = '2030-02',
+  List<Object?> suggestions = const [],
+  List<Object?> skipped = const [],
+}) =>
+    {
+      'from_month': fromMonth,
+      'suggestions': suggestions,
+      'skipped': skipped,
+    };
+
+/// A monthly key result inside a review snapshot.
+Map<String, Object?> monthlyReviewKeyResultJson({
+  String id = 'kr1',
+  String goalId = 'g1',
+  String goalTitle = 'Build a useful product',
+  String metric = 'Active users',
+  String updateSource = 'manual',
+  num startValue = 10,
+  num baseValue = 12,
+  num latestValue = 18,
+  String? latestAt = '2030-03-20T09:00:00Z',
+  num change = 6,
+  String status = 'updated',
+  bool enteredInReview = false,
+  bool afterMonthEnd = false,
+  num target = 30,
+  String deadline = '2030-12-31',
+  bool pastDeadline = false,
+  bool retired = false,
+  List<String> themeIds = const ['p1'],
+  bool shared = false,
+  List<String> flags = const [],
+}) =>
+    {
+      'key_result_id': id,
+      'goal_id': goalId,
+      'goal_title': goalTitle,
+      'metric': metric,
+      'update_source': updateSource,
+      'start_value': startValue,
+      'base_value': baseValue,
+      'latest_value': latestValue,
+      'latest_at': latestAt,
+      'change': change,
+      'status': status,
+      'entered_in_review': enteredInReview,
+      'after_month_end': afterMonthEnd,
+      'target': target,
+      'deadline': deadline,
+      'past_deadline': pastDeadline,
+      'retired': retired,
+      'theme_ids': themeIds,
+      'shared': shared,
+      'flags': flags,
+    };
+
+/// One theme inside a monthly review snapshot.
+Map<String, Object?> monthlyReviewThemeJson({
+  String projectId = 'p1',
+  String name = 'Open source',
+  int? target = 3,
+  String countsFrom = '2030-03-01',
+  String? leftOn,
+  String status = 'in_focus',
+  Map<String, Object?>? orphaned,
+  String? labelChanged,
+  int done = 2,
+  String marker = 'missed',
+  List<Object?> milestones = const [],
+  List<Object?> earlierNotCounted = const [],
+  List<String> keyResultIds = const ['kr1'],
+}) =>
+    {
+      'project_id': projectId,
+      'name': name,
+      'target': target,
+      'counts_from': countsFrom,
+      'left_on': leftOn,
+      'status': status,
+      'orphaned': orphaned,
+      'label_changed': labelChanged,
+      'done': done,
+      'marker': marker,
+      'milestones': milestones,
+      'earlier_not_counted': earlierNotCounted,
+      'key_result_ids': keyResultIds,
+    };
+
+/// A complete snapshot payload used by monthly review widget tests.
+Map<String, Object?> monthlySnapshotJson({
+  String month = '2030-03-01',
+  List<Object?> themes = const [],
+  List<Object?> changes = const [],
+  List<Object?> outsideFocus = const [],
+  Map<String, Object?> categories = const {
+    'goal_aligned': 10,
+    'maintenance': 4,
+    'off_plan': 3,
+    'hidden': 1,
+  },
+  List<Object?> keyResults = const [],
+  List<Object?> decisions = const [],
+}) =>
+    {
+      'schema_version': 1,
+      'month': month,
+      'month_end': _nextMonthKey(month.substring(0, 7)),
+      'taken_at': '2030-04-02T08:00:00Z',
+      'themes': themes,
+      'changes': changes,
+      'outside_focus': outsideFocus,
+      'categories': categories,
+      'key_results': keyResults,
+      'decisions': decisions,
+    };
+
+/// The review response for a monthly draft or stored snapshot.
+Map<String, Object?> monthlyReviewJson({
+  String month = '2030-03',
+  bool stored = false,
+  int? version,
+  int? currentVersion,
+  String? takenAt,
+  List<Object?> versions = const [],
+  Map<String, Object?>? snapshot,
+  String trendState = 'not_enough_history',
+  num? share,
+  List<Object?> previous = const [],
+  String? categoriesNote,
+}) =>
+    {
+      'month': month,
+      'stored': stored,
+      'draft': !stored,
+      'version': version,
+      'current_version': currentVersion,
+      'taken_at': takenAt,
+      'versions': versions,
+      'snapshot': snapshot ??
+          monthlySnapshotJson(
+              themes: [monthlyReviewThemeJson()],
+              keyResults: [monthlyReviewKeyResultJson()]),
+      'trend': {
+        'state': trendState,
+        'previous': previous,
+        'share': share,
+        'note':
+            trendState == 'not_enough_history' ? 'not enough history' : null,
+      },
+      'categories_note': categoriesNote,
+    };
+
+String _nextMonthKey(String value) {
+  final year = int.parse(value.substring(0, 4));
+  final month = int.parse(value.substring(5, 7));
+  return month == 12
+      ? '${year + 1}-01-01'
+      : '$year-${(month + 1).toString().padLeft(2, '0')}-01';
+}
 
 /// A project of `GET /projects/classification`. [label] null means unsorted;
 /// the proposal follows the default rule (top level: theme, else milestone).

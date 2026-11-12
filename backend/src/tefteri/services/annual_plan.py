@@ -175,6 +175,8 @@ class ThemeOption:
     name: str
     connection_id: uuid.UUID
     key_result_ids: list[uuid.UUID]
+    connection_name: str = ""
+    """The name of the task connection, for a user with more than one."""
 
 
 @dataclass(frozen=True)
@@ -346,10 +348,10 @@ class AnnualPlanService:
                 update_source=row.update_source,
                 status=row.status,
                 current_value=current,
-                current_at=at_by_kr.get(row.id),
+                current_at=utc(at_by_kr.get(row.id)),
                 progress=progress(row.start_value, row.target, current),
                 met=met,
-                retired_at=row.retired_at,
+                retired_at=utc(row.retired_at),
                 flags=[_flag_dict(f) for f in flags],
                 links=[_link_out(link, names, nodes) for link in links_by_kr.get(row.id, [])],
             )
@@ -378,7 +380,7 @@ class AnnualPlanService:
                 progress=goal_progress(k.progress for k in active_krs),
                 flags=[_flag_dict(f) for f in goal_flags(active_key_results=len(active_krs))],
                 notes=_notes(active_krs),
-                updated_at=row.updated_at,
+                updated_at=utc(row.updated_at),
                 key_results=krs,
             )
 
@@ -406,11 +408,19 @@ class AnnualPlanService:
         return {row.id: (row.title, row.period_type == "year") for row in rows}
 
     async def linkable_goal(
-        self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID
+        self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID, *, tz: str = "UTC"
     ) -> Goal | None:
-        """Return the goal when a task may be linked to it, else ``None`` (FR-027, FR-028)."""
+        """Return the goal when a task may be linked to it, else ``None`` (FR-026).
+
+        Only an annual goal of the current year that is not retired can be linked. A goal
+        marked complete before annual planning counts as active (R-01).
+        """
         row = await db.get(Goal, goal_id)
         if row is None or row.user_id != user_id or row.period_type != "year":
+            return None
+        if row.status == GoalState.RETIRED.value:
+            return None
+        if row.period_start.year != today_in(tz, self._clock()).year:
             return None
         return row
 
@@ -441,6 +451,7 @@ class AnnualPlanService:
         *,
         seeded_from: int | None = None,
         tz: str,
+        batch_id: uuid.UUID | None = None,
     ) -> list[GoalOut]:
         """Create several goals with their key results and links in one batch (FR-002, FR-016).
 
@@ -452,7 +463,27 @@ class AnnualPlanService:
         trees = await load_trees(db, user_id)
         usable = self._key_results.eligible_theme_keys(trees)
         now = self._clock()
-        batch_id = uuid.uuid4()
+        batch_id = batch_id or uuid.uuid4()
+        if seeded_from is not None and seeded_from >= year:
+            raise Invalid("The source year must be earlier than the new year.")
+        seed_sources = {
+            kr.seeded_from_id
+            for draft in drafts
+            for kr in draft.key_results
+            if kr.seeded_from_id is not None
+        }
+        if seed_sources:
+            owned = set(
+                (
+                    await db.execute(
+                        select(KeyResult.id).where(
+                            KeyResult.user_id == user_id, KeyResult.id.in_(seed_sources)
+                        )
+                    )
+                ).scalars()
+            )
+            if owned != seed_sources:
+                raise NotFound
         source = ChangeSource.SEED.value if seeded_from is not None else ChangeSource.USER.value
         existing = await self._goal_rows(db, user_id, year)
         position = len(existing)
@@ -476,6 +507,8 @@ class AnnualPlanService:
             changes.append(
                 change(user_id, year, PlanChangeKind.GOAL_CREATED, goal_id=goal.id, new_value=title)
             )
+            if len(draft.key_results) > MAX_ACTIVE_KEY_RESULTS:
+                raise Conflict("key_result_limit", KEY_RESULT_LIMIT_MESSAGE)
             key_result_rows: list[KeyResult] = []
             for slot_number, kr in enumerate(draft.key_results, start=1):
                 metric = kr.metric.strip()
@@ -487,6 +520,7 @@ class AnnualPlanService:
                     year=year,
                 )
                 row = KeyResult(
+                    id=uuid.uuid4(),
                     user_id=user_id,
                     goal_id=goal.id,
                     year=year,
@@ -516,6 +550,7 @@ class AnnualPlanService:
                     if theme_id not in usable:
                         raise Invalid("That project is not a live theme.", "not_a_theme")
                     link = KeyResultTheme(
+                        id=uuid.uuid4(),
                         user_id=user_id,
                         key_result_id=row.id,
                         project_id=theme_id,
@@ -545,7 +580,7 @@ class AnnualPlanService:
                 progress=goal_progress(0.0 for _ in krs),
                 flags=[_flag_dict(f) for f in goal_flags(active_key_results=len(krs))],
                 notes=[],
-                updated_at=goal.updated_at,
+                updated_at=utc(goal.updated_at),
                 key_results=[
                     KeyResultOut(
                         id=row.id,
@@ -795,7 +830,8 @@ class AnnualPlanService:
         """Reverse one batch of changes; the reverse is written with ``source = 'undo'`` (FR-020).
 
         A batch is undone once. A goal retire brings its key results and links back; a re-link
-        is reversed the other way round. Returns how many goals and key results came back.
+        is reversed the other way round. Returns how many goals, key results and links came
+        back.
         """
         rows = list(
             (
@@ -910,6 +946,7 @@ class AnnualPlanService:
                 if key_result is None or key_result.status != GoalState.ACTIVE.value:
                     continue
                 new_link = KeyResultTheme(
+                    id=uuid.uuid4(),
                     user_id=user_id,
                     key_result_id=link.key_result_id,
                     project_id=link.project_id,
@@ -917,6 +954,7 @@ class AnnualPlanService:
                     started_at=now,
                 )
                 db.add(new_link)
+                restored += 1
                 changes.append(
                     change(
                         user_id,
@@ -960,7 +998,7 @@ class AnnualPlanService:
         return [
             PlanChangeOut(
                 id=row.id,
-                at=row.at,
+                at=utc(row.at),
                 kind=row.kind,
                 year=row.year,
                 goal_id=row.goal_id,
@@ -1046,6 +1084,52 @@ class AnnualPlanService:
             nodes.update(tree.nodes)
         return suggest(past_goals, year=year, from_year=from_year, nodes=nodes)
 
+    async def suggestions_view(
+        self, db: AsyncSession, user_id: uuid.UUID, year: int, *, from_year: int
+    ) -> dict[str, Any]:
+        """Return the suggestions of year N in the shape of ``GET /annual/{year}/suggestions``.
+
+        ``has_plan`` is false when year N has no goal. Each key result carries the themes whose
+        link is still usable, by id and name, and its update source. Nothing is written.
+        """
+        has_plan = bool(await self._goal_rows(db, user_id, from_year))
+        found = await self.suggestions(db, user_id, year, from_year=from_year)
+        kr_ids = [uuid.UUID(kr.key_result_id) for g in found for kr in g.key_results]
+        sources = {
+            row.id: row.update_source for row in await _key_results_by_id(db, user_id, kr_ids)
+        }
+        trees = await load_trees(db, user_id)
+        names = {str(row.id): row.name for tree in trees for row in tree.rows}
+        return {
+            "year": year,
+            "from_year": from_year,
+            "has_plan": has_plan,
+            "goals": [
+                {
+                    "goal_id": g.goal_id,
+                    "title": g.title,
+                    "key_results": [
+                        {
+                            "key_result_id": kr.key_result_id,
+                            "metric": kr.metric,
+                            "start_value": kr.start_value,
+                            "target": kr.target,
+                            "deadline": kr.deadline,
+                            "update_source": sources.get(
+                                uuid.UUID(kr.key_result_id), UpdateSource.MANUAL.value
+                            ),
+                            "themes": [
+                                {"project_id": key, "name": names.get(key, "")}
+                                for key in kr.theme_keys
+                            ],
+                        }
+                        for kr in g.key_results
+                    ],
+                }
+                for g in found
+            ],
+        }
+
     # -- themes (FR-012, R-13) ----------------------------------------------------------------
 
     async def themes(self, db: AsyncSession, user_id: uuid.UUID, *, year: int) -> ThemePicker:
@@ -1085,7 +1169,13 @@ class AnnualPlanService:
                 if not is_usable_link(tree.nodes, str(row.id)):
                     continue
                 options.append(
-                    ThemeOption(row.id, row.name, tree.connection.id, by_project.get(row.id, []))
+                    ThemeOption(
+                        row.id,
+                        row.name,
+                        tree.connection.id,
+                        by_project.get(row.id, []),
+                        tree.connection.display_name,
+                    )
                 )
         return ThemePicker(
             themes=sorted(options, key=lambda o: o.name),
@@ -1119,7 +1209,10 @@ class AnnualPlanService:
         view = await self._classification.create_and_label(
             db, user_id, connection_id, title, None, ProjectLabel.THEME
         )
-        return ThemeOption(view.row.id, view.row.name, connection_id, [])
+        connection_name = next(
+            (t.connection.display_name for t in trees if t.connection.id == connection_id), ""
+        )
+        return ThemeOption(view.row.id, view.row.name, connection_id, [], connection_name)
 
 
 # -- module helpers ---------------------------------------------------------------------------
@@ -1143,6 +1236,21 @@ async def _key_results_of(
     if order_by is not None:
         query = query.order_by(order_by, KeyResult.id)
     return list((await db.execute(query)).scalars())
+
+
+async def _key_results_by_id(
+    db: AsyncSession, user_id: uuid.UUID, ids: Sequence[uuid.UUID]
+) -> list[KeyResult]:
+    """Return the user's key results with the given ids."""
+    return list(
+        (
+            await db.execute(
+                select(KeyResult).where(
+                    KeyResult.user_id == user_id, KeyResult.id.in_(_or_none(ids))
+                )
+            )
+        ).scalars()
+    )
 
 
 async def _taken_slots(db: AsyncSession, goal_id: uuid.UUID) -> list[int]:
@@ -1195,10 +1303,27 @@ def _link_out(
         active=link.ended_at is None,
         usable=state == "ok",
         state=state,
-        label=new_label.value if new_label is not None else None,
-        started_at=link.started_at,
-        ended_at=link.ended_at,
+        label=_current_label(nodes, link.project_id, new_label),
+        started_at=utc(link.started_at),
+        ended_at=utc(link.ended_at),
     )
+
+
+def _current_label(
+    nodes: dict[str, ProjectNode], project_id: uuid.UUID, new_label: ProjectLabel | None
+) -> str | None:
+    """The stored label of a linked project now: the new one when it was relabelled."""
+    if new_label is not None:
+        return new_label.value
+    node = nodes.get(str(project_id))
+    return node.label.value if node is not None and node.label is not None else None
+
+
+def utc(value: datetime | None) -> datetime | None:
+    """Return ``value`` as an aware UTC time; SQLite gives naive ones (stored as UTC)."""
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=UTC)
 
 
 def _flag_dict(flag: Flag) -> dict[str, Any]:

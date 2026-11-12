@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import '../weekly/weekly_widgets.dart';
 import 'category_style.dart';
 import 'category_task_list.dart';

@@ -1,36 +1,29 @@
-"""Goals and plans: hierarchy rules, breakdown, computed progress, deletion."""
+"""Goals and plans after spec 006: computed progress, plans and the read-only legacy history.
+
+Goals exist only for a planning year now (``services.annual_plan``). Month and week goals, and
+year goals that are retired or were marked complete, stay as read-only history (FR-022, FR-023):
+this module reads them and never writes them.
+"""
 
 import uuid
 from dataclasses import dataclass
 from datetime import date
-from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.goal import Goal, Plan
 from tefteri.db.models.task import Task
-from tefteri.domain.periods import PeriodType, child_fits, is_aligned
+from tefteri.domain.periods import PeriodType, is_aligned
 from tefteri.services.errors import Invalid, NotFound
-from tefteri.services.tasks import TaskService
 
 
 @dataclass(frozen=True)
-class ChildGoal:
-    """A smaller goal to create under a goal."""
+class LegacyGoal:
+    """One row of ``GET /goals/history``: an old goal and the number of tasks linked to it."""
 
-    title: str
-    period_type: PeriodType
-    period_start: date
-
-
-@dataclass(frozen=True)
-class ChildTask:
-    """A task to create for a goal."""
-
-    connection_id: uuid.UUID
-    title: str
-    container_id: uuid.UUID | None = None
+    goal: Goal
+    linked_tasks: int
 
 
 def compute_progress(goals: list[Goal], tasks: list[Task]) -> dict[uuid.UUID, float]:
@@ -66,11 +59,7 @@ def compute_progress(goals: list[Goal], tasks: list[Task]) -> dict[uuid.UUID, fl
 
 
 class GoalService:
-    """Create, change, break down and delete goals; manage plans."""
-
-    def __init__(self, tasks: TaskService) -> None:
-        """Use ``tasks`` to create and delete the tasks of goals."""
-        self._tasks = tasks
+    """Read goals and their progress, the legacy history, and manage plans."""
 
     async def get(self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> Goal:
         """Return one of the user's goals or raise ``NotFound``."""
@@ -90,150 +79,45 @@ class GoalService:
         tasks = list((await db.execute(select(Task).where(Task.user_id == user_id))).scalars())
         return compute_progress(await self.all(db, user_id), tasks)
 
-    async def create(
+    async def history(
         self,
         db: AsyncSession,
         user_id: uuid.UUID,
         *,
-        period_type: PeriodType,
-        period_start: date,
-        title: str,
-        description: str = "",
-        criteria: str = "",
-        parent_id: uuid.UUID | None = None,
-    ) -> Goal:
-        """Create a goal after checking the period and its place under the parent."""
-        if not is_aligned(period_type, period_start):
-            raise Invalid(f"a {period_type.value} period must start on its first day")
-        if parent_id is not None:
-            parent = await self.get(db, user_id, parent_id)
-            if not child_fits(
-                PeriodType(parent.period_type), parent.period_start, period_type, period_start
-            ):
-                raise Invalid("the period of a smaller goal must lie inside its parent's period")
-        goal = Goal(
-            user_id=user_id,
-            parent_id=parent_id,
-            period_type=period_type.value,
-            period_start=period_start,
-            title=title,
-            description=description,
-            criteria=criteria,
+        period_type: str | None = None,
+        period_start: date | None = None,
+    ) -> list[LegacyGoal]:
+        """Return the legacy goals, oldest period first (FR-022, FR-023). Read only.
+
+        The legacy goals are every month and week goal and the year goals that are retired or
+        were marked complete before annual planning. Each row carries the count of linked tasks.
+        """
+        query = select(Goal).where(
+            Goal.user_id == user_id,
+            (Goal.period_type != "year") | Goal.status.in_(("retired", "done")),
         )
-        db.add(goal)
-        await db.flush()
-        return goal
-
-    async def update(
-        self,
-        db: AsyncSession,
-        goal: Goal,
-        *,
-        title: str | None = None,
-        description: str | None = None,
-        criteria: str | None = None,
-        status: Literal["active", "done", "dropped"] | None = None,
-    ) -> Goal:
-        """Change a goal's text, status or criteria."""
-        if title is not None:
-            goal.title = title
-        if description is not None:
-            goal.description = description
-        if criteria is not None:
-            goal.criteria = criteria
-        if status is not None:
-            goal.status = status
-        await db.flush()
-        return goal
-
-    async def create_many(
-        self,
-        db: AsyncSession,
-        user_id: uuid.UUID,
-        *,
-        period_type: PeriodType,
-        period_start: date,
-        titles: list[str],
-        parent_id: uuid.UUID | None = None,
-    ) -> list[Goal]:
-        """Create one goal per title, all in the same period. All or none are created."""
-        return [
-            await self.create(
-                db,
-                user_id,
-                period_type=period_type,
-                period_start=period_start,
-                title=title,
-                parent_id=parent_id,
+        if period_type is not None:
+            query = query.where(Goal.period_type == period_type)
+        if period_start is not None:
+            query = query.where(Goal.period_start == period_start)
+        goals = list(
+            (
+                await db.execute(query.order_by(Goal.period_start, Goal.period_type, Goal.title))
+            ).scalars()
+        )
+        counts: dict[uuid.UUID, int] = {}
+        if goals:
+            rows = await db.execute(
+                select(Task.goal_id, func.count())
+                .where(
+                    Task.user_id == user_id,
+                    Task.goal_id.in_([g.id for g in goals]),
+                    Task.sync_state != "deleted_remotely",
+                )
+                .group_by(Task.goal_id)
             )
-            for title in titles
-        ]
-
-    async def breakdown(
-        self,
-        db: AsyncSession,
-        user_id: uuid.UUID,
-        goal: Goal,
-        goals: list[ChildGoal],
-        tasks: list[ChildTask],
-    ) -> tuple[list[Goal], list[Task]]:
-        """Create smaller goals and tasks under ``goal``."""
-        created_goals = [
-            await self.create(
-                db,
-                user_id,
-                period_type=g.period_type,
-                period_start=g.period_start,
-                title=g.title,
-                parent_id=goal.id,
-            )
-            for g in goals
-        ]
-        created_tasks = [
-            await self._tasks.create(
-                db,
-                user_id,
-                connection_id=t.connection_id,
-                container_id=t.container_id,
-                title=t.title,
-                goal_id=goal.id,
-            )
-            for t in tasks
-        ]
-        return created_goals, created_tasks
-
-    async def delete(
-        self,
-        db: AsyncSession,
-        user_id: uuid.UUID,
-        goal: Goal,
-        linked_tasks: Literal["keep", "delete"],
-    ) -> None:
-        """Delete a goal and its smaller goals. Linked tasks are kept (unlinked) or deleted."""
-        everything = await self.all(db, user_id)
-        ids = {goal.id}
-        grew = True
-        while grew:
-            grew = False
-            for g in everything:
-                if g.parent_id in ids and g.id not in ids:
-                    ids.add(g.id)
-                    grew = True
-        tasks = [
-            t
-            for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars()
-            if t.goal_id in ids
-        ]
-        for task in tasks:
-            if linked_tasks == "delete":
-                await self._tasks.delete(db, user_id, task)
-            else:
-                task.goal_id = None
-        await db.flush()
-        # The database cascades the delete to the smaller goals (ON DELETE CASCADE).
-        await db.delete(goal)
-        await db.flush()
-        db.expire_all()
+            counts = {goal_id: count for goal_id, count in rows.tuples()}
+        return [LegacyGoal(g, counts.get(g.id, 0)) for g in goals]
 
     async def create_plan(
         self,

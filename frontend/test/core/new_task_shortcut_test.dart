@@ -30,8 +30,8 @@ Future<void> _pump(WidgetTester tester, {bool signedIn = true}) async {
         path: '/daily',
         builder: (_, __) => const Scaffold(body: Text('daily'))),
     GoRoute(
-        path: '/goals',
-        builder: (_, __) => const Scaffold(body: Text('goals'))),
+        path: '/annual',
+        builder: (_, __) => const Scaffold(body: Text('annual'))),
   ]);
   _router = router;
   final api = FakeApi({

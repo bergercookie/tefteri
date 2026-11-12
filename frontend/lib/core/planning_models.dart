@@ -373,61 +373,21 @@ class SyncConflict {
   String get title => '${local['title'] ?? remote['title'] ?? entityId}';
 }
 
-/// A goal for a year, a month or a week.
+/// The title of a goal that a task points to (`goal_titles` of a view).
 @immutable
-class PlanGoal {
-  /// Creates a goal.
-  const PlanGoal({
-    required this.id,
-    required this.periodType,
-    required this.periodStart,
-    required this.title,
-    required this.status,
-    required this.progress,
-    this.parentId,
-    this.description,
-    this.criteria,
-  });
+class GoalTitle {
+  /// Creates a title.
+  const GoalTitle({required this.title, required this.annual});
 
-  /// Parses a goal JSON object.
-  factory PlanGoal.fromJson(Map<String, dynamic> j) => PlanGoal(
-        id: '${j['id']}',
-        parentId: j['parent_id'] == null ? null : '${j['parent_id']}',
-        periodType: '${j['period_type'] ?? 'week'}',
-        periodStart: '${j['period_start']}',
-        title: '${j['title'] ?? ''}',
-        description: j['description'] as String?,
-        criteria: j['criteria'] as String?,
-        status: '${j['status'] ?? 'active'}',
-        progress: ((j['progress'] as num?) ?? 0).toDouble().clamp(0.0, 1.0),
-      );
+  /// Parses one `goal_titles` value.
+  factory GoalTitle.fromJson(Map<String, dynamic> j) =>
+      GoalTitle(title: '${j['title'] ?? ''}', annual: j['annual'] == true);
 
-  /// Goal id.
-  final String id;
-
-  /// Parent goal id (null for a top-level goal).
-  final String? parentId;
-
-  /// `year`, `month` or `week`.
-  final String periodType;
-
-  /// First day of the period, `YYYY-MM-DD`.
-  final String periodStart;
-
-  /// Goal title.
+  /// The goal sentence.
   final String title;
 
-  /// Optional description.
-  final String? description;
-
-  /// What has to be true for the goal to count as complete.
-  final String? criteria;
-
-  /// `active`, `done` or `dropped`.
-  final String status;
-
-  /// Progress from 0 to 1, computed by the server.
-  final double progress;
+  /// True for a goal of an annual plan; false for an old month or week goal.
+  final bool annual;
 }
 
 /// Response of `GET /views/week|month|year`.
@@ -438,9 +398,9 @@ class PeriodView {
     required this.periodType,
     required this.start,
     required this.end,
-    required this.goals,
     required this.tasks,
     required this.entries,
+    this.goalTitles = const {},
   });
 
   /// Parses the period view JSON.
@@ -448,10 +408,10 @@ class PeriodView {
         periodType: '${j['period_type']}',
         start: '${j['start']}',
         end: '${j['end']}',
-        goals: [
-          for (final g in (j['goals'] as List? ?? const []))
-            PlanGoal.fromJson(g as Map<String, dynamic>),
-        ],
+        goalTitles: {
+          for (final e in ((j['goal_titles'] as Map?) ?? const {}).entries)
+            '${e.key}': GoalTitle.fromJson(e.value as Map<String, dynamic>),
+        },
         tasks: [
           for (final t in (j['tasks'] as List? ?? const []))
             PlanTask.fromJson(t as Map<String, dynamic>),
@@ -471,57 +431,15 @@ class PeriodView {
   /// Day after the last day, `YYYY-MM-DD`.
   final String end;
 
-  /// Goals of the period.
-  final List<PlanGoal> goals;
+  /// The goals that tasks of the view point to, by goal id. A goal that is
+  /// not [GoalTitle.annual] is shown as history.
+  final Map<String, GoalTitle> goalTitles;
 
   /// Tasks due or scheduled in the period.
   final List<PlanTask> tasks;
 
   /// Entries in the period (empty for a year).
   final List<PlanEntry> entries;
-}
-
-/// A child goal to create in a breakdown.
-@immutable
-class GoalDraft {
-  /// Creates a draft.
-  const GoalDraft(
-      {required this.title,
-      required this.periodType,
-      required this.periodStart});
-
-  /// Goal title.
-  final String title;
-
-  /// `year`, `month` or `week`.
-  final String periodType;
-
-  /// First day of the period, `YYYY-MM-DD`.
-  final String periodStart;
-
-  /// JSON for the breakdown request.
-  Map<String, Object?> toJson() => {
-        'title': title,
-        'period_type': periodType,
-        'period_start': periodStart,
-      };
-}
-
-/// A task to create in a breakdown.
-@immutable
-class TaskDraft {
-  /// Creates a draft.
-  const TaskDraft({required this.connectionId, required this.title});
-
-  /// Connection that owns the new task.
-  final String connectionId;
-
-  /// Task title.
-  final String title;
-
-  /// JSON for the breakdown request.
-  Map<String, Object?> toJson() =>
-      {'connection_id': connectionId, 'title': title};
 }
 
 /// Planning settings of the signed-in user (`/me/settings`).

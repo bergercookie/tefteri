@@ -19,9 +19,7 @@ class ValuePushToken(IdMixin, Base):
 
     __tablename__ = "value_push_tokens"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="CASCADE")
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
     token_hash: Mapped[str] = mapped_column(String(64))
     """The SHA-256 digest of the token. The token itself is never stored."""
     hint: Mapped[str] = mapped_column(String(4))

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/daily/daily_screen.dart';
-import 'package:tefteri/features/goals/periods.dart';
+import 'package:tefteri/core/periods.dart';
 import 'package:tefteri/features/month/month_screen.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
 import 'package:tefteri/features/week/week_screen.dart';
@@ -10,6 +10,7 @@ import 'package:tefteri/core/planning_models.dart';
 
 import 'features/planner/planner_helpers.dart';
 import 'support/fake_api.dart';
+import 'features/month/month_fake.dart';
 
 String _text(WidgetTester tester, String key) =>
     tester.widget<Text>(find.byKey(Key(key))).data!;
@@ -28,8 +29,19 @@ void main() {
   });
 
   testWidgets('Month: Today returns to the current month', (tester) async {
+    final oldMonth = MonthFakeApi(
+      month: '2020-03',
+      plan: monthlyJson(month: '2020-03', state: 'past', focusKnown: false),
+    );
+    final currentMonth =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
+    oldMonth.routes['GET /monthly/$currentMonth'] =
+        monthlyJson(month: currentMonth, state: 'current', focusKnown: false);
+    oldMonth.routes['GET /monthly/$currentMonth/themes'] = monthlyPickerJson();
+    oldMonth.routes['GET /monthly/$currentMonth/suggestions'] =
+        monthlySuggestionsJson(fromMonth: null);
     await pumpWithApi(
-        tester, FakeApi({}), MonthScreen(initialDate: DateTime(2020, 3, 4)));
+        tester, oldMonth, MonthScreen(initialDate: DateTime(2020, 3, 4)));
     expect(_text(tester, 'period-label'), '${monthName(3)} 2020');
     await tester.tap(find.byKey(const Key('today-button')));
     await tester.pumpAndSettle();

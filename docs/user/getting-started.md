@@ -72,5 +72,6 @@ The tasks in the task list are different. You drag them, so you cannot select th
 - [Plan with the planner](planner.md)
 - [Plan your day](daily-planning.md)
 - [Put tasks on the calendar](scheduling.md)
-- [Plan goals](planning-goals.md)
+- [Plan for the year](annual-planning.md)
+- [Plan your month](monthly-planning.md)
 - [Use the keyboard](shortcuts.md)

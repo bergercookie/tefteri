@@ -60,7 +60,7 @@ async def test_new_key_result_has_an_empty_series_and_uses_start_value(
     assert key_result["current_at"] is None
     assert key_result["progress"] == 0
     assert (await api.get(f"{V1}/annual/key-results/{key_result['id']}/values")).json() == []
-    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()
+    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     created = next(row for row in history if row["kind"] == "key_result_created")
     assert created["key_result_id"] == key_result["id"]
     assert created["batch_id"]
@@ -138,7 +138,7 @@ async def test_editing_fields_records_old_and_new_values_and_start_is_immutable(
     assert response.json()["start_value"] == 0
     assert response.json()["update_source"] == "automatic"
 
-    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()
+    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     edits = [row for row in history if row["kind"] == "key_result_edited"]
     assert {row["field"] for row in edits} == {"metric", "target", "deadline", "update_source"}
     values = {row["field"]: (row["old_value"], row["new_value"]) for row in edits}

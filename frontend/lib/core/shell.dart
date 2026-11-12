@@ -36,7 +36,7 @@ const _viewIcons = <String, IconData>{
   '/week': Icons.view_week_outlined,
   '/month': Icons.calendar_view_month_outlined,
   '/year': Icons.calendar_month_outlined,
-  '/goals': Icons.flag_outlined,
+  '/annual': Icons.flag_outlined,
   '/projects': Icons.account_tree_outlined,
   '/review': Icons.auto_stories_outlined,
   '/conflicts': Icons.call_split_outlined,

@@ -5,10 +5,12 @@ import 'package:tefteri/features/review/review_screen.dart';
 
 import '../../support/fake_api.dart';
 
-Map<String, Object?> _review({Map<String, Object?>? retrospective}) => {
+Map<String, Object?> _review(
+        {Map<String, Object?>? retrospective, String periodType = 'month'}) =>
+    {
       'plan_id': 'p1',
       'plan_title': 'October',
-      'period_type': 'month',
+      'period_type': periodType,
       'period_start': '2026-10-01',
       'period_end': '2026-11-01',
       'period_ended': true,
@@ -114,12 +116,23 @@ void main() {
   });
 
   group('review', () {
+    testWidgets('a year plan keeps the words "planned goals"', (tester) async {
+      final api =
+          FakeApi({'GET /plans/p1/review': _review(periodType: 'year')});
+      await pumpWithApi(tester, api, const ReviewScreen(planId: 'p1'));
+      expect(find.text('1 of 3 planned goals done'), findsOneWidget);
+      expect(find.text('Goal (history)'), findsNothing);
+    });
+
     testWidgets('shows planned versus done and carried-over items',
         (tester) async {
       final api = FakeApi({'GET /plans/p1/review': _review()});
       await pumpWithApi(tester, api, const ReviewScreen(planId: 'p1'));
       expect(find.text('October'), findsOneWidget);
-      expect(find.text('1 of 3 planned goals done'), findsOneWidget);
+      expect(find.text('1 of 3 goals (history) done'), findsOneWidget);
+      // Goals of a month plan are history now; the stored review is unchanged.
+      expect(find.text('Goal (history)'), findsWidgets);
+      expect(find.text('Task'), findsWidgets);
       expect(
           tester
               .widget<LinearProgressIndicator>(

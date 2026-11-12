@@ -10,7 +10,7 @@ import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import 'review_api.dart';
 import 'review_models.dart';
 

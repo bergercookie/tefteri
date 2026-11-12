@@ -56,7 +56,7 @@ void adminMenuTests() {
       '/week',
       '/month',
       '/year',
-      '/goals',
+      '/annual',
       '/review',
     ]) {
       expect(find.byKey(Key('nav-$path')), findsOneWidget, reason: path);

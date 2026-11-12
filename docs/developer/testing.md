@@ -28,6 +28,12 @@ The tests of work categories and statistics are in `unit/test_work_categories.py
 tests check a week of 1,000 tasks and a year of 20,000 tasks. Read
 [Work categories and statistics](work-categories.md#test-it) for the list.
 
+Monthly planning and review rules are tested in `unit/test_monthly.py` and
+`unit/test_monthly_review_rules.py`. The monthly integration tests cover focus changes, counting,
+key results, categories, decisions, snapshots and the rule that monthly planning does not write
+to the task app. The HTTP flow is in `e2e/test_monthly_api.py`. Read
+[Monthly planning and review](monthly-cycle.md) for the data and read contracts.
+
 The fake apps are in `tests/fakes/`. They keep their items in memory, and a test can make
 them unreachable or make their credentials expire.
 

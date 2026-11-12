@@ -1,5 +1,5 @@
-"""The whole app on PostgreSQL (asyncpg): migrations, sign-in, sync, writes, goals, reviews,
-notes, user delete.
+"""The whole app on PostgreSQL (asyncpg): migrations, sign-in, sync, writes, annual goals,
+reviews, notes, user delete.
 
 Runs only when ``TEFTERI_TEST_POSTGRES_URL`` is set. The CI Postgres job runs it with
 ``just backend::test-postgres``.
@@ -8,6 +8,7 @@ Runs only when ``TEFTERI_TEST_POSTGRES_URL`` is set. The CI Postgres job runs it
 import asyncio
 import os
 from collections.abc import AsyncIterator, Callable, Iterator
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,7 @@ from tefteri.domain.entities import Container, TaskDraft
 from tefteri.main import create_app
 from tests.conftest import ADMIN_PASSWORD, V1, connect_all
 from tests.fakes.world import FakeWorld
+from tests.integration.conftest import legacy_goal
 
 URL = os.environ.get("TEFTERI_TEST_POSTGRES_URL")
 
@@ -61,6 +63,7 @@ async def pg_api(
     ):
         r = await c.post(f"{V1}/auth/login", json={"username": "admin", "password": ADMIN_PASSWORD})
         c.headers["Authorization"] = f"Bearer {r.json()['token']}"
+        c.app = app  # type: ignore[attr-defined]  # for helpers that use the session
         yield c
 
 
@@ -83,27 +86,54 @@ async def test_main_flow_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> N
     assert {e["title"] for e in day["entries"]} == {"Standup"}
     assert [t["status"] for t in day["tasks"]] == ["done"]
 
-    goal = (
-        await pg_api.post(
-            f"{V1}/goals", json={"period_type": "year", "period_start": "2026-01-01", "title": "G"}
-        )
-    ).json()
-    await pg_api.patch(f"{V1}/tasks/{task['id']}", json={"goal_id": goal["id"]})
-    goals = (await pg_api.get(f"{V1}/goals")).json()
-    assert goals[0]["progress"] == 1.0
+    # An annual goal, a key result and a value (spec 006); the task links to the goal.
+    year = datetime.now(UTC).year
+    created = await pg_api.post(
+        f"{V1}/annual/{year}/goals/bulk",
+        json={
+            "goals": [
+                {
+                    "title": "G",
+                    "key_results": [
+                        {
+                            "metric": "Pages",
+                            "start_value": 0,
+                            "target": 100,
+                            "deadline": f"{year}-12-31",
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    assert created.status_code == 201, created.text
+    goal = created.json()["goals"][0]
+    key_result = goal["key_results"][0]
+    value = await pg_api.post(
+        f"{V1}/annual/key-results/{key_result['id']}/values", json={"value": 40}
+    )
+    assert value.status_code == 201, value.text
+    linked = await pg_api.patch(f"{V1}/tasks/{task['id']}", json={"goal_id": goal["id"]})
+    assert linked.status_code == 200 and linked.json()["goal_id"] == goal["id"]
+    plan_of_year = (await pg_api.get(f"{V1}/annual/{year}")).json()
+    assert plan_of_year["goals"][0]["key_results"][0]["current_value"] == 40
+    assert plan_of_year["goals"][0]["progress"] == 0.4
 
-    # Review and retrospective (JSON columns, FKs).
+    # Review and retrospective (JSON columns, FKs) of a month with a legacy goal.
+    await legacy_goal(
+        pg_api, period_type="month", period_start=date(2026, 10, 1), title="Old", status="done"
+    )
     plan = (
         await pg_api.post(
             f"{V1}/plans",
-            json={"period_type": "year", "period_start": "2026-01-01", "title": "2026"},
+            json={"period_type": "month", "period_start": "2026-10-01", "title": "October"},
         )
     ).json()
     review = (await pg_api.get(f"{V1}/plans/{plan['id']}/review")).json()
-    # A review counts the goals of the period. The task only feeds the progress of its goal.
+    # A review counts the goals of the period: here the legacy month goal, marked done.
     assert (review["planned_count"], review["completed_count"]) == (1, 1)
     saved = await pg_api.put(
-        f"{V1}/plans/{plan['id']}/review/retrospective", json={"body": "Good year."}
+        f"{V1}/plans/{plan['id']}/review/retrospective", json={"body": "Good month."}
     )
     assert saved.json()["retrospective"]["kind"] == "retrospective"
 
@@ -280,3 +310,50 @@ async def test_work_categories_and_statistics_on_postgres(
     assert first["project"]["name"] == "apple"  # case-folded: apple before Inbox and Zebra
     sam = await pg_api.post(f"{V1}/users", json={"username": "sam", "password": "long enough pw"})
     assert (await pg_api.delete(f"{V1}/users/{sam.json()['id']}")).status_code == 204
+
+
+async def test_monthly_focus_change_and_review_on_postgres(
+    pg_api: AsyncClient, world: FakeWorld
+) -> None:
+    """Monthly focus, append-only changes and snapshot JSON persist on PostgreSQL."""
+    month = datetime.now(UTC).strftime("%Y-%m")
+    world.tasks["default"].containers.append(Container("p2", "Open source"))
+    await connect_all(pg_api)
+    await pg_api.post(f"{V1}/sync")
+    tree = (await pg_api.get(f"{V1}/projects/classification")).json()
+    theme_id = next(
+        project["id"]
+        for connection in tree["connections"]
+        for project in connection["projects"]
+        if project["name"] == "Open source"
+    )
+    labelled = await pg_api.put(
+        f"{V1}/projects/labels",
+        json={"changes": [{"id": theme_id, "label": "theme"}]},
+    )
+    assert labelled.status_code == 200, labelled.text
+
+    planned = await pg_api.put(
+        f"{V1}/monthly/{month}/focus",
+        json={"entries": [{"project_id": theme_id, "target": 1}]},
+    )
+    assert planned.status_code == 200, planned.text
+    change = await pg_api.post(
+        f"{V1}/monthly/{month}/changes",
+        json={"kind": "target", "out_project_id": theme_id, "target": 2},
+    )
+    assert change.status_code == 200, change.text
+    stored = await pg_api.post(
+        f"{V1}/monthly/{month}/review",
+        json={
+            "decisions": [
+                {"project_id": theme_id, "decision": "carry"},
+            ]
+        },
+    )
+    assert stored.status_code == 201, stored.text
+    assert stored.json()["version"] == 1
+    read = await pg_api.get(f"{V1}/monthly/{month}/review")
+    assert read.status_code == 200, read.text
+    assert read.json()["snapshot"]["themes"][0]["target"] == 2
+    assert read.json()["snapshot"]["decisions"][0]["decision"] == "carry"

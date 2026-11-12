@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_models.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import '../../theme/theme.dart';
 import 'weekly_api.dart';
 import 'weekly_models.dart';

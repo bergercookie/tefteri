@@ -138,7 +138,7 @@ async def test_key_result_retire_preview_matches_write_and_preserves_series_and_
             )
         )
 
-    before_history = (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()
+    before_history = (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     preview = await env.api.post(
         f"{V1}/annual/key-results/{key_result['id']}/retire",
         json={"reason": "No longer relevant", "dry_run": True},
@@ -147,7 +147,7 @@ async def test_key_result_retire_preview_matches_write_and_preserves_series_and_
     assert preview.json()["effect"]["key_results_retired"] == 1
     assert preview.json()["effect"]["links_ended"] == 1
     assert preview.json()["effect"]["history_kept"] is True
-    assert (await env.api.get(f"{V1}/annual/{YEAR}/history")).json() == before_history
+    assert (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"] == before_history
 
     retired = await env.api.post(
         f"{V1}/annual/key-results/{key_result['id']}/retire",
@@ -188,7 +188,7 @@ async def test_key_result_retire_preview_matches_write_and_preserves_series_and_
         json=_key_result("Replacement"),
     )
     assert replacement.status_code == 201, replacement.text
-    changes = (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()
+    changes = (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     retire_rows = [row for row in changes if row["batch_id"] == retired.json()["batch_id"]]
     assert {row["kind"] for row in retire_rows} == {"key_result_retired", "link_removed"}
     retire_row = next(row for row in retire_rows if row["kind"] == "key_result_retired")
@@ -219,7 +219,7 @@ async def test_goal_retire_undo_restores_every_key_result_and_is_recorded_once(
     assert retired.status_code == 200, retired.text
     assert retired.json()["effect"] == preview.json()["effect"]
     batch_id = retired.json()["batch_id"]
-    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()
+    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     batch = [row for row in history if row["batch_id"] == batch_id]
     assert [row["kind"] for row in batch].count("goal_retired") == 1
     assert [row["kind"] for row in batch].count("key_result_retired") == 2
@@ -234,7 +234,7 @@ async def test_goal_retire_undo_restores_every_key_result_and_is_recorded_once(
     assert {row["status"] for row in restored_goal["key_results"]} == {"active"}
     undo_rows = [
         row
-        for row in (await api.get(f"{V1}/annual/{YEAR}/history")).json()
+        for row in (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
         if row["batch_id"] == batch_id and row["source"] == "undo"
     ]
     assert {row["kind"] for row in undo_rows} == {"goal_restored", "key_result_restored"}
@@ -259,13 +259,13 @@ async def test_restore_with_no_free_slot_changes_nothing(api: AsyncClient) -> No
         json=_key_result("Replacement"),
     )
     assert replacement.status_code == 201, replacement.text
-    history_before = (await api.get(f"{V1}/annual/{YEAR}/history")).json()
+    history_before = (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
 
     response = await api.post(f"{V1}/annual/key-results/{retired_kr}/restore")
 
     assert response.status_code == 409
     assert response.json()["code"] == "key_result_limit"
-    assert (await api.get(f"{V1}/annual/{YEAR}/history")).json() == history_before
+    assert (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"] == history_before
     async with api.app.state.session_factory() as db:  # type: ignore[attr-defined]
         stored = await db.get(KeyResult, uuid.UUID(retired_kr))
     assert stored is not None and stored.status == "retired" and stored.slot is None
@@ -343,7 +343,7 @@ async def test_history_is_time_ordered_and_period_reviews_are_unchanged(
     )
     assert relinked.status_code == 200, relinked.text
 
-    history = (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()
+    history = (await env.api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     instants = [datetime.fromisoformat(row["at"].replace("Z", "+00:00")) for row in history]
     assert instants == sorted(instants)
     edit_row = next(row for row in history if row["kind"] == "goal_edited")

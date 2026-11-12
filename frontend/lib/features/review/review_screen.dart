@@ -11,7 +11,7 @@ import '../../core/api_error.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import 'review_api.dart';
 import 'review_models.dart';
 
@@ -155,7 +155,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           style: text.bodySmall,
         ),
         const SizedBox(height: 12),
-        Text('${r.completedCount} of ${r.plannedCount} planned goals done',
+        Text('${r.completedCount} of ${r.plannedCount} ${r.goalsWord} done',
             key: const Key('review-counts'), style: text.titleMedium),
         const SizedBox(height: 4),
         LinearProgressIndicator(
@@ -163,7 +163,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         const SizedBox(height: 16),
         Text('Planned', style: text.titleSmall),
         if (r.items.isEmpty) const Text('Nothing was planned for this period.'),
-        for (final i in r.items) _item(i),
+        for (final i in r.items) _item(i, r),
         const SizedBox(height: 16),
         Text('Carried over (${carried.length})',
             key: const Key('carried-heading'), style: text.titleSmall),
@@ -174,7 +174,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             dense: true,
             leading: const Icon(Icons.redo),
             title: Text(i.title),
-            subtitle: const Text('Goal'),
+            subtitle: Text(r.itemWord(i.type)),
           ),
         const SizedBox(height: 16),
         Text('Retrospective', style: text.titleSmall),
@@ -208,7 +208,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     );
   }
 
-  Widget _item(ReviewItem i) => ListTile(
+  Widget _item(ReviewItem i, PlanReview r) => ListTile(
         key: Key('item-${i.id}'),
         dense: true,
         leading: Icon(
@@ -217,6 +217,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           semanticLabel: i.completed ? 'Done' : 'Not done',
         ),
         title: Text(i.title),
-        subtitle: const Text('Goal'),
+        subtitle: Text(r.itemWord(i.type)),
       );
 }

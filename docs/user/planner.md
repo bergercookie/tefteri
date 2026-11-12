@@ -42,6 +42,7 @@ Choose Today at the top of the calendar to go to the week of today. The calendar
 To move by one week, choose the arrows next to the Today button. You can also press the Left arrow key and the Right arrow key.
 The arrow keys do not work while you type in the search box.
 Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
+The Month view is for the monthly theme focus and review. Read [Plan your month](monthly-planning.md).
 
 ## Mark a task as done with Ctrl and a click
 

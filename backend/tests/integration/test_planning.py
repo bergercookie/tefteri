@@ -1,169 +1,62 @@
-"""Goals, plans, breakdown, deletion and the weekly, monthly and annual views."""
+"""Plans and the weekly, monthly and annual views after spec 006 (goals are annual only)."""
+
+from collections.abc import Awaitable, Callable
 
 from httpx import AsyncClient
 
 from tests.conftest import V1, connect_all
-from tests.fakes.world import FakeWorld
+from tests.integration.annual_helpers import create_goal, freeze, kr
+
+GOAL_YEAR = 2030
 
 
-async def _goal(api: AsyncClient, **over: str | None) -> dict[str, str]:
-    body: dict[str, str | None] = {
-        "period_type": "year",
-        "period_start": "2026-01-01",
-        "title": "Get fit",
-    }
-    body.update(over)
-    r = await api.post(f"{V1}/goals", json=body)
-    assert r.status_code == 201, r.text
-    result: dict[str, str] = r.json()
-    return result
-
-
-async def test_hierarchy_rules(api: AsyncClient) -> None:
-    year = await _goal(api)
-    month = await _goal(
-        api,
-        parent_id=year["id"],
-        period_type="month",
-        period_start="2026-11-01",
-        title="Run 100 km",
-    )
-    await _goal(
-        api, parent_id=month["id"], period_type="week", period_start="2026-11-02", title="Run 25 km"
-    )
-    misaligned = await api.post(
-        f"{V1}/goals", json={"period_type": "week", "period_start": "2026-11-03", "title": "x"}
-    )
-    assert misaligned.status_code == 422
-    outside = await api.post(
-        f"{V1}/goals",
-        json={
-            "parent_id": year["id"],
-            "period_type": "month",
-            "period_start": "2027-01-01",
-            "title": "x",
-        },
-    )
-    assert outside.status_code == 422 and outside.json()["code"] == "invalid"
-    same_level = await api.post(
-        f"{V1}/goals",
-        json={
-            "parent_id": month["id"],
-            "period_type": "month",
-            "period_start": "2026-11-01",
-            "title": "x",
-        },
-    )
-    assert same_level.status_code == 422
-
-
-async def test_breakdown_progress_roll_up_and_scheduling(
-    api: AsyncClient, world: FakeWorld
-) -> None:
+async def test_a_task_scheduled_in_a_week_shows_in_the_week_view(api: AsyncClient) -> None:
     ids = await connect_all(api)
     await api.post(f"{V1}/sync")
-    year = await _goal(api)
-    result = await api.post(
-        f"{V1}/goals/{year['id']}/breakdown",
-        json={
-            "goals": [
-                {"title": "Nov", "period_type": "month", "period_start": "2026-11-01"},
-                {"title": "Dec", "period_type": "month", "period_start": "2026-12-01"},
-            ],
-            "tasks": [{"connection_id": ids["vikunja"], "title": "Buy shoes"}],
-        },
+    created = await api.post(
+        f"{V1}/tasks", json={"connection_id": ids["vikunja"], "title": "Buy shoes"}
     )
-    assert result.status_code == 201, result.text
-    body = result.json()
-    assert [g["title"] for g in body["goals"]] == ["Nov", "Dec"]
-    task = body["tasks"][0]
-    assert task["goal_id"] == year["id"]
-    assert [t.title for t in world.tasks["default"].tasks.values()] == ["Buy shoes"]
+    assert created.status_code == 201, created.text
+    task = created.json()
 
-    def progress() -> float:
-        return float(year_goal["progress"])
-
-    year_goal = (await api.get(f"{V1}/goals", params={"period_type": "year"})).json()[0]
-    assert progress() == 0.0
-    await api.post(f"{V1}/tasks/{task['id']}/complete")
-    year_goal = (await api.get(f"{V1}/goals", params={"period_type": "year"})).json()[0]
-    assert abs(progress() - 1 / 3) < 0.01  # two empty month goals and one done task
-
-    # schedule the goal-derived task from a planning view
     sched = await api.put(
         f"{V1}/tasks/{task['id']}/schedule", json={"start": "2026-11-03T09:00:00+00:00"}
     )
     assert sched.status_code == 200
+
     week = (await api.get(f"{V1}/views/week/2026-11-03")).json()
     assert week["start"] == "2026-11-02" and week["end"] == "2026-11-09"
     assert [t["title"] for t in week["tasks"]] == ["Buy shoes"]
-    linked = (await api.get(f"{V1}/tasks", params={"goal_id": year["id"]})).json()
-    assert [t["title"] for t in linked] == ["Buy shoes"]
+    assert "goals" not in week and week["goal_titles"] == {}
 
 
-async def test_delete_keeps_or_deletes_linked_tasks_and_children(
-    api: AsyncClient, world: FakeWorld
-) -> None:
+async def test_a_task_linked_to_an_annual_goal_is_listed_and_titled(api: AsyncClient) -> None:
+    freeze(api)
     ids = await connect_all(api)
     await api.post(f"{V1}/sync")
-
-    async def make() -> tuple[dict[str, str], dict[str, str]]:
-        year = await _goal(api)
-        out = await api.post(
-            f"{V1}/goals/{year['id']}/breakdown",
-            json={
-                "goals": [{"title": "Nov", "period_type": "month", "period_start": "2026-11-01"}],
-                "tasks": [{"connection_id": ids["vikunja"], "title": f"T{year['id']}"[:8]}],
-            },
-        )
-        return year, dict(out.json()["tasks"][0])
-
-    year, task = await make()
-    assert (
-        await api.delete(f"{V1}/goals/{year['id']}", params={"linked_tasks": "keep"})
-    ).status_code == 204
-    kept = (await api.get(f"{V1}/tasks/{task['id']}")).json()
-    assert kept["goal_id"] is None  # task survives, unlinked
-    assert (
-        await api.get(f"{V1}/goals") and (await api.get(f"{V1}/goals")).json() == []
-    )  # children gone
-    assert len(world.tasks["default"].tasks) == 1
-
-    year2, task2 = await make()
-    await api.delete(f"{V1}/goals/{year2['id']}", params={"linked_tasks": "delete"})
-    assert (await api.get(f"{V1}/tasks/{task2['id']}")).status_code == 404
-    assert len(world.tasks["default"].tasks) == 1  # deleted in the app too
-    missing_option = await api.delete(f"{V1}/goals/{year2['id']}")
-    assert missing_option.status_code == 422
-
-
-async def test_delete_with_unreachable_task_app_changes_nothing(
-    api: AsyncClient, world: FakeWorld
-) -> None:
-    ids = await connect_all(api)
-    await api.post(f"{V1}/sync")
-    year = await _goal(api)
-    await api.post(
-        f"{V1}/goals/{year['id']}/breakdown",
-        json={"tasks": [{"connection_id": ids["vikunja"], "title": "T"}]},
+    goal = await create_goal(api, "Get fit", kr("Kilometres", year=GOAL_YEAR), year=GOAL_YEAR)
+    created = await api.post(
+        f"{V1}/tasks",
+        json={"connection_id": ids["vikunja"], "title": "Run", "goal_id": goal["id"]},
     )
-    world.tasks["default"].unavailable = True
-    r = await api.delete(f"{V1}/goals/{year['id']}", params={"linked_tasks": "delete"})
-    assert r.status_code == 502
-    world.tasks["default"].unavailable = False
-    assert len((await api.get(f"{V1}/goals")).json()) == 1
+    assert created.status_code == 201, created.text
+    task = created.json()
+    assert task["goal_id"] == goal["id"]
+    await api.put(f"{V1}/tasks/{task['id']}/schedule", json={"start": "2030-07-01T09:00:00Z"})
+
+    linked = (await api.get(f"{V1}/tasks", params={"goal_id": goal["id"]})).json()
+    assert [t["title"] for t in linked] == ["Run"]
+    month = (await api.get(f"{V1}/views/month/2030-07-01")).json()
+    assert month["goal_titles"] == {goal["id"]: {"title": "Get fit", "annual": True}}
 
 
-async def test_update_status_plans_and_month_year_views(api: AsyncClient) -> None:
-    goal = await _goal(api)
-    done = await api.patch(f"{V1}/goals/{goal['id']}", json={"status": "done"})
-    assert done.json()["status"] == "done" and done.json()["progress"] == 1.0
-
+async def test_plans_and_month_and_year_views(api: AsyncClient) -> None:
     plan = await api.post(
         f"{V1}/plans",
         json={"period_type": "year", "period_start": "2026-01-01", "title": "2026 resolutions"},
     )
-    assert plan.status_code == 201 and [g["title"] for g in plan.json()["goals"]] == ["Get fit"]
+    assert plan.status_code == 201, plan.text
+    assert "goals" not in plan.json()
     plans = (await api.get(f"{V1}/plans")).json()
     assert [p["title"] for p in plans] == ["2026 resolutions"]
     assert (await api.get(f"{V1}/plans/{plan.json()['id']}")).status_code == 200
@@ -174,12 +67,25 @@ async def test_update_status_plans_and_month_year_views(api: AsyncClient) -> Non
 
     month = (await api.get(f"{V1}/views/month/2026-11-15")).json()
     assert month["start"] == "2026-11-01" and month["end"] == "2026-12-01"
+    assert "goals" not in month
     year = (await api.get(f"{V1}/views/year/2026")).json()
-    assert year["entries"] == [] and [g["title"] for g in year["goals"]] == ["Get fit"]
+    assert year["entries"] == [] and "goals" not in year
 
 
-async def test_goals_belong_to_their_user(api: AsyncClient) -> None:
+async def test_plans_views_and_tasks_belong_to_their_user(
+    api: AsyncClient, make_user: Callable[[str], Awaitable[AsyncClient]]
+) -> None:
     unknown = "00000000-0000-0000-0000-000000000000"
-    assert (await api.patch(f"{V1}/goals/{unknown}", json={"title": "x"})).status_code == 404
     bad_link = await api.patch(f"{V1}/tasks/{unknown}", json={"goal_id": unknown})
     assert bad_link.status_code == 404
+    plan = (
+        await api.post(
+            f"{V1}/plans",
+            json={"period_type": "month", "period_start": "2026-11-01", "title": "Mine"},
+        )
+    ).json()
+
+    other = await make_user("bob")
+
+    assert (await other.get(f"{V1}/plans/{plan['id']}")).status_code == 404
+    assert (await other.get(f"{V1}/plans")).json() == []

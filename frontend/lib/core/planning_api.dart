@@ -24,9 +24,6 @@ class PlanningApi {
   /// `GET /views/week/{date}` (the week that holds [date]).
   Future<PeriodView> weekView(String date) => _period('/views/week/$date');
 
-  /// `GET /views/month/{date}` (the month that holds [date]).
-  Future<PeriodView> monthView(String date) => _period('/views/month/$date');
-
   /// `GET /views/year/{year}`.
   Future<PeriodView> yearView(int year) => _period('/views/year/$year');
 
@@ -35,76 +32,8 @@ class PlanningApi {
     return PeriodView.fromJson(r.data! as Map<String, dynamic>);
   }
 
-  /// `GET /goals` for one period, or for the children of [parentId].
-  Future<List<PlanGoal>> goals(
-      {String? periodType, String? periodStart, String? parentId}) async {
-    final r = await _dio.get<Object?>('/goals', queryParameters: {
-      if (periodType != null) 'period_type': periodType,
-      if (periodStart != null) 'period_start': periodStart,
-      if (parentId != null) 'parent_id': parentId,
-    });
-    return [
-      for (final g in (r.data as List? ?? const []))
-        PlanGoal.fromJson(g as Map<String, dynamic>),
-    ];
-  }
-
-  /// `POST /goals`.
-  Future<void> createGoal({
-    required String periodType,
-    required String periodStart,
-    required String title,
-    String? parentId,
-  }) =>
-      _dio.post<Object?>('/goals', data: {
-        if (parentId != null) 'parent_id': parentId,
-        'period_type': periodType,
-        'period_start': periodStart,
-        'title': title,
-      });
-
-  /// `POST /goals/bulk`: one goal for each of [titles], all in one period.
-  Future<void> createGoals({
-    required String periodType,
-    required String periodStart,
-    required List<String> titles,
-    String? parentId,
-  }) =>
-      _dio.post<Object?>('/goals/bulk', data: {
-        if (parentId != null) 'parent_id': parentId,
-        'period_type': periodType,
-        'period_start': periodStart,
-        'titles': titles,
-      });
-
-  /// `PATCH /goals/{id}` with new text. A null field stays as it is.
-  Future<void> updateGoal(String id,
-          {String? title, String? description, String? criteria}) =>
-      _dio.patch<Object?>('/goals/$id', data: {
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (criteria != null) 'criteria': criteria,
-      });
-
-  /// `PATCH /goals/{id}` with a new [status] (`active`, `done`, `dropped`).
-  Future<void> setGoalStatus(String id, String status) =>
-      _dio.patch<Object?>('/goals/$id', data: {'status': status});
-
-  /// `DELETE /goals/{id}`; child goals are deleted too. [deleteTasks]
-  /// decides what happens to linked tasks.
-  Future<void> deleteGoal(String id, {required bool deleteTasks}) =>
-      _dio.delete<Object?>('/goals/$id',
-          queryParameters: {'linked_tasks': deleteTasks ? 'delete' : 'keep'});
-
-  /// `POST /goals/{id}/breakdown`.
-  Future<void> breakdownGoal(
-          String id, List<GoalDraft> goals, List<TaskDraft> tasks) =>
-      _dio.post<Object?>('/goals/$id/breakdown', data: {
-        'goals': [for (final g in goals) g.toJson()],
-        'tasks': [for (final t in tasks) t.toJson()],
-      });
-
-  /// `PATCH /tasks/{id}` with a goal id; null removes the link.
+  /// `PATCH /tasks/{id}` with a goal id; null removes the link. Only an
+  /// active goal of this year's annual plan can be linked.
   Future<void> linkTaskToGoal(String id, String? goalId) =>
       _dio.patch<Object?>('/tasks/$id', data: {'goal_id': goalId});
 
