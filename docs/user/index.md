@@ -15,6 +15,7 @@ scheduling
 planning-goals
 organizing-projects
 weekly-planning
+work-categories
 reviews-and-retrospectives
 shortcuts
 conflicts

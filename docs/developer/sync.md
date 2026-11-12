@@ -28,6 +28,7 @@ sequenceDiagram
       App-->>Sync: items
       Sync->>DB: insert new rows, update changed rows
       Sync->>DB: mark missing rows deleted_remotely
+      Sync->>DB: record the work category of each task that is newly done
       Sync->>DB: release savepoint
     else unreachable, expired credentials or other error
       App-->>Sync: error
@@ -54,6 +55,16 @@ After a full sync of a task connection, the sync calls `MilestoneService.settle`
 milestone as done when no task stays open and at least one task has a completion. After a full sync,
 a task that the app no longer lists counts as dropped for good. Read
 [Weekly planning](weekly-planning.md#completion).
+
+After the task sync and the label reconcile, the sync calls `CategoryRecorder.record_new`. It
+runs in the same transaction. It stores the work category of each task that has the status done
+and has no row for its completion time. Before the upserts, the sync takes a snapshot of the open tasks and
+their projects (`_open_snapshot`). The recorder uses the snapshot in two cases. A task moved
+before its completion. Or a user reopened a task and completed it again within one second.
+
+If the recorder fails, the sync of that connection fails like any other failure. The quick sync of
+single projects (`sync_projects`) records too. `TaskService.complete` records a task that the user
+completes in tefteri at once. Read [Work categories and statistics](work-categories.md#the-recorder).
 
 The sync does not overwrite a row in the `conflict` state. The row stays as it is until the
 user solves the conflict.

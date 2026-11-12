@@ -21,6 +21,13 @@ The tests of weekly planning with milestones are in `unit/test_milestones.py`,
 `migrations/test_migrations.py` (migration 0019 with old rows). Read
 [Weekly planning](weekly-planning.md#test-it) for the list.
 
+The tests of work categories and statistics are in `unit/test_work_categories.py`,
+`unit/test_week_progress.py`, `unit/test_statistics_schema.py`,
+`integration/test_work_categories_*.py`, `integration/test_statistics_*.py`,
+`e2e/test_statistics_api.py` and `migrations/test_migrations.py` (migration 0021). The performance
+tests check a week of 1,000 tasks and a year of 20,000 tasks. Read
+[Work categories and statistics](work-categories.md#test-it) for the list.
+
 The fake apps are in `tests/fakes/`. They keep their items in memory, and a test can make
 them unreachable or make their credentials expire.
 

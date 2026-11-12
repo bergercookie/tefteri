@@ -49,6 +49,21 @@ same on every machine.
 - Motion is short (150 to 240 ms) and is skipped when the user asks for
   reduced motion (`Motion.of`). Pages fade in with a small rise.
 
+## Work categories
+
+The three work categories have one style each, in `features/statistics/category_style.dart`
+(`CategoryStyle`, `categoryStyle`). Each style uses theme colors only. The style never relies on
+color alone, so a greyscale picture still tells the three apart.
+
+| Category | Look | Mark |
+| --- | --- | --- |
+| Goal-aligned | A filled block in the primary color | Check |
+| Maintenance | A muted fill with a diagonal hatch | Repeat |
+| Off-plan | An open block with a 2 px outline in the task color | Compass |
+
+Each count tile, bar segment and badge uses the same style, and prints the name and the number.
+The hidden line is a quiet outlined line with a crossed eye.
+
 ## Navigation
 
 From 960 dp wide the views are a permanent left rail: icons with labels

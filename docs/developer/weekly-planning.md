@@ -288,11 +288,12 @@ runs the weekly flow and `move_task` against a real Vikunja.
 `frontend/test/screenshots/weekly_test.dart` makes the images `docs/images/weekly-*.png` from fake
 data. Run `just docs::screenshots` to make them again after you change the view.
 
-## Hand-over to feature 005
+## Completed work and statistics
 
-The weekly list "done outside the plan" belongs to feature 005. Until then:
-
-- `WeeklyService.done_outside_plan`, `ExtraDone`, `MAX_EXTRA_DONE` and the card
-  `week_progress_card.dart` stay as they are.
-- This feature adds no limit, no rule for maintenance work and no work category to that list.
-- Feature 005 replaces the service function and the card, and removes `MAX_EXTRA_DONE`.
+The weekly state has no list of tasks that the user did outside the plan. Feature 005 removed
+`done_outside_plan` from `GET /weekly/{day}` and removed `ExtraDone`, `MAX_EXTRA_DONE` and
+`WeeklyService.done_outside_plan`. The week page reads the counts, the days and the progress of
+the committed plan from `GET /statistics`, and the completed tasks from `GET /statistics/tasks`.
+`StatisticsService` computes the progress (`domain/week_progress.py`). The list has no limit.
+Maintenance work and work outside the plan have their own categories. Read
+[Work categories and statistics](work-categories.md).

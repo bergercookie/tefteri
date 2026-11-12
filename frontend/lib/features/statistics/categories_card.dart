@@ -139,20 +139,16 @@ class _Body extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (empty == null) ...[
-          const TermHint(
+          // One box for every term on the card: stacked boxes push the
+          // numbers below the fold on the first visit.
+          TermHint(
               id: 'category-terms',
               title: 'What these words mean',
-              terms: categoryTerms),
-          if (s.unsorted > 0)
-            const TermHint(
-                id: 'category-unsorted',
-                title: 'What this word means',
-                terms: unsortedTaskTerms),
-          if (s.hidden > 0)
-            const TermHint(
-                id: 'category-hidden',
-                title: 'What this word means',
-                terms: hiddenTaskTerms),
+              terms: [
+                ...categoryTerms,
+                if (s.unsorted > 0) ...unsortedTaskTerms,
+                if (s.hidden > 0) ...hiddenTaskTerms,
+              ]),
           CategoryCountsRow(
             counts: s.counts,
             percentages: s.percentages,
