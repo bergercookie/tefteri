@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Sort every completed task into one of three work categories: goal-aligned (work in a milestone project that was committed for the week), maintenance or off-plan (goal-type work that was not committed). Store the category once, when the task is first seen as completed, and never recompute it. Use one shared definition for any period, so the week, month and year views always agree. Show the three categories in one visual language, with counts and drill-down, and never hide or merge a category. Never track time. Source: `specs/planning-cycles/source-spec.md` (sections on daily execution and maintenance work, and on visual language and statistics), with the decisions in `specs/planning-cycles/decisions.md`."
 
