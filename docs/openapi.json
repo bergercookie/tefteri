@@ -102,7 +102,7 @@
         "properties": {
           "goals": {
             "items": {
-              "$ref": "#/components/schemas/GoalOut"
+              "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
             },
             "title": "Goals",
             "type": "array"
@@ -120,6 +120,126 @@
           "tasks"
         ],
         "title": "BreakdownOut",
+        "type": "object"
+      },
+      "BulkGoalIn": {
+        "description": "One goal of a bulk create.",
+        "properties": {
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkKeyResultIn"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "seeded_from_goal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seeded From Goal Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "BulkGoalIn",
+        "type": "object"
+      },
+      "BulkGoalsIn": {
+        "description": "Data to create several goals and their key results in one batch.",
+        "properties": {
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/BulkGoalIn"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "seeded_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seeded From"
+          }
+        },
+        "title": "BulkGoalsIn",
+        "type": "object"
+      },
+      "BulkKeyResultIn": {
+        "description": "One key result in a bulk create.",
+        "properties": {
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "seeded_from_key_result_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seeded From Key Result Id"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "theme_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Theme Ids",
+            "type": "array"
+          },
+          "update_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpdateSource"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "manual",
+            "title": "Update Source"
+          }
+        },
+        "required": [
+          "metric",
+          "start_value",
+          "target",
+          "deadline"
+        ],
+        "title": "BulkKeyResultIn",
         "type": "object"
       },
       "ByChangeOut": {
@@ -1632,6 +1752,22 @@
         "title": "EntryPatch",
         "type": "object"
       },
+      "GoalEditIn": {
+        "description": "New title for an annual goal.",
+        "properties": {
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "GoalEditIn",
+        "type": "object"
+      },
       "GoalIn": {
         "description": "Data to create a goal.",
         "properties": {
@@ -1678,70 +1814,6 @@
           "title"
         ],
         "title": "GoalIn",
-        "type": "object"
-      },
-      "GoalOut": {
-        "description": "A goal with its computed progress.",
-        "properties": {
-          "criteria": {
-            "title": "Criteria",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "parent_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "number"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "parent_id",
-          "period_type",
-          "period_start",
-          "title",
-          "description",
-          "criteria",
-          "status",
-          "progress"
-        ],
-        "title": "GoalOut",
         "type": "object"
       },
       "GoalPatch": {
@@ -2040,6 +2112,221 @@
         "title": "HistoryTotalsOut",
         "type": "object"
       },
+      "KeyResultCreateIn": {
+        "description": "Data to create a key result.",
+        "properties": {
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "theme_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Theme Ids",
+            "type": "array"
+          },
+          "update_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpdateSource"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "manual",
+            "title": "Update Source"
+          }
+        },
+        "required": [
+          "metric",
+          "start_value",
+          "target",
+          "deadline"
+        ],
+        "title": "KeyResultCreateIn",
+        "type": "object"
+      },
+      "KeyResultEditIn": {
+        "description": "Editable fields of a key result.",
+        "properties": {
+          "deadline": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "metric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "update_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpdateSource"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Update Source"
+          }
+        },
+        "title": "KeyResultEditIn",
+        "type": "object"
+      },
+      "KeyResultOut": {
+        "description": "One key result with its derived values and its flags (R-02, R-11, R-12).",
+        "properties": {
+          "current_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current At"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "goal_id": {
+            "format": "uuid",
+            "title": "Goal Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkOut"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "met": {
+            "title": "Met",
+            "type": "boolean"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "update_source": {
+            "title": "Update Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "goal_id",
+          "metric",
+          "start_value",
+          "target",
+          "deadline",
+          "update_source",
+          "status",
+          "current_value",
+          "current_at",
+          "progress",
+          "met",
+          "retired_at",
+          "flags",
+          "links"
+        ],
+        "title": "KeyResultOut",
+        "type": "object"
+      },
       "LabelsIn": {
         "description": "A bulk label change.",
         "properties": {
@@ -2096,6 +2383,78 @@
           "effect"
         ],
         "title": "LabelsOut",
+        "type": "object"
+      },
+      "LinkOut": {
+        "description": "One link period of a key result, as the plan shows it (R-04).",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "usable": {
+            "title": "Usable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "active",
+          "usable",
+          "state",
+          "label",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "LinkOut",
         "type": "object"
       },
       "LoginRequest": {
@@ -2801,7 +3160,7 @@
           },
           "goals": {
             "items": {
-              "$ref": "#/components/schemas/GoalOut"
+              "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
             },
             "title": "Goals",
             "type": "array"
@@ -3062,6 +3421,31 @@
         "title": "ProposalOut",
         "type": "object"
       },
+      "PushIn": {
+        "description": "One inbound push value.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "PushIn",
+        "type": "object"
+      },
       "ReminderIn": {
         "additionalProperties": false,
         "description": "How long before the due time to remind.",
@@ -3171,6 +3555,29 @@
           "resolution"
         ],
         "title": "ResolveIn",
+        "type": "object"
+      },
+      "RetireIn": {
+        "description": "Data for a retire or restore request.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RetireIn",
         "type": "object"
       },
       "RetrospectiveIn": {
@@ -4032,6 +4439,26 @@
         "title": "TaskPatch",
         "type": "object"
       },
+      "ThemeCreateIn": {
+        "description": "Create a theme project in a task app.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection_id",
+          "name"
+        ],
+        "title": "ThemeCreateIn",
+        "type": "object"
+      },
       "ThemeGroupOut": {
         "description": "A theme for the picker headers.",
         "properties": {
@@ -4086,6 +4513,26 @@
         "title": "ThemeGroupOut",
         "type": "object"
       },
+      "ThemeSetIn": {
+        "description": "Theme ids to link to one key result.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "theme_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Theme Ids",
+            "type": "array"
+          }
+        },
+        "title": "ThemeSetIn",
+        "type": "object"
+      },
       "ThemesOut": {
         "description": "The themes of the picker.",
         "properties": {
@@ -4135,21 +4582,6 @@
         "title": "TickIn",
         "type": "object"
       },
-      "UndoIn": {
-        "description": "The save to undo.",
-        "properties": {
-          "batch_id": {
-            "format": "uuid",
-            "title": "Batch Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "batch_id"
-        ],
-        "title": "UndoIn",
-        "type": "object"
-      },
       "UndoOut": {
         "description": "How many projects got their earlier label back.",
         "properties": {
@@ -4163,6 +4595,15 @@
         ],
         "title": "UndoOut",
         "type": "object"
+      },
+      "UpdateSource": {
+        "description": "Who keeps a key result's values up to date (spec 006, FR-004).",
+        "enum": [
+          "manual",
+          "automatic"
+        ],
+        "title": "UpdateSource",
+        "type": "string"
       },
       "UserIn": {
         "description": "Data to create a user.",
@@ -4321,6 +4762,32 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "ValueIn": {
+        "description": "A manual value entry.",
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ValueIn",
+        "type": "object"
+      },
       "WeeklyStateOut": {
         "description": "Everything the planning page shows for one week.",
         "properties": {
@@ -4462,6 +4929,21 @@
         "maxItems": 50,
         "type": "array"
       },
+      "tefteri__api__routers__annual__UndoIn": {
+        "description": "A batch to undo.",
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "title": "UndoIn",
+        "type": "object"
+      },
       "tefteri__api__routers__milestones__ThemeOut": {
         "description": "The parent theme of a milestone.",
         "properties": {
@@ -4482,12 +4964,76 @@
         "title": "ThemeOut",
         "type": "object"
       },
+      "tefteri__api__routers__planning__GoalOut": {
+        "description": "A goal with its computed progress.",
+        "properties": {
+          "criteria": {
+            "title": "Criteria",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_type": {
+            "title": "Period Type",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "period_type",
+          "period_start",
+          "title",
+          "description",
+          "criteria",
+          "status",
+          "progress"
+        ],
+        "title": "GoalOut",
+        "type": "object"
+      },
       "tefteri__api__routers__planning__PlanOut": {
         "description": "A plan and the goals of its period.",
         "properties": {
           "goals": {
             "items": {
-              "$ref": "#/components/schemas/GoalOut"
+              "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
             },
             "title": "Goals",
             "type": "array"
@@ -4669,6 +5215,21 @@
           "in_committed_plan"
         ],
         "title": "ProjectOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__projects__UndoIn": {
+        "description": "The save to undo.",
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "title": "UndoIn",
         "type": "object"
       },
       "tefteri__api__routers__reviews__ReviewOut": {
@@ -5209,6 +5770,91 @@
         ],
         "title": "ThemeOut",
         "type": "object"
+      },
+      "tefteri__services__annual_plan__GoalOut": {
+        "description": "One goal of the plan with its key results.",
+        "properties": {
+          "criteria_suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criteria Suggestion"
+          },
+          "flags": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/KeyResultOut"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "legacy_done": {
+            "title": "Legacy Done",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "legacy_done",
+          "criteria_suggestion",
+          "progress",
+          "flags",
+          "notes",
+          "updated_at",
+          "key_results"
+        ],
+        "title": "GoalOut",
+        "type": "object"
       }
     }
   },
@@ -5218,6 +5864,914 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/annual/goals/{goal_id}": {
+      "patch": {
+        "description": "Edit the title of one goal and record the change in plan history.",
+        "operationId": "edit_goal_api_v1_annual_goals__goal_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Goal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalEditIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tefteri__services__annual_plan__GoalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Goal",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/goals/{goal_id}/key-results": {
+      "post": {
+        "description": "Create a new key result for one goal.",
+        "operationId": "create_key_result_api_v1_annual_goals__goal_id__key_results_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Goal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyResultCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Key Result Api V1 Annual Goals  Goal Id  Key Results Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Key Result",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/goals/{goal_id}/restore": {
+      "post": {
+        "description": "Restore a retired goal and its key results.",
+        "operationId": "restore_goal_api_v1_annual_goals__goal_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Goal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Restore Goal Api V1 Annual Goals  Goal Id  Restore Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Goal",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/goals/{goal_id}/retire": {
+      "post": {
+        "description": "Retire a goal with all its active key results, or show a dry run preview.",
+        "operationId": "retire_goal_api_v1_annual_goals__goal_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Goal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Retire Goal Api V1 Annual Goals  Goal Id  Retire Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retire Goal",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/key-results/{key_result_id}": {
+      "patch": {
+        "description": "Edit the editable fields of a key result.",
+        "operationId": "edit_key_result_api_v1_annual_key_results__key_result_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyResultEditIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Edit Key Result Api V1 Annual Key Results  Key Result Id  Patch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Key Result",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/key-results/{key_result_id}/restore": {
+      "post": {
+        "description": "Restore a retired key result if a free slot exists.",
+        "operationId": "restore_key_result_api_v1_annual_key_results__key_result_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Restore Key Result Api V1 Annual Key Results  Key Result Id  Restore Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Key Result",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/key-results/{key_result_id}/retire": {
+      "post": {
+        "description": "Retire one key result, optionally previewing the effect without writing.",
+        "operationId": "retire_key_result_api_v1_annual_key_results__key_result_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Retire Key Result Api V1 Annual Key Results  Key Result Id  Retire Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retire Key Result",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/key-results/{key_result_id}/themes": {
+      "put": {
+        "description": "Set the active theme links of one key result.",
+        "operationId": "set_key_result_themes_api_v1_annual_key_results__key_result_id__themes_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeSetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Set Key Result Themes Api V1 Annual Key Results  Key Result Id  Themes Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Key Result Themes",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/key-results/{key_result_id}/value-on": {
+      "get": {
+        "description": "Return the last value on or before the selected date.",
+        "operationId": "get_value_on_api_v1_annual_key_results__key_result_id__value_on_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Value On Api V1 Annual Key Results  Key Result Id  Value On Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Value On",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/key-results/{key_result_id}/values": {
+      "get": {
+        "description": "Return the full value series of one key result, newest first.",
+        "operationId": "get_key_result_values_api_v1_annual_key_results__key_result_id__values_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response Get Key Result Values Api V1 Annual Key Results  Key Result Id  Values Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Key Result Values",
+        "tags": [
+          "annual"
+        ]
+      },
+      "post": {
+        "description": "Store a manual value for a key result.",
+        "operationId": "create_value_api_v1_annual_key_results__key_result_id__values_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValueIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Value Api V1 Annual Key Results  Key Result Id  Values Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Value",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/push-token": {
+      "delete": {
+        "description": "Revoke the user's push token.",
+        "operationId": "delete_push_token_api_v1_annual_push_token_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Push Token",
+        "tags": [
+          "annual"
+        ]
+      },
+      "get": {
+        "description": "Return whether a push token exists and, if so, its hint and timestamps.",
+        "operationId": "get_push_token_status_api_v1_annual_push_token_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Push Token Status Api V1 Annual Push Token Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Push Token Status",
+        "tags": [
+          "annual"
+        ]
+      },
+      "post": {
+        "description": "Create or rotate the user's push token.",
+        "operationId": "create_or_rotate_push_token_api_v1_annual_push_token_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Or Rotate Push Token Api V1 Annual Push Token Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Or Rotate Push Token",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/themes": {
+      "get": {
+        "description": "Return the eligible theme projects and task connections.",
+        "operationId": "get_theme_picker_api_v1_annual_themes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Theme Picker Api V1 Annual Themes Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Theme Picker",
+        "tags": [
+          "annual"
+        ]
+      },
+      "post": {
+        "description": "Create a theme project through the task app and label it as a theme.",
+        "operationId": "create_theme_api_v1_annual_themes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Theme Api V1 Annual Themes Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Theme",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/undo": {
+      "post": {
+        "description": "Undo the changes of one batch.",
+        "operationId": "undo_batch_api_v1_annual_undo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/tefteri__api__routers__annual__UndoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Undo Batch Api V1 Annual Undo Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo Batch",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/{year}": {
+      "get": {
+        "description": "Return the annual plan read model for one year.",
+        "operationId": "get_annual_plan_api_v1_annual__year__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Annual Plan Api V1 Annual  Year  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Annual Plan",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/{year}/goals/bulk": {
+      "post": {
+        "description": "Create several goals and key results in one transaction and one batch.",
+        "operationId": "bulk_create_goals_api_v1_annual__year__goals_bulk_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkGoalsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bulk Create Goals Api V1 Annual  Year  Goals Bulk Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Create Goals",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/{year}/history": {
+      "get": {
+        "description": "Return the history rows of the year, oldest first.",
+        "operationId": "get_annual_history_api_v1_annual__year__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "goal_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Goal Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key_result_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Key Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response Get Annual History Api V1 Annual  Year  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Annual History",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "description": "Exchange username and password for a session token.\n\nThe token is also set as an HttpOnly, SameSite=Strict cookie so the web client stays\nsigned in across reloads without page scripts ever being able to read the token.",
@@ -6349,7 +7903,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/GoalOut"
+                    "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
                   },
                   "title": "Response List Goals Api V1 Goals Get",
                   "type": "array"
@@ -6392,7 +7946,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoalOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
                 }
               }
             },
@@ -6435,7 +7989,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/GoalOut"
+                    "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
                   },
                   "title": "Response Create Goals Api V1 Goals Bulk Post",
                   "type": "array"
@@ -6458,6 +8012,78 @@
         "summary": "Create Goals",
         "tags": [
           "planning"
+        ]
+      }
+    },
+    "/api/v1/goals/history": {
+      "get": {
+        "description": "Return legacy month/week goals and retired or done year goals.",
+        "operationId": "get_legacy_goals_api_v1_goals_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Start"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Legacy Goals Api V1 Goals History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Legacy Goals",
+        "tags": [
+          "annual"
         ]
       }
     },
@@ -6540,7 +8166,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoalOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
                 }
               }
             },
@@ -6614,6 +8240,62 @@
         "summary": "Breakdown Goal",
         "tags": [
           "planning"
+        ]
+      }
+    },
+    "/api/v1/key-results/{key_result_id}/push": {
+      "post": {
+        "description": "Accept an automatic value from the push token of the owner.",
+        "operationId": "push_value_api_v1_key_results__key_result_id__push_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_result_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Push Value Api V1 Key Results  Key Result Id  Push Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push Value",
+        "tags": [
+          "push"
         ]
       }
     },
@@ -7465,7 +9147,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UndoIn"
+                "$ref": "#/components/schemas/tefteri__api__routers__projects__UndoIn"
               }
             }
           },

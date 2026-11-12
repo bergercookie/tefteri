@@ -218,7 +218,11 @@ async def update_task(
     fields: dict[str, Any] = body.model_dump(exclude_unset=True)
     goal_id: object = fields.pop("goal_id") if "goal_id" in fields else UNSET
     if goal_id not in (UNSET, None):
-        await _goals(request).get(db, user.id, uuid.UUID(str(goal_id)))  # must be the user's goal
+        goal_uuid = uuid.UUID(str(goal_id))
+        if task.goal_id == goal_uuid:
+            pass
+        elif await request.app.state.annual_service.linkable_goal(db, user.id, goal_uuid) is None:
+            raise Invalid("Only goals of this year's annual plan can be linked.", "goal_not_linkable")
     await service.update(db, user.id, task, goal_id=goal_id, **fields)
     return await _out(db, user.id, task)
 

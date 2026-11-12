@@ -18,6 +18,7 @@ PUBLIC = {
     "/api/v1/auth/login",
     "/api/v1/auth/methods",
     "/api/v1/connections/google/callback",
+    "/api/v1/key-results/{key_result_id}/push",
 }
 
 
