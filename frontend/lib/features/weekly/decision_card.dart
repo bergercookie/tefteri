@@ -151,8 +151,12 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
               ],
             ),
             if (p.doneState != null)
-              Text('Done when: ${p.doneState}',
-                  key: Key('look-done-state-${p.id}'), style: text.bodyMedium),
+              Padding(
+                padding: const EdgeInsets.only(top: Space.xs),
+                child: Text('Done when: ${p.doneState}',
+                    key: Key('look-done-state-${p.id}'),
+                    style: text.bodyMedium),
+              ),
             const SizedBox(height: Space.xs),
             Wrap(
               spacing: Space.md,
@@ -331,9 +335,9 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(child: markDone),
+            Expanded(flex: 2, child: markDone),
             const SizedBox(width: Space.md),
-            Expanded(child: archive),
+            Expanded(flex: 3, child: archive),
           ],
         );
       }),
@@ -424,13 +428,20 @@ class _ChoiceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // The label of the chip is hidden from the semantics tree and replaced by
-    // the longer one, so a screen reader says which milestone it is for. The
-    // chip keeps its selected state, tap action and keyboard focus.
+    // One semantics node with the longer label, so a screen reader says which
+    // milestone the choice is for. Keyboard focus is handled by the chip.
     return Semantics(
+      container: true,
+      excludeSemantics: true,
+      button: true,
+      enabled: true,
+      focusable: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
       label: '${decision.label} for $milestone',
+      onTap: onTap,
       child: ChoiceChip(
-        label: ExcludeSemantics(child: Text(decision.label)),
+        label: Text(decision.label),
         selected: selected,
         showCheckmark: false,
         avatar: selected

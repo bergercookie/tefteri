@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Change the existing weekly planning and look-back so that the unit of weekly commitment is a milestone project: a small project under a theme with a clear done-state, finishable in one week. The user commits up to three milestones (a warning, not a hard limit), picks tasks, and at the end of the week decides for each unfinished milestone whether to recommit it, park it, close it or decide later. Source: `specs/planning-cycles/source-spec.md`, with the decisions in `specs/planning-cycles/decisions.md`."
 

@@ -125,12 +125,12 @@ description: "Task list for feature 004-weekly-milestones"
 - [x] T086 [P] [US6] Update `docs/user/organizing-projects.md` (a milestone has a done-state; the weekly picker), `docs/user/troubleshooting.md` (the close choice is hidden; a move failed part way), and add one line to `docs/user/reviews-and-retrospectives.md` that the weekly look-back has no goals
 - [x] T087 [P] [US1] Rewrite `docs/developer/weekly-planning.md`: the tables, the rules that tests keep (the cap is a warning, a milestone once per week, decide later changes nothing, close after all moves), the flow as a diagram, the focus seam, the completion rule and the hand-over to feature 005
 - [x] T088 [P] [US6] Update `docs/developer/project-classification.md` (capability table gains `MOVE_TASKS`), `docs/developer/adding-an-adapter.md` (the `move_task` contract), `docs/developer/sync.md` (settle after a full sync) and `docs/developer/testing.md` (the new test files)
-- [ ] T089 [P] [US1] Rewrite `frontend/test/screenshots/weekly_test.dart` with fake data (picker with themes, new milestone dialog, cap warning, tasks step, review with decisions, close dialog, nudge, history with an old week); run `just docs::screenshots`; commit `docs/images/weekly-*.png` with alt text in the guide; look at every image in light and dark and at phone and desktop widths
-- [ ] T090 [US1] Browser walkthrough of quickstart section 2 with Playwright (Chromium) against a seeded live Vikunja and the built web client (`just serve`); two weeks in a row; save a screenshot per step in the scratchpad; record every confusing point, every cut-off text and every low-contrast element
-- [ ] T091 [US1] Fix every usability finding of T090 (wording, spacing, contrast, missing feedback, phone and dark mode, a stuck point in the review); repeat T090 until a first-time run has no stuck point; re-run `just docs::screenshots`
-- [ ] T092 Run `just lint` (includes markdownlint, Vale and `ruff`) and fix prose; run `just docs::check` and `just docs::build`
-- [ ] T093 Run `speckit-analyze` and `speckit-converge` for this feature; append any unbuilt work to this file and finish it
-- [ ] T094 Completion criteria for the feature: all tasks checked; `just test`, `just lint`, `just backend::test-postgres`, `just backend::live-vikunja`, `just docs::check` pass; the walkthrough passes; the open points O-1 to O-3 of plan.md are answered or recorded; spec status set to Implemented; push
+- [x] T089 [P] [US1] Rewrite `frontend/test/screenshots/weekly_test.dart` with fake data (picker with themes, new milestone dialog, cap warning, tasks step, review with decisions, close dialog, nudge, history with an old week); run `just docs::screenshots`; commit `docs/images/weekly-*.png` with alt text in the guide; look at every image in light and dark and at phone and desktop widths
+- [x] T090 [US1] Browser walkthrough of quickstart section 2 with Playwright (Chromium) against a seeded live Vikunja and the built web client (`just serve`); two weeks in a row; save a screenshot per step in the scratchpad; record every confusing point, every cut-off text and every low-contrast element
+- [x] T091 [US1] Fix every usability finding of T090 (wording, spacing, contrast, missing feedback, phone and dark mode, a stuck point in the review); repeat T090 until a first-time run has no stuck point; re-run `just docs::screenshots`
+- [x] T092 Run `just lint` (includes markdownlint, Vale and `ruff`) and fix prose; run `just docs::check` and `just docs::build`
+- [x] T093 Run `speckit-analyze` and `speckit-converge` for this feature; append any unbuilt work to this file and finish it
+- [x] T094 Completion criteria for the feature: all tasks checked; `just test`, `just lint`, `just backend::test-postgres`, `just backend::live-vikunja`, `just docs::check` pass; the walkthrough passes; the open points O-1 to O-3 of plan.md are answered or recorded; spec status set to Implemented; push
 
 ## Dependencies and order
 
@@ -146,3 +146,10 @@ US1, US2, US3 and US6 together are the minimum that gives value: commit mileston
 ## Totals
 
 94 tasks: Phase 1 14, Phase 2 8, Phase 3 31, Phase 4 9, Phase 5 22, Phase 6 10.
+
+## Completion record (2026-11-12)
+
+- Browser walkthrough (T090, T091): Chromium against the built web client, the real server and a live Vikunja, with a committed plan, a finished milestone and a close that moved a task in Vikunja. Findings fixed: the review needed four large option cards per unfinished milestone (now one row of four chips with one explanation line), neutral hints were painted in an alert tint (now a neutral surface and outlined buttons), the weekly close and look-back screenshots did not show the close dialog or the decision chips, a title touched its "Done when" line.
+- Checks: `just backend::test` 544 passed, `just backend::e2e` 27 passed, `just backend::test-postgres` 4 passed, `just backend::live-vikunja` 28 passed, `just frontend::test` 598 passed, `just frontend::analyze` and `format-check` clean, `just docs::check` and `just docs::build` passed, lint hooks passed (shfmt, taplo, hadolint and actionlint are not installed here).
+- Known gaps (converge, T093): the monthly focus is a no-op until feature 007 (`NoFocus`), so the focus highlight, the "outside focus" tag and the focus share do not appear yet; the UI has no editor for the done-state of an existing milestone (the API `PATCH /milestones/{id}` exists and the spec does not require the editor); reopening a closed milestone is offered on its review card only, not from the history.
+
