@@ -22,6 +22,8 @@ from tefteri.domain.entities import Container
 from tefteri.domain.enums import ConnectionKind, ConnectionStatus, SyncState
 from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable
 from tefteri.domain.ports import CalendarBackend, NoteBackend, TaskBackend
+from tefteri.services.category_recorder import CategoryRecorder
+from tefteri.services.commitments import WeeklyCommitments
 from tefteri.services.connections import ConnectionService
 from tefteri.services.milestones import UNFINISHED, MilestoneService
 from tefteri.services.mirror import anchor_all_day, entry_values, task_values
@@ -94,6 +96,11 @@ def _mark_deleted(existing: dict[str, Any], seen: set[str], counts: dict[str, in
             counts["deleted"] += 1
 
 
+def _open_snapshot(existing: dict[str, Any]) -> dict[uuid.UUID, uuid.UUID | None]:
+    """Return the container of each task that the cache holds as open, by task id."""
+    return {t.id: t.container_id for t in existing.values() if t.status != "done"}
+
+
 class SyncService:
     """Pull data from each connected app into the cache."""
 
@@ -102,14 +109,18 @@ class SyncService:
         connections: ConnectionService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         milestones: MilestoneService | None = None,
+        recorder: CategoryRecorder | None = None,
     ) -> None:
         """Use ``connections`` to build backends; ``clock`` is injectable for tests.
 
         ``milestones`` settles the milestones of the connection after a full sync (spec 004).
+        ``recorder`` stores the work category of each task that the sync sees as completed
+        (spec 005).
         """
         self._connections = connections
         self._clock = clock
         self._milestones = milestones or MilestoneService(connections)
+        self._recorder = recorder or CategoryRecorder(WeeklyCommitments(), clock)
         self._locks: dict[uuid.UUID, asyncio.Lock] = {}
 
     async def sync_all(self, db: AsyncSession, user_id: uuid.UUID) -> list[SyncResult]:
@@ -228,6 +239,7 @@ class SyncService:
                 await db.execute(select(Task).where(Task.connection_id == connection.id))
             ).scalars()
         }
+        previously_open = _open_snapshot(existing)
         for row in rows:
             seen: set[str] = set()
             container = Container(row.remote_id, row.name, row.parent_remote_id)
@@ -247,6 +259,7 @@ class SyncService:
                 {k: t for k, t in existing.items() if t.container_id == row.id}, seen, counts
             )
         await db.flush()
+        await self._recorder.record_new(db, connection.user_id, previously_open)
         return counts
 
     async def _sync_containers(
@@ -313,6 +326,9 @@ class SyncService:
             ).scalars()
         }
         seen: set[str] = set()
+        # The project of each open task before this sync decides the category of a task that was
+        # moved and completed between two syncs (spec 005, research R-03).
+        previously_open = _open_snapshot(existing)
         for container, container_row_id in containers.values():
             for item in (await backend.list_tasks(container, None)).items:
                 _upsert(
@@ -327,6 +343,8 @@ class SyncService:
                     task_values(item, container_row_id),
                 )
         _mark_deleted(existing, seen, counts)
+        await db.flush()
+        await self._recorder.record_new(db, connection.user_id, previously_open)
 
     async def _sync_calendar(
         self,

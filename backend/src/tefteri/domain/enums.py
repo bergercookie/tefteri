@@ -84,3 +84,31 @@ class ReviewDecision(StrEnum):
     PARK = "park"
     CLOSE = "close"
     DECIDE_LATER = "decide_later"
+
+
+class WorkCategory(StrEnum):
+    """The category of a completed task (spec 005).
+
+    ``goal_aligned``, ``maintenance`` and ``off_plan`` are the three work categories. ``hidden``
+    is not a work category: it is the count of tasks in ignored projects, which no statistic
+    includes in its total (FR-008).
+    """
+
+    GOAL_ALIGNED = "goal_aligned"
+    MAINTENANCE = "maintenance"
+    OFF_PLAN = "off_plan"
+    HIDDEN = "hidden"
+
+
+class CategoryReason(StrEnum):
+    """Why a completed task got its category (spec 005, data-model.md)."""
+
+    COMMITTED_MILESTONE = "committed_milestone"
+    MAINTENANCE_LABEL = "maintenance_label"
+    INSIDE_ROUTINE = "inside_routine"
+    MILESTONE_NOT_COMMITTED = "milestone_not_committed"
+    THEME = "theme"
+    UNCLASSIFIED = "unclassified"
+    NO_PROJECT = "no_project"
+    IGNORED = "ignored"
+    IGNORED_ANCESTOR = "ignored_ancestor"

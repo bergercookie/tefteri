@@ -189,3 +189,47 @@ async def test_weekly_milestones_on_postgres(pg_api: AsyncClient, world: FakeWor
     # Deleting the user removes the milestone rows through the cascades.
     sam = await pg_api.post(f"{V1}/users", json={"username": "sam", "password": "long enough pw"})
     assert (await pg_api.delete(f"{V1}/users/{sam.json()['id']}")).status_code == 204
+
+
+async def test_work_categories_and_statistics_on_postgres(
+    pg_api: AsyncClient, world: FakeWorld
+) -> None:
+    """Recording, the grouped counts, both paging orders (ties) and the cascade on PostgreSQL."""
+    backend = world.tasks["default"]
+    backend.containers.extend([Container("p2", "Zebra"), Container("p3", "apple")])
+    for project in ("p1", "p2", "p3"):
+        for n in range(3):
+            await backend.create_task(TaskDraft(project, f"{project} task {n}"))
+    await connect_all(pg_api)
+    await pg_api.post(f"{V1}/sync")
+    tasks = (await pg_api.get(f"{V1}/tasks", params={"due": "all"})).json()
+    for task in tasks:  # every completion has the same time: the order must still be stable
+        assert (await pg_api.post(f"{V1}/tasks/{task['id']}/complete")).status_code == 200
+    params = {"period": "week", "day": "2030-03-06"}
+    for period in ("week", "month", "year"):
+        body = (await pg_api.get(f"{V1}/statistics", params=params | {"period": period})).json()
+        assert body["counts"] == {"goal_aligned": 0, "maintenance": 0, "off_plan": 9}
+        assert body["unsorted"] == 9 and body["total"] == 9
+    for order in ("newest", "project"):
+        seen: list[str] = []
+        cursor = None
+        while True:
+            page = (
+                await pg_api.get(
+                    f"{V1}/statistics/tasks",
+                    params=params
+                    | {"order": order, "limit": 2}
+                    | ({"cursor": cursor} if cursor else {}),
+                )
+            ).json()
+            seen += [t["id"] for t in page["items"]]
+            cursor = page["next_cursor"]
+            if cursor is None:
+                break
+        assert len(seen) == len(set(seen)) == 9, order
+    first = (
+        await pg_api.get(f"{V1}/statistics/tasks", params=params | {"order": "project", "limit": 1})
+    ).json()["items"][0]
+    assert first["project"]["name"] == "apple"  # case-folded: apple before Inbox and Zebra
+    sam = await pg_api.post(f"{V1}/users", json={"username": "sam", "password": "long enough pw"})
+    assert (await pg_api.delete(f"{V1}/users/{sam.json()['id']}")).status_code == 204

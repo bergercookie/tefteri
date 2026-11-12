@@ -4,6 +4,8 @@ from httpx import AsyncClient
 
 from tests.conftest import V1, connect_all
 from tests.fakes.world import FakeWorld
+from tests.integration.conftest import ProjectsEnv
+from tests.integration.stats_helpers import Stats
 
 
 async def _ready(api: AsyncClient) -> dict[str, str]:
@@ -114,3 +116,38 @@ async def test_reopen_and_details(api: AsyncClient, world: FakeWorld) -> None:
     assert detail["project"] == "Inbox"
     assert detail["labels"] == []
     assert detail["url"] is None or detail["url"].endswith(f"/tasks/{remote.remote_id}")
+
+
+async def test_complete_records_the_category_at_once_with_the_cached_project(
+    env: ProjectsEnv,
+) -> None:
+    s = Stats(env)
+    await s.standard()
+    await s.add("p5", "Wash the car")  # Chores: maintenance
+    await s.sync()
+    task = await s.weekly.task("Wash the car")
+    done = await env.api.post(f"{V1}/tasks/{task['id']}/complete")
+    assert done.status_code == 200, done.text
+    row = (await s.rows())["Wash the car"]  # no sync in between
+    assert (row.category, row.reason, row.decided_via) == (
+        "maintenance",
+        "maintenance_label",
+        "app",
+    )
+    assert row.project_name == "Chores"
+    # The next sync sees the same task done at the same time: the row stays as it was.
+    before = await s.snapshot()
+    await s.sync()
+    assert await s.snapshot() == before
+
+
+async def test_a_refused_completion_writes_no_row(env: ProjectsEnv) -> None:
+    s = Stats(env)
+    await s.standard()
+    await s.add("p5", "Refused")
+    await s.sync()
+    task = await s.weekly.task("Refused")
+    s.backend.unavailable = True
+    failed = await env.api.post(f"{V1}/tasks/{task['id']}/complete")
+    assert failed.status_code == 502
+    assert await s.rows() == {}

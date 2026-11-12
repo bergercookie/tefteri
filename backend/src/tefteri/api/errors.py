@@ -1,6 +1,8 @@
 """API error model ``{"detail": ..., "code": ...}``."""
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -35,4 +37,11 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             {"detail": str(exc.detail), "code": f"http_{exc.status_code}"},
             status_code=exc.status_code,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+        # The body of FastAPI (``detail`` is the list of problems), plus the stable ``code``.
+        return JSONResponse(
+            {"detail": jsonable_encoder(exc.errors()), "code": "invalid"}, status_code=422
         )

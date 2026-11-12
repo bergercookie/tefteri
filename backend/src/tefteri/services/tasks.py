@@ -25,6 +25,8 @@ from tefteri.domain.planning_time import (
 from tefteri.domain.ports import TaskBackend
 from tefteri.domain.timeutil import overlaps
 from tefteri.services import conflicts
+from tefteri.services.category_recorder import CategoryRecorder
+from tefteri.services.commitments import WeeklyCommitments
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import BackendProblem, Invalid, NotFound, guard
 from tefteri.services.mirror import task_values, to_utc
@@ -35,9 +37,18 @@ UNSET = object()
 class TaskService:
     """Create, change, complete, delete and schedule tasks."""
 
-    def __init__(self, connections: ConnectionService, rng: Random | None = None) -> None:
-        """Use ``connections`` to reach each task app; ``rng`` picks random times (tests inject)."""
+    def __init__(
+        self,
+        connections: ConnectionService,
+        rng: Random | None = None,
+        recorder: CategoryRecorder | None = None,
+    ) -> None:
+        """Use ``connections`` to reach each task app; ``rng`` picks random times (tests inject).
+
+        ``recorder`` stores the work category of a task at once when the user completes it.
+        """
         self._connections = connections
+        self._recorder = recorder or CategoryRecorder(WeeklyCommitments())
         self._rng = rng or Random()  # noqa: S311 - not a security use
 
     async def _connection_of(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> Connection:
@@ -181,6 +192,7 @@ class TaskService:
         remote = await guard(connection, backend.complete_task(task.remote_id))
         self._apply(task, remote)
         await db.flush()
+        await self._recorder.record_completed(db, user_id, task)
         return task
 
     async def reopen(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> Task:

@@ -11,6 +11,7 @@ from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
 from tefteri.db.models.review import PeriodReview
 from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
+from tefteri.db.models.task_category import TaskCategory
 from tefteri.db.models.user import AuthSession, User
 from tefteri.db.models.weekly import WeeklyPlan, WeeklyPlanProject
 
@@ -31,6 +32,7 @@ __all__ = [
     "ProjectLabelHistory",
     "SourceContainer",
     "SyncRun",
+    "TaskCategory",
     "TaskNoteLink",
     "Task",
     "User",

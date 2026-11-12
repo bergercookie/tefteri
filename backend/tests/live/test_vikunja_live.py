@@ -637,3 +637,75 @@ async def test_create_a_project_and_label_it_creates_it_in_vikunja(
     # No label is ever written to the task app: Vikunja has no label with that name.
     labels = (await real.client.get(f"{real.base}/labels", headers=real.headers)).json() or []
     assert "theme" not in {label["title"] for label in labels}
+
+
+async def test_a_completed_task_keeps_its_category_through_a_move_a_reopen_and_a_delete(
+    tefteri: AsyncClient, real: RealVikunja, adapter: Adapter
+) -> None:
+    """Spec 005: the category is stored once, counts follow the task, a drop shows after sync."""
+    backend = adapter("UTC")
+    routine = await backend.create_container(_title("Routine"), None)
+    other = await backend.create_container(_title("Other"), None)
+    await _sync(tefteri)
+    projects = await _projects_by_name(tefteri)
+    saved = await tefteri.put(
+        f"{V1}/projects/labels",
+        json={
+            "changes": [
+                {"id": projects[routine.name]["id"], "label": "maintenance"},
+                {"id": projects[other.name]["id"], "label": "theme"},
+            ]
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    title = _title("Stored once")
+    created = await backend.create_task(TaskDraft(routine.remote_id, title))
+    await _sync(tefteri)
+    today = datetime.now(UTC).date()
+
+    async def listed(category: str) -> list[dict[str, Any]]:
+        r = await tefteri.get(
+            f"{V1}/statistics/tasks",
+            params={"period": "week", "day": str(today), "category": category, "limit": 200},
+        )
+        assert r.status_code == 200, r.text
+        items: list[dict[str, Any]] = r.json()["items"]
+        return [t for t in items if t["title"] == title]
+
+    async def count(category: str) -> int:
+        r = await tefteri.get(f"{V1}/statistics", params={"period": "week", "day": str(today)})
+        assert r.status_code == 200, r.text
+        return int(r.json()["counts"][category])
+
+    before = await count("maintenance")
+    done = await tefteri.post(f"{V1}/tasks/{(await _find(tefteri, title))['id']}/complete")
+    assert done.status_code == 200, done.text
+    (item,) = await listed("maintenance")  # recorded at once, with the project of the task
+    assert item["reason"] == "maintenance_label" and item["project"]["name"] == routine.name
+    assert await count("maintenance") == before + 1
+
+    # Moved to a theme project in Vikunja: the stored category does not change.
+    await real.update(created.remote_id, project_id=int(other.remote_id))
+    await _sync(tefteri)
+    (item,) = await listed("maintenance")
+    assert item["project"]["name"] == routine.name and not await listed("off_plan")
+    assert await count("maintenance") == before + 1
+
+    # Reopened in Vikunja: it is not counted while it is open.
+    await real.update(created.remote_id, done=False)
+    await _sync(tefteri)
+    assert not await listed("maintenance") and await count("maintenance") == before
+
+    # Completed again in Vikunja: a new completion, decided with the project it has now.
+    await real.update(created.remote_id, done=True)
+    await _sync(tefteri)
+    (item,) = await listed("off_plan")
+    assert item["reason"] == "theme" and item["project"]["name"] == other.name
+    assert await count("maintenance") == before
+
+    # Deleted in Vikunja: it stops counting after the next sync.
+    off_plan = await count("off_plan")
+    gone = await real.client.delete(f"{real.base}/tasks/{created.remote_id}", headers=real.headers)
+    assert gone.status_code == 200, gone.text
+    await _sync(tefteri)
+    assert await count("off_plan") == off_plan - 1 and not await listed("off_plan")

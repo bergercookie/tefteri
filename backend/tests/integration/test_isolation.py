@@ -130,3 +130,24 @@ async def test_deleting_a_user_deletes_their_data_only(
     assert (await api.delete(f"{V1}/users/{sam_id}")).status_code == 204
     assert (await sam.get(f"{V1}/tasks")).status_code == 401  # sessions are gone
     assert len((await api.get(f"{V1}/tasks")).json()) == 1  # the admin's data stays
+
+
+async def test_statistics_are_private(
+    api: AsyncClient, world: FakeWorld, make_user: MakeUser
+) -> None:
+    from tefteri.domain.entities import TaskDraft
+
+    await world.tasks["default"].create_task(TaskDraft("p1", "Private"))
+    await connect_all(api)
+    await api.post(f"{V1}/sync")
+    task = (await api.get(f"{V1}/tasks", params={"due": "all"})).json()[0]
+    await api.post(f"{V1}/tasks/{task['id']}/complete")  # recorded for the admin
+    mine = (await api.get(f"{V1}/statistics", params={"day": "2030-03-06"})).json()
+    assert mine["total"] == 1
+    other = await make_user("peer")
+    for path in ("/statistics", "/statistics/tasks"):
+        body = (
+            await other.get(f"{V1}{path}", params={"period": "year", "day": "2030-03-06"})
+        ).json()
+        assert body.get("total", 0) == 0 and body.get("hidden", 0) == 0
+        assert "Private" not in str(body)

@@ -32,6 +32,7 @@ class PeriodPage extends ConsumerStatefulWidget {
     required this.onShift,
     required this.onToday,
     this.banner,
+    this.footer,
     super.key,
   });
 
@@ -55,6 +56,9 @@ class PeriodPage extends ConsumerStatefulWidget {
 
   /// A widget above the lists, such as the weekly planning card.
   final Widget? banner;
+
+  /// A widget below the lists, such as the completed tasks of a week.
+  final Widget? footer;
 
   @override
   ConsumerState<PeriodPage> createState() => _PeriodPageState();
@@ -198,6 +202,10 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           Text('Tasks', style: heading),
           if (v.tasks.isEmpty) const Text('No tasks.', key: Key('no-tasks')),
           for (final t in v.tasks) _taskTile(t, v, titles),
+        ],
+        if (widget.footer != null) ...[
+          const SizedBox(height: 16),
+          widget.footer!,
         ],
       ],
     );

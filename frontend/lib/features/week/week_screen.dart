@@ -9,6 +9,8 @@ import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import '../goals/period_page.dart';
 import '../goals/periods.dart';
+import '../statistics/categories_card.dart';
+import '../statistics/completed_by_category.dart';
 import '../weekly/week_progress_card.dart';
 import '../weekly/weekly_card.dart';
 
@@ -54,8 +56,11 @@ class _WeekScreenState extends ConsumerState<WeekScreen> {
           WeeklyPlanningCard(week: _start, today: widget.today),
           const SizedBox(height: Space.sm),
           WeekProgressCard(week: _start, today: widget.today),
+          const SizedBox(height: Space.sm),
+          CategoriesCard(period: 'week', day: _start),
         ],
       ),
+      footer: CompletedByCategory(day: _start),
       onReload: () => ref.invalidate(weekViewProvider(key)),
       onShift: (d) => setState(() =>
           _start = DateTime(_start.year, _start.month, _start.day + 7 * d)),

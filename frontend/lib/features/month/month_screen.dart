@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
+import '../../theme/theme.dart';
 import '../checklists/checklist_panel.dart';
 import '../goals/period_page.dart';
 import '../goals/periods.dart';
+import '../statistics/categories_card.dart';
 
 /// Loads the month view for a `YYYY-MM-DD` key (any day of the month).
 final monthViewProvider =
@@ -45,8 +47,14 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       title: 'Month',
       label: '${monthName(_first.month)} ${_first.year}',
       view: ref.watch(monthViewProvider(key)),
-      banner:
+      banner: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CategoriesCard(period: 'month', day: _first),
+          const SizedBox(height: Space.sm),
           PlanningChecklist(kind: ChecklistKind.month, day: _first, card: true),
+        ],
+      ),
       onReload: () => ref.invalidate(monthViewProvider(key)),
       onShift: (d) =>
           setState(() => _first = DateTime(_first.year, _first.month + d, 1)),

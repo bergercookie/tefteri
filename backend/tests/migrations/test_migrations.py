@@ -1,6 +1,7 @@
 """Migration tests: pytest-alembic's built-in checks plus per-revision data checks."""
 
 from datetime import date, datetime
+from pathlib import Path
 
 import pytest
 from pytest_alembic import MigrationContext
@@ -410,3 +411,190 @@ _USER = {
     "disabled": False,
     "created_at": datetime(2026, 11, 1),
 }
+
+
+_U1 = "11111111-1111-1111-1111-111111111111"
+_CONN = "aaaaaaaa-0000-0000-0000-000000000001"
+_TASK = "bbbbbbbb-0000-0000-0000-000000000001"
+_LABEL = "cccccccc-0000-0000-0000-000000000001"
+
+
+def _seed_0019(alembic_runner: MigrationContext) -> None:
+    """A user, a task connection, a project and one done task, as 0019 leaves them."""
+    alembic_runner.insert_into("users", {"id": _U1} | _USER)
+    alembic_runner.insert_into(
+        "connections",
+        {
+            "id": _CONN,
+            "user_id": _U1,
+            "kind": "tasks",
+            "provider": "x",
+            "display_name": "T",
+            "settings": {},
+            "status": "ok",
+            "created_at": datetime(2026, 11, 1),
+        },
+    )
+    alembic_runner.insert_into(
+        "project_labels",
+        {
+            "id": _LABEL,
+            "user_id": _U1,
+            "connection_id": _CONN,
+            "remote_id": "p1",
+            "name": "Home",
+            "created_at": datetime(2026, 11, 1),
+        },
+    )
+    alembic_runner.insert_into(
+        "tasks",
+        {
+            "id": _TASK,
+            "user_id": _U1,
+            "connection_id": _CONN,
+            "remote_id": "t1",
+            "title": "Done long ago",
+            "description": "",
+            "status": "done",
+            "completed_at": datetime(2026, 10, 1, 9),
+            "all_day": False,
+            "labels": [],
+            "remote_version": "v1",
+            "sync_state": "synced",
+        },
+    )
+
+
+def _category(**over: object) -> dict[str, object]:
+    return {
+        "id": "dddddddd-0000-0000-0000-000000000001",
+        "user_id": _U1,
+        "task_id": _TASK,
+        "completed_at": datetime(2026, 10, 1, 9),
+        "completed_on": date(2026, 10, 1),
+        "category": "off_plan",
+        "reason": "theme",
+        "unsorted": False,
+        "project_id": _LABEL,
+        "project_name": "Home",
+        "project_label": "theme",
+        "plan_id": None,
+        "decided_via": "sync",
+        "decided_at": datetime(2026, 11, 1),
+    } | over
+
+
+def test_0021_creates_task_categories_and_adds_no_row_for_old_done_tasks(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0019")
+    _seed_0019(alembic_runner)
+    alembic_runner.migrate_up_to("0021")
+    insp = inspect(alembic_engine)
+    assert "task_categories" in insp.get_table_names()
+    uniques = [set(u["column_names"]) for u in insp.get_unique_constraints("task_categories")]
+    assert {"task_id"} in uniques
+    indexes = {i["name"]: i["column_names"] for i in insp.get_indexes("task_categories")}
+    assert indexes["ix_task_categories_user_day_category"] == [
+        "user_id",
+        "completed_on",
+        "category",
+    ]
+    assert indexes["ix_task_categories_user_category_completed"] == [
+        "user_id",
+        "category",
+        "completed_at",
+    ]
+    assert indexes["ix_task_categories_project_id"] == ["project_id"]
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from task_categories").scalar() == 0
+        assert conn.exec_driver_sql("select count(*) from tasks").scalar() == 1  # untouched
+    ondelete = {
+        k["constrained_columns"][0]: k["options"].get("ondelete")
+        for k in insp.get_foreign_keys("task_categories")
+    }
+    assert ondelete == {
+        "user_id": "CASCADE",
+        "task_id": "CASCADE",
+        "project_id": "SET NULL",
+        "plan_id": "SET NULL",
+    }
+    alembic_runner.migrate_down_one()
+    assert "task_categories" not in inspect(alembic_engine).get_table_names()
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from tasks").scalar() == 1
+
+
+def test_0021_refuses_a_duplicate_task_and_a_category_that_is_not_known(
+    alembic_runner: MigrationContext,
+) -> None:
+    alembic_runner.migrate_up_to("0019")
+    _seed_0019(alembic_runner)
+    alembic_runner.migrate_up_to("0021")
+    alembic_runner.insert_into("task_categories", _category())
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "task_categories", _category(id="dddddddd-0000-0000-0000-000000000002")
+        )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "task_categories",
+            _category(
+                id="dddddddd-0000-0000-0000-000000000003",
+                task_id="bbbbbbbb-0000-0000-0000-000000000002",
+                category="other",
+            ),
+        )
+
+
+def test_0021_deletes_cascade_and_a_deleted_project_label_sets_project_null(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0019")
+    _seed_0019(alembic_runner)
+    alembic_runner.migrate_up_to("0021")
+    alembic_runner.insert_into("task_categories", _category())
+    with alembic_engine.connect() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        conn.exec_driver_sql("delete from project_labels")
+        conn.commit()
+        assert conn.exec_driver_sql("select project_id from task_categories").scalar() is None
+        conn.exec_driver_sql("delete from tasks")
+        conn.commit()
+        assert conn.exec_driver_sql("select count(*) from task_categories").scalar() == 0
+    alembic_runner.insert_into(
+        "tasks",
+        {
+            "id": _TASK,
+            "user_id": _U1,
+            "connection_id": _CONN,
+            "remote_id": "t1",
+            "title": "Again",
+            "description": "",
+            "status": "done",
+            "all_day": False,
+            "labels": [],
+            "remote_version": "v1",
+            "sync_state": "synced",
+        },
+    )
+    alembic_runner.insert_into("task_categories", _category(project_id=None))
+    with alembic_engine.connect() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        conn.exec_driver_sql("delete from users")
+        conn.commit()
+        assert conn.exec_driver_sql("select count(*) from task_categories").scalar() == 0
+
+
+def test_the_head_revision_is_0021_and_it_follows_0019() -> None:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config()
+    config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
+    script = ScriptDirectory.from_config(config)
+    assert script.get_current_head() == "0021"
+    revision = script.get_revision("0021")
+    assert revision is not None
+    # Feature 006 reserves 0020. Until it exists, 0021 follows 0019 (see the migration file).
+    assert revision.down_revision in ("0019", "0020")

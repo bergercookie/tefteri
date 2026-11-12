@@ -139,6 +139,21 @@ class StatisticsService:
 - `ExtraDoneOut`, `MAX_EXTRA_DONE`, `ExtraDone` and `WeeklyService.done_outside_plan` in the code.
 - The Dart `ExtraDoneTask` and the `extra` parameter of `WeekProgress.of`.
 
+## As built (differences from the text above)
+
+The backend was built against this contract. These points are the only differences:
+
+- **`invalid` for every malformed query.** A bad `period`, `category`, `order` or `limit` (0, 201) gives 422 `{"detail": "...", "code": "invalid"}`. A value of the wrong type (`limit=x`, `day=not-a-date`) is refused by FastAPI. Its body is now `{"detail": [<list of problems>], "code": "invalid"}`: the old list in `detail` stays and the stable `code` is added. This applies to every route of the API, not only to these two (new handler in `api/errors.py`).
+- **`invalid_cursor`** is raised as the generic `Invalid` service error with that code, so `errors_map.py` needed no new entry. A cursor is refused when it does not decode, or when it was made for another `period`, `day`, `category` or `order`.
+- **`category` in the task list answer** is `null` when the request did not name a category (the three work categories are listed). It is the category name otherwise.
+- **Enum fields.** `category` and `reason` of an item, and `category` of the list answer, use the enum classes `WorkCategory` and `CategoryReason`: the OpenAPI document lists every value (`goal_aligned`, `maintenance`, `off_plan`, `hidden`; the nine reason codes). `period`, `part_kind`, `order`, `empty.reason`, `empty.action`, `unavailable_reason` and `sync.outcome` are plain strings.
+- **`progress`** is built from the committed task ids of the plan, from every project (a committed task that was moved to another project still counts), not from the tasks that are in the project now. `ideal_by_day` is rounded to 2 decimals. `cadence` and `needed_per_day` are `null` as in the Dart class. `progress` is `null` for a week with no committed plan and for a draft.
+- **`parts[].hidden`** is the hidden count of that part. `counts` of a part never holds a `hidden` key.
+- **`sync.outcome`** is `ok`, or the reason of the newest failed run (`auth_expired`, `unreachable`, `error`). `last_synced_at` is the end of the newest sync run of any task connection, also when it failed.
+- **`day`** and `period` are optional. `period` defaults to `week`, `day` to today in the time zone of the user.
+- **Recording** also runs for the quick sync of single projects (the focus view), so a task done there is recorded with the project it was last seen open in.
+- **Migration** `0021` follows `0019` because `0020` (feature 006) does not exist yet. Feature 006 must give `0020` the parent `0019` and change `down_revision` of `0021` to `0020`.
+
 ## Capability flags
 
 No change. The route reads only data that is already in the cache.

@@ -4,6 +4,7 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tefteri/features/goals/goals_screen.dart';
 import 'package:tefteri/features/month/month_screen.dart';
 import 'package:tefteri/features/week/week_screen.dart';
@@ -49,33 +50,6 @@ final _weeklyState = {
   'week_start': '2026-11-02',
   'week_end': '2026-11-09',
   'look_back': null,
-  // Done during the week, and not in the committed plan.
-  'done_outside_plan': [
-    {
-      'id': 'x1',
-      'title': 'Call the plumber',
-      'completed_day': '2026-11-03',
-      'project': 'Home',
-      'project_color': null,
-      'url': null,
-    },
-    {
-      'id': 'x2',
-      'title': 'Pay the electricity bill',
-      'completed_day': '2026-11-04',
-      'project': 'Taxes',
-      'project_color': null,
-      'url': null,
-    },
-    {
-      'id': 'x3',
-      'title': 'Reply to the landlord',
-      'completed_day': '2026-11-04',
-      'project': null,
-      'project_color': null,
-      'url': null,
-    },
-  ],
   'plan': {
     'id': 'plan1',
     'status': 'committed',
@@ -106,7 +80,99 @@ final _weeklyState = {
   },
 };
 
+/// The week of the fixture, as the server counts it: every completed task is
+/// in one of the three categories.
+final _weekDone = [
+  statTaskJson('d1', 'Update the pricing page',
+      category: 'goal_aligned',
+      completedDay: '2026-11-02',
+      project: 'Website',
+      reason: 'committed_milestone'),
+  statTaskJson('d2', 'Fix the contact form',
+      category: 'goal_aligned',
+      completedDay: '2026-11-03',
+      project: 'Website',
+      reason: 'committed_milestone'),
+  statTaskJson('d3', 'Take out the bins',
+      category: 'maintenance',
+      completedDay: '2026-11-03',
+      project: 'Chores',
+      reason: 'maintenance_label'),
+  statTaskJson('d4', 'Call the plumber',
+      category: 'off_plan',
+      completedDay: '2026-11-03',
+      project: 'Home',
+      reason: 'theme'),
+  statTaskJson('d5', 'Reply to the landlord',
+      category: 'off_plan',
+      completedDay: '2026-11-04',
+      project: null,
+      unsorted: true,
+      reason: 'no_project'),
+];
+
+/// `GET /statistics` for the week, the month and the year of the fixture.
+Object? _statistics(RequestOptions o) {
+  final progress = weekProgressJson(
+    committed: 8,
+    done: 5,
+    doneByDay: const [2, 1, 2, 0, 0, 0, 0],
+    daysElapsed: 3,
+    daysLeft: 5,
+    cadence: 5 / 3,
+    neededPerDay: 0.6,
+    remainingByDay: const [6, 5, 3, null, null, null, null],
+    scope: 8,
+    idealByDay: const [6.86, 5.71, 4.57, 3.43, 2.29, 1.14, 0.0],
+  );
+  List<Object?> days(List<List<int>> c) => [
+        for (var i = 0; i < 7; i++)
+          {
+            'start': '2026-11-0${2 + i}',
+            'end': '2026-11-0${3 + i}',
+            'counts': categoryCountsJson(c[i][0], c[i][1], c[i][2]),
+            'hidden': 0,
+          },
+      ];
+  return switch (o.queryParameters['period']) {
+    'month' => statisticsJson(
+        period: 'month',
+        start: '2026-11-01',
+        end: '2026-12-01',
+        goalAligned: 14,
+        maintenance: 9,
+        offPlan: 5,
+        hidden: 2,
+        unsorted: 1),
+    'year' => statisticsJson(
+        period: 'year',
+        start: '2026-01-01',
+        end: '2027-01-01',
+        goalAligned: 120,
+        maintenance: 70,
+        offPlan: 40,
+        hidden: 6),
+    _ => statisticsJson(
+        goalAligned: 2,
+        maintenance: 1,
+        offPlan: 2,
+        unsorted: 1,
+        progress: progress,
+        parts: days([
+          [1, 0, 0],
+          [1, 1, 1],
+          [0, 0, 1],
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ])),
+  };
+}
+
 FakeApi _api() => FakeApi({
+      'GET /statistics': _statistics,
+      'GET /statistics/tasks': fakeStatisticsTasks(_weekDone),
       'GET /checklists/year/2026-01-01': {
         'period_type': 'year',
         'period_start': '2026-01-01',
@@ -156,6 +222,8 @@ FakeApi _api() => FakeApi({
     });
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('weekly view', (tester) async {
     await pumpScreen(tester, _api(),
         WeekScreen(initialDate: day, today: DateTime(2026, 11, 4)));

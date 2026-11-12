@@ -89,6 +89,26 @@ const weeklyReviewTerms = [
   Term('Decide later', 'Changes nothing. The picker reminds you next time.'),
 ];
 
+/// The three work categories, explained once at their first use.
+const categoryTerms = [
+  Term('Goal-aligned', 'Work in a milestone that was committed for the week.'),
+  Term('Maintenance',
+      'Work in a routine project, like chores or admin. You never plan it.'),
+  Term('Off-plan', 'Goal work that was not committed for the week.'),
+];
+
+/// Unsorted tasks, explained when the first one shows.
+const unsortedTaskTerms = [
+  Term('Unsorted',
+      'Its project has no label, or it has no project. Tefteri counts it as off-plan.'),
+];
+
+/// Hidden tasks, explained when the first ones show.
+const hiddenTaskTerms = [
+  Term('Hidden',
+      'Tasks in ignored projects. They are not counted in any category.'),
+];
+
 /// The term for a milestone under a theme that is not in the month's focus.
 const outsideFocusTerms = [
   Term('Outside focus',

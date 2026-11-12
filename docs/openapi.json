@@ -421,6 +421,22 @@
         "title": "CapabilitiesOut",
         "type": "object"
       },
+      "CategoryReason": {
+        "description": "Why a completed task got its category (spec 005, data-model.md).",
+        "enum": [
+          "committed_milestone",
+          "maintenance_label",
+          "inside_routine",
+          "milestone_not_committed",
+          "theme",
+          "unclassified",
+          "no_project",
+          "ignored",
+          "ignored_ancestor"
+        ],
+        "title": "CategoryReason",
+        "type": "string"
+      },
       "ChangeIn": {
         "description": "One label change. ``label=null`` puts the project back to unclassified.",
         "properties": {
@@ -1240,6 +1256,30 @@
         "title": "ContainersSyncedOut",
         "type": "object"
       },
+      "CountsOut": {
+        "description": "Completed tasks per work category. The hidden count is not part of them.",
+        "properties": {
+          "goal_aligned": {
+            "title": "Goal Aligned",
+            "type": "integer"
+          },
+          "maintenance": {
+            "title": "Maintenance",
+            "type": "integer"
+          },
+          "off_plan": {
+            "title": "Off Plan",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "goal_aligned",
+          "maintenance",
+          "off_plan"
+        ],
+        "title": "CountsOut",
+        "type": "object"
+      },
       "DayView": {
         "description": "Aggregated data for the daily view.",
         "properties": {
@@ -1373,6 +1413,25 @@
           "in_committed_plan"
         ],
         "title": "EffectOut",
+        "type": "object"
+      },
+      "EmptyOut": {
+        "description": "Why a period has no number, and the action that helps.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "action"
+        ],
+        "title": "EmptyOut",
         "type": "object"
       },
       "EnabledIn": {
@@ -1571,65 +1630,6 @@
           }
         },
         "title": "EntryPatch",
-        "type": "object"
-      },
-      "ExtraDoneOut": {
-        "description": "A task that was completed during the week and was not in the committed plan.",
-        "properties": {
-          "completed_day": {
-            "format": "date",
-            "title": "Completed Day",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "project": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Project"
-          },
-          "project_color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Project Color"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "completed_day"
-        ],
-        "title": "ExtraDoneOut",
         "type": "object"
       },
       "GoalIn": {
@@ -2725,6 +2725,36 @@
         "title": "ParkedIn",
         "type": "object"
       },
+      "PartOut": {
+        "description": "One day or one month of a period.",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/CountsOut"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "counts",
+          "hidden"
+        ],
+        "title": "PartOut",
+        "type": "object"
+      },
       "PasswordChange": {
         "description": "Current and new password.",
         "properties": {
@@ -2886,6 +2916,115 @@
           "title"
         ],
         "title": "PlanIn",
+        "type": "object"
+      },
+      "ProgressOut": {
+        "description": "How far the committed plan of a week has come.",
+        "properties": {
+          "cadence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cadence"
+          },
+          "committed": {
+            "title": "Committed",
+            "type": "integer"
+          },
+          "days_elapsed": {
+            "title": "Days Elapsed",
+            "type": "integer"
+          },
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "done_after": {
+            "title": "Done After",
+            "type": "integer"
+          },
+          "done_before": {
+            "title": "Done Before",
+            "type": "integer"
+          },
+          "done_by_day": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Done By Day",
+            "type": "array"
+          },
+          "done_undated": {
+            "title": "Done Undated",
+            "type": "integer"
+          },
+          "ideal_by_day": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ideal By Day",
+            "type": "array"
+          },
+          "needed_per_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needed Per Day"
+          },
+          "on_track": {
+            "title": "On Track",
+            "type": "boolean"
+          },
+          "remaining_by_day": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Remaining By Day",
+            "type": "array"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "committed",
+          "done",
+          "done_before",
+          "done_undated",
+          "done_after",
+          "done_by_day",
+          "days_elapsed",
+          "days_left",
+          "cadence",
+          "needed_per_day",
+          "on_track",
+          "remaining_by_day",
+          "ideal_by_day",
+          "scope"
+        ],
+        "title": "ProgressOut",
         "type": "object"
       },
       "ProjectLabel": {
@@ -3271,6 +3410,239 @@
         "title": "SettingsPatch",
         "type": "object"
       },
+      "StatTaskOut": {
+        "description": "A completed task with its stored category.",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/WorkCategory"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "completed_day": {
+            "format": "date",
+            "title": "Completed Day",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/tefteri__api__routers__statistics__ProjectOut"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CategoryReason"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unsorted": {
+            "title": "Unsorted",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "completed_at",
+          "completed_day",
+          "category",
+          "reason",
+          "unsorted",
+          "project",
+          "url"
+        ],
+        "title": "StatTaskOut",
+        "type": "object"
+      },
+      "StatTasksOut": {
+        "description": "One page of completed tasks.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StatTaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "order": {
+            "title": "Order",
+            "type": "string"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period",
+          "start",
+          "end",
+          "category",
+          "order",
+          "total",
+          "items",
+          "next_cursor"
+        ],
+        "title": "StatTasksOut",
+        "type": "object"
+      },
+      "StatisticsOut": {
+        "description": "The counts of one period.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CountsOut"
+          },
+          "empty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmptyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "integer"
+          },
+          "part_kind": {
+            "title": "Part Kind",
+            "type": "string"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/PartOut"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
+          "percentages": {
+            "$ref": "#/components/schemas/CountsOut"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgressOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "sync": {
+            "$ref": "#/components/schemas/SyncOut"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "unsorted": {
+            "title": "Unsorted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period",
+          "start",
+          "end",
+          "available",
+          "unavailable_reason",
+          "counts",
+          "total",
+          "percentages",
+          "hidden",
+          "unsorted",
+          "part_kind",
+          "parts",
+          "empty",
+          "sync",
+          "progress"
+        ],
+        "title": "StatisticsOut",
+        "type": "object"
+      },
       "SummaryOut": {
         "description": "The numbers of the review. Time spent is never measured.",
         "properties": {
@@ -3330,6 +3702,40 @@
           "note"
         ],
         "title": "SummaryOut",
+        "type": "object"
+      },
+      "SyncOut": {
+        "description": "When the task apps were last synced.",
+        "properties": {
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          }
+        },
+        "required": [
+          "last_synced_at",
+          "outcome"
+        ],
+        "title": "SyncOut",
         "type": "object"
       },
       "SyncResultOut": {
@@ -3918,13 +4324,6 @@
       "WeeklyStateOut": {
         "description": "Everything the planning page shows for one week.",
         "properties": {
-          "done_outside_plan": {
-            "items": {
-              "$ref": "#/components/schemas/ExtraDoneOut"
-            },
-            "title": "Done Outside Plan",
-            "type": "array"
-          },
           "look_back": {
             "anyOf": [
               {
@@ -4043,6 +4442,17 @@
         ],
         "title": "WeeklyTaskOut",
         "type": "object"
+      },
+      "WorkCategory": {
+        "description": "The category of a completed task (spec 005).\n\n``goal_aligned``, ``maintenance`` and ``off_plan`` are the three work categories. ``hidden``\nis not a work category: it is the count of tasks in ignored projects, which no statistic\nincludes in its total (FR-008).",
+        "enum": [
+          "goal_aligned",
+          "maintenance",
+          "off_plan",
+          "hidden"
+        ],
+        "title": "WorkCategory",
+        "type": "string"
       },
       "_Items": {
         "items": {
@@ -4345,6 +4755,57 @@
           "retrospective"
         ],
         "title": "ReviewOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__statistics__ProjectOut": {
+        "description": "The project a task was in when it was completed.",
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "orphaned": {
+            "title": "Orphaned",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "orphaned"
+        ],
+        "title": "ProjectOut",
         "type": "object"
       },
       "tefteri__api__routers__tasks__TaskIn": {
@@ -7203,6 +7664,180 @@
         "summary": "Plan History",
         "tags": [
           "reviews"
+        ]
+      }
+    },
+    "/api/v1/statistics": {
+      "get": {
+        "description": "Return the counts of the week, month or year that holds ``day`` (default: today).\n\nEvery number is read from the stored categories. A week and a month are the sum of their\ndays, a year is the sum of its months, so the parts always add up to the counts. The hidden\ncount (tasks in ignored projects) is not part of ``total`` or of the percentages.",
+        "operationId": "statistics_api_v1_statistics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "week",
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "day",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatisticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Statistics",
+        "tags": [
+          "statistics"
+        ]
+      }
+    },
+    "/api/v1/statistics/tasks": {
+      "get": {
+        "description": "Return the completed tasks behind a count, one page at a time.\n\n``total`` is the number of tasks for the filter, not of the page, and it has no cap. Follow\n``next_cursor`` until it is ``null`` to reach every task. ``category`` omitted lists the three\nwork categories; ``hidden`` lists the tasks of ignored projects.",
+        "operationId": "statistics_tasks_api_v1_statistics_tasks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "week",
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "day",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatTasksOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Statistics Tasks",
+        "tags": [
+          "statistics"
         ]
       }
     },

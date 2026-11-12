@@ -14,6 +14,7 @@ import 'package:tefteri/features/daily/daily_screen.dart';
 import 'package:tefteri/features/settings/checklists_screen.dart';
 import 'package:tefteri/features/settings/connections_screen.dart';
 import 'package:tefteri/features/settings/settings_screen.dart';
+import 'package:tefteri/features/statistics/drilldown_screen.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
 
 import 'support/fake_api.dart';
@@ -42,6 +43,9 @@ Future<GoRouter> _pump(WidgetTester tester, {bool admin = false}) async {
     'GET /sync/status': {'last_sync_at': null, 'results': <Object?>[]},
     'GET /me/settings': {'random_time_on_date_drop': false},
     'GET /users': <Object?>[],
+    'GET /statistics/tasks': fakeStatisticsTasks([
+      statTaskJson('o1', 'Fix the gutter'),
+    ]),
     'GET /views/day/2026-11-04': {
       'date': '2026-11-04',
       'entries': <Object?>[],
@@ -179,5 +183,33 @@ void main() {
     router.go('/users');
     await tester.pumpAndSettle();
     expect(find.byType(UsersScreen), findsOneWidget);
+  });
+
+  testWidgets('the drill-down opens at /statistics with its filter',
+      (tester) async {
+    final router = await _pump(tester);
+    router.go('/statistics?period=week&day=2026-11-04&category=off_plan');
+    await tester.pumpAndSettle();
+    expect(find.byType(DrilldownScreen), findsOneWidget);
+    expect(find.text('Fix the gutter'), findsOneWidget);
+    expect(find.byKey(const Key('back-button')), findsOneWidget);
+  });
+
+  testWidgets('a drill-down link with a wrong filter says so', (tester) async {
+    final router = await _pump(tester);
+    router.go('/statistics?period=decade');
+    await tester.pumpAndSettle();
+    expect(find.text('This list cannot be opened.'), findsOneWidget);
+  });
+
+  testWidgets('the month and the year open at the day in the address',
+      (tester) async {
+    final router = await _pump(tester);
+    router.go('/month?date=2026-09-15');
+    await tester.pumpAndSettle();
+    expect(find.text('Sep 2026'), findsOneWidget);
+    router.go('/year?date=2025-03-01');
+    await tester.pumpAndSettle();
+    expect(find.text('2025'), findsOneWidget);
   });
 }
