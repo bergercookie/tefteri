@@ -4,11 +4,11 @@ from tefteri.db.models.connection import Connection
 
 
 def task_base_url(connection: Connection | None) -> str | None:
-    """The address of the task app, when it has pages for projects and tasks."""
-    if connection is not None and connection.provider == "vikunja":
-        base = str(connection.settings.get("base_url", "")).rstrip("/")
-        return base or None
-    return None
+    """Return a task connection's web base address when it provides one."""
+    if connection is None or connection.kind != "tasks":
+        return None
+    base = str(connection.settings.get("base_url", "")).rstrip("/")
+    return base or None
 
 
 def task_url(base: str | None, remote_id: str) -> str | None:

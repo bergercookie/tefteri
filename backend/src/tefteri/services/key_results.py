@@ -269,9 +269,36 @@ class KeyResultService:
             position=position,
         )
         db.add(row)
-        await db.flush()
+        await integrity_to_limit(lambda: db.flush())
+        batch_id = uuid.uuid4()
+        now = self._clock()
+        await write_batch(
+            db,
+            [
+                change(
+                    user_id,
+                    row.year,
+                    PlanChangeKind.KEY_RESULT_CREATED,
+                    goal_id=goal.id,
+                    key_result_id=row.id,
+                    new_value=metric,
+                )
+            ],
+            batch_id=batch_id,
+            source=source,
+            now=now,
+        )
         if trees is not None:
-            await self._apply_links(db, user_id, row, theme_ids, trees)
+            await self._apply_links(
+                db,
+                user_id,
+                row,
+                theme_ids,
+                trees,
+                batch_id=batch_id,
+                source=source,
+                now=now + MICROSECOND,
+            )
         return row
 
     async def edit(
@@ -506,6 +533,12 @@ class KeyResultService:
                     out[row.id] = (row.name, tree.connection.id)
         return out
 
+    def eligible_theme_keys(
+        self, trees: Iterable[ConnectionTree]
+    ) -> dict[uuid.UUID, tuple[str, uuid.UUID]]:
+        """Return the usable theme projects for bulk annual-plan creation (FR-012)."""
+        return self._eligible_theme_keys(trees)
+
     async def _apply_links(
         self,
         db: AsyncSession,
@@ -513,6 +546,10 @@ class KeyResultService:
         key_result: KeyResult,
         theme_ids: Sequence[uuid.UUID],
         trees: Iterable[ConnectionTree] | None,
+        *,
+        batch_id: uuid.UUID,
+        source: str,
+        now: datetime,
     ) -> list[KeyResultTheme]:
         """Create the active links of a new key result. ``not_a_theme`` for a bad id (FR-012)."""
         if not theme_ids:
@@ -520,10 +557,8 @@ class KeyResultService:
         if trees is None:
             raise Invalid("That project is not a live theme.", "not_a_theme")
         usable = self._eligible_theme_keys(trees)
-        now = self._clock()
-        batch_id = uuid.uuid4()
         links: list[KeyResultTheme] = []
-        for theme_id in theme_ids:
+        for index, theme_id in enumerate(theme_ids):
             if theme_id not in usable:
                 raise Invalid("That project is not a live theme.", "not_a_theme")
             links.append(
@@ -533,9 +568,9 @@ class KeyResultService:
                     key_result.id,
                     theme_id,
                     key_result.year,
-                    now=now,
+                    now=now + MICROSECOND * index,
                     batch_id=batch_id,
-                    source=ChangeSource.USER.value,
+                    source=source,
                 )
             )
         return links
@@ -836,7 +871,10 @@ async def integrity_to_limit(call: Callable[[], Any]) -> Any:
     try:
         return await call()
     except IntegrityError as exc:
-        if "uq_key_results_goal_slot" in str(exc):
+        message = str(exc).lower()
+        if "uq_key_results_goal_slot" in message or (
+            "key_results.goal_id" in message and "key_results.slot" in message
+        ):
             raise Conflict("key_result_limit", KEY_RESULT_LIMIT_MESSAGE) from exc
         raise
 

@@ -251,6 +251,10 @@ class AnnualPlanService:
         self._classification = classification
         self._clock = clock
 
+    def require_open(self, year: int, *, tz: str) -> None:
+        """Apply the shared past-year write guard for operations owned by key results (R-09)."""
+        require_open(year, today_in(tz, self._clock()))
+
     # -- reading ------------------------------------------------------------------------------
 
     async def _goal_rows(self, db: AsyncSession, user_id: uuid.UUID, year: int) -> list[Goal]:
@@ -459,6 +463,7 @@ class AnnualPlanService:
             if not title or len(title) > 500:
                 raise Invalid("The title must be 1 to 500 characters.")
             goal = Goal(
+                id=uuid.uuid4(),
                 user_id=user_id,
                 period_type="year",
                 period_start=date(year, 1, 1),
@@ -527,7 +532,7 @@ class AnnualPlanService:
                             link_id=link.id,
                         )
                     )
-                created.append((goal, [row]))
+            created.append((goal, key_result_rows))
         await db.flush()
         await write_batch(db, changes, batch_id=batch_id, source=source, now=now)
         return [
@@ -689,10 +694,11 @@ class AnnualPlanService:
         return RetireOutcome(effect, batch_id)
 
     async def restore_goal(
-        self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID
+        self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID, *, tz: str
     ) -> RestoreOutcome:
         """Restore a retired goal with the key results and links of its retire batch (FR-021)."""
         goal = await self._goal(db, user_id, goal_id)
+        require_open(goal.period_start.year, today_in(tz, self._clock()))
         if goal.status != GoalState.RETIRED.value:
             raise Conflict("already_retired", "This goal is not retired.")
         batch = await self._goal_retirement_batch(db, user_id, goal.id)
@@ -1063,7 +1069,13 @@ class AnnualPlanService:
         unsorted = 0
         connections: list[ThemeConnection] = []
         for tree in trees:
-            connections.append(ThemeConnection(tree.connection.id, tree.connection.name, True))
+            connections.append(
+                ThemeConnection(
+                    tree.connection.id,
+                    tree.connection.display_name,
+                    True,
+                )
+            )
             for row in tree.rows:
                 if row.orphaned_reason is not None:
                     continue

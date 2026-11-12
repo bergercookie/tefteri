@@ -122,6 +122,7 @@ async def start_link(
         project_id=project_id,
         year=year,
         started_at=now,
+        batch_id=batch_id,
     )
     db.add(link)
     await db.flush()
@@ -156,6 +157,7 @@ async def end_link(
     """End a link with a date and a reason; the row is kept (FR-013)."""
     link.ended_at = now
     link.end_reason = reason.value
+    link.batch_id = batch_id
     await db.flush()
     await write_batch(
         db,
@@ -187,6 +189,7 @@ async def end_links(
     for link in links:
         link.ended_at = now
         link.end_reason = reason.value
+        link.batch_id = batch_id
     if links:
         await db.flush()
     await write_batch(

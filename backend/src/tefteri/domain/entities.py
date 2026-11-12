@@ -8,12 +8,12 @@ from tefteri.domain.enums import ConnectionStatus
 
 @dataclass(frozen=True)
 class Container:
-    """A Vikunja project, a Google calendar or a Trilium subtree."""
+    """A project, calendar or note subtree from a connected app."""
 
     remote_id: str
     name: str
     parent_id: str | None = None
-    """``remote_id`` of the container this one is nested in (a Vikunja subproject), if any."""
+    """Remote id of the parent project when this project is nested."""
     color: str | None = None
     """The color that the user chose for it in the app, as ``#rrggbb`` (a Google calendar)."""
     read_only: bool = False
