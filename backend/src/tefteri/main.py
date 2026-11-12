@@ -17,6 +17,7 @@ from tefteri.adapters.trilium import TriliumNoteBackend
 from tefteri.adapters.vikunja import VikunjaTaskBackend
 from tefteri.api.errors import install_error_handlers
 from tefteri.api.errors_map import install_service_error_handlers
+from tefteri.api.routers import annual as annual_router
 from tefteri.api.routers import auth as auth_router
 from tefteri.api.routers import calendar as calendar_router
 from tefteri.api.routers import checklists as checklists_router
@@ -26,6 +27,7 @@ from tefteri.api.routers import milestones as milestones_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
+from tefteri.api.routers import push as push_router
 from tefteri.api.routers import reviews as reviews_router
 from tefteri.api.routers import settings as settings_router
 from tefteri.api.routers import statistics as statistics_router
@@ -41,6 +43,7 @@ from tefteri.db.base import Base
 from tefteri.db.session import create_engine, create_session_factory, session_scope
 from tefteri.domain.enums import ConnectionKind
 from tefteri.security.crypto import TokenCipher
+from tefteri.services.annual_plan import AnnualPlanService
 from tefteri.services.background_sync import BackgroundSync
 from tefteri.services.calendar import CalendarService
 from tefteri.services.category_recorder import CategoryRecorder
@@ -51,6 +54,7 @@ from tefteri.services.connections import AdapterRegistry, ConnectionService
 from tefteri.services.focus import NoFocus
 from tefteri.services.goals import GoalService
 from tefteri.services.google_oauth import GoogleOAuth
+from tefteri.services.key_results import KeyResultService
 from tefteri.services.milestone_close import MilestoneCloseService
 from tefteri.services.milestones import MilestoneService
 from tefteri.services.notes import NoteService
@@ -60,6 +64,7 @@ from tefteri.services.statistics import StatisticsService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 from tefteri.services.users import UserService
+from tefteri.services.value_push import PushTokenService
 from tefteri.services.weekly import WeeklyService
 
 
@@ -180,6 +185,12 @@ def create_app(
         NoFocus(),  # feature 007 supplies the monthly focus here
     )
     app.state.goal_service = GoalService(task_service)
+    key_result_service = KeyResultService(clock=lambda: datetime.now(UTC))
+    app.state.key_result_service = key_result_service
+    annual_service = AnnualPlanService(key_result_service, classification_service)
+    app.state.annual_service = annual_service
+    push_token_service = PushTokenService(key_result_service)
+    app.state.push_token_service = push_token_service
     app.state.calendar_service = CalendarService(connection_service)
     note_service = NoteService(connection_service)
     app.state.note_service = note_service
@@ -216,6 +227,8 @@ def create_app(
         notes_router,
         views_router,
         conflicts_router,
+        annual_router,
+        push_router,
         planning_router,
         reviews_router,
         weekly_router,
