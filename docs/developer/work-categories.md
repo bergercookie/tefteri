@@ -251,7 +251,9 @@ task of a list of 1,000.
 
 The response models use the enum classes `WorkCategory` and `CategoryReason` as field types. Do
 not write a `Literal` by hand. A `Literal` that missed a new value crashed the real API once. A
-unit test builds a response for every member of both enums.
+unit test builds a response for every member of both enums. The live test
+`backend/tests/live/test_statistics_live.py` starts the real server with uvicorn and reads every route
+over a real socket, with a real task app.
 
 ## Performance
 
