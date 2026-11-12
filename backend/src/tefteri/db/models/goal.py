@@ -1,16 +1,27 @@
-"""Goals and plans."""
+"""Goals and plans.
+
+A goal belongs to one period. Since spec 006 the annual plan is the only planning flow that
+owns goals: a row with ``period_type = 'year'`` is an annual goal, and month or week rows are
+read-only history (spec 006, FR-022).
+"""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Date, ForeignKey, String, Text, Uuid
+import sqlalchemy as sa
+from sqlalchemy import Date, DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from tefteri.db.base import Base, IdMixin
+from tefteri.db.base import Base, IdMixin, utcnow
 
 
 class Goal(IdMixin, Base):
-    """A goal for a year, month or week. ``progress`` is computed, never stored."""
+    """A goal for a planning year.
+
+    An annual goal is ``active`` or ``retired``; a legacy year row can still be ``done``
+    (treated as active). Month and week rows are history: they keep the old statuses
+    (``active``, ``done``, ``dropped``) and have no write route (spec 006, FR-023).
+    """
 
     __tablename__ = "goals"
 
@@ -25,8 +36,22 @@ class Goal(IdMixin, Base):
     title: Mapped[str] = mapped_column(String(500))
     description: Mapped[str] = mapped_column(Text, default="")
     criteria: Mapped[str] = mapped_column(Text, default="")
-    """What has to be true for the goal to count as complete (used by annual goals)."""
-    status: Mapped[str] = mapped_column(String(8), default="active")  # active|done|dropped
+    """The old criteria text (before annual planning). Offered as a key result metric
+    suggestion while the goal has no key result (spec 006, FR-024)."""
+    status: Mapped[str] = mapped_column(String(8), default="active")  # active|done|dropped|retired
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        server_default=sa.text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retired_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(default=0, server_default=sa.text("0"), nullable=False)
+
+    __table_args__ = (
+        sa.Index("ix_goals_user_period", "user_id", "period_type", "period_start"),
+    )
 
 
 class Plan(IdMixin, Base):

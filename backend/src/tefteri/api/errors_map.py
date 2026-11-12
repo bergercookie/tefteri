@@ -35,7 +35,9 @@ def install_service_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Conflict)
     async def _conflict(_: Request, exc: Conflict) -> JSONResponse:
-        return JSONResponse({"detail": exc.message, "code": exc.code}, status_code=409)
+        return JSONResponse(
+            {"detail": exc.message, "code": exc.code, **exc.extra}, status_code=409
+        )
 
     @app.exception_handler(Invalid)
     async def _invalid(_: Request, exc: Invalid) -> JSONResponse:

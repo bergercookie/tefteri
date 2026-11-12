@@ -100,6 +100,69 @@ class WorkCategory(StrEnum):
     HIDDEN = "hidden"
 
 
+class GoalState(StrEnum):
+    """The state of an annual goal (spec 006). ``done`` is a legacy state kept for history."""
+
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
+class UpdateSource(StrEnum):
+    """Who keeps a key result's values up to date (spec 006, FR-004)."""
+
+    MANUAL = "manual"
+    AUTOMATIC = "automatic"
+
+
+class ValueSource(StrEnum):
+    """Where a stored value of a key result came from (spec 006, FR-009)."""
+
+    MANUAL = "manual"
+    AUTOMATIC = "automatic"
+
+
+class PlanChangeKind(StrEnum):
+    """What a row of ``plan_changes`` records (spec 006, data-model.md)."""
+
+    GOAL_CREATED = "goal_created"
+    GOAL_EDITED = "goal_edited"
+    GOAL_RETIRED = "goal_retired"
+    GOAL_RESTORED = "goal_restored"
+    KEY_RESULT_CREATED = "key_result_created"
+    KEY_RESULT_EDITED = "key_result_edited"
+    KEY_RESULT_RETIRED = "key_result_retired"
+    KEY_RESULT_RESTORED = "key_result_restored"
+    LINK_ADDED = "link_added"
+    LINK_REMOVED = "link_removed"
+    MIGRATED = "migrated"
+
+
+class LinkEndReason(StrEnum):
+    """Why a link between a key result and a theme project ended (spec 006, FR-013)."""
+
+    REMOVED = "removed"
+    RELINKED = "relinked"
+    KEY_RESULT_RETIRED = "key_result_retired"
+    GOAL_RETIRED = "goal_retired"
+
+
+class ChangeSource(StrEnum):
+    """Where a plan change or a link change came from (spec 006)."""
+
+    USER = "user"
+    UNDO = "undo"
+    SEED = "seed"
+    MIGRATION = "migration"
+
+
+class YearState(StrEnum):
+    """Where a planning year stands relative to today (spec 006, FR-033)."""
+
+    PAST = "past"
+    CURRENT = "current"
+    FUTURE = "future"
+
+
 class CategoryReason(StrEnum):
     """Why a completed task got its category (spec 005, data-model.md)."""
 

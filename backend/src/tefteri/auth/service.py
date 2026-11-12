@@ -1,6 +1,5 @@
 """Admin bootstrap, login, session issuing and token authentication."""
 
-import hashlib
 import secrets
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -11,14 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.auth.passwords import hash_password, verify_password
 from tefteri.auth.throttle import LoginThrottle
 from tefteri.db.models.user import AuthSession, User
+from tefteri.security.tokens import digest_token as _digest
 
 
 class InvalidCredentials(Exception):
     """Username or password is wrong, or the account is disabled."""
-
-
-def _digest(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
 
 
 # Verified against when the user does not exist, so timing does not reveal valid usernames.
