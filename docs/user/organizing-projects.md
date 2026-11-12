@@ -11,6 +11,8 @@ Tefteri has four labels:
 - Theme. A long-running home for related work. A theme has no end. Examples are "Home" and
   "Open source".
 - Milestone. A small outcome that you can finish in about a week. A milestone sits inside a theme.
+  It has a done-state: one sentence that says when you finish it. You write the done-state when you
+  create a milestone in the weekly planning. Refer to [Plan your week](weekly-planning.md#create-a-milestone).
 - Routine. Work that repeats and never finishes, such as chores or admin. The menu and the
   buttons call this label Routine.
 - Ignored. A project that you do not want to plan with. Tefteri hides it from planning.
@@ -98,7 +100,7 @@ change its label.
 
 ## What Routine and Ignored do
 
-A routine project and an ignored project both leave the weekly planning list of projects. The
+A routine project and an ignored project both leave the weekly planning list of milestones. The
 difference is in the rest of tefteri:
 
 - A routine project stays in your daily list and in the planner. You still see its tasks.
@@ -178,7 +180,9 @@ Theme. If the task app refuses, tefteri creates nothing.
 When you add a project in your task app, tefteri finds it at the next sync. The project shows
 in the Unsorted group with a suggestion. Planning still works. The weekly planning view shows a
 quiet line that tells you how many projects have no label. Choose Label them to open the
-Projects view.
+Projects view. In the weekly picker, a project with no label and no subproject shows in the group
+Unsorted. When you add it to a week, tefteri labels it as milestone. Refer to
+[Plan your week](weekly-planning.md#step-2-choose-milestones).
 
 ## If something goes wrong
 

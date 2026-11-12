@@ -57,22 +57,25 @@ final _checklist = {
   'total': 5,
 };
 
-Future<void> _pump(WidgetTester tester, WeeklyServer s) => pumpScreen(
-    tester,
-    FakeApi({
-      ...s.allRoutes(),
-      'GET /checklists/week/$weekKey': _checklist,
-      // No refresh: the page would show the time of the check, which changes.
-      'POST /weekly/$weekKey/refresh':
-          const ApiFailure(502, 'offline', 'backend_unavailable'),
-      'GET /views/week/$weekKey':
-          periodJson('week', weekKey, '2030-03-11', entries: [
-        entryJson('e1', 'Team standup', DateTime(2030, 3, 5, 9)),
-        entryJson('e2', 'Dentist', DateTime(2030, 3, 7, 14)),
-      ]),
-    }),
-    WeeklyPlanningScreen(initialDate: DateTime(2030, 3, 6)),
-    overrides: _noPolling);
+Future<void> _pump(WidgetTester tester, WeeklyServer s,
+        {Map<String, Object?> extra = const {}}) =>
+    pumpScreen(
+        tester,
+        FakeApi({
+          ...s.allRoutes(),
+          ...extra,
+          'GET /checklists/week/$weekKey': _checklist,
+          // No refresh: the page would show the time of the check, which changes.
+          'POST /weekly/$weekKey/refresh':
+              const ApiFailure(502, 'offline', 'backend_unavailable'),
+          'GET /views/week/$weekKey':
+              periodJson('week', weekKey, '2030-03-11', entries: [
+            entryJson('e1', 'Team standup', DateTime(2030, 3, 5, 9)),
+            entryJson('e2', 'Dentist', DateTime(2030, 3, 7, 14)),
+          ]),
+        }),
+        WeeklyPlanningScreen(initialDate: DateTime(2030, 3, 6)),
+        overrides: _noPolling);
 
 Future<void> _open(WidgetTester tester, String step) async {
   await tester.tap(find.byKey(Key('check-$step')));
@@ -142,6 +145,58 @@ void main() {
     await tester.tap(find.byKey(const Key('milestone-create')));
     await tester.pumpAndSettle();
     await saveScreenshot('weekly-projects');
+  });
+
+  testWidgets('the picker, grouped by theme', (tester) async {
+    final s = _server()
+      ..focusKnown = true
+      ..chosen.add('p1');
+    s.themes = [
+      WeeklyServer.theme('tA', 'Work', inFocus: true, milestones: 1),
+      WeeklyServer.theme('tB', 'Home', inFocus: false, milestones: 2),
+    ];
+    for (final p in s.projects) {
+      if (p['theme'] == 'tA') p['in_focus'] = true;
+      if (p['theme'] == 'tB') p['in_focus'] = false;
+    }
+    await _pump(tester, s);
+    await _open(tester, 'projects');
+    await saveScreenshot('weekly-picker');
+  });
+
+  testWidgets('new milestone', (tester) async {
+    final s = _server();
+    await _pump(tester, s);
+    await _open(tester, 'projects');
+    await tester.tap(find.byKey(const Key('new-milestone')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('milestone-name')), 'Launch campaign');
+    await tester.enterText(
+        find.byKey(const Key('milestone-done-state')), 'The campaign is live');
+    await tester.pumpAndSettle();
+    await saveScreenshot('weekly-new-milestone');
+  });
+
+  testWidgets('more than three milestones', (tester) async {
+    final s = _server()..chosen.addAll(['p1', 'p2', 'p3', 'p4']);
+    await _pump(tester, s);
+    await _open(tester, 'projects');
+    await saveScreenshot('weekly-cap');
+  });
+
+  testWidgets('close a milestone', (tester) async {
+    final s = _server(lookBack: sampleLookBack());
+    await _pump(tester, s, extra: {
+      'POST /milestones/m-op2/close': {
+        'open_tasks': 2,
+        'theme': {'id': 'th-work', 'name': 'Work'},
+        'message': '2 open tasks will move to Work.',
+      },
+    });
+    await tester.tap(find.byKey(const Key('decision-close-op2')));
+    await tester.pumpAndSettle();
+    await saveScreenshot('weekly-close');
   });
 
   testWidgets('give tasks a day', (tester) async {

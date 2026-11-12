@@ -1,7 +1,8 @@
 # Review your plans and write retrospectives
 
 A plan holds the goals of one period: a year, a month or a week. At the end of the period, you
-can open a review of the plan. The review shows what you planned and what you completed. You
+can open a review of the plan. The weekly look-back in the planning session is a different thing. It
+has no goals. It works on milestones. Refer to [Plan your week](weekly-planning.md#step-1-look-back-at-the-week-before). The review shows what you planned and what you completed. You
 can also write a retrospective. Tefteri keeps your plans after the period ends.
 
 ## What a review shows

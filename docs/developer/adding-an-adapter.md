@@ -49,14 +49,39 @@ Never drop the data without a message.
 
 A task app must declare these capabilities, or tefteri refuses the connection with a message that
 names each missing one: `subprojects` (at least two levels), `project_tree`, `stable_project_ids`,
-`archive_projects`, `create_tasks` and `completion_times`. These are optional: `rename_projects`
-and `restore_projects`. Without an optional capability, tefteri hides only the feature that needs it.
+`archive_projects`, `create_tasks` and `completion_times`. These are optional: `rename_projects`,
+`restore_projects` and `move_tasks`. Without an optional capability, tefteri hides only the feature that needs it.
 Declare a capability only when the app does the work and keeps the result. Read
 [Project classification](project-classification.md#capabilities) for the full table.
 
 A task adapter also implements `rename_container` and `restore_container`. Read the project back
 after the write. Raise `NotSaved` if the app did not keep the change. An adapter must never
 write a label, a tag or a field to record a classification.
+
+## Move a task
+
+The capability `move_tasks` lets tefteri move a task to another project. Weekly planning uses it
+to close a milestone and return its open tasks to the parent theme, and to undo that close. Without
+it, tefteri hides the close choice and all other choices work as usual. Declare it only when the
+app keeps the move.
+
+Implement `move_task(remote_id, container, expected_version)`. It returns the task, as
+`get_task` returns it.
+
+- Move the task to `container`. The task keeps its identity, its title and its due date. The
+  Vikunja adapter changes the `project_id` of the task.
+- Read the task back after the write. Raise `NotSaved` when the task is not in `container`.
+- Raise `RemoteConflict` when `expected_version` is not the current version.
+- Return the new version in the result. The caller needs it for the next write, for example the
+  move back.
+- Without the capability, raise `NotSupported` with `Capability.MOVE_TASKS`.
+- Do not write a second date, a label or a tag.
+
+The tests of this contract are in `backend/tests/integration/test_backend_contracts.py`. They check
+the move, the new version, a refused move, a move that the app ignores and a stale version.
+The fake backend has the switch `ignore_moves` for the last case. The tests skip an adapter that
+does not declare the capability. Read [Weekly planning](weekly-planning.md#close-and-return) for the
+use of the operation.
 
 ## Errors
 

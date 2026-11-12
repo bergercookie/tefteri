@@ -16,6 +16,11 @@ The backend tests are in `backend/tests/`:
 | `migrations/` | The Alembic migrations (pytest-alembic). |
 | `smoke/` | The server image, alone and through `deploy/compose.yaml`. `just deploy::smoke` runs them. |
 
+The tests of weekly planning with milestones are in `unit/test_milestones.py`,
+`integration/test_milestone_*.py`, `integration/test_weekly_*.py`, `e2e/test_milestones_api.py` and
+`migrations/test_migrations.py` (migration 0019 with old rows). Read
+[Weekly planning](weekly-planning.md#test-it) for the list.
+
 The fake apps are in `tests/fakes/`. They keep their items in memory, and a test can make
 them unreachable or make their credentials expire.
 

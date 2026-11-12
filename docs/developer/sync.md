@@ -50,6 +50,11 @@ each new project. It marks a project that the app no longer lists as orphaned wi
 `missing`, and it clears the mark when the project returns. It never deletes a row and never
 changes a label. Read [Project classification](project-classification.md#orphans).
 
+After a full sync of a task connection, the sync calls `MilestoneService.settle`. It marks each
+milestone as done when no task stays open and at least one task has a completion. After a full sync,
+a task that the app no longer lists counts as dropped for good. Read
+[Weekly planning](weekly-planning.md#completion).
+
 The sync does not overwrite a row in the `conflict` state. The row stays as it is until the
 user solves the conflict.
 

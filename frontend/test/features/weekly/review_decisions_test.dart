@@ -30,19 +30,20 @@ Future<dynamic> _pump(
 
 void main() {
   testWidgets(
-      'each unfinished milestone offers four choices with one '
-      'sentence each', (tester) async {
+      'each unfinished milestone offers four chips and explains only the '
+      'selected one', (tester) async {
     await _pump(tester);
     for (final d in Decision.values) {
       expect(find.byKey(Key('decision-${d.api}-op2')), findsOneWidget,
           reason: d.api);
       expect(find.text(d.label), findsOneWidget, reason: d.label);
-      expect(find.text(d.sentence), findsOneWidget, reason: d.sentence);
+      expect(find.text(d.sentence), findsNothing, reason: d.sentence);
     }
-    expect(find.text('Keep and recommit'), findsOneWidget);
-    expect(find.text('Keep but park'), findsOneWidget);
-    expect(find.text('Close and return tasks'), findsOneWidget);
-    expect(find.text('Decide later'), findsOneWidget);
+    expect(find.text('Choose what happens to this milestone.'), findsOneWidget);
+    await tapKey(tester, 'decision-park-op2');
+    expect(find.text(Decision.park.sentence), findsOneWidget);
+    expect(find.text(Decision.recommit.sentence), findsNothing);
+    expect(find.text('Choose what happens to this milestone.'), findsNothing);
     expect(find.text('Prune roses'), findsOneWidget);
     expect(find.text('Done when: The beds are planted'), findsOneWidget);
   });

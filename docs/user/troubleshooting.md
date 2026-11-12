@@ -24,6 +24,22 @@ Common causes:
 To fix the problem, try the change again in the app itself. If the app also takes the change back,
 the cause is in the app. Tell your administrator the name of the connection and the time of the change.
 
+## The choice Close and return tasks is missing, or a close stops part way
+
+In the weekly look-back, a line under the choices tells you why the choice Close and return tasks
+is missing. These are the causes:
+
+- The milestone is not inside a theme. Label a project as theme in the Projects view, and move the
+  milestone under it in your task app.
+- You ignored the theme, or it is no longer in your task app. Give the theme another label, or choose
+  another theme.
+- Your task app cannot move tasks from one project to another. The other choices still work.
+
+If the move fails part way, the milestone stays open. The window lists the tasks that moved already.
+Fix the problem in your task app or the connection. Then choose Try again. Tefteri moves only the
+tasks that remain. To undo a close, choose Reopen on the card of the milestone. Refer to
+[Plan your week](weekly-planning.md#close-a-milestone-and-return-its-tasks).
+
 ## Rules that tefteri follows
 
 - Tefteri always tells you which connection failed and why.

@@ -75,7 +75,7 @@ class _InlineAddTaskState extends State<InlineAddTask> {
               ),
             ),
             const SizedBox(width: Space.sm),
-            FilledButton.tonal(
+            OutlinedButton(
               key: Key('add-task-$id'),
               onPressed: _busy ? null : _add,
               child: const Text('Add task'),

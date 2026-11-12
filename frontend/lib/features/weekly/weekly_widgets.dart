@@ -163,7 +163,8 @@ class Counter extends StatelessWidget {
   }
 }
 
-/// A tinted note with an icon, for what the user should do next.
+/// A neutral note with an icon, for what the user should do next. It is not
+/// tinted: the tint is for errors and warnings.
 class Notice extends StatelessWidget {
   /// Creates the note.
   const Notice(
@@ -187,14 +188,17 @@ class Notice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(Space.md),
       decoration: BoxDecoration(
-        color: colors.taskContainer,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        border: Border.all(color: colors.rule),
         borderRadius: BorderRadius.circular(Corner.md),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 20, color: colors.task),
+            Icon(icon,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(width: Space.md),
           ],
           Expanded(

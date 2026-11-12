@@ -136,6 +136,7 @@ flowchart LR
 `WeeklyService.candidates` lists only weekly-eligible projects. Each item has the field `unsorted`,
 which is true when the project has no label. The client counts these items for the quiet reminder in
 the weekly planning view. `GET /projects/classification` has the total in `unsorted_count`.
+Read [Weekly planning](weekly-planning.md) for the milestone picker that builds on it.
 
 ## Capabilities
 
@@ -152,6 +153,7 @@ Each task adapter declares what it can do in `capabilities()`. The table is in
 | `completion_times` | Cadence and statistics. | Yes |
 | `rename_projects` | Rename from tefteri. | No |
 | `restore_projects` | Undo of an archive. | No |
+| `move_tasks` | Close a milestone and return its tasks to the theme, and undo it. | No |
 
 When the user connects a task app, `ConnectionService` calls `missing_required`. A task app that
 lacks a needed capability gets the answer 422 `missing_capability`. The message names each
