@@ -2,12 +2,12 @@
 
 import uuid
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 from tefteri.api.deps import CurrentUser, Db
-from tefteri.db.models.goal import Goal
 from tefteri.domain.enums import UpdateSource, ValueSource
 from tefteri.services.annual_plan import (
     AnnualPlanService,
@@ -30,9 +30,7 @@ def _key_results(request: Request) -> KeyResultService:
     return request.app.state.key_result_service
 
 
-async def _plan_of(
-    request: Request, db: Db, user: CurrentUser, year: int
-) -> object:
+async def _plan_of(request: Request, db: Db, user: CurrentUser, year: int) -> object:
     return await _annual(request).plan(db, user.id, year, tz=user.timezone)
 
 
@@ -144,6 +142,16 @@ class UndoIn(BaseModel):
     batch_id: uuid.UUID
 
 
+@router.get("/annual/themes")
+async def get_theme_picker(
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+) -> object:
+    """Return the eligible theme projects and task connections."""
+    return await _annual(request).themes(db, user.id, year=date.today().year)
+
+
 @router.get("/annual/{year}")
 async def get_annual_plan(
     year: int,
@@ -175,7 +183,7 @@ async def get_value_on(
     request: Request,
     db: Db,
     user: CurrentUser,
-    date_: date = Query(..., alias="date"),
+    date_: Annotated[date, Query(alias="date")],
 ) -> object:
     """Return the last value on or before the selected date."""
     service = _key_results(request)
@@ -246,9 +254,7 @@ async def edit_goal(
     user: CurrentUser,
 ) -> GoalOut:
     """Edit the title of one goal and record the change in plan history."""
-    goal = await _annual(request).edit_goal(
-        db, user.id, goal_id, body.title, tz=user.timezone
-    )
+    goal = await _annual(request).edit_goal(db, user.id, goal_id, body.title, tz=user.timezone)
     plan = await _plan_of(request, db, user, goal.period_start.year)
     found = await _goal_from_plan(plan, goal_id)
     if found is None:
@@ -278,6 +284,7 @@ async def create_key_result(
     """Create a new key result for one goal."""
     service = _annual(request)
     goal = await service._goal(db, user.id, goal_id)
+    service.require_open(goal.period_start.year, tz=user.timezone)
     trees = await load_trees(db, user.id)
     key_result = await _key_results(request).create(
         db,
@@ -310,6 +317,7 @@ async def edit_key_result(
     """Edit the editable fields of a key result."""
     kr_service = _key_results(request)
     key_result = await kr_service.get(db, user.id, key_result_id)
+    _annual(request).require_open(key_result.year, tz=user.timezone)
     await kr_service.edit(
         db,
         user.id,
@@ -356,6 +364,7 @@ async def retire_key_result(
 ) -> object:
     """Retire one key result, optionally previewing the effect without writing."""
     key_result = await _key_results(request).get(db, user.id, key_result_id)
+    _annual(request).require_open(key_result.year, tz=user.timezone)
     trees = await load_trees(db, user.id)
     nodes = {k: v for tree in trees for k, v in tree.nodes.items()}
     links_of = {key_result_id: await _key_results(request).active_links(db, key_result)}
@@ -379,7 +388,7 @@ async def restore_goal(
     user: CurrentUser,
 ) -> object:
     """Restore a retired goal and its key results."""
-    return await _annual(request).restore_goal(db, user.id, goal_id)
+    return await _annual(request).restore_goal(db, user.id, goal_id, tz=user.timezone)
 
 
 @router.post("/annual/key-results/{key_result_id}/restore")
@@ -391,6 +400,7 @@ async def restore_key_result(
 ) -> object:
     """Restore a retired key result if a free slot exists."""
     key_result = await _key_results(request).get(db, user.id, key_result_id)
+    _annual(request).require_open(key_result.year, tz=user.timezone)
     trees = await load_trees(db, user.id)
     return await _key_results(request).restore(db, user.id, key_result, trees=trees)
 
@@ -405,6 +415,7 @@ async def set_key_result_themes(
 ) -> object:
     """Set the active theme links of one key result."""
     key_result = await _key_results(request).get(db, user.id, key_result_id)
+    _annual(request).require_open(key_result.year, tz=user.timezone)
     trees = await load_trees(db, user.id)
     nodes = {k: v for tree in trees for k, v in tree.nodes.items()}
     effect = await _key_results(request).set_themes(
@@ -420,7 +431,10 @@ async def set_key_result_themes(
     if body.dry_run:
         return {"effect": effect}
     plan = await _plan_of(request, db, user, key_result.year)
-    return {"batch_id": uuid.uuid4(), "key_result": await _key_result_from_plan(plan, key_result_id)}
+    return {
+        "batch_id": uuid.uuid4(),
+        "key_result": await _key_result_from_plan(plan, key_result_id),
+    }
 
 
 @router.post("/annual/undo")
@@ -433,16 +447,6 @@ async def undo_batch(
     """Undo the changes of one batch."""
     count = await _annual(request).undo(db, user.id, body.batch_id, tz=user.timezone)
     return {"restored": count}
-
-
-@router.get("/annual/themes")
-async def get_theme_picker(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> object:
-    """Return the eligible theme projects and task connections."""
-    return await _annual(request).themes(db, user.id, year=date.today().year)
 
 
 @router.post("/annual/themes", status_code=201)
@@ -476,7 +480,14 @@ async def create_value(
         source=ValueSource.MANUAL,
     )
     plan = await _plan_of(request, db, user, key_result.year)
-    return {"id": row.id, "value": row.value, "at": row.at, "on_date": on_date, "source": row.source, "key_result": await _key_result_from_plan(plan, key_result_id)}
+    return {
+        "id": row.id,
+        "value": row.value,
+        "at": row.at,
+        "on_date": on_date,
+        "source": row.source,
+        "key_result": await _key_result_from_plan(plan, key_result_id),
+    }
 
 
 @router.get("/annual/push-token")

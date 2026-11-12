@@ -5,6 +5,7 @@ Runs only when ``TEFTERI_TEST_POSTGRES_URL`` is set. The CI Postgres job runs it
 ``just backend::test-postgres``.
 """
 
+import asyncio
 import os
 from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
@@ -125,6 +126,52 @@ async def test_conflict_and_cascades_on_postgres(pg_api: AsyncClient, world: Fak
     sam = await pg_api.post(f"{V1}/users", json={"username": "sam", "password": "long enough pw"})
     assert (await pg_api.delete(f"{V1}/users/{sam.json()['id']}")).status_code == 204
     assert [u["username"] for u in (await pg_api.get(f"{V1}/users")).json()] == ["admin"]
+
+
+async def test_simultaneous_key_result_adds_respect_the_limit_on_postgres(
+    pg_api: AsyncClient,
+) -> None:
+    year = 2026
+    created = await pg_api.post(
+        f"{V1}/annual/{year}/goals/bulk",
+        json={
+            "goals": [
+                {
+                    "title": "Concurrent annual goal",
+                    "key_results": [
+                        {
+                            "metric": metric,
+                            "start_value": 0,
+                            "target": 10,
+                            "deadline": f"{year}-12-31",
+                        }
+                        for metric in ("First", "Second")
+                    ],
+                }
+            ]
+        },
+    )
+    assert created.status_code == 201, created.text
+    goal_id = created.json()["goals"][0]["id"]
+
+    async def add(metric: str):
+        return await pg_api.post(
+            f"{V1}/annual/goals/{goal_id}/key-results",
+            json={
+                "metric": metric,
+                "start_value": 0,
+                "target": 10,
+                "deadline": f"{year}-12-31",
+            },
+        )
+
+    responses = await asyncio.gather(add("Third A"), add("Third B"))
+
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    rejected = next(response for response in responses if response.status_code == 409)
+    assert rejected.json()["code"] == "key_result_limit"
+    plan = (await pg_api.get(f"{V1}/annual/{year}")).json()
+    assert len(plan["goals"][0]["key_results"]) == 3
 
 
 async def test_weekly_milestones_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> None:

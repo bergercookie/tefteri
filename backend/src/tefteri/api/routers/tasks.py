@@ -12,9 +12,11 @@ from sqlalchemy import select
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.api.lookups import container_colors
 from tefteri.api.schemas import EntryOut, TaskOut, aware
+from tefteri.api.task_links import task_base_url, task_url
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.services import task_filters
+from tefteri.services.errors import Invalid
 from tefteri.services.goals import GoalService
 from tefteri.services.settings import MAX_REMINDER_MINUTES
 from tefteri.services.task_filters import DueFilter
@@ -46,10 +48,7 @@ async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
         project = container.name if container else None
     url: str | None = None
     connection = await db.get(Connection, task.connection_id)
-    if connection is not None and connection.provider == "vikunja":
-        base = str(connection.settings.get("base_url", "")).rstrip("/")
-        if base:
-            url = f"{base}/tasks/{task.remote_id}"
+    url = task_url(task_base_url(connection), task.remote_id)
     color = container.color if task.container_id is not None and container else None
     return TaskOut.of(task, project=project, url=url, project_color=color)
 
@@ -222,7 +221,9 @@ async def update_task(
         if task.goal_id == goal_uuid:
             pass
         elif await request.app.state.annual_service.linkable_goal(db, user.id, goal_uuid) is None:
-            raise Invalid("Only goals of this year's annual plan can be linked.", "goal_not_linkable")
+            raise Invalid(
+                "Only goals of this year's annual plan can be linked.", "goal_not_linkable"
+            )
     await service.update(db, user.id, task, goal_id=goal_id, **fields)
     return await _out(db, user.id, task)
 
