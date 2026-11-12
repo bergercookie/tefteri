@@ -341,7 +341,7 @@ class _MilestonePickerState extends State<MilestonePicker> {
                       key: Key('empty-theme-${theme!.id}'),
                       style: text.bodyMedium),
                   if (theme.containerId.isNotEmpty)
-                    FilledButton.tonal(
+                    OutlinedButton(
                       key: Key('create-milestone-${theme.containerId}'),
                       onPressed: widget.locked
                           ? null

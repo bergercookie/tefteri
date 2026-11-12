@@ -126,6 +126,8 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
     final left = p.leftover.length;
     final ratio = p.committed == 0 ? 0.0 : p.done / p.committed;
     final done = p.completed || p.milestoneState == 'done';
+    final archive = _archiveSwitch();
+    final ownsArchive = !done && !_a.markDone && !_closed;
     return ProjectCard(
       name: p.name,
       color: p.color,
@@ -157,6 +159,13 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
               runSpacing: Space.xs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
+                Text(
+                  p.committed == 0
+                      ? 'No tasks were planned for this milestone.'
+                      : '${p.done} of ${plural(p.committed, 'task')} done',
+                  key: Key('look-count-${p.id}'),
+                  style: text.bodySmall,
+                ),
                 Text(p.theme?.name ?? 'No theme',
                     key: Key('look-theme-${p.id}'), style: text.bodySmall),
                 if (p.rolloverCount > 0)
@@ -172,43 +181,43 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
                       key: Key('look-legacy-${p.id}'), style: text.bodySmall),
               ],
             ),
-            const SizedBox(height: Space.xs),
-            Text(
-              p.committed == 0
-                  ? 'No tasks were planned for this milestone.'
-                  : '${p.done} of ${plural(p.committed, 'task')} done',
-              key: Key('look-count-${p.id}'),
-              style: text.bodySmall,
-            ),
             if (p.committed > 0) ...[
-              const SizedBox(height: Space.xs),
+              const SizedBox(height: Space.sm),
               LinearProgressIndicator(value: ratio, minHeight: 4),
             ],
             RescopeNudge(
                 show: p.needsRescope,
                 name: p.name,
                 nudgeKey: Key('look-rescope-${p.id}')),
-            if (!done) ..._choices(context, left, quiet),
-            const SizedBox(height: Space.sm),
-            // Any milestone can be archived, a finished one most of all.
-            SwitchListTile(
-              key: Key('archive-${p.id}'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              value: _a.archive,
-              onChanged: (v) => widget.onChanged(_a.copyWith(archive: v)),
-              title: const Text('Archive the project in your task app'),
-              subtitle: const Text(
-                  'It happens when you save. You can restore it in your task '
-                  'app.'),
-            ),
+            if (!done) ..._choices(context, left, quiet, archive),
+            if (!ownsArchive) ...[
+              const SizedBox(height: Space.sm),
+              // Any milestone can be archived, a finished one most of all.
+              archive,
+            ],
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _choices(BuildContext context, int left, TextStyle? quiet) {
+  Widget _archiveSwitch() {
+    final p = _p;
+    return SwitchListTile(
+      key: Key('archive-${p.id}'),
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      value: _a.archive,
+      onChanged: (v) => widget.onChanged(_a.copyWith(archive: v)),
+      title: const Text('Archive the project in your task app'),
+      subtitle: const Text(
+          'It happens when you save. You can restore it in your task '
+          'app.'),
+    );
+  }
+
+  List<Widget> _choices(
+      BuildContext context, int left, TextStyle? quiet, Widget archive) {
     final p = _p;
     final text = Theme.of(context).textTheme;
     if (_a.markDone) {
@@ -259,15 +268,28 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
                   'left?'
               : 'What do you want to do with this milestone?',
           style: text.titleSmall),
-      const SizedBox(height: Space.xs),
-      for (final d in Decision.values)
-        if (d != Decision.close || closeOpen)
-          _ChoiceTile(
-            key: Key('decision-${d.api}-${p.id}'),
-            decision: d,
-            selected: _a.decision == d,
-            onTap: () => _choose(d),
-          ),
+      const SizedBox(height: Space.sm),
+      Wrap(
+        spacing: Space.sm,
+        runSpacing: Space.sm,
+        children: [
+          for (final d in Decision.values)
+            if (d != Decision.close || closeOpen)
+              _ChoiceChip(
+                key: Key('decision-${d.api}-${p.id}'),
+                decision: d,
+                milestone: p.name,
+                selected: _a.decision == d,
+                onTap: () => _choose(d),
+              ),
+        ],
+      ),
+      const SizedBox(height: Space.sm),
+      Text(
+        _a.decision?.sentence ?? 'Choose what happens to this milestone.',
+        key: Key('decision-explain-${p.id}'),
+        style: quiet,
+      ),
       if (!closeOpen) _closeHidden(context),
       if (_a.decision == Decision.recommit)
         SwitchListTile(
@@ -287,18 +309,34 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
           child: ReopenNotice(result: _reopened!, id: p.id),
         ),
       const SizedBox(height: Space.sm),
-      Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: Space.sm,
-        children: [
-          OutlinedButton(
-            key: Key('mark-done-${p.id}'),
-            onPressed: _markDone,
-            child: const Text('Mark as done'),
-          ),
-          Text('Nothing is moved or deleted.', style: quiet),
-        ],
-      ),
+      LayoutBuilder(builder: (context, box) {
+        final markDone = Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: Space.sm,
+          children: [
+            OutlinedButton(
+              key: Key('mark-done-${p.id}'),
+              onPressed: _markDone,
+              child: const Text('Mark as done'),
+            ),
+            Text('Nothing is moved or deleted.', style: quiet),
+          ],
+        );
+        // Side by side when there is room, so the card stays short.
+        if (box.maxWidth < 560) {
+          return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [markDone, const SizedBox(height: Space.xs), archive]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: markDone),
+            const SizedBox(width: Space.md),
+            Expanded(child: archive),
+          ],
+        );
+      }),
     ];
   }
 
@@ -368,58 +406,38 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
   }
 }
 
-/// One of the four choices: a radio mark, the name, and one sentence.
-class _ChoiceTile extends StatelessWidget {
-  const _ChoiceTile(
+/// One of the four choices: a selectable chip. The sentence that explains
+/// the selected choice is shown once under the row of chips.
+class _ChoiceChip extends StatelessWidget {
+  const _ChoiceChip(
       {required this.decision,
+      required this.milestone,
       required this.selected,
       required this.onTap,
       super.key});
 
   final Decision decision;
+  final String milestone;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final colors = context.tefteri;
     final scheme = Theme.of(context).colorScheme;
+    // The label of the chip is hidden from the semantics tree and replaced by
+    // the longer one, so a screen reader says which milestone it is for. The
+    // chip keeps its selected state, tap action and keyboard focus.
     return Semantics(
-      button: true,
-      selected: selected,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Corner.md),
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: Space.xs),
-          padding: const EdgeInsets.all(Space.md),
-          decoration: BoxDecoration(
-            color: selected ? scheme.surfaceContainer : null,
-            borderRadius: BorderRadius.circular(Corner.md),
-            border: Border.all(color: selected ? scheme.primary : colors.rule),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                size: 20,
-                color: selected ? scheme.primary : scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: Space.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(decision.label, style: text.titleSmall),
-                    Text(decision.sentence, style: text.bodySmall),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+      label: '${decision.label} for $milestone',
+      child: ChoiceChip(
+        label: ExcludeSemantics(child: Text(decision.label)),
+        selected: selected,
+        showCheckmark: false,
+        avatar: selected
+            ? Icon(Icons.check, size: 16, color: scheme.onPrimaryContainer)
+            : null,
+        side: BorderSide(color: selected ? scheme.primary : scheme.outline),
+        onSelected: (_) => onTap(),
       ),
     );
   }

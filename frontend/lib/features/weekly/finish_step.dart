@@ -131,7 +131,7 @@ class FinishStep extends StatelessWidget {
                 onPressed: actions.changePlan,
                 child: const Text('Change the plan'),
               ),
-              FilledButton.tonal(
+              FilledButton(
                 key: const Key('open-week'),
                 onPressed: () =>
                     context.go('/week?date=${dateKey(state.weekStart)}'),
