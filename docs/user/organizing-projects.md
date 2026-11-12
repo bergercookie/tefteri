@@ -19,6 +19,9 @@ Tefteri has four labels:
 
 Tefteri puts a project with no label in the group Unsorted. It shows a suggestion for each one.
 
+The label of a project also decides the work category of the tasks that you complete in it. Refer
+to [See what you did](work-categories.md).
+
 Tefteri keeps the labels in tefteri only. It never writes a label, a tag or a field to your task
 app. Your task app does not change when you label a project.
 

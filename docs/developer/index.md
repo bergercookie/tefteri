@@ -10,6 +10,7 @@ architecture
 design
 sync
 weekly-planning
+work-categories
 project-classification
 android-widget
 adding-an-adapter

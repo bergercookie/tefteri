@@ -17,14 +17,17 @@ You can keep your goals after the period ends.
 2. Choose Week, Month or Year.
 3. To see a different period, choose the arrows or the date at the top.
 
-![The Week view. A card shows the committed plan: 5 of 8 tasks done, tasks done on each day, three tasks done outside the plan, the cadence and a burndown chart. Below it are the goal Run 25 km at 50 percent and three tasks.](../images/planning-week.png)
+![The Week view. A card shows the committed plan: 5 of 8 tasks done, tasks done on each day, the cadence and a burndown chart. The card Completed work shows 2 goal-aligned, 1 maintenance and 2 off-plan tasks. Below it are the goal Run 25 km at 50 percent and three tasks.](../images/planning-week.png)
 
-![The Month view for November 2026 with the goal Run 100 km in November.](../images/planning-month.png)
+![The Month view for November 2026. The card Completed work shows 14 goal-aligned, 9 maintenance and 5 off-plan tasks, with one bar. Below it is the goal Run 100 km in November.](../images/planning-month.png)
 
-![The Year view for 2026 with two goals and their progress.](../images/planning-year.png)
+![The Year view for 2026. The card Completed work shows 120 goal-aligned, 70 maintenance and 40 off-plan tasks, with one bar. Below it are two goals and their progress.](../images/planning-year.png)
 
-The Week view shows the plan you committed to, the goals of the week and its tasks. The Month view
-shows the goals of the month. The Year view shows the goals of the year. These views do not list
+The Week view shows the plan you committed to, the work that you completed, the goals of the week
+and its tasks. The Month view shows the work that you completed and the goals of the month. The Year
+view shows the work that you completed and the goals of the year. Each view shows the work as three
+counts and one bar: goal-aligned, maintenance and off-plan. Choose a count to see its tasks. Refer
+to [See what you did](work-categories.md). These views do not list
 calendar events: the list is long, and it does not help in an overview. To see your events, use the
 Planner or the Today view.
 

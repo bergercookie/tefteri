@@ -74,26 +74,32 @@ shows:
 - How many tasks you finished on each day, and the total for the week.
 - Your cadence: the tasks you finished per day since Monday. Next to it is the pace the rest of
   the week needs, counting today, and whether you are on track.
-- The tasks that you did outside the plan. Refer to the list below.
+- The tasks that you completed on each day, by category. Refer to the section below.
 - A burndown chart. The dashed line is the ideal pace from all tasks on Monday to none on Sunday.
   The solid line is the open tasks at the end of each day.
 
 ### Tasks done outside the plan
 
 Often you also finish tasks that were not in the plan. A task from another project is one example.
-A task that you added to a chosen milestone after you committed is another. The card lists them
-under Done outside the plan, with the day and the project of each task.
+A task that you added to a chosen milestone after you committed is another. These tasks are part
+of the statistics of the week. They are not a separate list.
 
-- The card shows a count next to Done, for example +3, and the total, for example
-  "Total 5 + 3 outside the plan".
-- A day that has these tasks shows how many, for example +2, under the number for that day.
-- The first five tasks show. Choose Show all to see the rest.
-- These tasks do not change the plan. The done and left counts, the cadence and the burndown chart
-  count only the tasks that you committed to.
+- Under the card, the card Completed work shows the three work categories: goal-aligned,
+  maintenance and off-plan. A task that you completed in a goal project that you did not commit to
+  is off-plan.
+- Under the planning cards, the list Completed this week shows every completed task, in three
+  groups. Each task shows its day and its project. The list has no limit. Choose Show more to
+  load more tasks.
+- In the card Committed plan, the large number of a day is the tasks from your plan. The small
+  numbers are all the tasks that you completed that day, by category.
+- The done and left counts, the cadence and the burndown chart count only the tasks that you
+  committed to.
 
-A task is in the list when your task app says that you finished it on a day of this week, in your
-time zone. A task without a completion date is not in the list, because tefteri cannot tell which
-week it belongs to. It gets its date at the next sync. The list shows at most 200 tasks.
+A task is in the statistics when your task app says that you finished it on a day of this week,
+in your time zone. A task without a completion date is not counted, because tefteri cannot tell
+which week it belongs to. It gets its date at the next sync. Read
+[See what you did](work-categories.md) to learn how tefteri chooses a category and how to read the
+numbers.
 
 Tefteri takes the day of a task from the date that your task app gives for its completion. Tasks
 that you finished before the week began, or that have no completion date yet, count as done but not

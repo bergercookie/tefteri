@@ -182,12 +182,9 @@ void main() {
     await tester.tap(find.byKey(const Key('term-hint-close-category-terms')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('term-hint-category-terms')), findsNothing);
-    await tester
-        .tap(find.byKey(const Key('term-hint-close-category-unsorted')));
-    await tester.tap(find.byKey(const Key('term-hint-close-category-hidden')));
-    await tester.pumpAndSettle();
     expect(find.textContaining('Goal-aligned: '), findsNothing);
     expect(find.textContaining('Unsorted: '), findsNothing);
+    expect(find.textContaining('Hidden: '), findsNothing);
     // A card built again on this device (the next page) leaves them out.
     await tester.pumpWidget(const SizedBox());
     await pumpStats(
@@ -200,11 +197,15 @@ void main() {
     expect(find.textContaining('Goal-aligned: '), findsNothing);
   });
 
-  testWidgets('the unsorted and hidden hints show only when they apply',
-      (tester) async {
+  testWidgets(
+      'the unsorted and hidden terms show only when they apply, in '
+      'the same box as the other terms', (tester) async {
     await pumpStats(
         tester, weekRoutes(summary: statisticsJson(goalAligned: 2)), _card());
     expect(find.byKey(const Key('term-hint-category-terms')), findsOneWidget);
+    expect(find.textContaining('Unsorted: '), findsNothing);
+    expect(find.textContaining('Hidden: '), findsNothing);
+    // One box, never one box per term.
     expect(find.byKey(const Key('term-hint-category-unsorted')), findsNothing);
     expect(find.byKey(const Key('term-hint-category-hidden')), findsNothing);
   });

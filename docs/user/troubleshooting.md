@@ -40,6 +40,26 @@ Fix the problem in your task app or the connection. Then choose Try again. Tefte
 tasks that remain. To undo a close, choose Reopen on the card of the milestone. Refer to
 [Plan your week](weekly-planning.md#close-a-milestone-and-return-its-tasks).
 
+## A task is missing from the numbers, or it has an unexpected category
+
+The Week, Month and Year views count the tasks that you completed. Refer to
+[See what you did](work-categories.md).
+
+- Sync first. A task that you completed in your task app shows after the next sync. If the last sync
+  failed, the card says so and shows the last numbers. Fix the connection, and then sync again.
+- Check that the task has a completion time in your task app. Tefteri does not count a task with no
+  completion time.
+- A task that you deleted in your task app leaves the numbers at the next sync. A past count can go
+  down.
+- Check the label that the project of the task had on the day that you completed it. This label
+  decides the category. A task in a project with no label is off-plan, with the note "unsorted". A
+  task in an ignored project is not in a category. The line about hidden tasks counts it.
+- You cannot change the category of a task by hand. Tefteri stores the category when it first sees
+  the task as completed. A later change of a label or of a plan does not change it. Tasks that you
+  complete after the change follow the new label.
+- If the card says that tefteri cannot read your weekly plan, sync again. Tefteri shows no numbers
+  instead of a guess.
+
 ## Rules that tefteri follows
 
 - Tefteri always tells you which connection failed and why.
