@@ -1,15 +1,27 @@
 """Plan reviews, retrospectives written to the note app, and plan history."""
 
+import uuid
 from collections.abc import Awaitable, Callable
+from datetime import date
 
 from httpx import AsyncClient
+from sqlalchemy import update
 
+from tefteri.db.models.goal import Goal
+from tefteri.db.models.task import Task
+from tefteri.db.session import session_scope
 from tests.conftest import V1, connect_all
 from tests.fakes.world import FakeWorld
+from tests.integration.conftest import legacy_goal
+
+OCTOBER = date(2026, 10, 1)
 
 
 async def _plan_with_goals(api: AsyncClient) -> dict[str, str]:
-    """An October 2026 plan with one done goal and one goal with an open and a done task."""
+    """An October 2026 plan with one done goal and one goal with an open and a done task.
+
+    The goals are legacy month goals, inserted directly: no route writes them since spec 006.
+    """
     ids = await connect_all(api)
     await api.post(f"{V1}/sync")
     plan = (
@@ -18,32 +30,21 @@ async def _plan_with_goals(api: AsyncClient) -> dict[str, str]:
             json={"period_type": "month", "period_start": "2026-10-01", "title": "October"},
         )
     ).json()
-    read = (
-        await api.post(
-            f"{V1}/goals",
-            json={"period_type": "month", "period_start": "2026-10-01", "title": "Read"},
+    await legacy_goal(api, period_type="month", period_start=OCTOBER, title="Read", status="done")
+    run = await legacy_goal(api, period_type="month", period_start=OCTOBER, title="Run")
+    tasks = []
+    for title in ("Buy shoes", "Run 25 km"):
+        created = await api.post(
+            f"{V1}/tasks", json={"connection_id": ids["vikunja"], "title": title}
         )
-    ).json()
-    await api.patch(f"{V1}/goals/{read['id']}", json={"status": "done"})
-    run = (
-        await api.post(
-            f"{V1}/goals",
-            json={"period_type": "month", "period_start": "2026-10-01", "title": "Run"},
+        assert created.status_code == 201, created.text
+        tasks.append(created.json())
+    async with session_scope(api.app.state.session_factory) as db:  # type: ignore[attr-defined]
+        await db.execute(
+            update(Task).where(Task.id.in_([uuid.UUID(t["id"]) for t in tasks])).values(goal_id=run)
         )
-    ).json()
-    tasks = (
-        await api.post(
-            f"{V1}/goals/{run['id']}/breakdown",
-            json={
-                "tasks": [
-                    {"connection_id": ids["vikunja"], "title": "Buy shoes"},
-                    {"connection_id": ids["vikunja"], "title": "Run 25 km"},
-                ]
-            },
-        )
-    ).json()["tasks"]
     await api.post(f"{V1}/tasks/{tasks[0]['id']}/complete")
-    return {"plan": plan["id"], "run": run["id"], "open_task": tasks[1]["id"]}
+    return {"plan": plan["id"], "run": str(run), "open_task": tasks[1]["id"]}
 
 
 async def test_review_shows_planned_completed_and_carried_over(api: AsyncClient) -> None:
@@ -67,6 +68,24 @@ async def test_review_is_a_snapshot_until_refreshed(api: AsyncClient) -> None:
     assert again["completed_count"] == first["completed_count"] == 1
     fresh = (await api.get(f"{V1}/plans/{ids['plan']}/review", params={"refresh": True})).json()
     assert fresh["completed_count"] == 2 and fresh["carried_over"] == []
+
+
+async def test_a_refreshed_review_skips_retired_goals_and_a_stored_one_is_unchanged(
+    api: AsyncClient,
+) -> None:
+    ids = await _plan_with_goals(api)
+    stored = (await api.get(f"{V1}/plans/{ids['plan']}/review")).json()
+    async with session_scope(api.app.state.session_factory) as db:  # type: ignore[attr-defined]
+        await db.execute(
+            update(Goal).where(Goal.id == uuid.UUID(ids["run"])).values(status="retired")
+        )
+
+    again = (await api.get(f"{V1}/plans/{ids['plan']}/review")).json()
+    fresh = (await api.get(f"{V1}/plans/{ids['plan']}/review", params={"refresh": True})).json()
+
+    assert again == stored
+    assert (fresh["planned_count"], fresh["completed_count"]) == (1, 1)
+    assert [i["title"] for i in fresh["items"]] == ["Read"]
 
 
 async def test_retrospective_is_written_to_the_note_app(api: AsyncClient, world: FakeWorld) -> None:

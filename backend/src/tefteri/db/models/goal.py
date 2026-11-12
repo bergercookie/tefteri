@@ -49,9 +49,7 @@ class Goal(IdMixin, Base):
     retired_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     position: Mapped[int] = mapped_column(default=0, server_default=sa.text("0"), nullable=False)
 
-    __table_args__ = (
-        sa.Index("ix_goals_user_period", "user_id", "period_type", "period_start"),
-    )
+    __table_args__ = (sa.Index("ix_goals_user_period", "user_id", "period_type", "period_start"),)
 
 
 class Plan(IdMixin, Base):

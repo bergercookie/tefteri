@@ -12,8 +12,10 @@ planner
 android-widget
 daily-planning
 scheduling
-planning-goals
+annual-planning
+planning-checklists
 organizing-projects
+monthly-planning
 weekly-planning
 work-categories
 reviews-and-retrospectives

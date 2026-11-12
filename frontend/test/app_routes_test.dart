@@ -9,6 +9,7 @@ import 'package:tefteri/core/auth_controller.dart';
 import 'package:tefteri/core/shortcuts/keymap.dart';
 import 'package:tefteri/features/admin/admin_settings_screen.dart';
 import 'package:tefteri/features/admin/users_screen.dart';
+import 'package:tefteri/features/annual/annual_screen.dart';
 import 'package:tefteri/features/auth/change_password_screen.dart';
 import 'package:tefteri/features/daily/daily_screen.dart';
 import 'package:tefteri/features/settings/checklists_screen.dart';
@@ -52,6 +53,12 @@ Future<GoRouter> _pump(WidgetTester tester, {bool admin = false}) async {
       'tasks': <Object?>[],
       'note': null,
     },
+    'GET /annual/2025': annualPlanJson(year: 2025, state: 'past'),
+    'GET /monthly/2026-09': monthlyJson(
+      month: '2026-09',
+      state: 'past',
+      focusKnown: false,
+    ),
   });
   final dio = Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = api;
   final container = ProviderContainer(overrides: [
@@ -183,6 +190,24 @@ void main() {
     router.go('/users');
     await tester.pumpAndSettle();
     expect(find.byType(UsersScreen), findsOneWidget);
+    // Goals live in the annual plan now.
+    router.go('/goals');
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/annual');
+    expect(find.byType(AnnualScreen), findsOneWidget);
+  });
+
+  testWidgets('the annual plan opens at the year in the address',
+      (tester) async {
+    final router = await _pump(tester);
+    router.go('/annual?year=2025');
+    await tester.pumpAndSettle();
+    expect(find.byType(AnnualScreen), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('year-label')),
+            matching: find.text('2025')),
+        findsOneWidget);
   });
 
   testWidgets('the drill-down opens at /statistics with its filter',

@@ -28,6 +28,8 @@ app. `go_router` then opens the view. No Dart code is special for the widget.
 | Month | `/month` | the month |
 | Planner | `/` | the planner |
 
+The Month button opens the monthly theme plan and review. The route stays `/month`.
+
 The paths are the ones of `lib/core/shortcuts/keymap.dart`. To change a button, change the
 `buttons` list in `NavWidgetProvider.kt`, and the layout, the icon and the strings.
 

@@ -36,8 +36,9 @@ saves your work as you go, so you can stop and come back later.
 Tefteri keeps your projects and your tasks in your task app. When you give a task a day, tefteri
 writes that day as the due date of the task in your task app.
 
-The weekly session has no goals. You plan goals once a year. Months work on themes, and weeks work
-on milestones.
+The weekly session has no goals. Goals are for the year. Monthly planning chooses themes, and
+weekly planning chooses milestones under those themes. Read [Plan your month](monthly-planning.md)
+to set the focus for a month.
 
 ## Start the session
 
@@ -63,7 +64,7 @@ its title to open or close it.
 - Choose Edit the list to change the items.
 
 If you have no weekly checklist, tefteri shows a hint and a Create a checklist button. Refer to
-[Make a checklist](planning-goals.md#make-a-checklist) to write one.
+[Planning checklists](planning-checklists.md) explains how to write one.
 
 ## See how the week goes
 
@@ -251,7 +252,7 @@ see its milestones. Each milestone shows:
 - A reminder, when your last review left it with Decide later.
 
 Tefteri shows the milestones of the focus themes of this month first, with the label In focus this month.
-A focus theme is a theme that you chose for the month. The week belongs to the month of its Monday.
+A focus theme is a theme that you chose in [monthly planning](monthly-planning.md). The week belongs to the month of its Monday.
 When you chose no themes for the month, all themes look the same.
 
 The list leaves out themes, routine projects, ignored projects and projects that are no longer in

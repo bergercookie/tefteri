@@ -11,14 +11,15 @@ import 'core/auth_controller.dart';
 import 'core/shortcuts/app_shortcuts.dart';
 import 'theme/theme.dart';
 import 'features/admin/admin_settings_screen.dart';
+import 'features/annual/annual_screen.dart';
 import 'features/admin/users_screen.dart';
 import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/planner/planner_screen.dart';
 import 'features/conflicts/conflicts_screen.dart';
 import 'features/daily/daily_screen.dart';
-import 'features/goals/goals_screen.dart';
 import 'features/month/month_screen.dart';
+import 'features/month/review_screen.dart';
 import 'features/projects/projects_screen.dart';
 import 'features/review/plan_history_screen.dart';
 import 'features/review/review_screen.dart';
@@ -117,6 +118,19 @@ GoRouter buildRouter(Ref ref) {
         builder: (_, s) => MonthScreen(
             initialDate:
                 DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
+        routes: [
+          GoRoute(
+            path: 'review',
+            builder: (_, s) {
+              final date =
+                  DateTime.tryParse(s.uri.queryParameters['date'] ?? '') ??
+                      DateTime.now();
+              final month = '${date.year.toString().padLeft(4, '0')}-'
+                  '${date.month.toString().padLeft(2, '0')}';
+              return MonthReviewScreen(month: month);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/year',
@@ -125,7 +139,14 @@ GoRouter buildRouter(Ref ref) {
                 DateTime.tryParse(s.uri.queryParameters['date'] ?? '')?.year),
       ),
       statisticsRoute(),
-      GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
+      GoRoute(
+        path: '/annual',
+        builder: (_, s) => AnnualScreen(
+            initialYear: int.tryParse(s.uri.queryParameters['year'] ?? '') ??
+                DateTime.tryParse(s.uri.queryParameters['date'] ?? '')?.year),
+      ),
+      // Goals live only in the annual plan now; old links still work.
+      GoRoute(path: '/goals', redirect: (_, __) => '/annual'),
       GoRoute(path: '/projects', builder: (_, __) => const ProjectsScreen()),
       GoRoute(
         path: '/conflicts',

@@ -1,4 +1,5 @@
-/// Annual view: goals and tasks of one year.
+/// Annual view: the annual plan (read only), the work categories and the
+/// checklist of one year.
 library;
 
 import 'package:flutter/material.dart';
@@ -7,9 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
+import '../annual/annual_controller.dart';
 import '../checklists/checklist_panel.dart';
-import '../goals/period_page.dart';
+import '../period/period_page.dart';
 import '../statistics/categories_card.dart';
+import 'annual_summary.dart';
 
 /// Loads the year view.
 final yearViewProvider = FutureProvider.family<PeriodView, int>((ref, year) {
@@ -46,13 +49,18 @@ class _YearScreenState extends ConsumerState<YearScreen> {
       banner: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          AnnualSummary(year: _year),
+          const SizedBox(height: Space.sm),
           CategoriesCard(period: 'year', day: DateTime(_year)),
           const SizedBox(height: Space.sm),
           PlanningChecklist(
               kind: ChecklistKind.year, day: DateTime(_year), card: true),
         ],
       ),
-      onReload: () => ref.invalidate(yearViewProvider(_year)),
+      onReload: () {
+        ref.invalidate(yearViewProvider(_year));
+        ref.invalidate(annualPlanReadProvider(_year));
+      },
       onShift: (d) => setState(() => _year += d),
       onToday: () => setState(() => _year = DateTime.now().year),
     );

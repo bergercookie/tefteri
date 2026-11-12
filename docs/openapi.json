@@ -76,52 +76,6 @@
         "title": "AppendIn",
         "type": "object"
       },
-      "BreakdownIn": {
-        "description": "Smaller goals and tasks to create under a goal.",
-        "properties": {
-          "goals": {
-            "items": {
-              "$ref": "#/components/schemas/ChildGoalIn"
-            },
-            "title": "Goals",
-            "type": "array"
-          },
-          "tasks": {
-            "items": {
-              "$ref": "#/components/schemas/ChildTaskIn"
-            },
-            "title": "Tasks",
-            "type": "array"
-          }
-        },
-        "title": "BreakdownIn",
-        "type": "object"
-      },
-      "BreakdownOut": {
-        "description": "What a breakdown created.",
-        "properties": {
-          "goals": {
-            "items": {
-              "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
-            },
-            "title": "Goals",
-            "type": "array"
-          },
-          "tasks": {
-            "items": {
-              "$ref": "#/components/schemas/TaskOut"
-            },
-            "title": "Tasks",
-            "type": "array"
-          }
-        },
-        "required": [
-          "goals",
-          "tasks"
-        ],
-        "title": "BreakdownOut",
-        "type": "object"
-      },
       "BulkGoalIn": {
         "description": "One goal of a bulk create.",
         "properties": {
@@ -708,66 +662,6 @@
           }
         },
         "title": "ChecklistsPatch",
-        "type": "object"
-      },
-      "ChildGoalIn": {
-        "description": "A smaller goal in a breakdown.",
-        "properties": {
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "$ref": "#/components/schemas/PeriodType"
-          },
-          "title": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "period_type",
-          "period_start"
-        ],
-        "title": "ChildGoalIn",
-        "type": "object"
-      },
-      "ChildTaskIn": {
-        "description": "A task in a breakdown.",
-        "properties": {
-          "connection_id": {
-            "format": "uuid",
-            "title": "Connection Id",
-            "type": "string"
-          },
-          "container_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Container Id"
-          },
-          "title": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "connection_id",
-          "title"
-        ],
-        "title": "ChildTaskIn",
         "type": "object"
       },
       "ClassificationOut": {
@@ -1376,6 +1270,16 @@
         "title": "ContainersSyncedOut",
         "type": "object"
       },
+      "CountNote": {
+        "description": "Non-blocking guidance for the number of themes in a monthly focus.",
+        "enum": [
+          "empty",
+          "below",
+          "above"
+        ],
+        "title": "CountNote",
+        "type": "string"
+      },
       "CountsOut": {
         "description": "Completed tasks per work category. The hidden count is not part of them.",
         "properties": {
@@ -1752,6 +1656,402 @@
         "title": "EntryPatch",
         "type": "object"
       },
+      "FocusChangeIn": {
+        "description": "One add, swap, remove or target update.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "in_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Project Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FocusChangeKind"
+          },
+          "out_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Project Id"
+          },
+          "target": {
+            "title": "Target"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "FocusChangeIn",
+        "type": "object"
+      },
+      "FocusChangeKind": {
+        "description": "The kind of one logged change to a monthly focus.",
+        "enum": [
+          "swap",
+          "add",
+          "remove",
+          "target"
+        ],
+        "title": "FocusChangeKind",
+        "type": "string"
+      },
+      "FocusChangePreviewOut": {
+        "description": "The effect of a proposed in-month change.",
+        "properties": {
+          "effect": {
+            "$ref": "#/components/schemas/FocusEffectOut"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "FocusChangePreviewOut",
+        "type": "object"
+      },
+      "FocusChangeResultOut": {
+        "description": "The applied focus change and updated monthly plan.",
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "effect": {
+            "$ref": "#/components/schemas/FocusEffectOut"
+          },
+          "focus": {
+            "$ref": "#/components/schemas/MonthlyPlanOut"
+          }
+        },
+        "required": [
+          "batch_id",
+          "effect",
+          "focus"
+        ],
+        "title": "FocusChangeResultOut",
+        "type": "object"
+      },
+      "FocusChangeSource": {
+        "description": "Whether a focus-change log row is a user action or its undo.",
+        "enum": [
+          "user",
+          "undo"
+        ],
+        "title": "FocusChangeSource",
+        "type": "string"
+      },
+      "FocusEffectOut": {
+        "description": "A no-write preview or explanation of a monthly focus change.",
+        "properties": {
+          "added": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "counts_from": {
+            "format": "date",
+            "title": "Counts From",
+            "type": "string"
+          },
+          "finished_earlier": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Finished Earlier",
+            "type": "array"
+          },
+          "finished_earlier_in_month": {
+            "title": "Finished Earlier In Month",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "out_keeps_results": {
+            "title": "Out Keeps Results",
+            "type": "boolean"
+          },
+          "removed": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Removed",
+            "type": "array"
+          },
+          "targets_changed": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Targets Changed",
+            "type": "array"
+          },
+          "weekly_commitments_unchanged": {
+            "title": "Weekly Commitments Unchanged",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "added",
+          "removed",
+          "targets_changed",
+          "counts_from",
+          "finished_earlier_in_month",
+          "finished_earlier",
+          "weekly_commitments_unchanged",
+          "out_keeps_results",
+          "message"
+        ],
+        "title": "FocusEffectOut",
+        "type": "object"
+      },
+      "FocusEntryIn": {
+        "description": "A selected theme and the optional milestone-count target.",
+        "properties": {
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "FocusEntryIn",
+        "type": "object"
+      },
+      "FocusEntryStatus": {
+        "description": "Whether a theme entry is still in a month's focus or has left it.",
+        "enum": [
+          "in_focus",
+          "swapped_out",
+          "removed"
+        ],
+        "title": "FocusEntryStatus",
+        "type": "string"
+      },
+      "FocusHistoryEntryOut": {
+        "description": "One focus-change history item.",
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "can_undo": {
+            "title": "Can Undo",
+            "type": "boolean"
+          },
+          "in_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FocusChangeKind"
+          },
+          "on": {
+            "format": "date",
+            "title": "On",
+            "type": "string"
+          },
+          "out_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Name"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FocusChangeSource"
+          },
+          "target_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target After"
+          },
+          "target_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Before"
+          },
+          "undone": {
+            "title": "Undone",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "batch_id",
+          "kind",
+          "on",
+          "out_name",
+          "in_name",
+          "target_before",
+          "target_after",
+          "source",
+          "undone",
+          "can_undo"
+        ],
+        "title": "FocusHistoryEntryOut",
+        "type": "object"
+      },
+      "FocusHistoryOut": {
+        "description": "Chronological focus-change history.",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FocusHistoryEntryOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "changes"
+        ],
+        "title": "FocusHistoryOut",
+        "type": "object"
+      },
+      "FocusSaveIn": {
+        "description": "The complete month focus or a no-write preview.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/FocusEntryIn"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "FocusSaveIn",
+        "type": "object"
+      },
+      "FocusSavePreviewOut": {
+        "description": "The effect of saving a focus without writing it.",
+        "properties": {
+          "count_note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CountNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effect": {
+            "$ref": "#/components/schemas/FocusEffectOut"
+          }
+        },
+        "required": [
+          "effect",
+          "count_note"
+        ],
+        "title": "FocusSavePreviewOut",
+        "type": "object"
+      },
+      "FocusSaveResultOut": {
+        "description": "The saved month focus and its soft count guidance.",
+        "properties": {
+          "count_note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CountNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "focus": {
+            "$ref": "#/components/schemas/MonthlyPlanOut"
+          }
+        },
+        "required": [
+          "focus",
+          "count_note"
+        ],
+        "title": "FocusSaveResultOut",
+        "type": "object"
+      },
+      "FocusUndoOut": {
+        "description": "The effect of undoing a focus change.",
+        "properties": {
+          "focus": {
+            "$ref": "#/components/schemas/MonthlyPlanOut"
+          },
+          "undone": {
+            "$ref": "#/components/schemas/FocusChangeKind"
+          }
+        },
+        "required": [
+          "undone",
+          "focus"
+        ],
+        "title": "FocusUndoOut",
+        "type": "object"
+      },
       "GoalEditIn": {
         "description": "New title for an annual goal.",
         "properties": {
@@ -1768,151 +2068,108 @@
         "title": "GoalEditIn",
         "type": "object"
       },
-      "GoalIn": {
-        "description": "Data to create a goal.",
+      "GoalOut": {
+        "description": "One goal of the plan with its key results.",
         "properties": {
-          "criteria": {
-            "default": "",
-            "title": "Criteria",
-            "type": "string"
-          },
-          "description": {
-            "default": "",
-            "title": "Description",
-            "type": "string"
-          },
-          "parent_id": {
+          "criteria_suggestion": {
             "anyOf": [
               {
-                "format": "uuid",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Criteria Suggestion"
           },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
+          "flags": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
             "type": "string"
           },
-          "period_type": {
-            "$ref": "#/components/schemas/PeriodType"
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/KeyResultOut"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "legacy_done": {
+            "title": "Legacy Done",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           },
           "title": {
-            "maxLength": 500,
-            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "legacy_done",
+          "criteria_suggestion",
+          "progress",
+          "flags",
+          "notes",
+          "updated_at",
+          "key_results"
+        ],
+        "title": "GoalOut",
+        "type": "object"
+      },
+      "GoalTitle": {
+        "description": "The title of a goal that a task of a view points to (FR-025).",
+        "properties": {
+          "annual": {
+            "title": "Annual",
+            "type": "boolean"
+          },
+          "title": {
             "title": "Title",
             "type": "string"
           }
         },
         "required": [
-          "period_type",
-          "period_start",
-          "title"
+          "title",
+          "annual"
         ],
-        "title": "GoalIn",
-        "type": "object"
-      },
-      "GoalPatch": {
-        "description": "Partial goal update.",
-        "properties": {
-          "criteria": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Criteria"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "enum": [
-                  "active",
-                  "done",
-                  "dropped"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          }
-        },
-        "title": "GoalPatch",
-        "type": "object"
-      },
-      "GoalsIn": {
-        "description": "Data to create several goals of one period at once.",
-        "properties": {
-          "parent_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "$ref": "#/components/schemas/PeriodType"
-          },
-          "titles": {
-            "items": {
-              "maxLength": 500,
-              "type": "string"
-            },
-            "maxItems": 100,
-            "title": "Titles",
-            "type": "array"
-          }
-        },
-        "required": [
-          "period_type",
-          "period_start",
-          "titles"
-        ],
-        "title": "GoalsIn",
+        "title": "GoalTitle",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -2327,6 +2584,35 @@
         "title": "KeyResultOut",
         "type": "object"
       },
+      "KeyResultUpdate": {
+        "description": "Whether a key result has a value dated inside the month.",
+        "enum": [
+          "updated",
+          "not_updated"
+        ],
+        "title": "KeyResultUpdate",
+        "type": "string"
+      },
+      "KeyResultValueIn": {
+        "description": "A key result value to include when finishing a review.",
+        "properties": {
+          "key_result_id": {
+            "format": "uuid",
+            "title": "Key Result Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key_result_id",
+          "value"
+        ],
+        "title": "KeyResultValueIn",
+        "type": "object"
+      },
       "LabelsIn": {
         "description": "A bulk label change.",
         "properties": {
@@ -2383,6 +2669,70 @@
           "effect"
         ],
         "title": "LabelsOut",
+        "type": "object"
+      },
+      "LegacyGoalOut": {
+        "description": "A legacy goal of the read-only history (FR-022, FR-023).",
+        "properties": {
+          "criteria": {
+            "title": "Criteria",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_tasks": {
+            "title": "Linked Tasks",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_type": {
+            "title": "Period Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "period_type",
+          "period_start",
+          "title",
+          "description",
+          "criteria",
+          "status",
+          "linked_tasks"
+        ],
+        "title": "LegacyGoalOut",
         "type": "object"
       },
       "LinkOut": {
@@ -2708,6 +3058,40 @@
         "title": "LookBackProjectOut",
         "type": "object"
       },
+      "MakeCurrentIn": {
+        "description": "Select a previously stored review version.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "MakeCurrentIn",
+        "type": "object"
+      },
+      "MakeCurrentPreviewOut": {
+        "description": "A no-write explanation of selecting an earlier snapshot.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "MakeCurrentPreviewOut",
+        "type": "object"
+      },
       "MeResponse": {
         "description": "The signed-in user.",
         "properties": {
@@ -2921,6 +3305,519 @@
         "title": "MilestoneOut",
         "type": "object"
       },
+      "MonthState": {
+        "description": "A month relative to the user's local today.",
+        "enum": [
+          "past",
+          "current",
+          "future"
+        ],
+        "title": "MonthState",
+        "type": "string"
+      },
+      "MonthlyEntryOut": {
+        "description": "One monthly focus entry and its result markers.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "counts_from": {
+            "format": "date",
+            "title": "Counts From",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "earlier_not_counted": {
+            "title": "Earlier Not Counted",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label_changed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_month_done": {
+            "title": "Last Month Done",
+            "type": "integer"
+          },
+          "left_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left On"
+          },
+          "linked_key_results": {
+            "title": "Linked Key Results",
+            "type": "integer"
+          },
+          "marker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TargetMarker"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orphaned": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrphanOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FocusEntryStatus"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "connection_id",
+          "name",
+          "target",
+          "counts_from",
+          "left_on",
+          "status",
+          "done",
+          "earlier_not_counted",
+          "marker",
+          "orphaned",
+          "label_changed",
+          "linked_key_results",
+          "last_month_done"
+        ],
+        "title": "MonthlyEntryOut",
+        "type": "object"
+      },
+      "MonthlyFlagCode": {
+        "description": "Key-result and goal flags shown in the monthly planning and review views.",
+        "enum": [
+          "no_key_result",
+          "no_usable_theme",
+          "overdue",
+          "no_theme_in_focus",
+          "past_deadline"
+        ],
+        "title": "MonthlyFlagCode",
+        "type": "string"
+      },
+      "MonthlyKeyResultFlagOut": {
+        "description": "A monthly key-result flag and its available actions or reasons.",
+        "properties": {
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "code": {
+            "$ref": "#/components/schemas/MonthlyFlagCode"
+          },
+          "reasons": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "MonthlyKeyResultFlagOut",
+        "type": "object"
+      },
+      "MonthlyKeyResultOut": {
+        "description": "An annual key result relevant to this month's focus.",
+        "properties": {
+          "current_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current At"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyKeyResultFlagOut"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "goal_id": {
+            "format": "uuid",
+            "title": "Goal Id",
+            "type": "string"
+          },
+          "goal_title": {
+            "title": "Goal Title",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "past_deadline": {
+            "title": "Past Deadline",
+            "type": "boolean"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "theme_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Theme Ids",
+            "type": "array"
+          },
+          "update_source": {
+            "$ref": "#/components/schemas/UpdateSource"
+          }
+        },
+        "required": [
+          "id",
+          "goal_id",
+          "goal_title",
+          "metric",
+          "start_value",
+          "current_value",
+          "current_at",
+          "target",
+          "deadline",
+          "update_source",
+          "past_deadline",
+          "theme_ids",
+          "flags"
+        ],
+        "title": "MonthlyKeyResultOut",
+        "type": "object"
+      },
+      "MonthlyPlanOut": {
+        "description": "The planning read model for one month.",
+        "properties": {
+          "count_note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CountNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "earlier_format": {
+            "title": "Earlier Format",
+            "type": "boolean"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyEntryOut"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "focus_known": {
+            "title": "Focus Known",
+            "type": "boolean"
+          },
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyKeyResultOut"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "planning_year": {
+            "title": "Planning Year",
+            "type": "integer"
+          },
+          "review": {
+            "additionalProperties": true,
+            "title": "Review",
+            "type": "object"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MonthState"
+          },
+          "themes_without_key_result": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Themes Without Key Result",
+            "type": "array"
+          }
+        },
+        "required": [
+          "month",
+          "start",
+          "end",
+          "state",
+          "planning_year",
+          "focus_known",
+          "count_note",
+          "entries",
+          "key_results",
+          "themes_without_key_result",
+          "review",
+          "earlier_format"
+        ],
+        "title": "MonthlyPlanOut",
+        "type": "object"
+      },
+      "MonthlyReviewOut": {
+        "description": "Stored snapshot or live draft with display-only trend information.",
+        "properties": {
+          "categories_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories Note"
+          },
+          "current_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version"
+          },
+          "draft": {
+            "title": "Draft",
+            "type": "boolean"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/MonthlySnapshotOut"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "boolean"
+          },
+          "taken_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taken At"
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TrendOut"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "month",
+          "stored",
+          "draft",
+          "version",
+          "current_version",
+          "taken_at",
+          "versions",
+          "snapshot",
+          "trend",
+          "categories_note"
+        ],
+        "title": "MonthlyReviewOut",
+        "type": "object"
+      },
+      "MonthlySnapshotOut": {
+        "description": "Immutable version-one snapshot payload.",
+        "properties": {
+          "categories": {
+            "$ref": "#/components/schemas/ReviewCategoriesOut"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecisionOut"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewKeyResultOut"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "month": {
+            "format": "date",
+            "title": "Month",
+            "type": "string"
+          },
+          "month_end": {
+            "format": "date",
+            "title": "Month End",
+            "type": "string"
+          },
+          "outside_focus": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewOutsideFocusOut"
+            },
+            "title": "Outside Focus",
+            "type": "array"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "taken_at": {
+            "format": "date-time",
+            "title": "Taken At",
+            "type": "string"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewThemeOut"
+            },
+            "title": "Themes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "month",
+          "month_end",
+          "taken_at",
+          "themes",
+          "changes",
+          "outside_focus",
+          "categories",
+          "key_results",
+          "decisions"
+        ],
+        "title": "MonthlySnapshotOut",
+        "type": "object"
+      },
       "NotMovedBackOut": {
         "description": "A task that could not be moved back by a reopen.",
         "properties": {
@@ -3018,6 +3915,34 @@
         ],
         "title": "NudgeOut",
         "type": "object"
+      },
+      "OrphanOut": {
+        "description": "Why a stored focus entry is no longer a live project.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/OrphanReason"
+          }
+        },
+        "required": [
+          "reason",
+          "at"
+        ],
+        "title": "OrphanOut",
+        "type": "object"
+      },
+      "OrphanReason": {
+        "description": "Why a project that tefteri knows is no longer in the task app.",
+        "enum": [
+          "missing",
+          "archived"
+        ],
+        "title": "OrphanReason",
+        "type": "string"
       },
       "OrphanedOut": {
         "description": "A project that is no longer in the task app.",
@@ -3158,12 +4083,15 @@
             "title": "Entries",
             "type": "array"
           },
-          "goals": {
-            "items": {
-              "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
+          "goal_titles": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GoalTitle"
             },
-            "title": "Goals",
-            "type": "array"
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Goal Titles",
+            "type": "object"
           },
           "period_type": {
             "title": "Period Type",
@@ -3186,9 +4114,9 @@
           "period_type",
           "start",
           "end",
-          "goals",
           "tasks",
-          "entries"
+          "entries",
+          "goal_titles"
         ],
         "title": "PeriodView",
         "type": "object"
@@ -3421,19 +4349,25 @@
         "title": "ProposalOut",
         "type": "object"
       },
-      "PushIn": {
-        "description": "One inbound push value.",
+      "PushOut": {
+        "description": "The answer to an accepted push (201) or to a safe retry of one (200).",
         "properties": {
           "at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "At"
+            "title": "At",
+            "type": "string"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "key_result_id": {
+            "format": "uuid",
+            "title": "Key Result Id",
+            "type": "string"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "boolean"
           },
           "value": {
             "title": "Value",
@@ -3441,9 +4375,13 @@
           }
         },
         "required": [
-          "value"
+          "stored",
+          "key_result_id",
+          "value",
+          "at",
+          "current_value"
         ],
-        "title": "PushIn",
+        "title": "PushOut",
         "type": "object"
       },
       "ReminderIn": {
@@ -3594,6 +4532,206 @@
         "title": "RetrospectiveIn",
         "type": "object"
       },
+      "ReviewCategoriesOut": {
+        "description": "Category counts supplied by the feature-005 month summary.",
+        "properties": {
+          "goal_aligned": {
+            "title": "Goal Aligned",
+            "type": "integer"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "integer"
+          },
+          "maintenance": {
+            "title": "Maintenance",
+            "type": "integer"
+          },
+          "off_plan": {
+            "title": "Off Plan",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "goal_aligned",
+          "maintenance",
+          "off_plan",
+          "hidden"
+        ],
+        "title": "ReviewCategoriesOut",
+        "type": "object"
+      },
+      "ReviewChangeOut": {
+        "description": "A focus change recorded in a review snapshot.",
+        "properties": {
+          "in_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Name"
+          },
+          "in_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Project Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FocusChangeKind"
+          },
+          "on": {
+            "format": "date",
+            "title": "On",
+            "type": "string"
+          },
+          "out_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Name"
+          },
+          "out_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Project Id"
+          },
+          "target_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target After"
+          },
+          "target_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Before"
+          },
+          "undone": {
+            "title": "Undone",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "on",
+          "out_project_id",
+          "out_name",
+          "in_project_id",
+          "in_name",
+          "target_before",
+          "target_after",
+          "undone"
+        ],
+        "title": "ReviewChangeOut",
+        "type": "object"
+      },
+      "ReviewDecisionOut": {
+        "description": "A saved month-end theme decision.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ThemeDecision"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "replacement_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacement Name"
+          },
+          "replacement_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacement Project Id"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "decision",
+          "replacement_project_id",
+          "replacement_name"
+        ],
+        "title": "ReviewDecisionOut",
+        "type": "object"
+      },
+      "ReviewEffectOut": {
+        "description": "A decision's user-facing effect line.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ThemeDecision"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "decision",
+          "message"
+        ],
+        "title": "ReviewEffectOut",
+        "type": "object"
+      },
       "ReviewIn": {
         "description": "The review.",
         "properties": {
@@ -3643,6 +4781,294 @@
         "title": "ReviewItemOut",
         "type": "object"
       },
+      "ReviewKeyResultOut": {
+        "description": "An annual key result's values and status captured at month end.",
+        "properties": {
+          "after_month_end": {
+            "title": "After Month End",
+            "type": "boolean"
+          },
+          "base_value": {
+            "title": "Base Value",
+            "type": "number"
+          },
+          "change": {
+            "title": "Change",
+            "type": "number"
+          },
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "entered_in_review": {
+            "title": "Entered In Review",
+            "type": "boolean"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyFlagCode"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "goal_id": {
+            "format": "uuid",
+            "title": "Goal Id",
+            "type": "string"
+          },
+          "goal_title": {
+            "title": "Goal Title",
+            "type": "string"
+          },
+          "key_result_id": {
+            "format": "uuid",
+            "title": "Key Result Id",
+            "type": "string"
+          },
+          "latest_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest At"
+          },
+          "latest_value": {
+            "title": "Latest Value",
+            "type": "number"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "past_deadline": {
+            "title": "Past Deadline",
+            "type": "boolean"
+          },
+          "retired": {
+            "title": "Retired",
+            "type": "boolean"
+          },
+          "shared": {
+            "title": "Shared",
+            "type": "boolean"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/KeyResultUpdate"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "theme_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Theme Ids",
+            "type": "array"
+          },
+          "update_source": {
+            "$ref": "#/components/schemas/UpdateSource"
+          }
+        },
+        "required": [
+          "key_result_id",
+          "goal_id",
+          "goal_title",
+          "metric",
+          "update_source",
+          "start_value",
+          "base_value",
+          "latest_value",
+          "latest_at",
+          "change",
+          "status",
+          "entered_in_review",
+          "after_month_end",
+          "target",
+          "deadline",
+          "past_deadline",
+          "retired",
+          "theme_ids",
+          "shared",
+          "flags"
+        ],
+        "title": "ReviewKeyResultOut",
+        "type": "object"
+      },
+      "ReviewMilestoneOut": {
+        "description": "A completed milestone captured in a review snapshot.",
+        "properties": {
+          "done_on": {
+            "format": "date",
+            "title": "Done On",
+            "type": "string"
+          },
+          "milestone_id": {
+            "format": "uuid",
+            "title": "Milestone Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "milestone_id",
+          "name",
+          "done_on"
+        ],
+        "title": "ReviewMilestoneOut",
+        "type": "object"
+      },
+      "ReviewOutsideFocusOut": {
+        "description": "A completed milestone not counted under a focused theme.",
+        "properties": {
+          "done_on": {
+            "format": "date",
+            "title": "Done On",
+            "type": "string"
+          },
+          "milestone_id": {
+            "format": "uuid",
+            "title": "Milestone Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "theme_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Name"
+          },
+          "theme_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Project Id"
+          }
+        },
+        "required": [
+          "milestone_id",
+          "name",
+          "done_on",
+          "theme_project_id",
+          "theme_name"
+        ],
+        "title": "ReviewOutsideFocusOut",
+        "type": "object"
+      },
+      "ReviewStoreIn": {
+        "description": "Review decisions and optional values, or a no-write preview.",
+        "properties": {
+          "confirm_new_version": {
+            "default": false,
+            "title": "Confirm New Version",
+            "type": "boolean"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeDecisionIn"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "key_result_values": {
+            "items": {
+              "$ref": "#/components/schemas/KeyResultValueIn"
+            },
+            "title": "Key Result Values",
+            "type": "array"
+          }
+        },
+        "title": "ReviewStoreIn",
+        "type": "object"
+      },
+      "ReviewStorePreviewOut": {
+        "description": "A review save preview with its effects and proposed version.",
+        "properties": {
+          "effects": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewEffectOut"
+            },
+            "title": "Effects",
+            "type": "array"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/MonthlySnapshotOut"
+          },
+          "will_create_version": {
+            "title": "Will Create Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "snapshot",
+          "effects",
+          "will_create_version"
+        ],
+        "title": "ReviewStorePreviewOut",
+        "type": "object"
+      },
+      "ReviewStoreResultOut": {
+        "description": "A stored review snapshot and values written to key-result series.",
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/MonthlySnapshotOut"
+          },
+          "values_written": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Values Written",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "snapshot",
+          "values_written"
+        ],
+        "title": "ReviewStoreResultOut",
+        "type": "object"
+      },
       "ReviewSummaryOut": {
         "description": "Counts of a stored review, for the plan history.",
         "properties": {
@@ -3671,6 +5097,144 @@
           "has_retrospective"
         ],
         "title": "ReviewSummaryOut",
+        "type": "object"
+      },
+      "ReviewThemeOut": {
+        "description": "A focus theme and its immutable monthly milestone results.",
+        "properties": {
+          "counts_from": {
+            "format": "date",
+            "title": "Counts From",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "earlier_not_counted": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewMilestoneOut"
+            },
+            "title": "Earlier Not Counted",
+            "type": "array"
+          },
+          "key_result_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Key Result Ids",
+            "type": "array"
+          },
+          "label_changed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "left_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left On"
+          },
+          "marker": {
+            "$ref": "#/components/schemas/TargetMarker"
+          },
+          "milestones": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewMilestoneOut"
+            },
+            "title": "Milestones",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orphaned": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orphaned"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FocusEntryStatus"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "target",
+          "counts_from",
+          "left_on",
+          "status",
+          "orphaned",
+          "label_changed",
+          "done",
+          "marker",
+          "milestones",
+          "earlier_not_counted",
+          "key_result_ids"
+        ],
+        "title": "ReviewThemeOut",
+        "type": "object"
+      },
+      "ReviewVersionOut": {
+        "description": "A stored review version and whether it is current.",
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "taken_at": {
+            "format": "date-time",
+            "title": "Taken At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "taken_at",
+          "current"
+        ],
+        "title": "ReviewVersionOut",
         "type": "object"
       },
       "RolloverOut": {
@@ -3816,6 +5380,40 @@
         },
         "title": "SettingsPatch",
         "type": "object"
+      },
+      "SkippedSuggestionOut": {
+        "description": "A prior theme excluded from suggestions and its reason.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/SkippedSuggestionReason"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "reason"
+        ],
+        "title": "SkippedSuggestionOut",
+        "type": "object"
+      },
+      "SkippedSuggestionReason": {
+        "description": "Why a previous theme cannot be suggested again.",
+        "enum": [
+          "orphaned",
+          "relabelled",
+          "ignored"
+        ],
+        "title": "SkippedSuggestionReason",
+        "type": "string"
       },
       "StatTaskOut": {
         "description": "A completed task with its stored category.",
@@ -4050,6 +5648,43 @@
         "title": "StatisticsOut",
         "type": "object"
       },
+      "SuggestionsOut": {
+        "description": "Saved-review suggestions and themes that could not be carried forward.",
+        "properties": {
+          "from_month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Month"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedSuggestionOut"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeSuggestionOut"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "from_month",
+          "suggestions",
+          "skipped"
+        ],
+        "title": "SuggestionsOut",
+        "type": "object"
+      },
       "SummaryOut": {
         "description": "The numbers of the review. Time spent is never measured.",
         "properties": {
@@ -4249,6 +5884,42 @@
           "last_sync_outcome"
         ],
         "title": "SyncStatusOut",
+        "type": "object"
+      },
+      "TargetMarker": {
+        "description": "The result of comparing milestone completions with a target.",
+        "enum": [
+          "met",
+          "missed",
+          "beaten",
+          "no_target"
+        ],
+        "title": "TargetMarker",
+        "type": "string"
+      },
+      "TaskConnectionOptionOut": {
+        "description": "A task-app connection available for creating a theme.",
+        "properties": {
+          "can_create": {
+            "title": "Can Create",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "can_create"
+        ],
+        "title": "TaskConnectionOptionOut",
         "type": "object"
       },
       "TaskOut": {
@@ -4459,6 +6130,48 @@
         "title": "ThemeCreateIn",
         "type": "object"
       },
+      "ThemeDecision": {
+        "description": "The month-end decision for a theme.",
+        "enum": [
+          "carry",
+          "drop",
+          "replace",
+          "later"
+        ],
+        "title": "ThemeDecision",
+        "type": "string"
+      },
+      "ThemeDecisionIn": {
+        "description": "A month-end decision for a focused theme.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ThemeDecision"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "replacement_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacement Project Id"
+          }
+        },
+        "required": [
+          "project_id",
+          "decision"
+        ],
+        "title": "ThemeDecisionIn",
+        "type": "object"
+      },
       "ThemeGroupOut": {
         "description": "A theme for the picker headers.",
         "properties": {
@@ -4513,6 +6226,91 @@
         "title": "ThemeGroupOut",
         "type": "object"
       },
+      "ThemeOptionOut": {
+        "description": "One eligible theme and its picker hints.",
+        "properties": {
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "connection_name": {
+            "title": "Connection Name",
+            "type": "string"
+          },
+          "in_focus": {
+            "title": "In Focus",
+            "type": "boolean"
+          },
+          "key_result_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Key Result Ids",
+            "type": "array"
+          },
+          "last_month_done": {
+            "title": "Last Month Done",
+            "type": "integer"
+          },
+          "left_this_month": {
+            "title": "Left This Month",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "connection_id",
+          "connection_name",
+          "name",
+          "in_focus",
+          "left_this_month",
+          "last_month_done",
+          "key_result_ids"
+        ],
+        "title": "ThemeOptionOut",
+        "type": "object"
+      },
+      "ThemePickerOut": {
+        "description": "Eligible themes, unsorted-project count and theme-creation connections.",
+        "properties": {
+          "task_connections": {
+            "items": {
+              "$ref": "#/components/schemas/TaskConnectionOptionOut"
+            },
+            "title": "Task Connections",
+            "type": "array"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeOptionOut"
+            },
+            "title": "Themes",
+            "type": "array"
+          },
+          "unsorted_count": {
+            "title": "Unsorted Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "themes",
+          "unsorted_count",
+          "task_connections"
+        ],
+        "title": "ThemePickerOut",
+        "type": "object"
+      },
       "ThemeSetIn": {
         "description": "Theme ids to link to one key result.",
         "properties": {
@@ -4532,6 +6330,64 @@
         },
         "title": "ThemeSetIn",
         "type": "object"
+      },
+      "ThemeSuggestionOut": {
+        "description": "One carried or replacement theme suggestion.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ThemeSuggestionReason"
+          },
+          "replaces": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaces"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "target",
+          "reason",
+          "replaces"
+        ],
+        "title": "ThemeSuggestionOut",
+        "type": "object"
+      },
+      "ThemeSuggestionReason": {
+        "description": "Why a saved review suggests a theme for the next month.",
+        "enum": [
+          "carry",
+          "replace"
+        ],
+        "title": "ThemeSuggestionReason",
+        "type": "string"
       },
       "ThemesOut": {
         "description": "The themes of the picker.",
@@ -4581,6 +6437,61 @@
         ],
         "title": "TickIn",
         "type": "object"
+      },
+      "TrendOut": {
+        "description": "Display-only comparison of this month's category counts.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "previous": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Previous",
+            "type": "array"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TrendState"
+          }
+        },
+        "required": [
+          "state",
+          "previous",
+          "share"
+        ],
+        "title": "TrendOut",
+        "type": "object"
+      },
+      "TrendState": {
+        "description": "The comparison of a month's off-plan share with the two prior months.",
+        "enum": [
+          "rising",
+          "not_rising",
+          "not_enough_history"
+        ],
+        "title": "TrendState",
+        "type": "string"
       },
       "UndoOut": {
         "description": "How many projects got their earlier label back.",
@@ -4964,80 +6875,24 @@
         "title": "ThemeOut",
         "type": "object"
       },
-      "tefteri__api__routers__planning__GoalOut": {
-        "description": "A goal with its computed progress.",
+      "tefteri__api__routers__monthly__UndoIn": {
+        "description": "The batch to undo.",
         "properties": {
-          "criteria": {
-            "title": "Criteria",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "id": {
+          "batch_id": {
             "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "parent_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "number"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
+            "title": "Batch Id",
             "type": "string"
           }
         },
         "required": [
-          "id",
-          "parent_id",
-          "period_type",
-          "period_start",
-          "title",
-          "description",
-          "criteria",
-          "status",
-          "progress"
+          "batch_id"
         ],
-        "title": "GoalOut",
+        "title": "UndoIn",
         "type": "object"
       },
       "tefteri__api__routers__planning__PlanOut": {
-        "description": "A plan and the goals of its period.",
+        "description": "A plan of one period. Goals are no longer part of it (spec 006).",
         "properties": {
-          "goals": {
-            "items": {
-              "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
-            },
-            "title": "Goals",
-            "type": "array"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -5066,8 +6921,7 @@
           "period_type",
           "period_start",
           "title",
-          "summary",
-          "goals"
+          "summary"
         ],
         "title": "PlanOut",
         "type": "object"
@@ -5770,91 +7624,6 @@
         ],
         "title": "ThemeOut",
         "type": "object"
-      },
-      "tefteri__services__annual_plan__GoalOut": {
-        "description": "One goal of the plan with its key results.",
-        "properties": {
-          "criteria_suggestion": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Criteria Suggestion"
-          },
-          "flags": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Flags",
-            "type": "array"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "key_results": {
-            "items": {
-              "$ref": "#/components/schemas/KeyResultOut"
-            },
-            "title": "Key Results",
-            "type": "array"
-          },
-          "legacy_done": {
-            "title": "Legacy Done",
-            "type": "boolean"
-          },
-          "notes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Notes",
-            "type": "array"
-          },
-          "progress": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Progress"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "status",
-          "legacy_done",
-          "criteria_suggestion",
-          "progress",
-          "flags",
-          "notes",
-          "updated_at",
-          "key_results"
-        ],
-        "title": "GoalOut",
-        "type": "object"
       }
     }
   },
@@ -5895,7 +7664,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/tefteri__services__annual_plan__GoalOut"
+                  "$ref": "#/components/schemas/GoalOut"
                 }
               }
             },
@@ -6018,7 +7787,7 @@
     },
     "/api/v1/annual/goals/{goal_id}/retire": {
       "post": {
-        "description": "Retire a goal with all its active key results, or show a dry run preview.",
+        "description": "Retire a goal with all its active key results, or only show the effect (``dry_run``).\n\nThe answer is ``{\"effect\": ...}`` for a dry run, else ``{\"batch_id\", \"effect\"}`` (FR-021).",
         "operationId": "retire_goal_api_v1_annual_goals__goal_id__retire_post",
         "parameters": [
           {
@@ -6170,7 +7939,7 @@
     },
     "/api/v1/annual/key-results/{key_result_id}/retire": {
       "post": {
-        "description": "Retire one key result, optionally previewing the effect without writing.",
+        "description": "Retire one key result, or only show the effect (``dry_run``). Its links end too.",
         "operationId": "retire_key_result_api_v1_annual_key_results__key_result_id__retire_post",
         "parameters": [
           {
@@ -6443,14 +8212,16 @@
         ]
       },
       "get": {
-        "description": "Return whether a push token exists and, if so, its hint and timestamps.",
+        "description": "Return whether a push token exists and, if so, its hint and times. Never the token.",
         "operationId": "get_push_token_status_api_v1_annual_push_token_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Get Push Token Status Api V1 Annual Push Token Get"
+                  "additionalProperties": true,
+                  "title": "Response Get Push Token Status Api V1 Annual Push Token Get",
+                  "type": "object"
                 }
               }
             },
@@ -6695,7 +8466,7 @@
     },
     "/api/v1/annual/{year}/history": {
       "get": {
-        "description": "Return the history rows of the year, oldest first.",
+        "description": "Return the changes of the year in time order, oldest first (FR-019).\n\n``undone`` is true for the rows of a batch that a later undo reverted.",
         "operationId": "get_annual_history_api_v1_annual__year__history_get",
         "parameters": [
           {
@@ -6747,9 +8518,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {},
+                  "additionalProperties": true,
                   "title": "Response Get Annual History Api V1 Annual  Year  History Get",
-                  "type": "array"
+                  "type": "object"
                 }
               }
             },
@@ -6767,6 +8538,67 @@
           }
         },
         "summary": "Get Annual History",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/{year}/suggestions": {
+      "get": {
+        "description": "Suggest goals and unmet key results of year N for a new year (FR-016, FR-017, R-10).\n\n``from_year`` defaults to the year before. Nothing is read for writing and nothing is\nstored: the client accepts suggestions through ``POST /annual/{year}/goals/bulk``.",
+        "operationId": "get_suggestions_api_v1_annual__year__suggestions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Suggestions Api V1 Annual  Year  Suggestions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Suggestions",
         "tags": [
           "annual"
         ]
@@ -7841,10 +9673,10 @@
         ]
       }
     },
-    "/api/v1/goals": {
+    "/api/v1/goals/history": {
       "get": {
-        "description": "List goals, optionally for one period or under one parent.",
-        "operationId": "list_goals_api_v1_goals_get",
+        "description": "List the legacy goals, read only (FR-022, FR-023).\n\nThese are all month and week goals and the year goals that are retired or were marked\ncomplete before annual planning, with their parent and the number of linked tasks. No route\nwrites them.",
+        "operationId": "legacy_goals_api_v1_goals_history_get",
         "parameters": [
           {
             "in": "query",
@@ -7878,23 +9710,6 @@
               ],
               "title": "Period Start"
             }
-          },
-          {
-            "in": "query",
-            "name": "parent_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Parent Id"
-            }
           }
         ],
         "responses": {
@@ -7903,9 +9718,9 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
+                    "$ref": "#/components/schemas/LegacyGoalOut"
                   },
-                  "title": "Response List Goals Api V1 Goals Get",
+                  "title": "Response Legacy Goals Api V1 Goals History Get",
                   "type": "array"
                 }
               }
@@ -7923,321 +9738,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Goals",
-        "tags": [
-          "planning"
-        ]
-      },
-      "post": {
-        "description": "Create a goal; its period must lie inside its parent's period.",
-        "operationId": "create_goal_api_v1_goals_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GoalIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Goal",
-        "tags": [
-          "planning"
-        ]
-      }
-    },
-    "/api/v1/goals/bulk": {
-      "post": {
-        "description": "Create one goal per title. Blank titles are skipped. All goals are created, or none.",
-        "operationId": "create_goals_api_v1_goals_bulk_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GoalsIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
-                  },
-                  "title": "Response Create Goals Api V1 Goals Bulk Post",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Goals",
-        "tags": [
-          "planning"
-        ]
-      }
-    },
-    "/api/v1/goals/history": {
-      "get": {
-        "description": "Return legacy month/week goals and retired or done year goals.",
-        "operationId": "get_legacy_goals_api_v1_goals_history_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "period_type",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Period Type"
-            }
-          },
-          {
-            "in": "query",
-            "name": "period_start",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Period Start"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "title": "Response Get Legacy Goals Api V1 Goals History Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Legacy Goals",
-        "tags": [
-          "annual"
-        ]
-      }
-    },
-    "/api/v1/goals/{goal_id}": {
-      "delete": {
-        "description": "Delete a goal and its smaller goals. ``linked_tasks`` says what happens to their tasks.",
-        "operationId": "delete_goal_api_v1_goals__goal_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "goal_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Goal Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "linked_tasks",
-            "required": true,
-            "schema": {
-              "enum": [
-                "keep",
-                "delete"
-              ],
-              "title": "Linked Tasks",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Goal",
-        "tags": [
-          "planning"
-        ]
-      },
-      "patch": {
-        "description": "Change a goal.",
-        "operationId": "update_goal_api_v1_goals__goal_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "goal_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Goal Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GoalPatch"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__planning__GoalOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Goal",
-        "tags": [
-          "planning"
-        ]
-      }
-    },
-    "/api/v1/goals/{goal_id}/breakdown": {
-      "post": {
-        "description": "Create smaller goals and tasks under a goal.",
-        "operationId": "breakdown_goal_api_v1_goals__goal_id__breakdown_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "goal_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Goal Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BreakdownIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BreakdownOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Breakdown Goal",
+        "summary": "Legacy Goals",
         "tags": [
           "planning"
         ]
@@ -8245,7 +9746,7 @@
     },
     "/api/v1/key-results/{key_result_id}/push": {
       "post": {
-        "description": "Accept an automatic value from the push token of the owner.",
+        "description": "Store a value that an outside source sends for an automatic key result (FR-010).\n\nBody: ``value`` (a finite JSON number) and ``at`` (ISO 8601 with a zone, not more than five\nminutes in the future). The same value with the same time is stored once: the retry answers\n200 with ``stored: false``. At most 60 pushes a minute per token.",
         "operationId": "push_value_api_v1_key_results__key_result_id__push_post",
         "parameters": [
           {
@@ -8262,8 +9763,18 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "push": {
+                  "value": {
+                    "at": "2027-03-04T09:30:00Z",
+                    "value": 1342
+                  }
+                }
+              },
               "schema": {
-                "$ref": "#/components/schemas/PushIn"
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
               }
             }
           },
@@ -8274,23 +9785,36 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Push Value Api V1 Key Results  Key Result Id  Push Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PushOut"
+                }
+              }
+            },
+            "description": "The same value was stored before."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushOut"
                 }
               }
             },
             "description": "Successful Response"
           },
+          "401": {
+            "description": "invalid_push_token"
+          },
+          "404": {
+            "description": "not_found"
+          },
+          "409": {
+            "description": "retired or not_automatic"
+          },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "invalid"
+          },
+          "429": {
+            "description": "rate_limited, with Retry-After"
           }
         },
         "summary": "Push Value",
@@ -8617,6 +10141,613 @@
         ]
       }
     },
+    "/api/v1/monthly/snapshots": {
+      "get": {
+        "description": "Expose current stored snapshots for feature 008.",
+        "operationId": "get_snapshots_api_v1_monthly_snapshots_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "maximum": 9998,
+              "minimum": 1,
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Snapshots Api V1 Monthly Snapshots Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Snapshots",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}": {
+      "get": {
+        "description": "Return one month's focus, key results and snapshot status.",
+        "operationId": "get_month_api_v1_monthly__month__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyPlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Month",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/changes": {
+      "post": {
+        "description": "Preview or apply one in-month focus change.",
+        "operationId": "change_focus_api_v1_monthly__month__changes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FocusChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FocusChangePreviewOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FocusChangeResultOut"
+                    }
+                  ],
+                  "title": "Response Change Focus Api V1 Monthly  Month  Changes Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Focus",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/changes/undo": {
+      "post": {
+        "description": "Undo one focus-change batch.",
+        "operationId": "undo_focus_change_api_v1_monthly__month__changes_undo_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/tefteri__api__routers__monthly__UndoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FocusUndoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo Focus Change",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/focus": {
+      "put": {
+        "description": "Save or preview the complete focus for one month.",
+        "operationId": "save_focus_api_v1_monthly__month__focus_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FocusSaveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FocusSavePreviewOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FocusSaveResultOut"
+                    }
+                  ],
+                  "title": "Response Save Focus Api V1 Monthly  Month  Focus Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Focus",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/history": {
+      "get": {
+        "description": "Return the chronological focus-change log.",
+        "operationId": "get_focus_history_api_v1_monthly__month__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FocusHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Focus History",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/review": {
+      "get": {
+        "description": "Return the stored review or an unsaved live draft.",
+        "operationId": "get_review_api_v1_monthly__month__review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Review",
+        "tags": [
+          "monthly planning"
+        ]
+      },
+      "post": {
+        "description": "Preview or store a review and its immutable snapshot version.",
+        "operationId": "store_review_api_v1_monthly__month__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewStoreIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReviewStorePreviewOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReviewStoreResultOut"
+                    }
+                  ],
+                  "title": "Response Store Review Api V1 Monthly  Month  Review Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Store Review",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/review/current": {
+      "post": {
+        "description": "Preview or select a stored snapshot version.",
+        "operationId": "make_review_current_api_v1_monthly__month__review_current_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MakeCurrentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MakeCurrentPreviewOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MonthlyReviewOut"
+                    }
+                  ],
+                  "title": "Response Make Review Current Api V1 Monthly  Month  Review Current Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Make Review Current",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/suggestions": {
+      "get": {
+        "description": "Suggest themes from the latest earlier stored review.",
+        "operationId": "get_suggestions_api_v1_monthly__month__suggestions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Suggestions",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
+    "/api/v1/monthly/{month}/themes": {
+      "get": {
+        "description": "Return eligible themes and task connections for the picker.",
+        "operationId": "get_themes_api_v1_monthly__month__themes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "title": "Month",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "connection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemePickerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Themes",
+        "tags": [
+          "monthly planning"
+        ]
+      }
+    },
     "/api/v1/notes": {
       "get": {
         "description": "List the notes that tefteri created or opened (the note app is not copied).",
@@ -8854,7 +10985,7 @@
     },
     "/api/v1/plans/{plan_id}": {
       "get": {
-        "description": "Return one plan with its goals.",
+        "description": "Return one plan.",
         "operationId": "get_plan_api_v1_plans__plan_id__get",
         "parameters": [
           {
@@ -9726,7 +11857,7 @@
         ]
       },
       "post": {
-        "description": "Create a task in the connected task app.",
+        "description": "Create a task in the connected task app.\n\n``goal_id`` must be an active annual goal of the current year (FR-026).",
         "operationId": "create_task_api_v1_tasks_post",
         "requestBody": {
           "content": {
@@ -10446,7 +12577,7 @@
     },
     "/api/v1/views/month/{day}": {
       "get": {
-        "description": "Return the goals, tasks and entries of the month that contains ``day``.",
+        "description": "Return the tasks and entries of the month that contains ``day``.",
         "operationId": "month_view_api_v1_views_month__day__get",
         "parameters": [
           {
@@ -10490,7 +12621,7 @@
     },
     "/api/v1/views/week/{day}": {
       "get": {
-        "description": "Return the goals, tasks and entries of the Monday-to-Sunday week that contains ``day``.",
+        "description": "Return the tasks and entries of the Monday-to-Sunday week that contains ``day``.",
         "operationId": "week_view_api_v1_views_week__day__get",
         "parameters": [
           {
@@ -10534,7 +12665,7 @@
     },
     "/api/v1/views/year/{year}": {
       "get": {
-        "description": "Return the goals and tasks of a year (no entries).",
+        "description": "Return the tasks of a year (no entries). The annual plan is ``GET /annual/{year}``.",
         "operationId": "year_view_api_v1_views_year__year__get",
         "parameters": [
           {

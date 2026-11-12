@@ -13,12 +13,13 @@ Map<String, Object?> _week() => periodJson(
       'week',
       '2026-11-02',
       '2026-11-09',
-      goals: [
-        goalJson('g1', 'Ship beta',
-            periodType: 'week', periodStart: '2026-11-02', progress: 0.5),
-      ],
+      goalTitles: {
+        'g1': {'title': 'Ship beta', 'annual': false},
+        'a1': {'title': 'Get better at open source', 'annual': true},
+      },
       tasks: [
         {...taskJson('t1', 'Write plan'), 'goal_id': 'g1'},
+        {...taskJson('t4', 'Review a pull request'), 'goal_id': 'a1'},
         {
           ...taskJson('t2', 'Call Sam'),
           'scheduled_start': '2026-11-03T09:00:00Z',
@@ -92,21 +93,34 @@ Future<void> _pump(WidgetTester tester, FakeApi api) {
 }
 
 void main() {
-  testWidgets('shows goals with progress and tasks, but no events',
-      (tester) async {
+  testWidgets('shows tasks, but no goal section and no events', (tester) async {
     final api = _api();
     await _pump(tester, api);
     expect(find.text('Week of 2026-11-02'), findsOneWidget);
-    expect(find.text('Ship beta'), findsOneWidget);
-    final bar = tester.widget<LinearProgressIndicator>(
-        find.byKey(const Key('goal-progress-g1')));
-    expect(bar.value, 0.5);
-    expect(find.text('50%'), findsOneWidget);
+    expect(find.text('Goals'), findsNothing);
+    expect(find.byKey(const Key('no-goals')), findsNothing);
+    expect(find.byKey(const Key('goal-progress-g1')), findsNothing);
     expect(find.text('Standup'), findsNothing);
     expect(find.byKey(const Key('no-events')), findsNothing);
     expect(find.text('Write plan'), findsOneWidget);
-    expect(find.textContaining('Goal: Ship beta'), findsOneWidget);
-    expect(find.textContaining('Not scheduled'), findsOneWidget);
+    expect(find.textContaining('Not scheduled'), findsWidgets);
+  });
+
+  testWidgets('a task shows its annual goal, and an old goal as history',
+      (tester) async {
+    final api = _api({'PATCH /tasks/t1': taskJson('t1', 'x')});
+    await _pump(tester, api);
+    expect(
+        find.textContaining('Goal: Get better at open source'), findsOneWidget);
+    expect(find.textContaining('Goal (history): Ship beta'), findsOneWidget);
+    expect(find.textContaining('Goal: Ship beta'), findsNothing);
+    // The old link can be cleared.
+    await tester.tap(find.byKey(const Key('task-menu-t1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove goal'));
+    await tester.pumpAndSettle();
+    expect(
+        (api.where('PATCH /tasks/t1').single.data! as Map)['goal_id'], isNull);
   });
 
   testWidgets('says what goal-aligned means in one line', (tester) async {
@@ -183,7 +197,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.where('GET /views/week/2026-11-09'), hasLength(1));
     expect(find.text('Week of 2026-11-09'), findsOneWidget);
-    expect(find.byKey(const Key('no-goals')), findsOneWidget);
+    expect(find.byKey(const Key('no-tasks')), findsOneWidget);
   });
 
   testWidgets('schedule puts the task on the chosen day and hour',
@@ -217,16 +231,24 @@ void main() {
     expect(api.where('DELETE /tasks/t2/schedule'), hasLength(1));
   });
 
-  testWidgets('a task can be linked to a goal', (tester) async {
-    final api = _api({'PATCH /tasks/t2': taskJson('t2', 'x')});
+  testWidgets('a task can be linked to a goal of the annual plan',
+      (tester) async {
+    final year = DateTime.now().year;
+    final api = _api({
+      'PATCH /tasks/t2': taskJson('t2', 'x'),
+      'GET /annual/$year': annualPlanJson(year: year, goals: [
+        annualGoalJson('a1', 'Get better at open source'),
+      ]),
+    });
     await _pump(tester, api);
     await tester.tap(find.byKey(const Key('task-menu-t2')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Link to goal'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('link-goal-g1')));
+    expect(find.byKey(const Key('link-goal-g1')), findsNothing);
+    await tester.tap(find.byKey(const Key('link-goal-a1')));
     await tester.pumpAndSettle();
-    expect((api.where('PATCH /tasks/t2').single.data! as Map)['goal_id'], 'g1');
+    expect((api.where('PATCH /tasks/t2').single.data! as Map)['goal_id'], 'a1');
   });
 
   testWidgets('a scheduling failure shows the server message', (tester) async {

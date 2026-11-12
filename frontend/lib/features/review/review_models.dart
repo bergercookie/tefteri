@@ -115,6 +115,21 @@ class PlanReview {
   /// The retrospective note, once saved.
   final PlanNote? retrospective;
 
+  /// Goals belong to the annual plan only. The goals of a stored month or
+  /// week plan are history, and the review says so.
+  bool get goalsAreHistory => periodType == 'month' || periodType == 'week';
+
+  /// The word for the planned goals: `planned goals`, or `goals (history)`
+  /// for a month or week plan.
+  String get goalsWord => goalsAreHistory ? 'goals (history)' : 'planned goals';
+
+  /// The word for one item of type [type].
+  String itemWord(String type) => type == 'task'
+      ? 'Task'
+      : goalsAreHistory
+          ? 'Goal (history)'
+          : 'Goal';
+
   /// Completed share (0..1); 0 when nothing was planned.
   double get ratio => plannedCount == 0 ? 0 : completedCount / plannedCount;
 }

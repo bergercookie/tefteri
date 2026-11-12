@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 from tefteri.api.deps import CurrentUser, Db
+from tefteri.domain.annual_plan import today_in
 from tefteri.domain.enums import UpdateSource, ValueSource
 from tefteri.services.annual_plan import (
     AnnualPlanService,
@@ -15,7 +16,9 @@ from tefteri.services.annual_plan import (
     BulkKeyResultDraft,
     GoalOut,
     KeyResultOut,
+    utc,
 )
+from tefteri.services.errors import Invalid
 from tefteri.services.key_results import KeyResultService
 from tefteri.services.project_labels import load_trees
 
@@ -28,6 +31,18 @@ def _annual(request: Request) -> AnnualPlanService:
 
 def _key_results(request: Request) -> KeyResultService:
     return request.app.state.key_result_service
+
+
+def _retire_answer(effect: object, batch_id: uuid.UUID | None) -> dict[str, object]:
+    """The answer of a retire: the effect, and the batch when it was written."""
+    if batch_id is None:
+        return {"effect": effect}
+    return {"batch_id": batch_id, "effect": effect}
+
+
+def _today(request: Request, user: CurrentUser) -> date:
+    """Today in the user's time zone, from the clock of the key result service."""
+    return today_in(user.timezone, _key_results(request)._clock())
 
 
 async def _plan_of(request: Request, db: Db, user: CurrentUser, year: int) -> object:
@@ -149,7 +164,47 @@ async def get_theme_picker(
     user: CurrentUser,
 ) -> object:
     """Return the eligible theme projects and task connections."""
-    return await _annual(request).themes(db, user.id, year=date.today().year)
+    return await _annual(request).themes(db, user.id, year=_today(request, user).year)
+
+
+@router.get("/annual/push-token")
+async def get_push_token_status(
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+) -> dict[str, object]:
+    """Return whether a push token exists and, if so, its hint and times. Never the token."""
+    status = await request.app.state.push_token_service.status(db, user.id)
+    if not status.exists:
+        return {"exists": False}
+    return {
+        "exists": True,
+        "hint": status.hint,
+        "created_at": utc(status.created_at),
+        "last_used_at": utc(status.last_used_at),
+    }
+
+
+@router.post("/annual/push-token")
+async def create_or_rotate_push_token(
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+) -> dict[str, str]:
+    """Create or rotate the user's push token."""
+    service = request.app.state.push_token_service
+    token, hint = await service.issue(db, user.id)
+    return {"token": token, "hint": hint}
+
+
+@router.delete("/annual/push-token", status_code=204)
+async def delete_push_token(
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+) -> None:
+    """Revoke the user's push token."""
+    await request.app.state.push_token_service.revoke(db, user.id)
 
 
 @router.get("/annual/{year}")
@@ -171,10 +226,33 @@ async def get_annual_history(
     user: CurrentUser,
     goal_id: uuid.UUID | None = None,
     key_result_id: uuid.UUID | None = None,
-) -> list[object]:
-    """Return the history rows of the year, oldest first."""
+) -> dict[str, object]:
+    """Return the changes of the year in time order, oldest first (FR-019).
+
+    ``undone`` is true for the rows of a batch that a later undo reverted.
+    """
     service = _annual(request)
-    return await service.history(db, user.id, year, goal_id=goal_id, key_result_id=key_result_id)
+    changes = await service.history(db, user.id, year, goal_id=goal_id, key_result_id=key_result_id)
+    return {"year": year, "changes": changes}
+
+
+@router.get("/annual/{year}/suggestions")
+async def get_suggestions(
+    year: int,
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+    from_year: int | None = None,
+) -> dict[str, object]:
+    """Suggest goals and unmet key results of year N for a new year (FR-016, FR-017, R-10).
+
+    ``from_year`` defaults to the year before. Nothing is read for writing and nothing is
+    stored: the client accepts suggestions through ``POST /annual/{year}/goals/bulk``.
+    """
+    source = year - 1 if from_year is None else from_year
+    if source >= year:
+        raise Invalid("The source year must be earlier than the new year.")
+    return await _annual(request).suggestions_view(db, user.id, year, from_year=source)
 
 
 @router.get("/annual/key-results/{key_result_id}/value-on")
@@ -234,6 +312,7 @@ async def bulk_create_goals(
         )
         for g in body.goals
     ]
+    batch_id = uuid.uuid4()
     created = await service.bulk_create(
         db,
         user.id,
@@ -241,8 +320,13 @@ async def bulk_create_goals(
         goals,
         seeded_from=body.seeded_from,
         tz=user.timezone,
+        batch_id=batch_id,
     )
-    return {"batch_id": uuid.uuid4(), "goals": created}
+    plan = await _plan_of(request, db, user, year)
+    return {
+        "batch_id": batch_id,
+        "goals": [await _goal_from_plan(plan, goal.id) or goal for goal in created],
+    }
 
 
 @router.patch("/annual/goals/{goal_id}")
@@ -343,8 +427,11 @@ async def retire_goal(
     db: Db,
     user: CurrentUser,
 ) -> object:
-    """Retire a goal with all its active key results, or show a dry run preview."""
-    return await _annual(request).retire_goal(
+    """Retire a goal with all its active key results, or only show the effect (``dry_run``).
+
+    The answer is ``{"effect": ...}`` for a dry run, else ``{"batch_id", "effect"}`` (FR-021).
+    """
+    outcome = await _annual(request).retire_goal(
         db,
         user.id,
         goal_id,
@@ -352,6 +439,7 @@ async def retire_goal(
         dry_run=body.dry_run,
         tz=user.timezone,
     )
+    return _retire_answer(outcome.effect, outcome.batch_id)
 
 
 @router.post("/annual/key-results/{key_result_id}/retire")
@@ -362,22 +450,23 @@ async def retire_key_result(
     db: Db,
     user: CurrentUser,
 ) -> object:
-    """Retire one key result, optionally previewing the effect without writing."""
+    """Retire one key result, or only show the effect (``dry_run``). Its links end too."""
     key_result = await _key_results(request).get(db, user.id, key_result_id)
     _annual(request).require_open(key_result.year, tz=user.timezone)
     trees = await load_trees(db, user.id)
     nodes = {k: v for tree in trees for k, v in tree.nodes.items()}
     links_of = {key_result_id: await _key_results(request).active_links(db, key_result)}
-    return await _key_results(request).retire(
+    result = await _key_results(request).retire(
         db,
         user.id,
         key_result,
         reason=body.reason,
         dry_run=body.dry_run,
-        today=date.today(),
+        today=_today(request, user),
         nodes=nodes,
         links_of=links_of,
     )
+    return _retire_answer(result.effect, result.batch_id)
 
 
 @router.post("/annual/goals/{goal_id}/restore")
@@ -418,6 +507,7 @@ async def set_key_result_themes(
     _annual(request).require_open(key_result.year, tz=user.timezone)
     trees = await load_trees(db, user.id)
     nodes = {k: v for tree in trees for k, v in tree.nodes.items()}
+    batch_id = uuid.uuid4()
     effect = await _key_results(request).set_themes(
         db,
         user.id,
@@ -425,14 +515,15 @@ async def set_key_result_themes(
         body.theme_ids,
         dry_run=body.dry_run,
         trees=trees,
-        today=date.today(),
+        today=_today(request, user),
         nodes=nodes,
+        batch_id=batch_id,
     )
     if body.dry_run:
         return {"effect": effect}
     plan = await _plan_of(request, db, user, key_result.year)
     return {
-        "batch_id": uuid.uuid4(),
+        "batch_id": batch_id,
         "key_result": await _key_result_from_plan(plan, key_result_id),
     }
 
@@ -483,69 +574,8 @@ async def create_value(
     return {
         "id": row.id,
         "value": row.value,
-        "at": row.at,
+        "at": utc(row.at),
         "on_date": on_date,
         "source": row.source,
         "key_result": await _key_result_from_plan(plan, key_result_id),
     }
-
-
-@router.get("/annual/push-token")
-async def get_push_token_status(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> object:
-    """Return whether a push token exists and, if so, its hint and timestamps."""
-    service = request.app.state.push_token_service
-    return await service.status(db, user.id)
-
-
-@router.post("/annual/push-token")
-async def create_or_rotate_push_token(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> dict[str, str]:
-    """Create or rotate the user's push token."""
-    service = request.app.state.push_token_service
-    token, hint = await service.issue(db, user.id)
-    return {"token": token, "hint": hint}
-
-
-@router.delete("/annual/push-token", status_code=204)
-async def delete_push_token(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> None:
-    """Revoke the user's push token."""
-    await request.app.state.push_token_service.revoke(db, user.id)
-
-
-@router.get("/goals/history")
-async def get_legacy_goals(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-    period_type: str | None = None,
-    period_start: date | None = None,
-) -> list[dict[str, object]]:
-    """Return legacy month/week goals and retired or done year goals."""
-    rows = await _annual(request).legacy_goals(
-        db, user.id, period_type=period_type, period_start=period_start
-    )
-    return [
-        {
-            "id": row.id,
-            "parent_id": row.parent_id,
-            "period_type": row.period_type,
-            "period_start": row.period_start,
-            "title": row.title,
-            "description": row.description,
-            "criteria": row.criteria,
-            "status": row.status,
-            "linked_tasks": 0,
-        }
-        for row in rows
-    ]

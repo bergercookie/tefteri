@@ -5,6 +5,7 @@ it holds the user of the token, but it cannot touch anything else. Too many push
 time are refused, and the same value twice is stored once.
 """
 
+import math
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.key_result import KeyResult, KeyResultValue
 from tefteri.db.models.push_token import ValuePushToken
 from tefteri.db.models.user import User
-from tefteri.domain.enums import GoalState, ValueSource
+from tefteri.domain.enums import GoalState, UpdateSource, ValueSource
 from tefteri.security.tokens import digest_token, new_push_token, token_hint
 from tefteri.services.key_results import KeyResultService
 
@@ -29,16 +30,22 @@ RATE_LIMIT = 60
 
 RATE_WINDOW = timedelta(minutes=1)
 
+FUTURE_SLACK = timedelta(minutes=5)
+"""A pushed time may be this much ahead of the server clock (clock skew)."""
+
 
 class PushRejected(Exception):
     """A push was refused. ``status`` and ``code`` name the answer (contract, section 4)."""
 
-    def __init__(self, status: int, code: str, message: str) -> None:
-        """Store the HTTP status, the stable ``code`` and the message for the user."""
+    def __init__(
+        self, status: int, code: str, message: str, retry_after: int | None = None
+    ) -> None:
+        """Store the HTTP status, the stable ``code``, the message and, for 429, the wait."""
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        self.retry_after = retry_after
 
 
 @dataclass
@@ -56,10 +63,10 @@ class PushOutcome:
     """The answer of a push: whether a row was stored and the state it left behind."""
 
     stored: bool
-    key_result_id: uuid.UUID | None = None
-    value: float | None = None
-    at: datetime | None = None
-    current_value: float | None = None
+    key_result_id: uuid.UUID
+    value: float
+    at: datetime
+    current_value: float
 
 
 class PushTokenService:
@@ -133,9 +140,9 @@ class PushTokenService:
         if len(seen) >= RATE_LIMIT:
             self._seen[token] = seen
             retry = int((seen[0] + RATE_WINDOW - now).total_seconds()) + 1
-            exc = PushRejected(429, "rate_limited", "Too many pushes in one minute.")
-            exc.retry_after = retry
-            raise exc
+            raise PushRejected(
+                429, "rate_limited", "Too many pushes in one minute. Try again later.", retry
+            )
         seen.append(now)
         self._seen[token] = seen
 
@@ -144,15 +151,15 @@ class PushTokenService:
         db: AsyncSession,
         token: str,
         key_result_id: uuid.UUID,
-        value: float,
-        at: datetime | None,
-        *,
-        value_tolerance: float = 0.0,
+        value: object,
+        at: object,
     ) -> PushOutcome:
-        """Store an automatic value sent by the owner's tool (FR-010).
+        """Store an automatic value sent by the owner's tool (FR-010, contract section 4).
 
         The token says who pushes; the key result must belong to that user and be automatic.
-        The same value for the same time is stored once. A rejected push stores nothing.
+        ``value`` must be a finite JSON number (not a string, a boolean or null) and ``at`` an
+        ISO 8601 time with a zone, not more than five minutes in the future. The same value for
+        the same time is stored once. A rejected push stores nothing: the caller rolls back.
         """
         user_id = await self.user_of(db, token)
         if user_id is None:
@@ -163,41 +170,39 @@ class PushTokenService:
             raise PushRejected(404, "not_found", "There is no such key result.")
         if row.status == GoalState.RETIRED.value:
             raise PushRejected(409, "retired", "A retired key result accepts no new value.")
-        if row.update_source != "automatic":
+        if row.update_source != UpdateSource.AUTOMATIC.value:
             raise PushRejected(
-                409, "not_automatic", "A manual key result takes its values by hand."
+                409, "not_automatic", "Only a key result marked automatic accepts a push."
             )
+        number = _finite_number(value)
         now = self._clock()
-        if at is None:
-            at = now
-        if at.tzinfo is None or at.tzinfo.utcoffset(at) is None:
-            raise PushRejected(422, "invalid", "The time of the value needs a time zone.")
-        if at > now + timedelta(minutes=5):
-            raise PushRejected(422, "invalid", "The time of the value is in the future.")
-        if value != value or value in (float("inf"), float("-inf")):
-            raise PushRejected(422, "invalid", "The value must be a finite number.")
+        stamp = _stamp(at, now)
         same = (
             await db.execute(
                 select(KeyResultValue).where(
                     KeyResultValue.key_result_id == key_result_id,
                     KeyResultValue.source == ValueSource.AUTOMATIC.value,
-                    KeyResultValue.at == at,
-                    KeyResultValue.value == value,
+                    KeyResultValue.value == number,
                 )
             )
-        ).scalar_one_or_none()
-        if same is not None:
+        ).scalars()
+        if any(_same_instant(existing.at, stamp) for existing in same):
+            current = self._key_results.current(row, await self._key_results.entries(db, row))
             return PushOutcome(
-                stored=False, key_result_id=key_result_id, value=value, at=at, current_value=value
+                stored=False,
+                key_result_id=key_result_id,
+                value=number,
+                at=stamp,
+                current_value=current,
             )
         user = await db.get(User, user_id)
         zone = ZoneInfo(user.timezone if user else "UTC")
         await self._key_results._insert_value(
             db,
             row,
-            value=value,
-            at=at,
-            on_date=at.astimezone(zone).date(),
+            value=number,
+            at=stamp,
+            on_date=stamp.astimezone(zone).date(),
             source=ValueSource.AUTOMATIC,
         )
         token_row = (
@@ -207,6 +212,42 @@ class PushTokenService:
         ).scalar_one()
         token_row.last_used_at = now
         await db.flush()
+        current = self._key_results.current(row, await self._key_results.entries(db, row))
         return PushOutcome(
-            stored=True, key_result_id=key_result_id, value=value, at=at, current_value=value
+            stored=True, key_result_id=key_result_id, value=number, at=stamp, current_value=current
         )
+
+
+def _finite_number(value: object) -> float:
+    """Return ``value`` as a float when it is a finite JSON number, else refuse with 422."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise PushRejected(422, "invalid", "The value must be a number.")
+    number = float(value)
+    if not math.isfinite(number):
+        raise PushRejected(422, "invalid", "The value must be a finite number.")
+    return number
+
+
+def _stamp(at: object, now: datetime) -> datetime:
+    """Parse the time of a pushed value: ISO 8601 with a zone, not in the future (R-07)."""
+    if not isinstance(at, str) or not at.strip():
+        raise PushRejected(422, "invalid", "Give the time of the value, with a time zone.")
+    raw = at.strip()
+    if raw.endswith(("Z", "z")):
+        raw = raw[:-1] + "+00:00"
+    try:
+        stamp = datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise PushRejected(422, "invalid", "The time of the value is not ISO 8601.") from exc
+    if stamp.tzinfo is None or stamp.utcoffset() is None:
+        raise PushRejected(422, "invalid", "The time of the value needs a time zone.")
+    if stamp > now + FUTURE_SLACK:
+        raise PushRejected(422, "invalid", "The time of the value is in the future.")
+    return stamp
+
+
+def _same_instant(stored: datetime, stamp: datetime) -> bool:
+    """Compare a stored time (naive UTC on SQLite) with an aware one."""
+    if stored.tzinfo is None:
+        stored = stored.replace(tzinfo=UTC)
+    return stored == stamp

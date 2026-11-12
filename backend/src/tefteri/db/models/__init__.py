@@ -12,6 +12,13 @@ from tefteri.db.models.key_result import (
 )
 from tefteri.db.models.links import TaskNoteLink
 from tefteri.db.models.milestone import Milestone, MilestoneClosure, MilestoneRollover
+from tefteri.db.models.monthly import (
+    FocusChange,
+    MonthlyFocus,
+    MonthlyFocusEntry,
+    MonthlyReview,
+    MonthlyReviewSnapshot,
+)
 from tefteri.db.models.note import Note
 from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
 from tefteri.db.models.push_token import ValuePushToken
@@ -35,6 +42,11 @@ __all__ = [
     "Milestone",
     "MilestoneClosure",
     "MilestoneRollover",
+    "MonthlyFocus",
+    "MonthlyFocusEntry",
+    "FocusChange",
+    "MonthlyReview",
+    "MonthlyReviewSnapshot",
     "Note",
     "PeriodReview",
     "Plan",

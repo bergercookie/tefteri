@@ -4,7 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../theme/theme.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import 'weekly_api.dart';
 
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

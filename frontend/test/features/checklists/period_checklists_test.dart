@@ -7,6 +7,7 @@ import 'package:tefteri/features/year/year_screen.dart';
 
 import '../../support/fake_api.dart';
 import '../weekly/weekly_fake.dart';
+import '../month/month_fake.dart';
 
 Map<String, Object?> _list(
         String kind, String start, List<(String, bool)> items) =>
@@ -117,12 +118,14 @@ void main() {
 
   group('month and year', () {
     testWidgets('the month page shows the monthly checklist', (tester) async {
-      final api = FakeApi({
-        'GET /views/month/2026-11-01':
-            periodJson('month', '2026-11-01', '2026-12-01'),
-        'GET /checklists/month/2026-11-01': _list('month', '2026-11-01',
-            [('Pay the bills', true), ('Archive', false)]),
-      });
+      final api = MonthFakeApi(
+        month: '2026-11',
+        plan:
+            monthlyJson(month: '2026-11', state: 'current', focusKnown: false),
+        suggestions: monthlySuggestionsJson(fromMonth: null),
+      );
+      api.routes['GET /checklists/month/2026-11-01'] = _list(
+          'month', '2026-11-01', [('Pay the bills', true), ('Archive', false)]);
       await pumpWithApi(
           tester, api, MonthScreen(initialDate: DateTime(2026, 11, 14)));
       expect(find.text('Monthly checklist'), findsOneWidget);
@@ -146,11 +149,18 @@ void main() {
 
     testWidgets('moving to the next month loads that month\'s clean list',
         (tester) async {
-      final api = FakeApi({
-        'GET /views/month/2026-11-01':
-            periodJson('month', '2026-11-01', '2026-12-01'),
-        'GET /views/month/2026-12-01':
-            periodJson('month', '2026-12-01', '2027-01-01'),
+      final api = MonthFakeApi(
+        month: '2026-11',
+        plan:
+            monthlyJson(month: '2026-11', state: 'current', focusKnown: false),
+        suggestions: monthlySuggestionsJson(fromMonth: null),
+      );
+      api.routes.addAll({
+        'GET /monthly/2026-12':
+            monthlyJson(month: '2026-12', state: 'future', focusKnown: false),
+        'GET /monthly/2026-12/themes': monthlyPickerJson(),
+        'GET /monthly/2026-12/suggestions':
+            monthlySuggestionsJson(fromMonth: null),
         'GET /checklists/month/2026-11-01':
             _list('month', '2026-11-01', [('Pay the bills', true)]),
         'GET /checklists/month/2026-12-01':

@@ -24,6 +24,7 @@ from tefteri.api.routers import checklists as checklists_router
 from tefteri.api.routers import conflicts as conflicts_router
 from tefteri.api.routers import connections as connections_router
 from tefteri.api.routers import milestones as milestones_router
+from tefteri.api.routers import monthly as monthly_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
@@ -51,12 +52,16 @@ from tefteri.services.classification import ClassificationService
 from tefteri.services.commitments import WeeklyCommitments
 from tefteri.services.conflicts import ConflictService
 from tefteri.services.connections import AdapterRegistry, ConnectionService
-from tefteri.services.focus import NoFocus
 from tefteri.services.goals import GoalService
 from tefteri.services.google_oauth import GoogleOAuth
 from tefteri.services.key_results import KeyResultService
 from tefteri.services.milestone_close import MilestoneCloseService
 from tefteri.services.milestones import MilestoneService
+from tefteri.services.monthly_focus import MonthlyFocusService
+from tefteri.services.monthly_review import (
+    MonthlyReviewService,
+    StatisticsCategoryCountsReader,
+)
 from tefteri.services.notes import NoteService
 from tefteri.services.projects import ProjectService
 from tefteri.services.reviews import ReviewService
@@ -161,7 +166,8 @@ def create_app(
     app.state.commitment_provider = commitments
     recorder = CategoryRecorder(commitments)
     app.state.category_recorder = recorder
-    app.state.statistics_service = StatisticsService(commitments)
+    statistics_service = StatisticsService(commitments)
+    app.state.statistics_service = statistics_service
     sync_service = SyncService(connection_service, milestones=milestone_service, recorder=recorder)
     app.state.sync_service = sync_service
     task_service = TaskService(connection_service, recorder=recorder)
@@ -174,6 +180,27 @@ def create_app(
     app.state.classification_service = classification_service
     close_service = MilestoneCloseService(task_service, milestone_service)
     app.state.milestone_close_service = close_service
+    app.state.goal_service = GoalService()
+    key_result_service = KeyResultService(clock=lambda: datetime.now(UTC))
+    app.state.key_result_service = key_result_service
+    annual_service = AnnualPlanService(key_result_service, classification_service)
+    app.state.annual_service = annual_service
+    monthly_focus_service = MonthlyFocusService(
+        annual_service,
+        clock=lambda: app.state.clock(),
+    )
+    app.state.monthly_focus_service = monthly_focus_service
+    category_counts_reader = StatisticsCategoryCountsReader(
+        statistics_service,
+        clock=lambda: app.state.clock(),
+    )
+    app.state.monthly_category_counts_reader = category_counts_reader
+    app.state.monthly_review_service = MonthlyReviewService(
+        annual_service,
+        key_result_service,
+        category_counts_reader,
+        clock=lambda: app.state.clock(),
+    )
     app.state.weekly_service = WeeklyService(
         task_service,
         connection_service,
@@ -182,13 +209,8 @@ def create_app(
         classification_service,
         milestone_service,
         close_service,
-        NoFocus(),  # feature 007 supplies the monthly focus here
+        monthly_focus_service,
     )
-    app.state.goal_service = GoalService(task_service)
-    key_result_service = KeyResultService(clock=lambda: datetime.now(UTC))
-    app.state.key_result_service = key_result_service
-    annual_service = AnnualPlanService(key_result_service, classification_service)
-    app.state.annual_service = annual_service
     push_token_service = PushTokenService(key_result_service)
     app.state.push_token_service = push_token_service
     app.state.calendar_service = CalendarService(connection_service)
@@ -228,6 +250,7 @@ def create_app(
         views_router,
         conflicts_router,
         annual_router,
+        monthly_router,
         push_router,
         planning_router,
         reviews_router,

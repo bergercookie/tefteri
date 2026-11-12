@@ -43,16 +43,18 @@ def compute_review(
 ) -> ReviewSummary:
     """Return what was planned for a period and what of it was completed.
 
-    Planned goals are the period's own goals, except dropped ones. A goal counts as completed
-    when its status is ``done`` or its computed progress is 1. Single tasks are not part of a
-    review: they only feed the progress of their goals. Carried over are the goals that were not
-    completed. ``tz`` stays for callers; it no longer changes the result.
+    Planned goals are the period's own goals, except dropped and retired ones (spec 006). A goal
+    counts as completed when its status is ``done`` or its computed progress is 1. Single tasks
+    are not part of a review: they only feed the progress of their goals. Carried over are the
+    goals that were not completed. ``tz`` stays for callers; it no longer changes the result.
     """
     progress = compute_progress(goals, tasks)
     own = [
         g
         for g in goals
-        if g.period_type == period_type.value and g.period_start == start and g.status != "dropped"
+        if g.period_type == period_type.value
+        and g.period_start == start
+        and g.status not in ("dropped", "retired")
     ]
     items = [
         ReviewItem("goal", str(g.id), g.title, g.status == "done" or progress[g.id] >= 1.0)

@@ -38,6 +38,7 @@ from tefteri.domain.key_results import (
     current_value,
     is_met,
     is_overdue,
+    is_usable_link,
     key_result_flags,
     progress,
     stamp_manual_value,
@@ -56,6 +57,9 @@ from tefteri.services.plan_changes import (
     write_batch,
 )
 from tefteri.services.project_labels import ConnectionTree
+
+NO_USABLE_THEME = "no_usable_theme"
+"""The code of the key result flag that a change of links can add or remove (FR-014)."""
 
 KEY_RESULT_LIMIT_MESSAGE = "A goal can have three key results. Retire one first."
 
@@ -155,7 +159,7 @@ class KeyResultService:
                 )
             ).scalars()
         )
-        return [SeriesPoint(r.id, r.value, r.at, r.on_date, r.source, r.seq) for r in rows]
+        return [SeriesPoint(r.id, r.value, _utc(r.at), r.on_date, r.source, r.seq) for r in rows]
 
     async def value_on(
         self, db: AsyncSession, user_id: uuid.UUID, key_result_id: uuid.UUID, day: date
@@ -181,7 +185,7 @@ class KeyResultService:
         if not rows:
             return ValueOn(key_result_id, day, None, None, None)
         row = rows[0]
-        return ValueOn(key_result_id, day, row.value, row.at, row.source)
+        return ValueOn(key_result_id, day, row.value, _utc(row.at), row.source)
 
     # -- creating and editing -----------------------------------------------------------------
 
@@ -523,8 +527,6 @@ class KeyResultService:
 
         A theme that is orphaned, ignored, relabelled or unclassified is not usable (R-12).
         """
-        from tefteri.domain.key_results import is_usable_link
-
         out: dict[uuid.UUID, tuple[str, uuid.UUID]] = {}
         for tree in trees:
             for row in tree.rows:
@@ -586,12 +588,13 @@ class KeyResultService:
         trees: Iterable[ConnectionTree],
         today: date,
         nodes: Mapping[str, ProjectNode],
+        batch_id: uuid.UUID | None = None,
     ) -> LinkSetEffect | None:
         """Set the active links of a key result, or only say what that would do (``dry_run``).
 
         Missing links are added and links that are not in the list are ended, in one batch: a
         re-link is a removal and an addition together (FR-013). A theme that is not usable now
-        gives ``not_a_theme``.
+        gives ``not_a_theme``. ``batch_id`` names the batch, so the caller can offer Undo.
         """
         self._require_active(key_result)
         usable = self._eligible_theme_keys(trees)
@@ -608,11 +611,21 @@ class KeyResultService:
                 effect.added.append(ThemeEntry(theme_id, name))
         for link in active:
             if link.project_id not in wanted:
-                effect.ended.append(ThemeEntry(link.project_id, usable[link.project_id][0]))
+                if link.project_id in usable:
+                    name = usable[link.project_id][0]
+                else:
+                    name = await _name_of(db, link.project_id)
+                effect.ended.append(ThemeEntry(link.project_id, name))
+        had_usable = any(is_usable_link(nodes, str(link.project_id)) for link in active)
+        has_usable = bool(wanted)
+        if had_usable and not has_usable:
+            effect.flags_added.append(NO_USABLE_THEME)
+        elif has_usable and not had_usable:
+            effect.flags_removed.append(NO_USABLE_THEME)
         if dry_run:
             return effect
         now = self._clock()
-        batch_id = uuid.uuid4()
+        batch_id = batch_id or uuid.uuid4()
         for entry in effect.ended:
             await end_link(
                 db,
@@ -785,20 +798,27 @@ class KeyResultService:
         if not _finite(value):
             raise Invalid("The value must be a finite number.")
         zone = ZoneInfo(tz)
-        today = datetime.now(zone).date()
+        now = self._clock().astimezone(zone)
+        today = now.date()
         if on_date is None:
             on_date = today
         if on_date > today:
             raise Invalid("The date must not be in the future.", "future_date")
+        # Today takes the current time; a past day takes noon of that day (R-08).
         at = (
             stamp_manual_value(on_date, today, zone)
-            if source is ValueSource.MANUAL
-            else datetime.now(zone)
+            if source is ValueSource.MANUAL and on_date < today
+            else now
         )
         row = await self._insert_value(
             db, key_result, value=value, at=at, on_date=on_date, source=source
         )
         return row, on_date
+
+
+def _utc(value: datetime) -> datetime:
+    """Return ``value`` as an aware UTC time; SQLite gives naive ones (stored as UTC)."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 def _finite(value: float) -> bool:

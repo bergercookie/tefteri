@@ -11,23 +11,21 @@ from tefteri.db.models.task import Task
 from tefteri.domain.entities import RemoteTask
 from tests.conftest import V1, connect_all
 from tests.fakes.world import FakeWorld
+from tests.integration.conftest import legacy_goal
 
 LIMIT_SECONDS = 5
 
 
 async def _goal(api: AsyncClient, kind: str, start: date, title: str, parent: str | None) -> str:
-    r = await api.post(
-        f"{V1}/goals",
-        json={
-            "period_type": kind,
-            "period_start": start.isoformat(),
-            "title": title,
-            "parent_id": parent,
-        },
+    """A legacy goal row: the goal write routes are gone since spec 006."""
+    goal_id = await legacy_goal(
+        api,
+        period_type=kind,
+        period_start=start,
+        title=title,
+        parent_id=uuid.UUID(parent) if parent else None,
     )
-    assert r.status_code == 201, r.text
-    goal_id: str = r.json()["id"]
-    return goal_id
+    return str(goal_id)
 
 
 async def test_year_review_opens_in_time(api: AsyncClient, world: FakeWorld) -> None:

@@ -13,7 +13,7 @@ import '../../core/open_url.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
-import '../goals/periods.dart';
+import '../../core/periods.dart';
 import '../checklists/checklist_panel.dart';
 import 'finish_step.dart';
 import 'look_back_step.dart';

@@ -7,9 +7,16 @@ on that server). Without a token, the tests register a new user, so the server m
 Do not point them at a server with real data: they create users, projects and tasks.
 """
 
+import contextlib
 import os
+import shutil
+import socket
+import subprocess
+import sys
+import time
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterator
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -17,6 +24,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from tefteri.adapters.vikunja import VikunjaTaskBackend
+from tefteri.auth.passwords import hash_password
 from tefteri.config import Settings
 from tefteri.main import create_app
 from tests.conftest import ADMIN_PASSWORD, V1
@@ -148,4 +156,95 @@ async def tefteri(
             },
         )
         assert made.status_code == 201, made.text
+        yield api
+
+
+@pytest.fixture
+def monthly_http_server_url() -> Iterator[str]:
+    """Run the migrated app on a temporary local database and a free TCP port."""
+    backend_dir = Path(__file__).resolve().parents[2]
+    data_dir = backend_dir / ".live-test-data" / f"monthly-{uuid.uuid4().hex}"
+    data_dir.mkdir(parents=True)
+    env = {
+        **os.environ,
+        "TEFTERI_DATABASE_URL": f"sqlite+aiosqlite:///{data_dir / 'monthly-live.db'}",
+        "TEFTERI_CREATE_SCHEMA": "false",
+        "TEFTERI_ADMIN_PASSWORD_HASH": hash_password(ADMIN_PASSWORD),
+        "TEFTERI_SECRET_KEY": "monthly-live-secret-key-012345",
+        "TEFTERI_SYNC_INTERVAL_MINUTES": "0",
+    }
+    try:
+        migrated = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=backend_dir,
+            env=env,
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+        assert migrated.returncode == 0, migrated.stdout + migrated.stderr
+
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = int(probe.getsockname()[1])
+        log_path = data_dir / "monthly-uvicorn.log"
+        with log_path.open("w") as log:
+            proc = subprocess.Popen(  # noqa: S603 - fixed arguments
+                [
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
+                    "tefteri.main:create_app",
+                    "--factory",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
+                ],
+                cwd=backend_dir,
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+            base_url = f"http://127.0.0.1:{port}"
+            try:
+                for _ in range(100):
+                    try:
+                        if httpx.get(f"{base_url}/health", timeout=1).status_code == 200:
+                            break
+                    except httpx.HTTPError:
+                        time.sleep(0.2)
+                else:
+                    pytest.fail(f"the server did not start: {log_path.read_text()}")
+                yield base_url
+            finally:
+                proc.terminate()
+                proc.wait(timeout=15)
+    finally:
+        shutil.rmtree(data_dir, ignore_errors=True)
+        with contextlib.suppress(OSError):
+            data_dir.parent.rmdir()
+
+
+@pytest.fixture
+async def monthly_http_server(
+    monthly_http_server_url: str, vikunja_url: str, vikunja_token: str
+) -> AsyncIterator[AsyncClient]:
+    """Connect the live Vikunja to the migrated server and return an authenticated client."""
+    async with AsyncClient(base_url=f"{monthly_http_server_url}{V1}", timeout=60) as api:
+        login = await api.post(
+            "/auth/login", json={"username": "admin", "password": ADMIN_PASSWORD}
+        )
+        assert login.status_code == 200, login.text
+        api.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        connected = await api.post(
+            "/connections",
+            json={
+                "provider": "vikunja",
+                "display_name": "Live Vikunja",
+                "settings": {"base_url": vikunja_url},
+                "credentials": {"token": vikunja_token},
+            },
+        )
+        assert connected.status_code == 201, connected.text
         yield api

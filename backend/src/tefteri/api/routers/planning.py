@@ -1,8 +1,8 @@
-"""Goals, plans and the weekly, monthly and annual views."""
+"""Plans, the legacy goal history and the weekly, monthly and annual views."""
 
 import uuid
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
@@ -13,12 +13,11 @@ from tefteri.api.lookups import container_colors, read_only_containers
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
-from tefteri.db.models.goal import Goal, Plan
+from tefteri.db.models.goal import Plan
 from tefteri.db.models.task import Task
 from tefteri.domain.periods import PeriodType, period_end, period_start
 from tefteri.domain.timeutil import day_bounds, overlaps
-from tefteri.services.errors import Invalid
-from tefteri.services.goals import ChildGoal, ChildTask, GoalService
+from tefteri.services.goals import GoalService
 
 router = APIRouter(tags=["planning"])
 
@@ -28,8 +27,16 @@ def _goals(request: Request) -> GoalService:
     return service
 
 
-class GoalOut(BaseModel):
-    """A goal with its computed progress."""
+class GoalTitle(BaseModel):
+    """The title of a goal that a task of a view points to (FR-025)."""
+
+    title: str
+    annual: bool
+    """True for a goal of an annual plan; false for a legacy month or week goal."""
+
+
+class LegacyGoalOut(BaseModel):
+    """A legacy goal of the read-only history (FR-022, FR-023)."""
 
     id: uuid.UUID
     parent_id: uuid.UUID | None
@@ -39,81 +46,7 @@ class GoalOut(BaseModel):
     description: str
     criteria: str
     status: str
-    progress: float
-
-    @classmethod
-    def of(cls, g: Goal, progress: dict[uuid.UUID, float]) -> "GoalOut":
-        """Build from the ORM row and the computed progress map."""
-        return cls(
-            id=g.id,
-            parent_id=g.parent_id,
-            period_type=g.period_type,
-            period_start=g.period_start,
-            title=g.title,
-            description=g.description,
-            criteria=g.criteria,
-            status=g.status,
-            progress=round(progress.get(g.id, 0.0), 4),
-        )
-
-
-class GoalIn(BaseModel):
-    """Data to create a goal."""
-
-    parent_id: uuid.UUID | None = None
-    period_type: PeriodType
-    period_start: date
-    title: str = Field(min_length=1, max_length=500)
-    description: str = ""
-    criteria: str = ""
-
-
-class GoalsIn(BaseModel):
-    """Data to create several goals of one period at once."""
-
-    parent_id: uuid.UUID | None = None
-    period_type: PeriodType
-    period_start: date
-    titles: list[Annotated[str, Field(max_length=500)]] = Field(max_length=100)
-
-
-class GoalPatch(BaseModel):
-    """Partial goal update."""
-
-    title: str | None = Field(default=None, min_length=1, max_length=500)
-    description: str | None = None
-    criteria: str | None = None
-    status: Literal["active", "done", "dropped"] | None = None
-
-
-class ChildGoalIn(BaseModel):
-    """A smaller goal in a breakdown."""
-
-    title: str = Field(min_length=1, max_length=500)
-    period_type: PeriodType
-    period_start: date
-
-
-class ChildTaskIn(BaseModel):
-    """A task in a breakdown."""
-
-    connection_id: uuid.UUID
-    container_id: uuid.UUID | None = None
-    title: str = Field(min_length=1, max_length=500)
-
-
-class BreakdownIn(BaseModel):
-    """Smaller goals and tasks to create under a goal."""
-
-    goals: list[ChildGoalIn] = Field(default_factory=list)
-    tasks: list[ChildTaskIn] = Field(default_factory=list)
-
-
-class BreakdownOut(BaseModel):
-    """What a breakdown created."""
-
-    goals: list[GoalOut]
-    tasks: list[TaskOut]
+    linked_tasks: int
 
 
 class PlanIn(BaseModel):
@@ -126,14 +59,13 @@ class PlanIn(BaseModel):
 
 
 class PlanOut(BaseModel):
-    """A plan and the goals of its period."""
+    """A plan of one period. Goals are no longer part of it (spec 006)."""
 
     id: uuid.UUID
     period_type: str
     period_start: date
     title: str
     summary: str
-    goals: list[GoalOut]
 
 
 class PeriodView(BaseModel):
@@ -142,141 +74,75 @@ class PeriodView(BaseModel):
     period_type: str
     start: date
     end: date
-    goals: list[GoalOut]
     tasks: list[TaskOut]
     entries: list[EntryOut]
+    goal_titles: dict[uuid.UUID, GoalTitle]
+    """The goals that tasks of the view point to, by id (FR-025)."""
 
 
-@router.get("/goals")
-async def list_goals(
+@router.get("/goals/history")
+async def legacy_goals(
     request: Request,
     db: Db,
     user: CurrentUser,
     period_type: PeriodType | None = None,
     period_start_: Annotated[date | None, Query(alias="period_start")] = None,
-    parent_id: uuid.UUID | None = None,
-) -> list[GoalOut]:
-    """List goals, optionally for one period or under one parent."""
-    service = _goals(request)
-    progress = await service.progress(db, user.id)
+) -> list[LegacyGoalOut]:
+    """List the legacy goals, read only (FR-022, FR-023).
+
+    These are all month and week goals and the year goals that are retired or were marked
+    complete before annual planning, with their parent and the number of linked tasks. No route
+    writes them.
+    """
+    rows = await _goals(request).history(
+        db,
+        user.id,
+        period_type=period_type.value if period_type else None,
+        period_start=period_start_,
+    )
     return [
-        GoalOut.of(g, progress)
-        for g in await service.all(db, user.id)
-        if (period_type is None or g.period_type == period_type.value)
-        and (period_start_ is None or g.period_start == period_start_)
-        and (parent_id is None or g.parent_id == parent_id)
+        LegacyGoalOut(
+            id=r.goal.id,
+            parent_id=r.goal.parent_id,
+            period_type=r.goal.period_type,
+            period_start=r.goal.period_start,
+            title=r.goal.title,
+            description=r.goal.description,
+            criteria=r.goal.criteria,
+            status=r.goal.status,
+            linked_tasks=r.linked_tasks,
+        )
+        for r in rows
     ]
 
 
-@router.post("/goals", status_code=201)
-async def create_goal(body: GoalIn, request: Request, db: Db, user: CurrentUser) -> GoalOut:
-    """Create a goal; its period must lie inside its parent's period."""
-    service = _goals(request)
-    goal = await service.create(db, user.id, **body.model_dump())
-    return GoalOut.of(goal, await service.progress(db, user.id))
-
-
-@router.post("/goals/bulk", status_code=201)
-async def create_goals(body: GoalsIn, request: Request, db: Db, user: CurrentUser) -> list[GoalOut]:
-    """Create one goal per title. Blank titles are skipped. All goals are created, or none."""
-    titles = [t.strip() for t in body.titles if t.strip()]
-    if not titles:
-        raise Invalid("Give at least one goal title.")
-    service = _goals(request)
-    goals = await service.create_many(
-        db,
-        user.id,
-        period_type=body.period_type,
-        period_start=body.period_start,
-        titles=titles,
-        parent_id=body.parent_id,
-    )
-    progress = await service.progress(db, user.id)
-    return [GoalOut.of(g, progress) for g in goals]
-
-
-@router.patch("/goals/{goal_id}")
-async def update_goal(
-    goal_id: uuid.UUID, body: GoalPatch, request: Request, db: Db, user: CurrentUser
-) -> GoalOut:
-    """Change a goal."""
-    service = _goals(request)
-    goal = await service.update(
-        db, await service.get(db, user.id, goal_id), **body.model_dump(exclude_unset=True)
-    )
-    return GoalOut.of(goal, await service.progress(db, user.id))
-
-
-@router.delete("/goals/{goal_id}", status_code=204)
-async def delete_goal(
-    goal_id: uuid.UUID,
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-    linked_tasks: Literal["keep", "delete"],
-) -> None:
-    """Delete a goal and its smaller goals. ``linked_tasks`` says what happens to their tasks."""
-    service = _goals(request)
-    await service.delete(db, user.id, await service.get(db, user.id, goal_id), linked_tasks)
-
-
-@router.post("/goals/{goal_id}/breakdown", status_code=201)
-async def breakdown_goal(
-    goal_id: uuid.UUID, body: BreakdownIn, request: Request, db: Db, user: CurrentUser
-) -> BreakdownOut:
-    """Create smaller goals and tasks under a goal."""
-    service = _goals(request)
-    goal = await service.get(db, user.id, goal_id)
-    goals, tasks = await service.breakdown(
-        db,
-        user.id,
-        goal,
-        [ChildGoal(g.title, g.period_type, g.period_start) for g in body.goals],
-        [ChildTask(t.connection_id, t.title, t.container_id) for t in body.tasks],
-    )
-    progress = await service.progress(db, user.id)
-    return BreakdownOut(
-        goals=[GoalOut.of(g, progress) for g in goals], tasks=[TaskOut.of(t) for t in tasks]
-    )
-
-
-async def _plan_out(request: Request, db: Db, user_id: uuid.UUID, plan: Plan) -> PlanOut:
-    service = _goals(request)
-    progress = await service.progress(db, user_id)
-    goals = [
-        GoalOut.of(g, progress)
-        for g in await service.all(db, user_id)
-        if g.period_type == plan.period_type and g.period_start == plan.period_start
-    ]
+def _plan_out(plan: Plan) -> PlanOut:
     return PlanOut(
         id=plan.id,
         period_type=plan.period_type,
         period_start=plan.period_start,
         title=plan.title,
         summary=plan.summary,
-        goals=goals,
     )
 
 
 @router.get("/plans")
 async def list_plans(request: Request, db: Db, user: CurrentUser) -> list[PlanOut]:
     """List plans, newest period first (plans are kept after their period ends)."""
-    return [
-        await _plan_out(request, db, user.id, p) for p in await _goals(request).plans(db, user.id)
-    ]
+    return [_plan_out(p) for p in await _goals(request).plans(db, user.id)]
 
 
 @router.post("/plans", status_code=201)
 async def create_plan(body: PlanIn, request: Request, db: Db, user: CurrentUser) -> PlanOut:
     """Create a plan for a period."""
     plan = await _goals(request).create_plan(db, user.id, **body.model_dump())
-    return await _plan_out(request, db, user.id, plan)
+    return _plan_out(plan)
 
 
 @router.get("/plans/{plan_id}")
 async def get_plan(plan_id: uuid.UUID, request: Request, db: Db, user: CurrentUser) -> PlanOut:
-    """Return one plan with its goals."""
-    return await _plan_out(request, db, user.id, await _goals(request).plan(db, user.id, plan_id))
+    """Return one plan."""
+    return _plan_out(await _goals(request).plan(db, user.id, plan_id))
 
 
 async def _period_view(
@@ -290,13 +156,6 @@ async def _period_view(
     end = period_end(kind, start)
     low = day_bounds(start, tz)[0]
     high = day_bounds(end, tz)[0]
-    service = _goals(request)
-    progress = await service.progress(db, user_id)
-    goals = [
-        GoalOut.of(g, progress)
-        for g in await service.all(db, user_id)
-        if g.period_type == kind.value and g.period_start == start
-    ]
     projects = {
         c.id: c.name
         for c in (
@@ -305,12 +164,15 @@ async def _period_view(
     }
     colors = await container_colors(db, user_id)
     locked = await read_only_containers(db, user_id)
-    tasks = []
+    tasks: list[TaskOut] = []
+    goal_ids: list[uuid.UUID] = []
     for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars():
         when = t.due_at
         if t.sync_state == "deleted_remotely" or when is None or not low <= aware(when) < high:
             continue
         project = projects.get(t.container_id) if t.container_id else None
+        if t.goal_id is not None:
+            goal_ids.append(t.goal_id)
         tasks.append(
             TaskOut.of(
                 t,
@@ -327,13 +189,17 @@ async def _period_view(
                 aware(e.start), aware(e.end), low, high
             ):
                 entries.append(EntryOut.of(e, colors, locked))
+    titles = await request.app.state.annual_service.goal_titles_for(db, user_id, goal_ids)
     return PeriodView(
         period_type=kind.value,
         start=start,
         end=end,
-        goals=goals,
         tasks=tasks,
         entries=sorted(entries, key=lambda e: e.start),
+        goal_titles={
+            goal_id: GoalTitle(title=title, annual=annual)
+            for goal_id, (title, annual) in titles.items()
+        },
     )
 
 
@@ -344,7 +210,7 @@ async def week_view(
     db: Db,
     user: CurrentUser,
 ) -> PeriodView:
-    """Return the goals, tasks and entries of the Monday-to-Sunday week that contains ``day``."""
+    """Return the tasks and entries of the Monday-to-Sunday week that contains ``day``."""
     return await _period_view(
         request,
         db,
@@ -362,7 +228,7 @@ async def month_view(
     db: Db,
     user: CurrentUser,
 ) -> PeriodView:
-    """Return the goals, tasks and entries of the month that contains ``day``."""
+    """Return the tasks and entries of the month that contains ``day``."""
     return await _period_view(
         request,
         db,
@@ -380,7 +246,7 @@ async def year_view(
     db: Db,
     user: CurrentUser,
 ) -> PeriodView:
-    """Return the goals and tasks of a year (no entries)."""
+    """Return the tasks of a year (no entries). The annual plan is ``GET /annual/{year}``."""
     return await _period_view(
         request, db, user.id, user.timezone, PeriodType.YEAR, date(year, 1, 1)
     )

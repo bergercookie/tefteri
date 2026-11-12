@@ -26,6 +26,12 @@ openapi:
 migrate:
     uv run alembic upgrade head
 
+seed-demo:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Requires an explicit loopback URL, absolute *-demo.db URL, secret key, and confirmation.
+    uv run --project backend python scripts/seed_demo.py
+
 # Start a throw-away Vikunja, run the live tests against it, then stop it. These tests are not
 # part of `just test`. With TEFTERI_LIVE_VIKUNJA_URL set, they use that server and start nothing.
 # Extra arguments go to pytest, for example `just backend::live-vikunja -k move`.

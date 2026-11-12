@@ -1,14 +1,19 @@
 # Review your plans and write retrospectives
 
-A plan holds the goals of one period: a year, a month or a week. At the end of the period, you
-can open a review of the plan. The weekly look-back in the planning session is a different thing. It
-has no goals. It works on milestones. Refer to [Plan your week](weekly-planning.md#step-1-look-back-at-the-week-before). The review shows what you planned and what you completed. You
-can also write a retrospective. Tefteri keeps your plans after the period ends.
+The Reviews screen shows saved reviews of plans. The weekly look-back in the planning session is
+a different thing. It has no goals. It works on milestones. Refer to
+[Plan your week](weekly-planning.md#step-1-look-back-at-the-week-before).
+
+Monthly planning has its own review. It compares theme targets with finished milestones, shows
+key result movement and work categories, and saves an immutable, versioned snapshot. Refer to
+[Plan your month](monthly-planning.md). The monthly review is separate from the older stored
+period review described on this page.
 
 ## What a review shows
 
-The review counts the goals of the period as planned. Tefteri does not count dropped goals. The
-review does not list single tasks.
+The stored period review counts the goals of the period as planned. Tefteri does not count
+dropped goals. This older review does not list single tasks. The monthly review does not use this
+goal count.
 
 A goal is complete when you mark it complete, or when you complete all its smaller goals and
 tasks. The tasks of a goal only change its progress.
@@ -25,8 +30,8 @@ section. Use this list when you plan the next period.
 5. Choose the period.
 6. Choose Add.
 
-Add goals for the same period in the Goals screen. The plan collects all the goals of its
-period. Refer to [Plan goals](planning-goals.md).
+Add annual goals in annual planning. The plan collects all goals for its year. Refer to
+[Annual planning](annual-planning.md).
 
 ## Open a review
 

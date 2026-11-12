@@ -3,6 +3,7 @@
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -10,6 +11,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tefteri.db.models.goal import Goal
 from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
 from tefteri.db.models.project_label import ProjectLabelHistory
 from tefteri.db.models.user import User
@@ -85,6 +87,41 @@ class ProjectsEnv:
                     )
                 ).scalars()
             )
+
+
+async def legacy_goal(
+    api: AsyncClient,
+    *,
+    period_type: str,
+    period_start: date,
+    title: str = "Old goal",
+    status: str = "active",
+    parent_id: uuid.UUID | None = None,
+    criteria: str = "",
+    description: str = "",
+    username: str = "admin",
+) -> uuid.UUID:
+    """Insert a ``Goal`` row directly, for tests of old data (spec 006, T050).
+
+    The write routes of month and week goals are gone; old rows still exist in real databases,
+    so tests that need them insert them through the session.
+    """
+    app: Any = api.app  # type: ignore[attr-defined]
+    async with session_scope(app.state.session_factory) as db:
+        user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+        goal = Goal(
+            user_id=user.id,
+            parent_id=parent_id,
+            period_type=period_type,
+            period_start=period_start,
+            title=title,
+            description=description,
+            criteria=criteria,
+            status=status,
+        )
+        db.add(goal)
+        await db.flush()
+        return goal.id
 
 
 @pytest.fixture

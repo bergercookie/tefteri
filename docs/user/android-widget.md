@@ -9,7 +9,7 @@ The widget is one row with four buttons:
 
 - Today opens the plan of the day.
 - Week opens the plan of the week.
-- Month opens the plan of the month.
+- Month opens the monthly theme plan. Read [Plan your month](monthly-planning.md).
 - Planner opens the planner. It shows your tasks and your calendar side by side. Use it to drag
   tasks onto the calendar.
 

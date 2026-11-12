@@ -175,3 +175,101 @@ class CategoryReason(StrEnum):
     NO_PROJECT = "no_project"
     IGNORED = "ignored"
     IGNORED_ANCESTOR = "ignored_ancestor"
+
+
+class FocusEntryStatus(StrEnum):
+    """Whether a theme entry is still in a month's focus or has left it."""
+
+    IN_FOCUS = "in_focus"
+    SWAPPED_OUT = "swapped_out"
+    REMOVED = "removed"
+
+
+class FocusChangeKind(StrEnum):
+    """The kind of one logged change to a monthly focus."""
+
+    SWAP = "swap"
+    ADD = "add"
+    REMOVE = "remove"
+    TARGET = "target"
+
+
+class FocusChangeSource(StrEnum):
+    """Whether a focus-change log row is a user action or its undo."""
+
+    USER = "user"
+    UNDO = "undo"
+
+
+class ThemeDecision(StrEnum):
+    """The month-end decision for a theme."""
+
+    CARRY = "carry"
+    DROP = "drop"
+    REPLACE = "replace"
+    LATER = "later"
+
+
+class ThemeSuggestionReason(StrEnum):
+    """Why a saved review suggests a theme for the next month."""
+
+    CARRY = "carry"
+    REPLACE = "replace"
+
+
+class SkippedSuggestionReason(StrEnum):
+    """Why a previous theme cannot be suggested again."""
+
+    ORPHANED = "orphaned"
+    RELABELLED = "relabelled"
+    IGNORED = "ignored"
+
+
+class TargetMarker(StrEnum):
+    """The result of comparing milestone completions with a target."""
+
+    MET = "met"
+    MISSED = "missed"
+    BEATEN = "beaten"
+    NO_TARGET = "no_target"
+
+
+class KeyResultUpdate(StrEnum):
+    """Whether a key result has a value dated inside the month."""
+
+    UPDATED = "updated"
+    NOT_UPDATED = "not_updated"
+
+
+class MonthlyFlagCode(StrEnum):
+    """Key-result and goal flags shown in the monthly planning and review views."""
+
+    NO_KEY_RESULT = "no_key_result"
+    NO_USABLE_THEME = "no_usable_theme"
+    OVERDUE = "overdue"
+    NO_THEME_IN_FOCUS = "no_theme_in_focus"
+    PAST_DEADLINE = "past_deadline"
+
+
+class TrendState(StrEnum):
+    """The comparison of a month's off-plan share with the two prior months."""
+
+    RISING = "rising"
+    NOT_RISING = "not_rising"
+    NOT_ENOUGH_HISTORY = "not_enough_history"
+
+
+class CountNote(StrEnum):
+    """Non-blocking guidance for the number of themes in a monthly focus."""
+
+    EMPTY = "empty"
+    BELOW = "below"
+    ABOVE = "above"
+
+
+class MonthState(StrEnum):
+    """A month relative to the user's local today."""
+
+    PAST = "past"
+    CURRENT = "current"
+    FUTURE = "future"

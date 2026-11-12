@@ -3,7 +3,13 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from tefteri.services.errors import BackendProblem, Conflict, Invalid, NotFound
+from tefteri.services.errors import (
+    BackendProblem,
+    Conflict,
+    Invalid,
+    NoSuchVersion,
+    NotFound,
+)
 
 _STATUS = {
     "backend_unavailable": 502,
@@ -29,15 +35,20 @@ def install_service_error_handlers(app: FastAPI) -> None:
             status_code=_STATUS.get(exc.code, 502),
         )
 
+    @app.exception_handler(NoSuchVersion)
+    async def _no_such_version(_: Request, __: NoSuchVersion) -> JSONResponse:
+        return JSONResponse(
+            {"detail": "No such review version.", "code": "no_such_version"},
+            status_code=404,
+        )
+
     @app.exception_handler(NotFound)
     async def _not_found(_: Request, __: NotFound) -> JSONResponse:
         return JSONResponse({"detail": "Not found", "code": "not_found"}, status_code=404)
 
     @app.exception_handler(Conflict)
     async def _conflict(_: Request, exc: Conflict) -> JSONResponse:
-        return JSONResponse(
-            {"detail": exc.message, "code": exc.code, **exc.extra}, status_code=409
-        )
+        return JSONResponse({"detail": exc.message, "code": exc.code, **exc.extra}, status_code=409)
 
     @app.exception_handler(Invalid)
     async def _invalid(_: Request, exc: Invalid) -> JSONResponse:

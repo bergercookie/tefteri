@@ -23,9 +23,9 @@ const Map<ChecklistKind, List<String>> checklistExamples = {
   ],
   ChecklistKind.month: [
     'Look back at the month',
-    'Review the goals of the month',
+    'Update the key results',
     'Check the budget',
-    'Set the goals for next month',
+    'Choose the themes for next month',
   ],
   ChecklistKind.year: [
     'Look back at the year',

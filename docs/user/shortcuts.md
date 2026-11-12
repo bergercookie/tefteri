@@ -28,6 +28,8 @@ You can also choose the keyboard button at the top of the screen.
 
 The menu also shows the key next to each view.
 
+Month opens the monthly theme plan and review. Read [Plan your month](monthly-planning.md).
+
 ## Do an action
 
 | Key | Action |

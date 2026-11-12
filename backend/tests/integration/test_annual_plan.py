@@ -48,7 +48,7 @@ async def test_bulk_goal_create_trims_titles_and_records_edits(api: AsyncClient)
     assert edited.status_code == 200, edited.text
     assert edited.json()["title"] == "Learn deeply"
 
-    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()
+    history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     change = next(row for row in history if row["kind"] == "goal_edited")
     assert (change["old_value"], change["new_value"]) == ("Learn more", "Learn deeply")
     assert change["batch_id"]
@@ -89,7 +89,7 @@ async def test_bad_key_result_rolls_back_the_whole_bulk_create(api: AsyncClient)
 
     assert response.status_code == 422, response.text
     assert (await api.get(f"{V1}/annual/{YEAR}")).json()["goals"] == []
-    assert (await api.get(f"{V1}/annual/{YEAR}/history")).json() == []
+    assert (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"] == []
 
 
 async def test_goal_without_key_result_is_saved_with_a_nonblocking_flag(
