@@ -351,24 +351,34 @@ class _NavItem extends StatelessWidget {
             children: [
               Icon(icon, size: 20, color: fg),
               const SizedBox(width: Space.md),
-              Expanded(child: Text(label, style: style)),
+              Expanded(
+                  child: Text(label,
+                      style: style,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis)),
               if (shortcut != null)
                 Text(shortcut!,
                     style: text.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant.withValues(alpha: 0.7))),
             ],
           )
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20, color: fg),
-              const SizedBox(height: 2),
-              Text(label,
-                  style: style,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center),
-            ],
+        : SizedBox(
+            // Fill the item so that the icons and the labels share one centre
+            // line; a shrink-wrapped column would shift short labels to the
+            // left.
+            width: double.infinity,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20, color: fg),
+                const SizedBox(height: 2),
+                Text(label,
+                    style: style,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center),
+              ],
+            ),
           );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),

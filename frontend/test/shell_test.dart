@@ -161,6 +161,40 @@ void railTests() {
     expect(find.text('Week'), findsOneWidget);
   });
 
+  testWidgets('the compact rail centres every icon over its label',
+      (tester) async {
+    await _pumpWide(tester, railMinWidth);
+    for (final key in ['nav-/', 'nav-/week', 'nav-/annual', 'sign-out']) {
+      final item = find.byKey(Key(key));
+      final icon = find.descendant(of: item, matching: find.byType(Icon)).first;
+      final label =
+          find.descendant(of: item, matching: find.byType(Text)).first;
+      expect(tester.getCenter(icon).dx, tester.getCenter(label).dx,
+          reason: key);
+      expect(tester.getCenter(label).dx, tester.getCenter(item).dx,
+          reason: key);
+    }
+  });
+
+  testWidgets('the labelled rail centres every icon on its label',
+      (tester) async {
+    await _pumpWide(tester, railExtendedMinWidth, admin: true);
+    for (final key in ['nav-/', 'nav-/week', 'nav-/annual', 'sign-out']) {
+      final item = find.byKey(Key(key));
+      final icon = find.descendant(of: item, matching: find.byType(Icon)).first;
+      final label =
+          find.descendant(of: item, matching: find.byType(Text)).first;
+      expect(tester.getCenter(icon).dy, tester.getCenter(label).dy,
+          reason: key);
+    }
+    // A long label stays on one line, so every row keeps the same height.
+    final heights = {
+      for (final key in ['nav-/', 'nav-/week', 'nav-/annual'])
+        key: tester.getSize(find.byKey(Key(key))).height,
+    };
+    expect(heights.values.toSet(), hasLength(1));
+  });
+
   testWidgets('a narrow window keeps the drawer', (tester) async {
     await _pumpWide(tester, railMinWidth - 1);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
