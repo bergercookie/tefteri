@@ -32,6 +32,12 @@ seed-demo:
     # Requires an explicit loopback URL, absolute *-demo.db URL, secret key, and confirmation.
     uv run --project backend python scripts/seed_demo.py
 
+# Write fake annual-review data. Set TEFTERI_DATABASE_URL to an absolute sqlite *-demo.db file.
+seed-annual-review:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    uv run --project backend python scripts/seed_annual_review.py
+
 # Start a throw-away Vikunja, run the live tests against it, then stop it. These tests are not
 # part of `just test`. With TEFTERI_LIVE_VIKUNJA_URL set, they use that server and start nothing.
 # Extra arguments go to pytest, for example `just backend::live-vikunja -k move`.

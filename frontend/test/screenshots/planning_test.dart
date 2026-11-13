@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tefteri/features/week/week_screen.dart';
-import 'package:tefteri/features/year/year_screen.dart';
 
 import 'fixtures.dart';
 import 'screenshot_helper.dart';
@@ -203,7 +202,6 @@ FakeApi _api() => FakeApi({
               entries: [
                 entryJson('e1', 'Team standup', DateTime(2026, 11, 2, 9)),
               ]),
-      'GET /views/year/2026': periodJson('year', '2026-01-01', '2027-01-01'),
       'GET /annual/2026': _annualPlan,
       'GET /connections': connections,
     });
@@ -215,10 +213,5 @@ void main() {
     await pumpScreen(tester, _api(),
         WeekScreen(initialDate: day, today: DateTime(2026, 11, 4)));
     await saveScreenshot('planning-week');
-  });
-
-  testWidgets('annual view', (tester) async {
-    await pumpScreen(tester, _api(), const YearScreen(initialYear: 2026));
-    await saveScreenshot('planning-year');
   });
 }

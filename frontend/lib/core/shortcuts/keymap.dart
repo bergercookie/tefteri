@@ -32,7 +32,7 @@ const appViews = [
   AppView('Today', '/daily', 't'),
   AppView('Week', '/week', 'w'),
   AppView('Month', '/month', 'm'),
-  AppView('Year', '/year', 'y'),
+  AppView('Year review', '/year', 'y'),
   AppView('Annual plan', '/annual', 'g'),
   AppView('Projects', '/projects', 'o'),
   AppView('Reviews', '/review', 'r'),

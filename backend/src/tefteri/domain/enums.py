@@ -273,3 +273,46 @@ class MonthState(StrEnum):
     PAST = "past"
     CURRENT = "current"
     FUTURE = "future"
+
+
+class KeyResultOutcome(StrEnum):
+    """The final result of one key result in an annual review."""
+
+    HIT = "hit"
+    MISSED = "missed"
+    NO_VALUE = "no_value"
+    RETIRED = "retired"
+    IN_PROGRESS = "in_progress"
+
+
+class DeadlineState(StrEnum):
+    """Whether a key result reached its target by its deadline."""
+
+    REACHED = "reached"
+    NOT_REACHED = "not_reached"
+    OPEN = "open"
+    NO_VALUE = "no_value"
+
+
+class MonthStatus(StrEnum):
+    """The presence of a monthly review snapshot for one month of the year."""
+
+    STORED = "stored"
+    MISSING = "missing"
+    OPEN = "open"
+    FUTURE = "future"
+
+
+class ThemeHint(StrEnum):
+    """A neutral comparison of milestone work and key result movement."""
+
+    MUCH_SHIPPED_LITTLE_MOVEMENT = "much_shipped_little_movement"
+    MOVEMENT_NOT_FROM_THEME = "movement_not_from_theme"
+
+
+class ReviewEmptyReason(StrEnum):
+    """Why an annual review has no data to show."""
+
+    NO_SNAPSHOTS = "no_snapshots"
+    NO_GOALS = "no_goals"
+    FUTURE_YEAR = "future_year"

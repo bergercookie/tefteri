@@ -1,6 +1,102 @@
 {
   "components": {
     "schemas": {
+      "AnnualReviewOut": {
+        "description": "The whole read-only review of one planning year.",
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/CoverageOut"
+          },
+          "drill_down": {
+            "$ref": "#/components/schemas/DrillDownOut"
+          },
+          "empty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__annual_review__EmptyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__api__routers__annual_review__GoalOut"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "in_progress": {
+            "title": "In Progress",
+            "type": "boolean"
+          },
+          "milestones_shipped": {
+            "$ref": "#/components/schemas/MilestonesShippedOut"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/MonthOut"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "next_year": {
+            "$ref": "#/components/schemas/NextYearOut"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/RulesOut"
+          },
+          "split": {
+            "$ref": "#/components/schemas/SplitOut"
+          },
+          "state": {
+            "$ref": "#/components/schemas/YearState"
+          },
+          "stored_period_review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoredPeriodReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          },
+          "year_note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__annual_review__NoteOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "year",
+          "state",
+          "in_progress",
+          "rules",
+          "months",
+          "coverage",
+          "empty",
+          "goals",
+          "milestones_shipped",
+          "split",
+          "drill_down",
+          "next_year",
+          "year_note",
+          "stored_period_review"
+        ],
+        "title": "AnnualReviewOut",
+        "type": "object"
+      },
       "AnswerIn": {
         "additionalProperties": false,
         "description": "The decision about one milestone of the earlier week.",
@@ -495,6 +591,30 @@
         "title": "CapabilitiesOut",
         "type": "object"
       },
+      "CategoryCountsOut": {
+        "description": "The three work categories.",
+        "properties": {
+          "goal_aligned": {
+            "title": "Goal Aligned",
+            "type": "integer"
+          },
+          "maintenance": {
+            "title": "Maintenance",
+            "type": "integer"
+          },
+          "off_plan": {
+            "title": "Off Plan",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "goal_aligned",
+          "maintenance",
+          "off_plan"
+        ],
+        "title": "CategoryCountsOut",
+        "type": "object"
+      },
       "CategoryReason": {
         "description": "Why a completed task got its category (spec 005, data-model.md).",
         "enum": [
@@ -535,6 +655,62 @@
           "label"
         ],
         "title": "ChangeIn",
+        "type": "object"
+      },
+      "ChangeOut": {
+        "description": "One target, deadline or retirement change from the plan history.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "new_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Value"
+          },
+          "old_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Value"
+          }
+        },
+        "required": [
+          "kind",
+          "field",
+          "old_value",
+          "new_value",
+          "at"
+        ],
+        "title": "ChangeOut",
         "type": "object"
       },
       "ChecklistItemOut": {
@@ -1304,6 +1480,33 @@
         "title": "CountsOut",
         "type": "object"
       },
+      "CoverageOut": {
+        "description": "The months that hold a snapshot and the months that are missing.",
+        "properties": {
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stored",
+          "expected",
+          "missing"
+        ],
+        "title": "CoverageOut",
+        "type": "object"
+      },
       "DayView": {
         "description": "Aggregated data for the daily view.",
         "properties": {
@@ -1321,7 +1524,7 @@
           "note": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/NoteOut"
+                "$ref": "#/components/schemas/tefteri__api__schemas__NoteOut"
               },
               {
                 "type": "null"
@@ -1344,6 +1547,54 @@
         ],
         "title": "DayView",
         "type": "object"
+      },
+      "DeadlineLineOut": {
+        "description": "Whether the key result was reached by its deadline.",
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeadlineState"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "state",
+          "value",
+          "month"
+        ],
+        "title": "DeadlineLineOut",
+        "type": "object"
+      },
+      "DeadlineState": {
+        "description": "Whether a key result reached its target by its deadline.",
+        "enum": [
+          "reached",
+          "not_reached",
+          "open",
+          "no_value"
+        ],
+        "title": "DeadlineState",
+        "type": "string"
       },
       "DoneIn": {
         "description": "Mark a milestone done by hand.",
@@ -1399,6 +1650,33 @@
         "title": "DoneStateIn",
         "type": "object"
       },
+      "DrillDownOut": {
+        "description": "The live statistics call of feature 005.",
+        "properties": {
+          "live": {
+            "title": "Live",
+            "type": "boolean"
+          },
+          "query": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Query",
+            "type": "object"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "live",
+          "route",
+          "query"
+        ],
+        "title": "DrillDownOut",
+        "type": "object"
+      },
       "DueFilter": {
         "description": "The filters offered at the top of the task view.",
         "enum": [
@@ -1437,25 +1715,6 @@
           "in_committed_plan"
         ],
         "title": "EffectOut",
-        "type": "object"
-      },
-      "EmptyOut": {
-        "description": "Why a period has no number, and the action that helps.",
-        "properties": {
-          "action": {
-            "title": "Action",
-            "type": "string"
-          },
-          "reason": {
-            "title": "Reason",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason",
-          "action"
-        ],
-        "title": "EmptyOut",
         "type": "object"
       },
       "EnabledIn": {
@@ -1654,6 +1913,45 @@
           }
         },
         "title": "EntryPatch",
+        "type": "object"
+      },
+      "FlagReasonOut": {
+        "description": "Why a key result has no usable theme.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "state"
+        ],
+        "title": "FlagReasonOut",
         "type": "object"
       },
       "FocusChangeIn": {
@@ -2052,6 +2350,40 @@
         "title": "FocusUndoOut",
         "type": "object"
       },
+      "GoalCountsOut": {
+        "description": "The outcomes of the key results of one goal.",
+        "properties": {
+          "hit": {
+            "title": "Hit",
+            "type": "integer"
+          },
+          "in_progress": {
+            "title": "In Progress",
+            "type": "integer"
+          },
+          "missed": {
+            "title": "Missed",
+            "type": "integer"
+          },
+          "no_value": {
+            "title": "No Value",
+            "type": "integer"
+          },
+          "retired": {
+            "title": "Retired",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hit",
+          "missed",
+          "no_value",
+          "retired",
+          "in_progress"
+        ],
+        "title": "GoalCountsOut",
+        "type": "object"
+      },
       "GoalEditIn": {
         "description": "New title for an annual goal.",
         "properties": {
@@ -2068,90 +2400,35 @@
         "title": "GoalEditIn",
         "type": "object"
       },
-      "GoalOut": {
-        "description": "One goal of the plan with its key results.",
+      "GoalFlagOut": {
+        "description": "A warning on a goal.",
         "properties": {
-          "criteria_suggestion": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Criteria Suggestion"
-          },
-          "flags": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Flags",
-            "type": "array"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "key_results": {
-            "items": {
-              "$ref": "#/components/schemas/KeyResultOut"
-            },
-            "title": "Key Results",
-            "type": "array"
-          },
-          "legacy_done": {
-            "title": "Legacy Done",
-            "type": "boolean"
-          },
-          "notes": {
+          "actions": {
             "items": {
               "type": "string"
             },
-            "title": "Notes",
+            "title": "Actions",
             "type": "array"
           },
-          "progress": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Progress"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
+          "code": {
+            "title": "Code",
             "type": "string"
           }
         },
         "required": [
-          "id",
-          "title",
-          "status",
-          "legacy_done",
-          "criteria_suggestion",
-          "progress",
-          "flags",
-          "notes",
-          "updated_at",
-          "key_results"
+          "code"
         ],
-        "title": "GoalOut",
+        "title": "GoalFlagOut",
         "type": "object"
+      },
+      "GoalState": {
+        "description": "The state of an annual goal (spec 006). ``done`` is a legacy state kept for history.",
+        "enum": [
+          "active",
+          "retired"
+        ],
+        "title": "GoalState",
+        "type": "string"
       },
       "GoalTitle": {
         "description": "The title of a goal that a task of a view points to (FR-025).",
@@ -2474,115 +2751,45 @@
         "title": "KeyResultEditIn",
         "type": "object"
       },
-      "KeyResultOut": {
-        "description": "One key result with its derived values and its flags (R-02, R-11, R-12).",
+      "KeyResultFlagOut": {
+        "description": "A warning on a key result, with the actions that help.",
         "properties": {
-          "current_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current At"
-          },
-          "current_value": {
-            "title": "Current Value",
-            "type": "number"
-          },
-          "deadline": {
-            "format": "date",
-            "title": "Deadline",
-            "type": "string"
-          },
-          "flags": {
+          "actions": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "type": "string"
             },
-            "title": "Flags",
+            "title": "Actions",
             "type": "array"
           },
-          "goal_id": {
-            "format": "uuid",
-            "title": "Goal Id",
+          "code": {
+            "title": "Code",
             "type": "string"
           },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "links": {
+          "reasons": {
             "items": {
-              "$ref": "#/components/schemas/LinkOut"
+              "$ref": "#/components/schemas/FlagReasonOut"
             },
-            "title": "Links",
+            "title": "Reasons",
             "type": "array"
-          },
-          "met": {
-            "title": "Met",
-            "type": "boolean"
-          },
-          "metric": {
-            "title": "Metric",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "number"
-          },
-          "retired_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retired At"
-          },
-          "start_value": {
-            "title": "Start Value",
-            "type": "number"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "target": {
-            "title": "Target",
-            "type": "number"
-          },
-          "update_source": {
-            "title": "Update Source",
-            "type": "string"
           }
         },
         "required": [
-          "id",
-          "goal_id",
-          "metric",
-          "start_value",
-          "target",
-          "deadline",
-          "update_source",
-          "status",
-          "current_value",
-          "current_at",
-          "progress",
-          "met",
-          "retired_at",
-          "flags",
-          "links"
+          "code"
         ],
-        "title": "KeyResultOut",
+        "title": "KeyResultFlagOut",
         "type": "object"
+      },
+      "KeyResultOutcome": {
+        "description": "The final result of one key result in an annual review.",
+        "enum": [
+          "hit",
+          "missed",
+          "no_value",
+          "retired",
+          "in_progress"
+        ],
+        "title": "KeyResultOutcome",
+        "type": "string"
       },
       "KeyResultUpdate": {
         "description": "Whether a key result has a value dated inside the month.",
@@ -3305,6 +3512,92 @@
         "title": "MilestoneOut",
         "type": "object"
       },
+      "MilestonesShippedOut": {
+        "description": "The distinct milestones over the snapshots of the year.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "months_covered": {
+            "title": "Months Covered",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "months_covered"
+        ],
+        "title": "MilestonesShippedOut",
+        "type": "object"
+      },
+      "MonthOut": {
+        "description": "One month of the year and its snapshot status.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MonthStatus"
+          },
+          "taken_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taken At"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "month",
+          "status",
+          "version",
+          "taken_at",
+          "schema_version",
+          "action"
+        ],
+        "title": "MonthOut",
+        "type": "object"
+      },
       "MonthState": {
         "description": "A month relative to the user's local today.",
         "enum": [
@@ -3313,6 +3606,17 @@
           "future"
         ],
         "title": "MonthState",
+        "type": "string"
+      },
+      "MonthStatus": {
+        "description": "The presence of a monthly review snapshot for one month of the year.",
+        "enum": [
+          "stored",
+          "missing",
+          "open",
+          "future"
+        ],
+        "title": "MonthStatus",
         "type": "string"
       },
       "MonthlyEntryOut": {
@@ -3818,6 +4122,94 @@
         "title": "MonthlySnapshotOut",
         "type": "object"
       },
+      "MovedOut": {
+        "description": "A live value entered after the last snapshot of a past year.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "at"
+        ],
+        "title": "MovedOut",
+        "type": "object"
+      },
+      "MovementOut": {
+        "description": "The movement of a key result over one theme link.",
+        "properties": {
+          "fraction": {
+            "title": "Fraction",
+            "type": "number"
+          },
+          "from": {
+            "title": "From",
+            "type": "number"
+          },
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          },
+          "to": {
+            "title": "To",
+            "type": "number"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "fraction",
+          "months"
+        ],
+        "title": "MovementOut",
+        "type": "object"
+      },
+      "NextYearOut": {
+        "description": "What annual planning offers for the next year.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "from_year": {
+            "title": "From Year",
+            "type": "integer"
+          },
+          "has_plan": {
+            "title": "Has Plan",
+            "type": "boolean"
+          },
+          "links": {
+            "title": "Links",
+            "type": "integer"
+          },
+          "unmet_key_results": {
+            "title": "Unmet Key Results",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "from_year",
+          "available",
+          "has_plan",
+          "unmet_key_results",
+          "links"
+        ],
+        "title": "NextYearOut",
+        "type": "object"
+      },
       "NotMovedBackOut": {
         "description": "A task that could not be moved back by a reopen.",
         "properties": {
@@ -3843,57 +4235,87 @@
         "title": "NotMovedBackOut",
         "type": "object"
       },
-      "NoteOut": {
-        "description": "A cached note.",
+      "NoteDeletedOut": {
+        "description": "The text that a delete removed, so the client can offer undo.",
+        "properties": {
+          "deleted": {
+            "$ref": "#/components/schemas/NoteWriteOut"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "NoteDeletedOut",
+        "type": "object"
+      },
+      "NotePutIn": {
+        "description": "The text of a year or goal note.",
         "properties": {
           "body": {
             "title": "Body",
             "type": "string"
           },
-          "connection_id": {
-            "format": "uuid",
-            "title": "Connection Id",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "note_date": {
+          "goal_id": {
             "anyOf": [
               {
+                "format": "uuid",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Note Date"
-          },
-          "sync_state": {
-            "title": "Sync State",
+            "title": "Goal Id"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "NotePutIn",
+        "type": "object"
+      },
+      "NoteWriteOut": {
+        "description": "The stored note after a write.",
+        "properties": {
+          "body": {
+            "title": "Body",
             "type": "string"
           },
-          "title": {
-            "title": "Title",
+          "goal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
             "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
           }
         },
         "required": [
           "id",
-          "connection_id",
-          "kind",
-          "title",
+          "year",
+          "goal_id",
           "body",
-          "note_date",
-          "sync_state"
+          "updated_at"
         ],
-        "title": "NoteOut",
+        "title": "NoteWriteOut",
         "type": "object"
       },
       "NudgeOut": {
@@ -3943,37 +4365,6 @@
         ],
         "title": "OrphanReason",
         "type": "string"
-      },
-      "OrphanedOut": {
-        "description": "A project that is no longer in the task app.",
-        "properties": {
-          "at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "At"
-          },
-          "reason": {
-            "enum": [
-              "missing",
-              "archived"
-            ],
-            "title": "Reason",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason",
-          "at"
-        ],
-        "title": "OrphanedOut",
-        "type": "object"
       },
       "PaceOut": {
         "description": "Completed committed tasks of one local day.",
@@ -4056,6 +4447,25 @@
           "new_password"
         ],
         "title": "PasswordChange",
+        "type": "object"
+      },
+      "PeakOut": {
+        "description": "The best value of the series, shown when it differs from the last value.",
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "month"
+        ],
+        "title": "PeakOut",
         "type": "object"
       },
       "PeriodType": {
@@ -4382,6 +4792,42 @@
           "current_value"
         ],
         "title": "PushOut",
+        "type": "object"
+      },
+      "RangeOut": {
+        "description": "One active period of a theme link.",
+        "properties": {
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "months": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "months"
+        ],
+        "title": "RangeOut",
         "type": "object"
       },
       "ReminderIn": {
@@ -4731,6 +5177,16 @@
         ],
         "title": "ReviewEffectOut",
         "type": "object"
+      },
+      "ReviewEmptyReason": {
+        "description": "Why an annual review has no data to show.",
+        "enum": [
+          "no_snapshots",
+          "no_goals",
+          "future_year"
+        ],
+        "title": "ReviewEmptyReason",
+        "type": "string"
       },
       "ReviewIn": {
         "description": "The review.",
@@ -5263,6 +5719,25 @@
         "title": "RolloverOut",
         "type": "object"
       },
+      "RulesOut": {
+        "description": "The one hit rule and the threshold of the hint rules.",
+        "properties": {
+          "differ_threshold": {
+            "title": "Differ Threshold",
+            "type": "number"
+          },
+          "hit": {
+            "title": "Hit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hit",
+          "differ_threshold"
+        ],
+        "title": "RulesOut",
+        "type": "object"
+      },
       "ScheduleIn": {
         "additionalProperties": false,
         "description": "Where to plan a task: a block start, or a date only. Send exactly one.",
@@ -5356,6 +5831,41 @@
           "seq"
         ],
         "title": "SeriesPoint",
+        "type": "object"
+      },
+      "SeriesPointOut": {
+        "description": "One month of the twelve point series.",
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "not_stored": {
+            "title": "Not Stored",
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MonthStatus"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "month",
+          "status",
+          "value",
+          "not_stored"
+        ],
+        "title": "SeriesPointOut",
         "type": "object"
       },
       "SettingsOut": {
@@ -5456,6 +5966,115 @@
         ],
         "title": "SkippedSuggestionReason",
         "type": "string"
+      },
+      "SplitMonthOut": {
+        "description": "One month row of the year split.",
+        "properties": {
+          "counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryCountsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hidden": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hidden"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "not_stored": {
+            "title": "Not Stored",
+            "type": "boolean"
+          },
+          "percentages": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryCountsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/MonthStatus"
+          }
+        },
+        "required": [
+          "month",
+          "status",
+          "counts",
+          "hidden",
+          "percentages",
+          "not_stored"
+        ],
+        "title": "SplitMonthOut",
+        "type": "object"
+      },
+      "SplitOut": {
+        "description": "The year split of work categories from stored counts.",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/CategoryCountsOut"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "integer"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/SplitMonthOut"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "months_covered": {
+            "title": "Months Covered",
+            "type": "integer"
+          },
+          "percentages": {
+            "$ref": "#/components/schemas/CategoryCountsOut"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "trend_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trend Note"
+          }
+        },
+        "required": [
+          "months_covered",
+          "counts",
+          "total",
+          "hidden",
+          "percentages",
+          "months",
+          "trend_note"
+        ],
+        "title": "SplitOut",
+        "type": "object"
       },
       "StatTaskOut": {
         "description": "A completed task with its stored category.",
@@ -5598,7 +6217,7 @@
           "empty": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EmptyOut"
+                "$ref": "#/components/schemas/tefteri__api__routers__statistics__EmptyOut"
               },
               {
                 "type": "null"
@@ -5688,6 +6307,27 @@
           "progress"
         ],
         "title": "StatisticsOut",
+        "type": "object"
+      },
+      "StoredPeriodReviewOut": {
+        "description": "The stored period review of the year, when one exists.",
+        "properties": {
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "period_start"
+        ],
+        "title": "StoredPeriodReviewOut",
         "type": "object"
       },
       "SuggestionsOut": {
@@ -6266,6 +6906,57 @@
           "open_milestones"
         ],
         "title": "ThemeGroupOut",
+        "type": "object"
+      },
+      "ThemeHint": {
+        "description": "A neutral comparison of milestone work and key result movement.",
+        "enum": [
+          "much_shipped_little_movement",
+          "movement_not_from_theme"
+        ],
+        "title": "ThemeHint",
+        "type": "string"
+      },
+      "ThemeMilestoneOut": {
+        "description": "One milestone of a theme, with its stored completion date.",
+        "properties": {
+          "done_on": {
+            "format": "date",
+            "title": "Done On",
+            "type": "string"
+          },
+          "in_focus": {
+            "title": "In Focus",
+            "type": "boolean"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "milestone_id",
+          "name",
+          "done_on",
+          "month",
+          "in_focus"
+        ],
+        "title": "ThemeMilestoneOut",
         "type": "object"
       },
       "ThemeOptionOut": {
@@ -6874,6 +7565,16 @@
         "title": "WorkCategory",
         "type": "string"
       },
+      "YearState": {
+        "description": "Where a planning year stands relative to today (spec 006, FR-033).",
+        "enum": [
+          "past",
+          "current",
+          "future"
+        ],
+        "title": "YearState",
+        "type": "string"
+      },
       "_Items": {
         "items": {
           "maxLength": 200,
@@ -6895,6 +7596,466 @@
           "batch_id"
         ],
         "title": "UndoIn",
+        "type": "object"
+      },
+      "tefteri__api__routers__annual_review__EmptyOut": {
+        "description": "Why the review has no data to show, and the action that helps.",
+        "properties": {
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReviewEmptyReason"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "EmptyOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__annual_review__GoalOut": {
+        "description": "One goal of the year with its key results.",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/GoalCountsOut"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/GoalFlagOut"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__api__routers__annual_review__KeyResultOut"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__annual_review__NoteOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "retired_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired Reason"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoalState"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "retired_at",
+          "retired_reason",
+          "counts",
+          "flags",
+          "note",
+          "key_results"
+        ],
+        "title": "GoalOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__annual_review__KeyResultOut": {
+        "description": "One key result of the review, its result and its themes.",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "deadline_line": {
+            "$ref": "#/components/schemas/DeadlineLineOut"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/KeyResultFlagOut"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last At"
+          },
+          "last_month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Month"
+          },
+          "last_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Value"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "moved_after_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovedOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/KeyResultOutcome"
+          },
+          "peak": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeakOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesPointOut"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__api__routers__annual_review__ThemeOut"
+            },
+            "title": "Themes",
+            "type": "array"
+          },
+          "update_source": {
+            "title": "Update Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "metric",
+          "start_value",
+          "target",
+          "direction",
+          "deadline",
+          "update_source",
+          "status",
+          "retired_at",
+          "outcome",
+          "last_value",
+          "last_month",
+          "last_at",
+          "deadline_line",
+          "series",
+          "peak",
+          "moved_after_snapshot",
+          "current_value",
+          "changes",
+          "flags",
+          "themes"
+        ],
+        "title": "KeyResultOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__annual_review__NoteOut": {
+        "description": "The stored note of the year or of one goal.",
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "updated_at"
+        ],
+        "title": "NoteOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__annual_review__OrphanedOut": {
+        "description": "Why a theme is no longer a live project.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/OrphanReason"
+          }
+        },
+        "required": [
+          "reason",
+          "at"
+        ],
+        "title": "OrphanedOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__annual_review__ThemeOut": {
+        "description": "One linked theme and what it did for the key result.",
+        "properties": {
+          "connection_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
+          "connection_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Name"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThemeHint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "milestones": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeMilestoneOut"
+            },
+            "title": "Milestones",
+            "type": "array"
+          },
+          "months_with_target": {
+            "title": "Months With Target",
+            "type": "integer"
+          },
+          "movement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orphaned": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/tefteri__api__routers__annual_review__OrphanedOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "ranges": {
+            "items": {
+              "$ref": "#/components/schemas/RangeOut"
+            },
+            "title": "Ranges",
+            "type": "array"
+          },
+          "shipped": {
+            "title": "Shipped",
+            "type": "integer"
+          },
+          "shipped_outside_focus": {
+            "title": "Shipped Outside Focus",
+            "type": "integer"
+          },
+          "target_sum": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Sum"
+          }
+        },
+        "required": [
+          "project_id",
+          "connection_id",
+          "connection_name",
+          "name",
+          "label",
+          "orphaned",
+          "ranges",
+          "shipped",
+          "shipped_outside_focus",
+          "target_sum",
+          "months_with_target",
+          "movement",
+          "hint",
+          "milestones"
+        ],
+        "title": "ThemeOut",
         "type": "object"
       },
       "tefteri__api__routers__milestones__ThemeOut": {
@@ -6966,6 +8127,37 @@
           "summary"
         ],
         "title": "PlanOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__projects__OrphanedOut": {
+        "description": "A project that is no longer in the task app.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "reason": {
+            "enum": [
+              "missing",
+              "archived"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "at"
+        ],
+        "title": "OrphanedOut",
         "type": "object"
       },
       "tefteri__api__routers__projects__ProjectIn": {
@@ -7051,7 +8243,7 @@
           "orphaned": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/OrphanedOut"
+                "$ref": "#/components/schemas/tefteri__api__routers__projects__OrphanedOut"
               },
               {
                 "type": "null"
@@ -7189,7 +8381,7 @@
           "retrospective": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/NoteOut"
+                "$ref": "#/components/schemas/tefteri__api__schemas__NoteOut"
               },
               {
                 "type": "null"
@@ -7212,6 +8404,25 @@
           "retrospective"
         ],
         "title": "ReviewOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__statistics__EmptyOut": {
+        "description": "Why a period has no number, and the action that helps.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "action"
+        ],
+        "title": "EmptyOut",
         "type": "object"
       },
       "tefteri__api__routers__statistics__ProjectOut": {
@@ -7666,6 +8877,254 @@
         ],
         "title": "ThemeOut",
         "type": "object"
+      },
+      "tefteri__api__schemas__NoteOut": {
+        "description": "A cached note.",
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "connection_id": {
+            "format": "uuid",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "note_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Date"
+          },
+          "sync_state": {
+            "title": "Sync State",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "connection_id",
+          "kind",
+          "title",
+          "body",
+          "note_date",
+          "sync_state"
+        ],
+        "title": "NoteOut",
+        "type": "object"
+      },
+      "tefteri__services__annual_plan__GoalOut": {
+        "description": "One goal of the plan with its key results.",
+        "properties": {
+          "criteria_suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criteria Suggestion"
+          },
+          "flags": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_results": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__services__annual_plan__KeyResultOut"
+            },
+            "title": "Key Results",
+            "type": "array"
+          },
+          "legacy_done": {
+            "title": "Legacy Done",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "legacy_done",
+          "criteria_suggestion",
+          "progress",
+          "flags",
+          "notes",
+          "updated_at",
+          "key_results"
+        ],
+        "title": "GoalOut",
+        "type": "object"
+      },
+      "tefteri__services__annual_plan__KeyResultOut": {
+        "description": "One key result with its derived values and its flags (R-02, R-11, R-12).",
+        "properties": {
+          "current_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current At"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "deadline": {
+            "format": "date",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "goal_id": {
+            "format": "uuid",
+            "title": "Goal Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkOut"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "met": {
+            "title": "Met",
+            "type": "boolean"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "start_value": {
+            "title": "Start Value",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "number"
+          },
+          "update_source": {
+            "title": "Update Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "goal_id",
+          "metric",
+          "start_value",
+          "target",
+          "deadline",
+          "update_source",
+          "status",
+          "current_value",
+          "current_at",
+          "progress",
+          "met",
+          "retired_at",
+          "flags",
+          "links"
+        ],
+        "title": "KeyResultOut",
+        "type": "object"
       }
     }
   },
@@ -7675,6 +9134,160 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/annual-review/{year}": {
+      "get": {
+        "description": "Return the review of one year. It opens in every state of the data.",
+        "operationId": "get_annual_review_api_v1_annual_review__year__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Annual Review",
+        "tags": [
+          "annual review"
+        ]
+      }
+    },
+    "/api/v1/annual-review/{year}/notes": {
+      "delete": {
+        "description": "Delete a note and return the text that was lost.",
+        "operationId": "delete_annual_review_note_api_v1_annual_review__year__notes_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "goal_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Goal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteDeletedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Annual Review Note",
+        "tags": [
+          "annual review"
+        ]
+      },
+      "put": {
+        "description": "Create or replace the note of the year or of one goal.",
+        "operationId": "put_annual_review_note_api_v1_annual_review__year__notes_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotePutIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteWriteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Annual Review Note",
+        "tags": [
+          "annual review"
+        ]
+      }
+    },
     "/api/v1/annual/goals/{goal_id}": {
       "patch": {
         "description": "Edit the title of one goal and record the change in plan history.",
@@ -7706,7 +9319,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoalOut"
+                  "$ref": "#/components/schemas/tefteri__services__annual_plan__GoalOut"
                 }
               }
             },
@@ -10837,7 +12450,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/NoteOut"
+                    "$ref": "#/components/schemas/tefteri__api__schemas__NoteOut"
                   },
                   "title": "Response List Notes Api V1 Notes Get",
                   "type": "array"
@@ -10884,7 +12497,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoteOut"
+                  "$ref": "#/components/schemas/tefteri__api__schemas__NoteOut"
                 }
               }
             },
@@ -10938,7 +12551,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoteOut"
+                  "$ref": "#/components/schemas/tefteri__api__schemas__NoteOut"
                 }
               }
             },

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/month/month_screen.dart';
 import 'package:tefteri/features/weekly/weekly_api.dart';
 import 'package:tefteri/features/weekly/weekly_screen.dart';
-import 'package:tefteri/features/year/year_screen.dart';
+import 'package:tefteri/features/annual_review/annual_review_screen.dart';
 
 import '../../support/fake_api.dart';
 import '../weekly/weekly_fake.dart';
@@ -137,10 +137,11 @@ void main() {
         'the year page shows the annual checklist and a hint without one',
         (tester) async {
       final api = FakeApi({
-        'GET /views/year/2026': periodJson('year', '2026-01-01', '2027-01-01'),
+        'GET /annual-review/2026': annualReviewJson(year: 2026),
         'GET /checklists/year/2026-01-01': _list('year', '2026-01-01', []),
       });
-      await pumpWithApi(tester, api, const YearScreen(initialYear: 2026));
+      await pumpWithApi(
+          tester, api, const AnnualReviewScreen(initialYear: 2026));
       expect(find.text('Annual checklist'), findsOneWidget);
       expect(find.byKey(const Key('checklist-hint')), findsOneWidget);
       expect(find.textContaining('You have no annual checklist yet'),

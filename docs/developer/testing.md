@@ -34,6 +34,13 @@ key results, categories, decisions, snapshots and the rule that monthly planning
 to the task app. The HTTP flow is in `e2e/test_monthly_api.py`. Read
 [Monthly planning and review](monthly-cycle.md) for the data and read contracts.
 
+The annual review rules are tested in `unit/test_annual_review_rules.py`,
+`unit/test_snapshot_view.py` and `unit/test_annual_review_schema.py`. The integration tests cover
+the read model, theme contributions, the year split, missing months, history, orphaned themes,
+notes and the no-write guarantee. The HTTP route is in `e2e/test_annual_review_api.py`; the live
+smoke test is `tests/live/test_annual_review_live.py`. Read
+[Annual review](annual-review.md) for the rules and the readers.
+
 The fake apps are in `tests/fakes/`. They keep their items in memory, and a test can make
 them unreachable or make their credentials expire.
 

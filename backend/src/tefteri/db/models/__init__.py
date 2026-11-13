@@ -23,6 +23,7 @@ from tefteri.db.models.note import Note
 from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
 from tefteri.db.models.push_token import ValuePushToken
 from tefteri.db.models.review import PeriodReview
+from tefteri.db.models.review_note import ReviewNote
 from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.task_category import TaskCategory
@@ -50,6 +51,7 @@ __all__ = [
     "Note",
     "PeriodReview",
     "Plan",
+    "ReviewNote",
     "PlanChange",
     "ProjectLabel",
     "ProjectLabelHistory",

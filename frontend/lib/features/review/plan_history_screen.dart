@@ -18,10 +18,16 @@ import 'review_models.dart';
 /// their period ends.
 class PlanHistoryScreen extends ConsumerStatefulWidget {
   /// Creates the screen; [today] defaults to now (for the new-plan choices).
-  const PlanHistoryScreen({this.today, super.key});
+  const PlanHistoryScreen({this.today, this.period, this.year, super.key});
 
   /// Day used to offer periods in the new-plan dialog.
   final DateTime? today;
+
+  /// Filter: `year`, `month` or `week`, or null.
+  final String? period;
+
+  /// Filter: the year of the stored reviews, or null.
+  final int? year;
 
   @override
   ConsumerState<PlanHistoryScreen> createState() => _PlanHistoryScreenState();
@@ -48,6 +54,22 @@ class _PlanHistoryScreenState extends ConsumerState<PlanHistoryScreen> {
     ref.invalidate(planHistoryProvider);
   }
 
+  String? get _filterLabel {
+    final period = widget.period;
+    final year = widget.year;
+    if (period == null && year == null) return null;
+    if (period == 'year' && year != null) return 'Year $year';
+    return '${period ?? 'All'} ${year ?? ''}'.trim();
+  }
+
+  List<PlanHistoryEntry> _filtered(List<PlanHistoryEntry> plans) => [
+        for (final p in plans)
+          if ((widget.period == null || p.periodType == widget.period) &&
+              (widget.year == null ||
+                  DateTime.tryParse(p.periodStart)?.year == widget.year))
+            p,
+      ];
+
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(planHistoryProvider);
@@ -60,6 +82,23 @@ class _PlanHistoryScreenState extends ConsumerState<PlanHistoryScreen> {
             ErrorBanner(
                 message: _error!,
                 onDismiss: () => setState(() => _error = null)),
+          if (_filterLabel != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                children: [
+                  Chip(
+                    key: const Key('history-filter'),
+                    label: Text(_filterLabel!),
+                  ),
+                  TextButton(
+                    key: const Key('history-clear-filter'),
+                    onPressed: () => context.go('/review'),
+                    child: const Text('Clear filter'),
+                  ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: Align(
@@ -88,14 +127,17 @@ class _PlanHistoryScreenState extends ConsumerState<PlanHistoryScreen> {
                   ],
                 ),
               ),
-              data: (plans) => plans.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.auto_stories_outlined,
-                      message: 'No plans yet. Add a plan for a year, '
-                          'a month or a week.')
-                  : ListView(
-                      children: [for (final p in plans) _tile(p)],
-                    ),
+              data: (plans) {
+                final shown = _filtered(plans);
+                return shown.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.auto_stories_outlined,
+                        message: 'No plans yet. Add a plan for a year, '
+                            'a month or a week.')
+                    : ListView(
+                        children: [for (final p in shown) _tile(p)],
+                      );
+              },
             ),
           ),
         ],

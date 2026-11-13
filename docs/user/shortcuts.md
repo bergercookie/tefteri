@@ -20,7 +20,7 @@ You can also choose the keyboard button at the top of the screen.
 | T | Today (the daily view) |
 | W | Week |
 | M | Month |
-| Y | Year |
+| Y | Year review |
 | G | Annual plan |
 | O | Projects |
 | R | Reviews |

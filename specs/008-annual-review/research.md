@@ -106,4 +106,10 @@ Decisions taken before design. Each has the choice, the reason and what was reje
 
 ## Names (filled by task T017)
 
-Empty until T017 runs. It lists every name from the design files of 003 to 007 that differs in the built code (service methods, protocol names, client route names), so the later tasks use the real names.
+The built code keeps the design names with these differences:
+
+- The snapshot reader is `MonthlyReviewService.current_snapshots(db, user_id, year)`. It returns `month`, `version`, `taken_at` and `snapshot`.
+- The plan reader is `AnnualPlanService.plan(db, user_id, year, tz=...)` and `AnnualPlanService.history(db, user_id, year)`. `history` also takes optional `goal_id` and `key_result_id`.
+- The seed counter wraps `AnnualPlanService.suggestions(db, user_id, year, from_year=...)`.
+- The client route for a missing month is `/month/review?date=YYYY-MM-01`.
+- The route of the old year view stays `GET /views/year/{year}`.

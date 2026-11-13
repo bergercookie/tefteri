@@ -78,6 +78,17 @@ void main() {
           findsOneWidget);
     });
 
+    testWidgets('filters the stored year reviews and clears the filter',
+        (tester) async {
+      final api = FakeApi({'GET /reviews/history': _history});
+      await pumpWithApi(
+          tester, api, const PlanHistoryScreen(period: 'year', year: 2027));
+      expect(find.text('Next year'), findsOneWidget);
+      expect(find.text('October'), findsNothing);
+      expect(find.byKey(const Key('history-filter')), findsOneWidget);
+      expect(find.byKey(const Key('history-clear-filter')), findsOneWidget);
+    });
+
     testWidgets('new plan posts the chosen period', (tester) async {
       final api = FakeApi({
         'GET /reviews/history': <Object?>[],
