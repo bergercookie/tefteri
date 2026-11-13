@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "I want a different layout as the default where, there's two columns for tasks and calendars: on the left hand side a task view, and on the right hand side my calendar. I should be able to drag and drop tasks to the calendar and that should automatically assign a datetime to them. Also, tasks with already a date/ datetime should appear at the calendar, in the right timeslot. We use due dates as the date of preference for vikunja. and just set the \"start time\" of the event to something like \"due-date\"-1h"
 
