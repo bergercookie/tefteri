@@ -122,10 +122,6 @@ final planSuggestionsProvider = FutureProvider.autoDispose
 final legacyGoalsProvider = FutureProvider.autoDispose<List<LegacyGoal>>(
     (ref) => ref.watch(annualApiProvider).legacyGoals());
 
-/// The state of the push token.
-final pushTokenProvider = FutureProvider.autoDispose<PushTokenInfo>(
-    (ref) => ref.watch(annualApiProvider).pushToken());
-
 /// The plan of one year, read only (the year view and the task goal picker).
 final annualPlanReadProvider = FutureProvider.autoDispose
     .family<AnnualPlan, int>(

@@ -866,31 +866,3 @@ class LegacyGoal {
   /// How many tasks point to it.
   final int linkedTasks;
 }
-
-/// The state of the push token (`GET /annual/push-token`).
-@immutable
-class PushTokenInfo {
-  /// Creates the state.
-  const PushTokenInfo(
-      {required this.exists, this.hint, this.createdAt, this.lastUsedAt});
-
-  /// Parses the answer.
-  factory PushTokenInfo.fromJson(Map<String, dynamic> j) => PushTokenInfo(
-        exists: j['exists'] == true,
-        hint: _str(j['hint']),
-        createdAt: _date(j['created_at']),
-        lastUsedAt: _date(j['last_used_at']),
-      );
-
-  /// True when a token exists.
-  final bool exists;
-
-  /// The last characters of the token.
-  final String? hint;
-
-  /// When it was made.
-  final DateTime? createdAt;
-
-  /// When a source last used it.
-  final DateTime? lastUsedAt;
-}

@@ -121,11 +121,6 @@ FakeApi _api({int year = 2027, String state = 'current'}) => FakeApi({
             reason: 'No time this year',
             at: '2027-03-02T07:45:00Z'),
       ]),
-      'GET /annual/push-token': {'exists': false},
-      'POST /annual/push-token': {
-        'token': 'tfv_FAKE_TOKEN_FOR_DOCS_0000000000',
-        'hint': '0000',
-      },
     });
 
 Future<void> _pump(WidgetTester tester, FakeApi api,
@@ -209,13 +204,6 @@ void main() {
     await tester.enterText(find.byKey(const Key('value-field')), '14');
     await tester.pumpAndSettle();
     await saveScreenshot('annual-value');
-  });
-
-  testWidgets('push token, shown once', (tester) async {
-    await _pump(tester, _api(), size: screenshotSize);
-    await _tap(tester, 'open-push-token');
-    await _tap(tester, 'push-token-create');
-    await saveScreenshot('annual-push-token');
   });
 
   testWidgets('seed panel of the next year', (tester) async {

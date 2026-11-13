@@ -77,6 +77,13 @@ class FocusSection extends StatelessWidget {
             onRemove: onRemove,
             readOnly: readOnly,
           ),
+        GoalsWithoutFocus(
+          keyResults: keyResults,
+          focusProjectIds: {
+            for (final entry in entries)
+              if (entry['status'] == 'in_focus') '${entry['project_id']}',
+          },
+        ),
         if (!readOnly)
           Align(
             alignment: Alignment.centerLeft,

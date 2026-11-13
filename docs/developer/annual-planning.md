@@ -1,8 +1,8 @@
 # Annual planning
 
 Annual planning is the only planning flow that owns goals. A goal belongs to a year. A key
-result is a measurable number under a goal. The plan also keeps theme links, a dated value
-series, flags, a history that can be undone and a push token for automatic values.
+result is a measurable number or yes/no answer under a goal. The plan also keeps theme links, a
+dated value series, flags and a history that can be undone.
 
 Read [Plan for the year](../user/annual-planning.md) for the user flow.
 
@@ -17,10 +17,10 @@ The migration `0020_annual_planning` adds these tables and four columns on `goal
 | `key_result_values` | The append-only dated series. `seq` orders values entered on the same day. |
 | `key_result_themes` | The link periods between a key result and a theme project. |
 | `plan_changes` | The append-only plan history. Each user action is one `batch_id`. |
-| `value_push_tokens` | One token per user. Tefteri stores only the SHA-256 digest and the four-character hint. |
 
 The migration `0025_key_result_kind` adds `kind` with the default `number`. Existing key results
-stay numbers.
+stay numbers. The migration `0026_remove_value_push_tokens` removes the push-token table with the
+inbound push contract.
 
 Tefteri derives the current value and the progress. It does not store them. A value row stores `at`,
 the time stamp, and `on_date`, the day of `at` in the user time zone. `value_on` reads the last
@@ -84,53 +84,6 @@ Tefteri refuses an undo with `already_undone` after the first undo. It refuses a
 `not_undoable` when the batch has a kind that cannot change back. A re-link changes back in the
 other direction. The links that the batch added end. The links that it ended start again when
 their project is still a usable theme.
-
-## Push contract
-
-An outside source sends a value to an automatic key result. The route is
-`POST /api/v1/key-results/{key_result_id}/push`. It uses only the token in the header
-`Authorization: Bearer tfv_...`. It does not accept a session, a cookie or the
-`X-Tefteri-Client` header.
-
-```mermaid
-sequenceDiagram
-  participant Source
-  participant API
-  participant Service as PushTokenService
-  participant DB
-  Source->>API: POST /key-results/{id}/push
-  API->>Service: push(token, id, value, at)
-  Service->>DB: find token by SHA-256 digest
-  alt no token
-    Service-->>API: 401 invalid_push_token
-  end
-  Service->>Service: rate limit: 60 pushes a minute per token
-  Service->>DB: load key result of the token owner
-  alt unknown or other user
-    Service-->>API: 404 not_found
-  end
-  alt retired
-    Service-->>API: 409 retired
-  end
-  alt manual source
-    Service-->>API: 409 not_automatic
-  end
-  Service->>Service: check finite number and ISO 8601 time with zone
-  alt bad value or time
-    Service-->>API: 422 invalid
-  end
-  Service->>DB: look for the same value at the same instant
-  alt retry
-    Service-->>API: 200 stored false
-  else new value
-    Service->>DB: insert value, source automatic
-    Service->>DB: set last_used_at
-    Service-->>API: 201 stored true
-  end
-```
-
-A rejected push writes nothing. The rate limit is in memory and counts accepted attempts per
-token. Tefteri stores the same value at the same instant once, so a source can retry safely.
 
 ## Migration of existing goals
 

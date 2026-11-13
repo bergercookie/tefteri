@@ -1,6 +1,4 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_api.dart';
@@ -109,48 +107,5 @@ void main() {
     await tapKey(tester, 'value-save');
     expect(find.text('The value must be a number.'), findsOneWidget);
     expect(api.where('POST /annual/key-results/kr1/values'), isEmpty);
-  });
-
-  testWidgets('the token shows once with a copy action, then only the hint',
-      (tester) async {
-    var exists = false;
-    String? copied;
-    tester.binding.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'Clipboard.setData') {
-        copied = (call.arguments as Map)['text'] as String?;
-      }
-      return null;
-    });
-    addTearDown(() => tester.binding.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, null));
-    final api = await pumpAnnual(
-        tester,
-        _server().routes({
-          'GET /annual/push-token': (RequestOptions _) => exists
-              ? {
-                  'exists': true,
-                  'hint': 'ab12',
-                  'created_at': '2030-03-10T10:00:00Z',
-                  'last_used_at': null
-                }
-              : {'exists': false},
-          'POST /annual/push-token': (RequestOptions _) {
-            exists = true;
-            return {'token': 'tfv_FAKE_TOKEN_FOR_TESTS_ab12', 'hint': 'ab12'};
-          },
-        }));
-    await tapKey(tester, 'open-push-token');
-    expect(find.byKey(const Key('push-token-dialog')), findsOneWidget);
-    await tapKey(tester, 'push-token-create');
-    expect(api.where('POST /annual/push-token'), hasLength(1));
-    expect(find.text('tfv_FAKE_TOKEN_FOR_TESTS_ab12'), findsOneWidget);
-    expect(find.byKey(const Key('push-token-warning')), findsOneWidget);
-    await tapKey(tester, 'push-token-copy');
-    expect(copied, 'tfv_FAKE_TOKEN_FOR_TESTS_ab12');
-    await tapKey(tester, 'push-token-close');
-    await tapKey(tester, 'open-push-token');
-    expect(find.text('tfv_FAKE_TOKEN_FOR_TESTS_ab12'), findsNothing);
-    expect(find.textContaining('ab12'), findsOneWidget);
   });
 }

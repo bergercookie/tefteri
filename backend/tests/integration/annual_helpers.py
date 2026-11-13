@@ -19,7 +19,6 @@ def freeze(api: AsyncClient, now: datetime = NOW) -> None:
     app: Any = api.app  # type: ignore[attr-defined]
     app.state.annual_service._clock = lambda: now
     app.state.key_result_service._clock = lambda: now
-    app.state.push_token_service._clock = lambda: now
 
 
 async def connect_themes(

@@ -66,8 +66,53 @@ void main() {
     ));
     expect(find.textContaining('No usable theme'), findsOneWidget);
     expect(find.byKey(const Key('annual-plan-kr1')), findsOneWidget);
-    expect(find.textContaining('No theme in focus'), findsOneWidget);
+    expect(find.textContaining('No theme in focus'), findsNothing);
     expect(find.byKey(const Key('link-theme-kr1')), findsNothing);
+  });
+
+  testWidgets('groups the goals without a focus theme once per goal',
+      (tester) async {
+    const noFocus = [
+      {
+        'code': 'no_theme_in_focus',
+        'actions': ['open_picker']
+      }
+    ];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: GoalsWithoutFocus(
+          focusProjectIds: const {'p1'},
+          keyResults: [
+            monthlyKeyResultJson(
+                id: 'kr1',
+                goalId: 'g1',
+                goalTitle: 'Grow the project',
+                themeIds: const [],
+                flags: noFocus),
+            monthlyKeyResultJson(
+                id: 'kr2',
+                goalId: 'g1',
+                goalTitle: 'Grow the project',
+                themeIds: const [],
+                flags: noFocus),
+            monthlyKeyResultJson(
+                id: 'kr3',
+                goalId: 'g2',
+                goalTitle: 'In focus',
+                themeIds: const ['p1']),
+            monthlyKeyResultJson(
+                id: 'kr4',
+                goalId: 'g3',
+                goalTitle: 'Another goal',
+                themeIds: const ['p2'],
+                flags: noFocus),
+          ],
+        ),
+      ),
+    ));
+    expect(find.text('No theme in focus · Grow the project'), findsOneWidget);
+    expect(find.text('No theme in focus · Another goal'), findsOneWidget);
+    expect(find.text('No theme in focus · In focus'), findsNothing);
   });
 
   testWidgets('allows a theme with no linked key result', (tester) async {

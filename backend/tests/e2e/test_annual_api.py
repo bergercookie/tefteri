@@ -1,8 +1,6 @@
 """The annual planning contract over HTTP (spec 006, M5)."""
 
 from collections.abc import Awaitable, Callable
-from datetime import timedelta
-from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -10,9 +8,7 @@ from httpx import AsyncClient
 from tests.conftest import V1
 from tests.fakes.world import FakeWorld
 from tests.integration.annual_helpers import (
-    NOW,
     YEAR,
-    bare_client,
     connect_themes,
     create_goal,
     create_goals,
@@ -170,8 +166,6 @@ async def test_the_read_routes_have_the_contract_shape(env: ProjectsEnv) -> None
         "update_source",
         "themes",
     }
-
-    assert (await env.api.get(f"{V1}/annual/push-token")).json() == {"exists": False}
 
 
 async def test_the_write_routes_round_trip_and_record_history(env: ProjectsEnv) -> None:
@@ -334,7 +328,7 @@ async def test_the_write_routes_refuse_bad_input(env: ProjectsEnv) -> None:
     assert same_target.json()["code"] == "invalid"
 
 
-async def test_themes_and_the_push_token_have_the_contract_shape(env: ProjectsEnv) -> None:
+async def test_themes_have_the_contract_shape(env: ProjectsEnv) -> None:
     freeze(env.api)
     await connect_themes(env, "Existing")
     connection = str(env.connection_uuid())
@@ -357,23 +351,6 @@ async def test_themes_and_the_push_token_have_the_contract_shape(env: ProjectsEn
     assert (duplicate.status_code, duplicate.json()["code"]) == (409, "theme_exists")
     assert duplicate.json()["existing"]["name"] == "Created"
 
-    token = await env.api.post(f"{V1}/annual/push-token")
-    assert token.status_code == 200, token.text
-    assert set(token.json()) == {"token", "hint"}
-    assert token.json()["token"].startswith("tfv_")
-    assert len(token.json()["hint"]) == 4
-
-    status = (await env.api.get(f"{V1}/annual/push-token")).json()
-    assert set(status) == {"exists", "hint", "created_at", "last_used_at"}
-    assert status["exists"] is True and status["hint"] == token.json()["hint"]
-    assert status["last_used_at"] is None
-
-    rotated = (await env.api.post(f"{V1}/annual/push-token")).json()
-    assert rotated["token"] != token.json()["token"]
-
-    assert (await env.api.delete(f"{V1}/annual/push-token")).status_code == 204
-    assert (await env.api.get(f"{V1}/annual/push-token")).json() == {"exists": False}
-
 
 async def test_another_user_gets_404_for_every_id(env: ProjectsEnv, make_user: MakeUser) -> None:
     freeze(env.api)
@@ -383,16 +360,12 @@ async def test_another_user_gets_404_for_every_id(env: ProjectsEnv, make_user: M
         [
             {
                 "title": "Secret",
-                "key_results": [
-                    kr("Secret", themes=[themes["Open source"]]),
-                    kr("Automatic secret", source="automatic"),
-                ],
+                "key_results": [kr("Secret", themes=[themes["Open source"]])],
             }
         ],
     )
     goal = created["goals"][0]
     key_result = goal["key_results"][0]
-    automatic_id = goal["key_results"][1]["id"]
     await enter_value(env.api, key_result["id"], 3)
     sam = await make_user("sam")
 
@@ -421,87 +394,3 @@ async def test_another_user_gets_404_for_every_id(env: ProjectsEnv, make_user: M
     sam_theme = (await sam.get(f"{V1}/annual/themes")).json()
     assert sam_theme["themes"] == []
     assert (await sam.get(f"{V1}/annual/{YEAR}/history")).json()["changes"] == []
-    assert (await sam.get(f"{V1}/annual/push-token")).json() == {"exists": False}
-
-    sam_token = (await sam.post(f"{V1}/annual/push-token")).json()["token"]
-    async with bare_client(env.api) as source:
-        pushed = await source.post(
-            f"{V1}/key-results/{automatic_id}/push",
-            json={"value": 1, "at": NOW.isoformat()},
-            headers={"Authorization": f"Bearer {sam_token}"},
-        )
-    assert (pushed.status_code, pushed.json()["code"]) == (404, "not_found")
-
-
-async def _push(
-    client: AsyncClient,
-    key_result_id: str,
-    token: str | None,
-    body: dict[str, Any] | None = None,
-) -> Any:
-    headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
-    return await client.post(
-        f"{V1}/key-results/{key_result_id}/push",
-        json=body if body is not None else {"value": 1342, "at": NOW.isoformat()},
-        headers=headers,
-    )
-
-
-async def test_the_push_status_table_row_by_row(env: ProjectsEnv) -> None:
-    freeze(env.api)
-    automatic = await create_goal(env.api, "Automatic", kr("Stars", target=500, source="automatic"))
-    automatic_id = automatic["key_results"][0]["id"]
-    manual = await create_goal(env.api, "Manual", kr("Talks"))
-    manual_id = manual["key_results"][0]["id"]
-    token = (await env.api.post(f"{V1}/annual/push-token")).json()["token"]
-    session = env.api.headers["Authorization"].removeprefix("Bearer ")
-
-    async with bare_client(env.api) as source:
-        first = await _push(source, automatic_id, token)
-        assert first.status_code == 201, first.text
-        assert set(first.json()) == {"stored", "key_result_id", "value", "at", "current_value"}
-        assert first.json()["stored"] is True
-        assert first.json()["current_value"] == 1342
-        assert "set-cookie" not in first.headers
-
-        retry = await _push(source, automatic_id, token)
-        assert retry.status_code == 200
-        assert retry.json()["stored"] is False
-        assert retry.json()["current_value"] == 1342
-
-        assert (await _push(source, automatic_id, None)).status_code == 401
-        assert (await _push(source, automatic_id, "tfv_wrong")).status_code == 401
-        assert (await _push(source, automatic_id, session)).status_code == 401
-        assert (await _push(source, manual_id, token)).json()["code"] == "not_automatic"
-        assert (
-            await _push(source, automatic_id, token, {"value": "1342", "at": NOW.isoformat()})
-        ).json()["code"] == "invalid"
-        assert (
-            await _push(
-                source,
-                automatic_id,
-                token,
-                {"value": 1, "at": (NOW + timedelta(minutes=6)).isoformat()},
-            )
-        ).json()["code"] == "invalid"
-
-        unknown = await _push(source, "00000000-0000-0000-0000-000000000001", token)
-        assert (unknown.status_code, unknown.json()["code"]) == (404, "not_found")
-
-        # The contract's curl example uses a fake token; it is refused and stores nothing.
-        example = await source.post(
-            f"{V1}/key-results/{automatic_id}/push",
-            json={"value": 1342, "at": "2027-03-04T09:30:00Z"},
-            headers={
-                "Authorization": "Bearer tfv_FAKE_TOKEN_FOR_DOCS",
-                "Content-Type": "application/json",
-            },
-        )
-        assert (example.status_code, example.json()["code"]) == (401, "invalid_push_token")
-
-    current = key_result_of(await plan(env.api), automatic_id)
-    assert current["current_value"] == 1342
-    series = (await env.api.get(f"{V1}/annual/key-results/{automatic_id}/values")).json()
-    assert [(point["value"], point["source"]) for point in series] == [(1342.0, "automatic")]
-    status = (await env.api.get(f"{V1}/annual/push-token")).json()
-    assert status["last_used_at"] is not None

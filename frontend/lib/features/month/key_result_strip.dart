@@ -13,7 +13,6 @@ class KeyResultStrip extends StatelessWidget {
   const KeyResultStrip({
     required this.entry,
     required this.keyResults,
-    this.onOpenPicker,
     super.key,
   });
 
@@ -22,9 +21,6 @@ class KeyResultStrip extends StatelessWidget {
 
   /// All key results returned by the planning endpoint.
   final List<Map<String, dynamic>> keyResults;
-
-  /// Optional action for the quiet no-theme-in-focus flag.
-  final VoidCallback? onOpenPicker;
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +31,6 @@ class KeyResultStrip extends StatelessWidget {
                 .contains(entry.projectId) ||
             _hasFlag(result, 'no_usable_theme'))
         .toList();
-    final relevantIds = relevant
-        .map((result) => result['id'] ?? result['key_result_id'])
-        .toSet();
     if (relevant.isEmpty) {
       return Padding(
         padding: const EdgeInsets.only(top: Space.sm),
@@ -55,16 +48,6 @@ class KeyResultStrip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final result in relevant) _KeyResultRow(result: result),
-          for (final result in keyResults.where((result) =>
-              _hasFlag(result, 'no_theme_in_focus') &&
-              !(result['theme_ids'] as List? ?? const [])
-                  .map((id) => '$id')
-                  .contains(entry.projectId) &&
-              !relevantIds.contains(result['id'] ?? result['key_result_id'])))
-            _NoFocusFlag(
-              result: result,
-              onOpenPicker: onOpenPicker,
-            ),
         ],
       ),
     );
@@ -82,7 +65,6 @@ class _KeyResultRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final current = result['current_value'];
     final at = result['current_at'];
@@ -109,13 +91,6 @@ class _KeyResultRow extends StatelessWidget {
           Text('Start $start · Latest $current${at == null ? '' : ' · $at'}',
               style: text.bodySmall),
           Text('Target $target · Deadline $deadline', style: text.bodySmall),
-          for (final flag in flags)
-            if (flag is Map && flag['code'] == 'no_theme_in_focus')
-              Text(
-                'No theme in focus',
-                key: Key('no-theme-in-focus-${result['id']}'),
-                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
           if (noUsable)
             Row(
               children: [
@@ -144,19 +119,66 @@ class _KeyResultRow extends StatelessWidget {
   }
 }
 
-class _NoFocusFlag extends StatelessWidget {
-  const _NoFocusFlag({required this.result, this.onOpenPicker});
+/// One quiet line per annual goal whose key results have no theme in focus.
+///
+/// A goal is in focus when any of its key results serves a focus theme. The
+/// lines are grouped by goal, so a goal with several key results is named once.
+class GoalsWithoutFocus extends StatelessWidget {
+  /// Creates the list for the focus themes [focusProjectIds].
+  const GoalsWithoutFocus({
+    required this.keyResults,
+    required this.focusProjectIds,
+    super.key,
+  });
 
-  final Map<String, dynamic> result;
-  final VoidCallback? onOpenPicker;
+  /// All key results returned by the planning endpoint.
+  final List<Map<String, dynamic>> keyResults;
+
+  /// The project ids that are in this month's focus.
+  final Set<String> focusProjectIds;
 
   @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton(
-          key: Key('no-theme-in-focus-${result['id']}'),
-          onPressed: onOpenPicker,
-          child: Text('No theme in focus · ${result['goal_title'] ?? ''}'),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final inFocus = {
+      for (final result in keyResults)
+        if ((result['theme_ids'] as List? ?? const [])
+            .map((id) => '$id')
+            .any(focusProjectIds.contains))
+          _goalKey(result),
+    };
+    final withoutFocus = <String, Map<String, dynamic>>{};
+    for (final result in keyResults) {
+      if (!_hasFlag(result, 'no_theme_in_focus') ||
+          inFocus.contains(_goalKey(result))) {
+        continue;
+      }
+      withoutFocus.putIfAbsent(_goalKey(result), () => result);
+    }
+    if (withoutFocus.isEmpty) return const SizedBox.shrink();
+    final style = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Annual goals without a theme in focus',
+              key: const Key('goals-without-focus'),
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: Space.xs),
+          for (final result in withoutFocus.values)
+            Text(
+              'No theme in focus · ${result['goal_title'] ?? ''}',
+              key: Key('no-theme-in-focus-${_goalKey(result)}'),
+              style: style,
+            ),
+        ],
+      ),
+    );
+  }
 }
+
+String _goalKey(Map<String, dynamic> result) =>
+    '${result['goal_id'] ?? result['goal_title'] ?? result['id'] ?? ''}';

@@ -179,46 +179,6 @@ async def get_theme_picker(
     return await _annual(request).themes(db, user.id, year=_today(request, user).year)
 
 
-@router.get("/annual/push-token")
-async def get_push_token_status(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> dict[str, object]:
-    """Return whether a push token exists and, if so, its hint and times. Never the token."""
-    status = await request.app.state.push_token_service.status(db, user.id)
-    if not status.exists:
-        return {"exists": False}
-    return {
-        "exists": True,
-        "hint": status.hint,
-        "created_at": utc(status.created_at),
-        "last_used_at": utc(status.last_used_at),
-    }
-
-
-@router.post("/annual/push-token")
-async def create_or_rotate_push_token(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> dict[str, str]:
-    """Create or rotate the user's push token."""
-    service = request.app.state.push_token_service
-    token, hint = await service.issue(db, user.id)
-    return {"token": token, "hint": hint}
-
-
-@router.delete("/annual/push-token", status_code=204)
-async def delete_push_token(
-    request: Request,
-    db: Db,
-    user: CurrentUser,
-) -> None:
-    """Revoke the user's push token."""
-    await request.app.state.push_token_service.revoke(db, user.id)
-
-
 @router.get("/annual/{year}")
 async def get_annual_plan(
     year: int,
