@@ -19,7 +19,6 @@ organizing-projects
 monthly-planning
 weekly-planning
 work-categories
-reviews-and-retrospectives
 shortcuts
 conflicts
 troubleshooting

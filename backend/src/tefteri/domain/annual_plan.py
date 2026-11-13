@@ -64,6 +64,7 @@ class PastKeyResult:
     id: str
     status: str  # 'active' | 'retired'
     metric: str
+    kind: str
     start_value: float
     target: float
     deadline: date
@@ -88,6 +89,7 @@ class KeyResultSuggestion:
 
     key_result_id: str
     metric: str
+    kind: str
     start_value: float
     """The last value of year N, editable before the save."""
     target: float
@@ -146,6 +148,7 @@ def suggest(
                 KeyResultSuggestion(
                     key_result_id=kr.id,
                     metric=kr.metric,
+                    kind=kr.kind,
                     start_value=last,
                     target=kr.target,
                     deadline=shift_deadline(kr.deadline, year),

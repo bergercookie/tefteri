@@ -39,6 +39,8 @@ class KeyResult(IdMixin, Base):
     year: Mapped[int] = mapped_column(nullable=False)
     """The planning year of the goal, copied at creation."""
     metric: Mapped[str] = mapped_column(String(500), nullable=False)
+    kind: Mapped[str] = mapped_column(String(8), default="number", server_default="number")
+    """``number`` or ``yes_no``. A yes/no key result stores 0 or 1 as its value."""
     start_value: Mapped[float] = mapped_column(Float, nullable=False)
     target: Mapped[float] = mapped_column(Float, nullable=False)
     deadline: Mapped[date] = mapped_column(Date, nullable=False)
@@ -60,6 +62,7 @@ class KeyResult(IdMixin, Base):
 
     __table_args__ = (
         sa.UniqueConstraint("goal_id", "slot", name="uq_key_results_goal_slot"),
+        CheckConstraint("kind IN ('number', 'yes_no')", name="ck_key_results_kind"),
         CheckConstraint("target <> start_value", name="ck_key_results_target"),
         CheckConstraint("slot IS NULL OR slot BETWEEN 1 AND 3", name="ck_key_results_slot"),
         CheckConstraint(

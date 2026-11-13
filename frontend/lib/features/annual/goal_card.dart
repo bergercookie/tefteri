@@ -16,7 +16,13 @@ const keyResultLimitMessage =
 /// The card of an active goal.
 class GoalCard extends StatefulWidget {
   /// Creates the card.
-  const GoalCard({required this.goal, required this.actions, super.key});
+  const GoalCard({
+    required this.goal,
+    required this.actions,
+    required this.collapsed,
+    required this.onToggleCollapsed,
+    super.key,
+  });
 
   /// The goal.
   final AnnualGoal goal;
@@ -24,18 +30,19 @@ class GoalCard extends StatefulWidget {
   /// The actions of the screen.
   final AnnualActions actions;
 
+  /// True when the key results are hidden.
+  final bool collapsed;
+
+  /// Shows or hides the key results.
+  final VoidCallback onToggleCollapsed;
+
   @override
   State<GoalCard> createState() => _GoalCardState();
 }
 
 class _GoalCardState extends State<GoalCard> {
-  bool _limit = false;
-
   void _add() {
-    if (widget.goal.activeKeyResults.length >= 3) {
-      setState(() => _limit = true);
-      return;
-    }
+    if (widget.goal.activeKeyResults.length >= 3) return;
     widget.actions.addKeyResult(widget.goal);
   }
 
@@ -63,15 +70,35 @@ class _GoalCardState extends State<GoalCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: Text(g.title, style: text.titleLarge)),
+              IconButton(
+                key: Key('goal-toggle-${g.id}'),
+                tooltip: widget.collapsed
+                    ? 'Expand key results'
+                    : 'Collapse key results',
+                icon: Icon(widget.collapsed
+                    ? Icons.keyboard_arrow_right
+                    : Icons.keyboard_arrow_down),
+                onPressed: widget.onToggleCollapsed,
+              ),
               if (a.editable)
                 PopupMenuButton<String>(
                   key: Key('goal-menu-${g.id}'),
                   tooltip: 'Goal actions',
-                  onSelected: (v) =>
-                      v == 'edit' ? a.editGoal(g) : a.retireGoal(g),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit goal')),
-                    PopupMenuItem(value: 'retire', child: Text('Retire goal')),
+                  onSelected: (v) => switch (v) {
+                    'edit' => a.editGoal(g),
+                    'themes' => a.addGoalThemes(g),
+                    _ => a.retireGoal(g),
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                        value: 'edit', child: Text('Edit goal')),
+                    if (active.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'themes',
+                        child: Text('Link a theme to all key results'),
+                      ),
+                    const PopupMenuItem(
+                        value: 'retire', child: Text('Retire goal')),
                   ],
                 ),
             ],
@@ -113,31 +140,45 @@ class _GoalCardState extends State<GoalCard> {
                   key: Key('duplicate-metric-${g.id}'),
                   style: quiet),
             ),
-          for (final kr in active) ...[
-            const SizedBox(height: Space.sm),
-            KeyResultTile(kr: kr, actions: a),
-          ],
-          for (final kr in g.retiredKeyResults) ...[
-            const SizedBox(height: Space.xs),
-            RetiredKeyResultRow(kr: kr, actions: a),
-          ],
-          if (a.editable) ...[
-            const SizedBox(height: Space.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: Key('add-kr-${g.id}'),
-                onPressed: _add,
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(active.isEmpty
-                    ? 'Add key result'
-                    : 'Add key result (${active.length} of 3)'),
+          if (widget.collapsed)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Text(
+                active.isEmpty
+                    ? 'No key results'
+                    : '${active.length} key ${active.length == 1 ? 'result' : 'results'} hidden',
+                key: Key('goal-collapsed-${g.id}'),
+                style: quiet,
               ),
-            ),
-            if (_limit)
-              Text(keyResultLimitMessage,
-                  key: Key('kr-limit-${g.id}'),
-                  style: text.bodySmall?.copyWith(color: scheme.error)),
+            )
+          else ...[
+            for (final kr in active) ...[
+              const SizedBox(height: Space.sm),
+              KeyResultTile(kr: kr, actions: a),
+            ],
+            for (final kr in g.retiredKeyResults) ...[
+              const SizedBox(height: Space.xs),
+              RetiredKeyResultRow(kr: kr, actions: a),
+            ],
+            if (a.editable) ...[
+              const SizedBox(height: Space.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Tooltip(
+                  message: active.length >= 3
+                      ? keyResultLimitMessage
+                      : 'Add a key result',
+                  child: TextButton.icon(
+                    key: Key('add-kr-${g.id}'),
+                    onPressed: active.length >= 3 ? null : _add,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(active.isEmpty
+                        ? 'Add key result'
+                        : 'Add key result (${active.length} of 3)'),
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ),

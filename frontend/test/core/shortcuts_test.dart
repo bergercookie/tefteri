@@ -89,7 +89,6 @@ void main() {
       'Month',
       'Year review',
       'Annual plan',
-      'Reviews',
       'Settings',
     ]) {
       expect(appViews.map((v) => v.label), contains(label));

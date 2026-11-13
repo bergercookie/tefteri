@@ -10,14 +10,10 @@ import 'annual_review_models.dart';
 /// Shows what planning offers for the next year and opens it.
 class NextYearCard extends StatelessWidget {
   /// Creates the card.
-  const NextYearCard(
-      {required this.nextYear, required this.storedReview, super.key});
+  const NextYearCard({required this.nextYear, super.key});
 
   /// The counts.
   final NextYear nextYear;
-
-  /// A stored period review of this year, or null.
-  final StoredPeriodReview? storedReview;
 
   @override
   Widget build(BuildContext context) {
@@ -55,14 +51,6 @@ class NextYearCard extends StatelessWidget {
                 icon: const Icon(Icons.flag_outlined, size: 18),
                 label: const Text('Start next year'),
               ),
-              if (storedReview != null)
-                OutlinedButton.icon(
-                  key: const Key('earlier-reviews'),
-                  onPressed: () => GoRouter.maybeOf(context)
-                      ?.go('/review?period=year&year=${nextYear.fromYear}'),
-                  icon: const Icon(Icons.auto_stories_outlined, size: 18),
-                  label: const Text('Earlier reviews of this year'),
-                ),
             ],
           ),
         ],

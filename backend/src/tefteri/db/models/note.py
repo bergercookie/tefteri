@@ -11,10 +11,10 @@ from tefteri.domain.enums import SyncState
 
 
 class Note(IdMixin, Base):
-    """A copy of one note that tefteri wrote or read: ``kind`` is ``daily`` or ``retrospective``.
+    """A copy of one note that tefteri wrote or read: ``kind`` is ``daily`` or ``custom``.
 
     The note app is not mirrored. Sync does not read its notes: a row exists only for a note that
-    a task link or a review points at.
+    a task link points at.
     """
 
     __tablename__ = "notes"

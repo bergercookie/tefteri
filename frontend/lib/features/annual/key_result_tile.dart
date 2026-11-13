@@ -19,6 +19,7 @@ class AnnualActions {
     required this.restoreGoal,
     required this.editKeyResult,
     required this.linkThemes,
+    required this.addGoalThemes,
     required this.retireKeyResult,
     required this.restoreKeyResult,
     required this.updateValue,
@@ -44,6 +45,9 @@ class AnnualActions {
 
   /// Opens the theme picker; with [create] the create dialog opens first.
   final void Function(KeyResult kr, {bool create}) linkThemes;
+
+  /// Adds themes to every active key result of a goal.
+  final void Function(AnnualGoal goal) addGoalThemes;
 
   /// Retires a key result.
   final void Function(KeyResult kr) retireKeyResult;
@@ -152,7 +156,7 @@ class KeyResultTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: Space.sm),
-              Text('${(shown * 100).round()}%',
+              Text(kr.yesNo ? kr.yesNoAnswer : '${(shown * 100).round()}%',
                   key: Key('kr-percent-${kr.id}'), style: text.labelLarge),
             ],
           ),
@@ -161,12 +165,17 @@ class KeyResultTile extends StatelessWidget {
             spacing: Space.md,
             runSpacing: Space.xs,
             children: [
-              Text(
-                  '${formatNumber(kr.currentValue)} of ${formatNumber(kr.target)}',
-                  key: Key('kr-value-${kr.id}'),
-                  style: text.bodySmall),
-              Text('started at ${formatNumber(kr.startValue)}',
-                  style: text.bodySmall),
+              if (kr.yesNo)
+                Text(kr.yesNoAnswer,
+                    key: Key('kr-value-${kr.id}'), style: text.bodySmall)
+              else ...[
+                Text(
+                    '${formatNumber(kr.currentValue)} of ${formatNumber(kr.target)}',
+                    key: Key('kr-value-${kr.id}'),
+                    style: text.bodySmall),
+                Text('started at ${formatNumber(kr.startValue)}',
+                    style: text.bodySmall),
+              ],
               Text('deadline ${kr.deadline}', style: text.bodySmall),
             ],
           ),

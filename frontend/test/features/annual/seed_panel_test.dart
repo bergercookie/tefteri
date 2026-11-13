@@ -102,8 +102,9 @@ void main() {
         'key_results': [
           {
             'metric': 'Stars',
-            'start_value': 250,
-            'target': 500,
+            'kind': 'number',
+            'start_value': 250.0,
+            'target': 500.0,
             'deadline': '2031-12-31',
             'update_source': 'manual',
             'theme_ids': ['p1'],

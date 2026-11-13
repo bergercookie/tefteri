@@ -32,15 +32,27 @@ result, but it shows a reminder to add one.
 A key result is a number that shows progress towards a goal. Open the goal, then choose Add key
 result. A key result has:
 
+- A type: Number or Yes or No.
 - A metric, for example "Stars on one repository".
 - A start value and a target.
 - A deadline in the planning year.
 - A current value. It starts at the start value.
 - An update source: manual or automatic.
 
+For a Yes or No key result, Tefteri hides the start value and the target. The answer starts as No.
+Choose Update value and then Yes or No. A Yes answer counts as done.
+
 The target must not equal the start value. The deadline must be in the planning year.
 
-![The form for a key result. It shows the metric, start value, target, deadline, update source and themes.](../images/annual-key-result-form.png)
+The Add key result button is off when a goal already has three key results. Point at the button to
+read why. Retire a key result to free a place.
+
+![The form for a key result. It shows the type Number or Yes or No, the metric, start value, target, deadline, update source and themes.](../images/annual-key-result-form.png)
+
+## Show or hide the key results of a goal
+
+Choose the arrow next to a goal to hide or show its key results. A hidden goal shows how many key
+results it holds. Use Expand all or Collapse all above the goals to change every goal at once.
 
 ## Link theme projects
 
@@ -53,6 +65,15 @@ A key result can serve one or more theme projects. A theme can serve more than o
 
 Only projects with the theme label are in the list. If no suitable theme exists, use the list to
 label a project as a theme or to create a theme.
+
+To add the same theme to every key result of one goal:
+
+1. Open the menu of the goal and choose Link a theme to all key results.
+2. Select the theme.
+3. Choose Done.
+
+Tefteri adds the theme to every active key result of the goal. Existing theme links stay. You can
+undo the whole change once.
 
 ![The theme picker. It lists the themes and has actions to label or create a theme.](../images/annual-theme-picker.png)
 

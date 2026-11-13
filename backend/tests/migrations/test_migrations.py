@@ -1214,17 +1214,153 @@ def test_0020_downgrade_restores_the_old_schema(
     assert links == 2  # the goals and the task links are kept
 
 
-def test_the_head_revision_was_0022_before_0023() -> None:
+def test_0024_drops_the_legacy_plan_and_review_tables(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0023")
+    alembic_runner.insert_into("users", {"id": _U1} | _USER)
+    alembic_runner.insert_into(
+        "goals",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000030",
+            "user_id": _U1,
+            "parent_id": None,
+            "period_type": "year",
+            "period_start": date(2026, 1, 1),
+            "title": "Kept goal",
+            "description": "",
+            "criteria": "",
+            "status": "active",
+            "updated_at": datetime(2026, 1, 1),
+            "retired_at": None,
+            "retired_reason": None,
+            "position": 0,
+        },
+    )
+    plan = "eeeeeeee-0000-0000-0000-000000000031"
+    alembic_runner.insert_into(
+        "plans",
+        {
+            "id": plan,
+            "user_id": _U1,
+            "period_type": "month",
+            "period_start": date(2026, 3, 1),
+            "title": "Old plan",
+            "summary": "",
+        },
+    )
+    alembic_runner.insert_into(
+        "period_reviews",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000032",
+            "user_id": _U1,
+            "plan_id": plan,
+            "generated_at": datetime(2026, 4, 1),
+            "planned_count": 1,
+            "completed_count": 0,
+            "carried_over": [],
+            "items": [],
+        },
+    )
+
+    alembic_runner.migrate_up_to("0024")
+    insp = inspect(alembic_engine)
+    assert "plans" not in insp.get_table_names()
+    assert "period_reviews" not in insp.get_table_names()
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from goals").scalar() == 1
+
+    alembic_runner.migrate_down_one()
+    insp = inspect(alembic_engine)
+    assert {"plans", "period_reviews"} <= set(insp.get_table_names())
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from plans").scalar() == 0
+        assert conn.exec_driver_sql("select count(*) from period_reviews").scalar() == 0
+
+
+def test_0025_adds_the_key_result_kind_and_keeps_rows(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0024")
+    alembic_runner.insert_into("users", {"id": _U1} | _USER)
+    goal = "eeeeeeee-0000-0000-0000-000000000040"
+    alembic_runner.insert_into(
+        "goals",
+        {
+            "id": goal,
+            "user_id": _U1,
+            "parent_id": None,
+            "period_type": "year",
+            "period_start": date(2026, 1, 1),
+            "title": "Goal",
+            "description": "",
+            "criteria": "",
+            "status": "active",
+            "updated_at": datetime(2026, 1, 1),
+            "retired_at": None,
+            "retired_reason": None,
+            "position": 0,
+        },
+    )
+    result = "ffffffff-0000-0000-0000-000000000040"
+    alembic_runner.insert_into(
+        "key_results",
+        {
+            "id": result,
+            "user_id": _U1,
+            "goal_id": goal,
+            "year": 2026,
+            "metric": "Existing",
+            "start_value": 0,
+            "target": 10,
+            "deadline": date(2026, 12, 31),
+            "update_source": "manual",
+            "status": "active",
+            "slot": 1,
+            "position": 0,
+            "created_at": datetime(2026, 1, 1),
+            "updated_at": datetime(2026, 1, 1),
+        },
+    )
+
+    alembic_runner.migrate_up_to("0025")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("key_results")}
+    assert "kind" in columns
+    checks = {c["name"] for c in inspect(alembic_engine).get_check_constraints("key_results")}
+    assert "ck_key_results_kind" in checks
+    with alembic_engine.connect() as conn:
+        assert (
+            conn.exec_driver_sql(f"select kind from key_results where id = '{result}'").scalar()
+            == "number"
+        )
+        conn.exec_driver_sql(f"update key_results set kind = 'yes_no' where id = '{result}'")
+        conn.commit()
+        assert (
+            conn.exec_driver_sql(f"select kind from key_results where id = '{result}'").scalar()
+            == "yes_no"
+        )
+    with pytest.raises(IntegrityError), alembic_engine.connect() as conn:
+        conn.exec_driver_sql(f"update key_results set kind = 'other' where id = '{result}'")
+        conn.commit()
+
+    alembic_runner.migrate_down_one()
+    assert "kind" not in {c["name"] for c in inspect(alembic_engine).get_columns("key_results")}
+
+
+def test_the_head_revision_follows_0024() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0023"
-    revision = script.get_revision("0022")
+    assert script.get_current_head() == "0025"
+    revision = script.get_revision("0025")
     assert revision is not None
-    assert revision.down_revision == "0021"
+    assert revision.down_revision == "0024"
+    assert script.get_revision("0024").down_revision == "0023"
+    assert script.get_revision("0023").down_revision == "0022"
+    assert script.get_revision("0022").down_revision == "0021"
     assert script.get_revision("0021").down_revision == "0020"
     # Feature 006 owns 0020, and 0020 follows 0019.
     assert script.get_revision("0020").down_revision == "0019"
@@ -1318,14 +1454,14 @@ def test_0023_creates_review_notes_with_scope_indexes(
     assert "review_notes" not in inspect(alembic_engine).get_table_names()
 
 
-def test_the_head_revision_is_0023_and_it_follows_0022() -> None:
+def test_the_head_revision_is_0025_and_it_follows_0024() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0023"
-    revision = script.get_revision("0023")
+    assert script.get_current_head() == "0025"
+    revision = script.get_revision("0025")
     assert revision is not None
-    assert revision.down_revision == "0022"
+    assert revision.down_revision == "0024"

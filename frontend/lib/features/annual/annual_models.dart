@@ -176,6 +176,7 @@ class KeyResult {
     required this.updateSource,
     required this.status,
     required this.currentValue,
+    this.kind = 'number',
     this.currentAt,
     this.met = false,
     this.retiredAt,
@@ -190,6 +191,7 @@ class KeyResult {
       id: '${j['id']}',
       goalId: '${j['goal_id'] ?? ''}',
       metric: '${j['metric'] ?? ''}',
+      kind: '${j['kind'] ?? 'number'}',
       startValue: start,
       target: _num(j['target']),
       deadline: '${j['deadline'] ?? ''}',
@@ -212,6 +214,9 @@ class KeyResult {
 
   /// What is measured, such as "Stars on one repository".
   final String metric;
+
+  /// `number` or `yes_no`.
+  final String kind;
 
   /// The value at the start.
   final double startValue;
@@ -248,6 +253,12 @@ class KeyResult {
 
   /// True while it counts.
   bool get active => status == 'active';
+
+  /// True for a yes/no key result.
+  bool get yesNo => kind == 'yes_no';
+
+  /// The answer of a yes/no key result.
+  String get yesNoAnswer => currentValue >= 0.5 ? 'Yes' : 'No';
 
   /// True when an outside source may push values.
   bool get automatic => updateSource == 'automatic';
@@ -623,6 +634,7 @@ class SuggestedKeyResult {
     required this.startValue,
     required this.target,
     required this.deadline,
+    this.kind = 'number',
     this.updateSource = 'manual',
     this.themes = const [],
   });
@@ -632,6 +644,7 @@ class SuggestedKeyResult {
       SuggestedKeyResult(
         keyResultId: '${j['key_result_id']}',
         metric: '${j['metric'] ?? ''}',
+        kind: '${j['kind'] ?? 'number'}',
         startValue: _num(j['start_value']),
         target: _num(j['target']),
         deadline: '${j['deadline'] ?? ''}',
@@ -647,6 +660,9 @@ class SuggestedKeyResult {
 
   /// Its metric.
   final String metric;
+
+  /// `number` or `yes_no`.
+  final String kind;
 
   /// The last value of year N, the new start value.
   final double startValue;
@@ -731,6 +747,7 @@ class KeyResultDraft {
     required this.startValue,
     required this.target,
     required this.deadline,
+    this.kind = 'number',
     this.updateSource = 'manual',
     this.themes = const [],
     this.seededFromKeyResultId,
@@ -738,6 +755,9 @@ class KeyResultDraft {
 
   /// What is measured.
   final String metric;
+
+  /// `number` or `yes_no`.
+  final String kind;
 
   /// The start value.
   final double startValue;
@@ -760,6 +780,7 @@ class KeyResultDraft {
   /// The request body.
   Map<String, Object?> toJson() => {
         'metric': metric,
+        'kind': kind,
         'start_value': startValue,
         'target': target,
         'deadline': deadline,

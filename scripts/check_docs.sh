@@ -25,7 +25,6 @@ required=(
     user/monthly-planning.md
     user/weekly-planning.md
     user/accounts-and-sign-in.md
-    user/reviews-and-retrospectives.md
     user/shortcuts.md
     user/troubleshooting.md
     developer/setup.md

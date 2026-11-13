@@ -6,9 +6,9 @@ calendar, it copies the items into the cache tables (`tasks`, `calendar_entries`
 
 A note app is not copied. A sync of a note connection only calls `check_connection` (the address
 and the token), and it reports the result like any other sync. Tefteri reads and writes the few
-notes that it needs when it needs them: the daily note, and the retrospective of a review. The
-`notes` table has a row for a note that tefteri created or opened, so that a task link or a review
-can point at it. It does not hold the notes of the note app.
+notes that it needs when it needs them: the daily note. The `notes` table has a row for a note
+that tefteri created or opened, so that a task link can point at it. It does not hold the notes of
+the note app.
 
 ## Sync flow
 

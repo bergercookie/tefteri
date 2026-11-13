@@ -13,11 +13,14 @@ The migration `0020_annual_planning` adds these tables and four columns on `goal
 | Table | What it holds |
 | --- | --- |
 | `goals` | A goal of one year. The new columns are `updated_at`, `retired_at`, `retired_reason` and `position`. |
-| `key_results` | The metric, start value, target, deadline, update source, status, slot and the seed source. |
+| `key_results` | The metric, kind (`number` or `yes_no`), start value, target, deadline, update source, status, slot and the seed source. A yes/no key result stores 0 (No) and 1 (Yes). |
 | `key_result_values` | The append-only dated series. `seq` orders values entered on the same day. |
 | `key_result_themes` | The link periods between a key result and a theme project. |
 | `plan_changes` | The append-only plan history. Each user action is one `batch_id`. |
 | `value_push_tokens` | One token per user. Tefteri stores only the SHA-256 digest and the four-character hint. |
+
+The migration `0025_key_result_kind` adds `kind` with the default `number`. Existing key results
+stay numbers.
 
 Tefteri derives the current value and the progress. It does not store them. A value row stores `at`,
 the time stamp, and `on_date`, the day of `at` in the user time zone. `value_on` reads the last
@@ -39,7 +42,8 @@ applies to the undo of a retire.
 
 `domain/key_results.py` has no database and no adapter import:
 
-- `validate` checks the metric, the finite numbers, the target and the deadline.
+- `validate` checks the metric, the finite numbers, the target and the deadline. A yes/no key
+  result skips the number checks; its start value is 0 and its target is 1.
 - `progress` is `(current - start) / (target - start)`. It is not capped.
 - `is_met` compares the current value with the target in the direction of the plan.
 - `current_value` takes the latest `(on_date, seq)`. An empty series gives the start value.
@@ -130,7 +134,8 @@ token. Tefteri stores the same value at the same instant once, so a source can r
 
 ## Migration of existing goals
 
-`0020` keeps every goal, task link and stored period review (SC-004). For year goals:
+`0020` keeps every goal, task link and stored period review (SC-004). The later `0024` removes the
+legacy plan and period-review tables with the Reviews screen. For year goals:
 
 - The row, title, description, criteria text, id and task links stay.
 - `active` stays `active`.

@@ -410,6 +410,7 @@ class ReviewKeyResult {
     required this.target,
     required this.outcome,
     required this.currentValue,
+    this.kind = 'number',
     this.direction = 'up',
     this.deadline = '',
     this.lastValue,
@@ -433,6 +434,7 @@ class ReviewKeyResult {
     return ReviewKeyResult(
       id: '${j['id'] ?? ''}',
       metric: '${j['metric'] ?? ''}',
+      kind: '${j['kind'] ?? 'number'}',
       startValue: _num(j['start_value']),
       target: _num(j['target']),
       direction: _safe(j['direction'], const {'up', 'down'}, 'up'),
@@ -467,6 +469,9 @@ class ReviewKeyResult {
 
   /// What is measured.
   final String metric;
+
+  /// `number` or `yes_no`.
+  final String kind;
 
   /// The value at the start.
   final double startValue;
@@ -521,6 +526,12 @@ class ReviewKeyResult {
 
   /// Flag codes such as `no_usable_theme`.
   final List<String> flags;
+
+  /// True for a yes/no key result.
+  bool get yesNo => kind == 'yes_no';
+
+  /// The answer of a yes/no key result.
+  String get yesNoAnswer => currentValue >= 0.5 ? 'Yes' : 'No';
 }
 
 /// One goal of the year.
@@ -742,25 +753,6 @@ class NextYear {
   final int links;
 }
 
-/// The stored period review of the year.
-@immutable
-class StoredPeriodReview {
-  /// Creates the entry.
-  const StoredPeriodReview({required this.planId, required this.periodStart});
-
-  /// Parses the entry.
-  factory StoredPeriodReview.fromJson(Map<String, dynamic> j) =>
-      StoredPeriodReview(
-          planId: '${j['plan_id'] ?? ''}',
-          periodStart: '${j['period_start'] ?? ''}');
-
-  /// The plan id.
-  final String planId;
-
-  /// The first day of the year.
-  final String periodStart;
-}
-
 /// The whole review of one year.
 @immutable
 class AnnualReview {
@@ -777,7 +769,6 @@ class AnnualReview {
     this.goals = const [],
     this.milestonesShipped = 0,
     this.yearNote,
-    this.storedPeriodReview,
   });
 
   /// Parses a review.
@@ -797,9 +788,6 @@ class AnnualReview {
       yearNote: j['year_note'] == null
           ? null
           : ReviewNote.fromJson(_map(j['year_note'])),
-      storedPeriodReview: j['stored_period_review'] == null
-          ? null
-          : StoredPeriodReview.fromJson(_map(j['stored_period_review'])),
     );
   }
 
@@ -835,7 +823,4 @@ class AnnualReview {
 
   /// The note of the year.
   final ReviewNote? yearNote;
-
-  /// A stored period review of the year.
-  final StoredPeriodReview? storedPeriodReview;
 }

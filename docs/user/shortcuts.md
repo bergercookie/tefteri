@@ -23,7 +23,6 @@ You can also choose the keyboard button at the top of the screen.
 | Y | Year review |
 | G | Annual plan |
 | O | Projects |
-| R | Reviews |
 | X | Conflicts |
 
 The menu also shows the key next to each view.

@@ -149,7 +149,7 @@ class SyncService:
                 kind = ConnectionKind(connection.kind)
                 if kind is ConnectionKind.NOTES:
                     # A note app is not copied: tefteri reads and writes the few notes it needs
-                    # (the daily note, a retrospective) when it needs them. A sync only checks
+                    # (the daily note) when it needs them. A sync only checks
                     # that the address and the token still work.
                     await self._check_notes(cast(NoteBackend, backend))
                 else:

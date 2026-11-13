@@ -62,9 +62,9 @@ def test_admin_signs_in_on_the_migrated_database(server: str) -> None:
     headers = {"Authorization": f"Bearer {r.json()['token']}"}
     me = httpx.get(f"{server}/api/v1/auth/me", headers=headers)
     assert me.json()["is_admin"] is True
-    # Tables from the newest migration exist.
-    plans = httpx.get(f"{server}/api/v1/reviews/history", headers=headers)
-    assert plans.status_code == 200 and plans.json() == []
+    # Tables from the newest migrations exist.
+    review = httpx.get(f"{server}/api/v1/annual-review/2026", headers=headers)
+    assert review.status_code == 200
 
 
 def test_wrong_password_is_refused(server: str) -> None:

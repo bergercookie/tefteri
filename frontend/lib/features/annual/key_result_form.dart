@@ -78,6 +78,7 @@ class _KeyResultFormState extends State<KeyResultForm> {
   late final TextEditingController _target;
   late final TextEditingController _deadline;
   late bool _automatic;
+  late bool _yesNo;
   List<ThemeOption> _themes = const [];
   String? _metricError;
   String? _startError;
@@ -98,6 +99,7 @@ class _KeyResultFormState extends State<KeyResultForm> {
     _deadline =
         TextEditingController(text: e?.deadline ?? '${widget.year}-12-31');
     _automatic = e?.automatic ?? false;
+    _yesNo = e?.yesNo ?? false;
   }
 
   @override
@@ -111,15 +113,16 @@ class _KeyResultFormState extends State<KeyResultForm> {
 
   KeyResultDraft? _validate() {
     final metric = _metric.text.trim();
-    final start = parseNumber(_start.text);
-    final target = parseNumber(_target.text);
+    final start = _yesNo ? 0.0 : parseNumber(_start.text);
+    final target = _yesNo ? 1.0 : parseNumber(_target.text);
     final deadline = parseDay(_deadline.text);
     setState(() {
       _metricError = metric.isEmpty ? 'Write what you measure.' : null;
-      _startError = start == null ? 'The start value must be a number.' : null;
-      _targetError = target == null
+      _startError =
+          !_yesNo && start == null ? 'The start value must be a number.' : null;
+      _targetError = !_yesNo && target == null
           ? 'The target must be a number.'
-          : (start != null && target == start)
+          : (!_yesNo && start != null && target == start)
               ? 'The target must differ from the start value.'
               : null;
       _deadlineError = deadline == null
@@ -136,6 +139,7 @@ class _KeyResultFormState extends State<KeyResultForm> {
     }
     return KeyResultDraft(
       metric: metric,
+      kind: _yesNo ? 'yes_no' : 'number',
       startValue: start!,
       target: target!,
       deadline: isoDate(deadline!),
@@ -184,6 +188,20 @@ class _KeyResultFormState extends State<KeyResultForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const AnnualTermHint(AnnualTerm.keyResult),
+              if (!editing)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.sm),
+                  child: SegmentedButton<bool>(
+                    key: const Key('kr-kind'),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Number')),
+                      ButtonSegment(value: true, label: Text('Yes or No')),
+                    ],
+                    selected: {_yesNo},
+                    onSelectionChanged: (s) => setState(() => _yesNo = s.first),
+                  ),
+                ),
               TextField(
                 key: const Key('kr-metric'),
                 controller: _metric,
@@ -195,39 +213,49 @@ class _KeyResultFormState extends State<KeyResultForm> {
                 ),
               ),
               const SizedBox(height: Space.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const Key('kr-start'),
-                      controller: _start,
-                      enabled: !editing,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true, signed: true),
-                      decoration: InputDecoration(
-                        labelText: 'Start value',
-                        errorText: _startError,
-                        errorMaxLines: 2,
-                        helperText: editing ? 'Cannot change' : null,
+              if (!_yesNo)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: const Key('kr-start'),
+                        controller: _start,
+                        enabled: !editing,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
+                        decoration: InputDecoration(
+                          labelText: 'Start value',
+                          errorText: _startError,
+                          errorMaxLines: 2,
+                          helperText: editing ? 'Cannot change' : null,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: Space.sm),
-                  Expanded(
-                    child: TextField(
-                      key: const Key('kr-target'),
-                      controller: _target,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true, signed: true),
-                      decoration: InputDecoration(
-                          labelText: 'Target',
-                          errorText: _targetError,
-                          errorMaxLines: 2),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: TextField(
+                        key: const Key('kr-target'),
+                        controller: _target,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
+                        decoration: InputDecoration(
+                            labelText: 'Target',
+                            errorText: _targetError,
+                            errorMaxLines: 2),
+                      ),
                     ),
+                  ],
+                ),
+              if (_yesNo)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.sm),
+                  child: Text(
+                    'A yes/no key result starts at No. Mark it Yes when it is done.',
+                    key: const Key('kr-yes-no-note'),
+                    style: text.bodySmall,
                   ),
-                ],
-              ),
+                ),
               const SizedBox(height: Space.sm),
               TextField(
                 key: const Key('kr-deadline'),

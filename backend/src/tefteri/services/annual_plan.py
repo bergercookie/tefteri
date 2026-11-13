@@ -31,6 +31,7 @@ from tefteri.domain.classification import ProjectNode
 from tefteri.domain.enums import (
     ChangeSource,
     GoalState,
+    KeyResultKind,
     LinkEndReason,
     PlanChangeKind,
     ProjectLabel,
@@ -55,8 +56,8 @@ from tefteri.domain.key_results import (
 from tefteri.services.classification import ClassificationService
 from tefteri.services.errors import Conflict, Invalid, NotFound
 from tefteri.services.key_results import KeyResultService
-from tefteri.services.plan_changes import RetireEffect, change, write_batch
-from tefteri.services.project_labels import load_trees
+from tefteri.services.plan_changes import LinkSetEffect, RetireEffect, change, write_batch
+from tefteri.services.project_labels import ConnectionTree, load_trees
 
 PAST_YEAR_MESSAGE = "This year is over. Its plan can be read, but not changed."
 KEY_RESULT_LIMIT_MESSAGE = "A goal can have three key results. Retire one first."
@@ -90,6 +91,7 @@ class KeyResultOut:
     id: uuid.UUID
     goal_id: uuid.UUID
     metric: str
+    kind: str
     start_value: float
     target: float
     deadline: date
@@ -213,6 +215,7 @@ class BulkKeyResultDraft:
     start_value: float
     target: float
     deadline: date
+    kind: KeyResultKind = KeyResultKind.NUMBER
     update_source: UpdateSource = UpdateSource.MANUAL
     theme_ids: Sequence[uuid.UUID] = ()
     seeded_from_id: uuid.UUID | None = None
@@ -342,6 +345,7 @@ class AnnualPlanService:
                 id=row.id,
                 goal_id=row.goal_id,
                 metric=row.metric,
+                kind=row.kind,
                 start_value=row.start_value,
                 target=row.target,
                 deadline=row.deadline,
@@ -515,10 +519,13 @@ class AnnualPlanService:
             key_result_rows: list[KeyResult] = []
             for slot_number, kr in enumerate(draft.key_results, start=1):
                 metric = kr.metric.strip()
+                start_value, target = kr.start_value, kr.target
+                if kr.kind is KeyResultKind.YES_NO:
+                    start_value, target = 0.0, 1.0
                 _validate(
                     metric=metric,
-                    start_value=kr.start_value,
-                    target=kr.target,
+                    start_value=start_value,
+                    target=target,
                     deadline=kr.deadline,
                     year=year,
                 )
@@ -528,8 +535,9 @@ class AnnualPlanService:
                     goal_id=goal.id,
                     year=year,
                     metric=metric,
-                    start_value=kr.start_value,
-                    target=kr.target,
+                    kind=kr.kind.value,
+                    start_value=start_value,
+                    target=target,
                     deadline=kr.deadline,
                     update_source=kr.update_source.value,
                     status=GoalState.ACTIVE.value,
@@ -589,6 +597,7 @@ class AnnualPlanService:
                         id=row.id,
                         goal_id=row.goal_id,
                         metric=row.metric,
+                        kind=row.kind,
                         start_value=row.start_value,
                         target=row.target,
                         deadline=row.deadline,
@@ -615,6 +624,62 @@ class AnnualPlanService:
         if row is None or row.user_id != user_id or row.period_type != "year":
             raise NotFound
         return row
+
+    async def goal(self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> Goal:
+        """Return one of the user's annual goals or raise ``NotFound``."""
+        return await self._goal(db, user_id, goal_id)
+
+    async def add_goal_themes(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        goal_id: uuid.UUID,
+        theme_ids: Sequence[uuid.UUID],
+        *,
+        trees: Iterable[ConnectionTree],
+        today: date,
+        nodes: dict[str, ProjectNode],
+        batch_id: uuid.UUID,
+    ) -> LinkSetEffect:
+        """Add themes to every active key result of one goal, in one undoable batch.
+
+        Existing links stay. Retired key results do not change. A theme that is not usable now
+        gives ``not_a_theme`` and nothing is written.
+        """
+        goal = await self._goal(db, user_id, goal_id)
+        require_open(goal.period_start.year, today)
+        tree_list = list(trees)
+        key_results = list(
+            (
+                await db.execute(
+                    select(KeyResult)
+                    .where(
+                        KeyResult.user_id == user_id,
+                        KeyResult.goal_id == goal.id,
+                        KeyResult.status == GoalState.ACTIVE.value,
+                    )
+                    .order_by(KeyResult.position, KeyResult.id)
+                )
+            ).scalars()
+        )
+        combined = LinkSetEffect()
+        for key_result in key_results:
+            effect = await self._key_results.add_themes(
+                db,
+                user_id,
+                key_result,
+                theme_ids,
+                trees=tree_list,
+                nodes=nodes,
+                batch_id=batch_id,
+            )
+            for entry in effect.added:
+                if all(item.project_id != entry.project_id for item in combined.added):
+                    combined.added.append(entry)
+            combined.flags_removed = list(
+                dict.fromkeys([*combined.flags_removed, *effect.flags_removed])
+            )
+        return combined
 
     async def edit_goal(
         self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID, title: str, *, tz: str
@@ -1077,6 +1142,7 @@ class AnnualPlanService:
                         id=str(kr.id),
                         status=kr.status,
                         metric=kr.metric,
+                        kind=kr.kind,
                         start_value=kr.start_value,
                         target=kr.target,
                         deadline=kr.deadline,
@@ -1122,6 +1188,7 @@ class AnnualPlanService:
                         {
                             "key_result_id": kr.key_result_id,
                             "metric": kr.metric,
+                            "kind": kr.kind,
                             "start_value": kr.start_value,
                             "target": kr.target,
                             "deadline": kr.deadline,

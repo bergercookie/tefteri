@@ -38,7 +38,6 @@ const _viewIcons = <String, IconData>{
   '/year': Icons.calendar_month_outlined,
   '/annual': Icons.flag_outlined,
   '/projects': Icons.account_tree_outlined,
-  '/review': Icons.auto_stories_outlined,
   '/conflicts': Icons.call_split_outlined,
   '/settings': Icons.tune_outlined,
 };

@@ -37,7 +37,9 @@ class KeyResultRow extends StatelessWidget {
     };
     final last = k.lastValue == null
         ? 'No value stored'
-        : '${_number(k.lastValue!)} in ${k.lastMonth ?? ''}';
+        : k.yesNo
+            ? '${k.lastValue! >= 0.5 ? 'Yes' : 'No'} in ${k.lastMonth ?? ''}'
+            : '${_number(k.lastValue!)} in ${k.lastMonth ?? ''}';
     return Container(
       key: Key('key-result-${k.id}'),
       margin: const EdgeInsets.only(top: Space.sm),
@@ -68,8 +70,10 @@ class KeyResultRow extends StatelessWidget {
           ),
           const SizedBox(height: Space.xs),
           Text(
-              'Start ${_number(k.startValue)}. Target ${_number(k.target)}. '
-              'Deadline ${k.deadline}.',
+              k.yesNo
+                  ? 'Yes or No. Deadline ${k.deadline}.'
+                  : 'Start ${_number(k.startValue)}. Target ${_number(k.target)}. '
+                      'Deadline ${k.deadline}.',
               style: quiet),
           Text(last, key: const Key('key-result-last'), style: text.bodyMedium),
           Text(deadline,
@@ -77,12 +81,18 @@ class KeyResultRow extends StatelessWidget {
           const SizedBox(height: Space.sm),
           SeriesStrip(points: k.series),
           if (k.peakValue != null)
-            Text('Peak ${_number(k.peakValue!)} in ${k.peakMonth ?? ''}.',
+            Text(
+                k.yesNo
+                    ? 'Peak ${k.peakValue! >= 0.5 ? 'Yes' : 'No'} in ${k.peakMonth ?? ''}.'
+                    : 'Peak ${_number(k.peakValue!)} in ${k.peakMonth ?? ''}.',
                 style: quiet),
           if (k.movedAfterSnapshot != null)
             Text(
-                'Current value ${_number(k.movedAfterSnapshot!)} '
-                '(not from a snapshot).',
+                k.yesNo
+                    ? 'Current answer ${k.movedAfterSnapshot! >= 0.5 ? 'Yes' : 'No'} '
+                        '(not from a snapshot).'
+                    : 'Current value ${_number(k.movedAfterSnapshot!)} '
+                        '(not from a snapshot).',
                 style: quiet),
           if (k.changes.isNotEmpty) ...[
             const SizedBox(height: Space.xs),

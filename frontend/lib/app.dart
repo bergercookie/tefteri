@@ -22,8 +22,6 @@ import 'features/daily/daily_screen.dart';
 import 'features/month/month_screen.dart';
 import 'features/month/review_screen.dart';
 import 'features/projects/projects_screen.dart';
-import 'features/review/plan_history_screen.dart';
-import 'features/review/review_screen.dart';
 import 'features/settings/checklists_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -158,17 +156,6 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(
         path: '/conflicts',
         builder: (_, __) => const ConflictsScreen(),
-      ),
-      GoRoute(
-        path: '/review',
-        builder: (_, s) => PlanHistoryScreen(
-          period: s.uri.queryParameters['period'],
-          year: int.tryParse(s.uri.queryParameters['year'] ?? ''),
-        ),
-      ),
-      GoRoute(
-        path: '/review/:planId',
-        builder: (_, s) => ReviewScreen(planId: s.pathParameters['planId']!),
       ),
     ],
   );
