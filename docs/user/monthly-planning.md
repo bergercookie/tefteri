@@ -38,6 +38,8 @@ The theme list only shows projects that you labelled as themes. It does not show
 maintenance projects, ignored projects or projects that are no longer available. If the list is
 empty, use the actions in the picker to label or create a theme.
 
+![The picker with no eligible theme. It explains theme projects and offers Label a project as theme and Create a theme.](../images/monthly-picker-empty.png)
+
 ![The monthly plan for March. Three themes are in focus, with their targets and linked key results shown beside them.](../images/monthly-planning.png)
 
 ### Set a target
@@ -72,6 +74,8 @@ The change does not alter milestones or weekly commitments.
 
 Tefteri records each change with its date in the focus history. You can undo a change from that
 history. Undo restores the focus to its earlier state.
+
+![The swap effect. It shows the theme that leaves, the theme that enters, the milestones finished earlier and the warning that weekly commitments stay the same.](../images/monthly-swap.png)
 
 ## Review the month
 
@@ -140,6 +144,8 @@ label, the saved review stays the same. If you reopen a finished review and save
 Tefteri creates a new version. The earlier versions stay in the history. You can see which
 version is current and make an earlier version current.
 
+![The review versions sheet. It lists each version with its date and marks the current version.](../images/monthly-versions.png)
+
 The annual review reads the current saved version of each month.
 
 ## Earlier month goals
@@ -148,4 +154,13 @@ The old Month view used month goals. Tefteri does not create or edit these goals
 monthly flow. If a past month only has old month-goal data, it opens in an **Earlier format**
 read-only view. This view does not change the old goals or create a monthly review snapshot.
 
+![The earlier format view. It lists the old month goals read only and says that no review snapshot is made from them.](../images/monthly-earlier.png)
+
+## Use a phone or dark mode
+
+On a phone, the focus themes and targets appear in a single narrow column. The dark theme uses
+the same layout and the same markers.
+
 ![The monthly plan on a phone. The focus themes and targets appear in a single narrow column.](../images/monthly-phone.png)
+
+![The monthly plan in dark mode. The focus entries, key results and markers keep their contrast.](../images/monthly-dark.png)
