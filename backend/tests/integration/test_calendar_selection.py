@@ -76,6 +76,10 @@ async def test_the_user_chooses_the_calendars_and_the_events_follow(
     assert both.json()["sync"]["outcome"] == "ok"
     assert all(c["enabled"] for c in both.json()["containers"])
     assert await _titles(api) == {"in mine", "in holidays"}
+    # An entry names its calendar, so the client can hide that calendar only.
+    by_title = {i["title"]: i for i in (await api.get(f"{V1}/calendar")).json()}
+    assert by_title["in mine"]["container_id"] == ids["Mine"]
+    assert by_title["in holidays"]["container_id"] == ids["Holidays"]
 
     # Switching one off takes its events out of the cache.
     only = await api.put(

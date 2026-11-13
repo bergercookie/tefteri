@@ -12,6 +12,8 @@ import '../../core/shell.dart';
 import '../settings/sync_controller.dart';
 import 'calendar_pane.dart';
 import 'planner_providers.dart';
+import 'planner_visibility.dart';
+import 'planner_views_dialog.dart';
 import 'schedule_dialog.dart';
 import 'task_pane.dart';
 
@@ -62,8 +64,19 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
       }
     });
     final error = ref.watch(plannerErrorProvider);
+    final visibility = ref.watch(plannerVisibilityProvider);
     return AppShell(
       title: 'Planner',
+      actions: IconButton(
+        key: const Key('planner-views-button'),
+        tooltip: 'Choose what the planner shows',
+        icon: Icon(visibility.showTasks &&
+                visibility.showCalendar &&
+                !visibility.hasHiddenSources
+            ? Icons.visibility_outlined
+            : Icons.visibility_off_outlined),
+        onPressed: () => showPlannerViewsDialog(context),
+      ),
       // Left and right arrow move by one week. A text field handles the
       // arrows itself first (to move the cursor), so typing is not affected.
       body: CallbackShortcuts(
@@ -103,6 +116,11 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
       );
 
   Widget _wide(double available) {
+    final visibility = ref.watch(plannerVisibilityProvider);
+    if (!visibility.showCalendar) {
+      return TaskPane(onScheduleTask: _chooseTime);
+    }
+    if (!visibility.showTasks) return _calendar();
     final notifier = ref.read(taskPaneWidthProvider.notifier);
     // The task list is as wide as the user dragged it, and leaves the
     // calendar its minimum.
@@ -127,38 +145,46 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
 
   /// Two tabs that stay alive, so the filter, the search text and the week
   /// survive a switch. Tasks are scheduled with a dialog instead of a drag.
-  Widget _narrow() => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: SegmentedButton<int>(
-              key: const Key('planner-tabs'),
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(
-                    value: 0,
-                    label: Text('Tasks', key: Key('tab-tasks')),
-                    icon: Icon(Icons.checklist)),
-                ButtonSegment(
-                    value: 1,
-                    label: Text('Calendar', key: Key('tab-calendar')),
-                    icon: Icon(Icons.calendar_month)),
-              ],
-              selected: {_tab},
-              onSelectionChanged: (s) => setState(() => _tab = s.first),
-            ),
+  /// When the user hides one pane, the other fills the screen.
+  Widget _narrow() {
+    final visibility = ref.watch(plannerVisibilityProvider);
+    if (!visibility.showCalendar) {
+      return TaskPane(onScheduleTask: _chooseTime);
+    }
+    if (!visibility.showTasks) return _calendar();
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: SegmentedButton<int>(
+            key: const Key('planner-tabs'),
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                  value: 0,
+                  label: Text('Tasks', key: Key('tab-tasks')),
+                  icon: Icon(Icons.checklist)),
+              ButtonSegment(
+                  value: 1,
+                  label: Text('Calendar', key: Key('tab-calendar')),
+                  icon: Icon(Icons.calendar_month)),
+            ],
+            selected: {_tab},
+            onSelectionChanged: (s) => setState(() => _tab = s.first),
           ),
-          Expanded(
-            child: IndexedStack(
-              index: _tab,
-              children: [
-                TaskPane(onScheduleTask: _chooseTime),
-                _calendar(),
-              ],
-            ),
+        ),
+        Expanded(
+          child: IndexedStack(
+            index: _tab,
+            children: [
+              TaskPane(onScheduleTask: _chooseTime),
+              _calendar(),
+            ],
           ),
-        ],
-      );
+        ),
+      ],
+    );
+  }
 
   Future<void> _chooseTime(PlanTask task) async {
     final days = [

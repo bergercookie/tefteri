@@ -125,6 +125,10 @@ async def list_tasks(
         str | None,
         Query(description="Title search over all open tasks. When set, ``due`` is ignored."),
     ] = None,
+    exclude_connections: Annotated[
+        list[uuid.UUID] | None,
+        Query(description="Leave out the tasks of these connections (hidden task providers)."),
+    ] = None,
 ) -> list[TaskOut]:
     """List the user's tasks from the cache.
 
@@ -140,6 +144,8 @@ async def list_tasks(
         query = query.where(Task.status == status)
     if goal_id:
         query = query.where(Task.goal_id == goal_id)
+    if exclude_connections:
+        query = query.where(Task.connection_id.not_in(exclude_connections))
     now = _now(request)
     if due is not None and not searching:
         # The same rule as ``task_filters.matches``, done in the database (kept in step by tests).
@@ -168,11 +174,16 @@ async def task_counts(
     request: Request,
     db: Db,
     user: CurrentUser,
+    exclude_connections: Annotated[
+        list[uuid.UUID] | None,
+        Query(description="Leave out the tasks of these connections (hidden task providers)."),
+    ] = None,
 ) -> dict[str, int]:
     """Count the user's open tasks for each planner filter (the badges of the filter chips)."""
-    rows = (
-        await db.execute(select(Task).where(Task.user_id == user.id, Task.status == "open"))
-    ).scalars()
+    query = select(Task).where(Task.user_id == user.id, Task.status == "open")
+    if exclude_connections:
+        query = query.where(Task.connection_id.not_in(exclude_connections))
+    rows = (await db.execute(query)).scalars()
     pairs = [(_opt_aware(t.due_at), t.all_day) for t in rows]
     return task_filters.counts(pairs, _now(request), user.timezone)
 

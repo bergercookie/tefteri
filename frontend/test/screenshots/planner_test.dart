@@ -211,6 +211,49 @@ void main() {
     await saveScreenshot('planner-slot-menu');
   });
 
+  testWidgets('planner: choose what the planner shows', (tester) async {
+    await pumpScreen(
+        tester,
+        _api({
+          'GET /connections': connections,
+          'GET /connections/c2/containers': [
+            {
+              'id': 'k1',
+              'remote_id': 'work',
+              'name': 'Work',
+              'parent_remote_id': null,
+              'color': '#039be5',
+              'enabled': true,
+              'read_only': false,
+            },
+            {
+              'id': 'k2',
+              'remote_id': 'family',
+              'name': 'Family',
+              'parent_remote_id': null,
+              'color': '#33b679',
+              'enabled': true,
+              'read_only': false,
+            },
+            {
+              'id': 'k3',
+              'remote_id': 'holidays',
+              'name': 'Holidays',
+              'parent_remote_id': null,
+              'color': null,
+              'enabled': false,
+              'read_only': true,
+            },
+          ],
+        }),
+        PlannerScreen(initialDate: day, clock: _now));
+    await tester.tap(find.byKey(const Key('planner-views-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('planner-calendar-source-k2')));
+    await tester.pumpAndSettle();
+    await saveScreenshot('planner-views');
+  });
+
   testWidgets('planner: adding an event', (tester) async {
     await pumpScreen(
         tester,

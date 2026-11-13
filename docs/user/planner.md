@@ -19,6 +19,27 @@ A task with a date and no time shows in the row called all day.
 
 When you sync, both columns update.
 
+## Choose what the planner shows
+
+Choose the eye button at the top of the planner. A window shows these switches:
+
+- **Tasks** and **Calendar**: hide one of the two columns. The other column uses the whole window.
+- **Task providers**: hide the tasks of one connected task app. The other task apps stay visible.
+- **Calendars**: hide the events of one calendar. The other calendars stay visible.
+
+![The window What the planner shows. It has switches for the two columns, for the task app Home tasks, and for the calendars Work, Family and Holidays.](../images/planner-views.png)
+
+A hidden source keeps syncing. Tefteri only leaves it out of the planner, so you can show it again at once.
+Choose **Show all sources** to show every task provider and calendar again.
+Tefteri keeps the choice on this device.
+
+The eye button is also in the header when one pane is hidden. The planner always keeps at least one
+column visible. To hide the tasks, show the calendar first, or the other way around.
+
+Hiding a calendar in this window is not the same as switching off its sync. To stop syncing a
+calendar, open Settings, choose Connections, and choose Choose calendars. Read
+[Connect your apps](connect-apps.md).
+
 ## Change the width of the sidebar and the task list
 
 You can make the sidebar and the task list wider or narrower.

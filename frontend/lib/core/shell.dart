@@ -61,6 +61,7 @@ class AppShell extends ConsumerWidget {
     required this.title,
     required this.body,
     this.backTo,
+    this.actions,
     super.key,
   });
 
@@ -70,6 +71,10 @@ class AppShell extends ConsumerWidget {
   /// Router location of the parent page. When set, the header shows a back
   /// button (used by the pages under Settings and Admin settings).
   final String? backTo;
+
+  /// Extra buttons for the header, before the standard keyboard and sync
+  /// buttons.
+  final Widget? actions;
 
   /// View content.
   final Widget body;
@@ -132,6 +137,7 @@ class AppShell extends ConsumerWidget {
                       title: title,
                       backTo: backTo,
                       showMenu: !rail,
+                      actions: actions,
                     ),
                     const Divider(height: 1),
                     Expanded(child: body),
@@ -152,11 +158,13 @@ class _Header extends ConsumerWidget {
     required this.title,
     required this.backTo,
     required this.showMenu,
+    this.actions,
   });
 
   final String title;
   final String? backTo;
   final bool showMenu;
+  final Widget? actions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -193,6 +201,7 @@ class _Header extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineSmall),
                 ),
               ),
+              if (actions != null) actions!,
               IconButton(
                 key: const Key('shortcuts-button'),
                 tooltip: 'Keyboard shortcuts (?)',

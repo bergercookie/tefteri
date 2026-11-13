@@ -9,6 +9,7 @@ import '../../core/api_error.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../calendar/calendar_providers.dart';
+import 'planner_visibility.dart';
 
 /// The filters at the top of the task column.
 enum DueFilter {
@@ -45,16 +46,30 @@ final dueFilterProvider = StateProvider<DueFilter>((_) => DueFilter.today);
 /// The applied search text. A non-empty text searches all open tasks.
 final taskSearchProvider = StateProvider<String>((_) => '');
 
-/// Open tasks for the active filter or search.
-final plannerTasksProvider = FutureProvider<List<PlanTask>>((ref) {
+/// Open tasks for the active filter or search. Tasks of a hidden task provider
+/// are left out.
+final plannerTasksProvider = FutureProvider<List<PlanTask>>((ref) async {
   final due = ref.watch(dueFilterProvider);
   final query = ref.watch(taskSearchProvider);
-  return ref.watch(planningApiProvider).tasks(due: due.apiValue, query: query);
+  final visibility = ref.watch(plannerVisibilityProvider);
+  final tasks = await ref.watch(planningApiProvider).tasks(
+        due: due.apiValue,
+        query: query,
+        excludeConnections: visibility.hiddenTaskConnectionIds,
+      );
+  return [
+    for (final task in tasks)
+      if (visibility.showsTaskConnection(task.connectionId)) task,
+  ];
 });
 
-/// Task counts for the filter chips.
+/// Task counts for the filter chips. The tasks of a hidden provider are not
+/// counted, so the badges match the list.
 final taskCountsProvider = FutureProvider<Map<String, int>>((ref) {
-  return ref.watch(planningApiProvider).taskCounts();
+  final visibility = ref.watch(plannerVisibilityProvider);
+  return ref
+      .watch(planningApiProvider)
+      .taskCounts(excludeConnections: visibility.hiddenTaskConnectionIds);
 });
 
 /// Where a task that the user is dragging would land if dropped now.
