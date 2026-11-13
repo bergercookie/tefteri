@@ -38,12 +38,11 @@ the tables and contracts.
 
 ## Annual planning
 
-Annual planning owns the goals of a year. Five tables hold key results, the dated value series,
-theme links, the append-only plan history and the push token. Tefteri derives the current value
-and the progress from the series. A slot between 1 and 3, protected by a unique constraint, limits a
-goal to three active key results. Every user action writes one history batch, and an undo writes
-the reverse batch. The inbound push uses only its own bearer token. Read
-[Annual planning](annual-planning.md) for the tables, the domain rules and the push contract.
+Annual planning owns the goals of a year. Four tables hold key results, the dated value series,
+theme links and the append-only plan history. Tefteri derives the current value and the progress
+from the series. A slot between 1 and 3, protected by a unique constraint, limits a goal to three
+active key results. Every user action writes one history batch, and an undo writes the reverse
+batch. Read [Annual planning](annual-planning.md) for the tables and the domain rules.
 
 ## The planned time of a task
 

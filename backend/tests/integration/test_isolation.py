@@ -9,7 +9,6 @@ from tests.conftest import V1, connect_all
 from tests.fakes.world import FakeWorld
 from tests.integration.annual_helpers import (
     YEAR,
-    bare_client,
     create_goal,
     create_goals,
     enter_value,
@@ -70,7 +69,6 @@ async def test_other_users_data_is_invisible_and_untouchable(
     goal = created["goals"][0]
     key_result = goal["key_results"][0]
     await enter_value(api, key_result["id"], 3)
-    token = (await api.post(f"{V1}/annual/push-token")).json()["token"]
     await api.get(f"{V1}/notes/daily/2026-11-02")
     entry_id = None
     sam = await make_user("sam")
@@ -93,7 +91,6 @@ async def test_other_users_data_is_invisible_and_untouchable(
     assert (sam_plan["goals"], sam_plan["retired_goals"], sam_plan["theme_usage"]) == ([], [], [])
     assert (await sam.get(f"{V1}/annual/{YEAR}/history")).json()["changes"] == []
     assert (await sam.get(f"{V1}/annual/themes")).json()["themes"] == []
-    assert (await sam.get(f"{V1}/annual/push-token")).json() == {"exists": False}
 
     # direct access by id answers 404 and changes nothing
     unknown_calls = [
@@ -130,20 +127,13 @@ async def test_other_users_data_is_invisible_and_untouchable(
     assert admin_plan["goals"][0]["key_results"][0]["metric"] == "Secret measure"
     assert admin_plan["goals"][0]["key_results"][0]["current_value"] == 3
     assert admin_plan["goals"][0]["key_results"][0]["links"][0]["active"] is True
-    # A theme of another user cannot be linked, and their push token works only for them.
+    # A theme of another user cannot be linked.
     sam_goal = await create_goal(sam, "Mine", kr())
     foreign_theme = await sam.put(
         f"{V1}/annual/key-results/{sam_goal['key_results'][0]['id']}/themes",
         json={"theme_ids": [theme]},
     )
     assert foreign_theme.status_code == 422 and foreign_theme.json()["code"] == "not_a_theme"
-    async with bare_client(api) as source:
-        pushed = await source.post(
-            f"{V1}/key-results/{sam_goal['key_results'][0]['id']}/push",
-            json={"value": 1, "at": "2030-07-01T09:00:00Z"},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-    assert pushed.status_code == 404
     assert next(iter(world.tasks["default"].tasks.values())).title == "Secret task"
 
     # linking someone else's goal or note to my task is refused too

@@ -4780,41 +4780,6 @@
         "title": "ProposalOut",
         "type": "object"
       },
-      "PushOut": {
-        "description": "The answer to an accepted push (201) or to a safe retry of one (200).",
-        "properties": {
-          "at": {
-            "title": "At",
-            "type": "string"
-          },
-          "current_value": {
-            "title": "Current Value",
-            "type": "number"
-          },
-          "key_result_id": {
-            "format": "uuid",
-            "title": "Key Result Id",
-            "type": "string"
-          },
-          "stored": {
-            "title": "Stored",
-            "type": "boolean"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          }
-        },
-        "required": [
-          "stored",
-          "key_result_id",
-          "value",
-          "at",
-          "current_value"
-        ],
-        "title": "PushOut",
-        "type": "object"
-      },
       "RangeOut": {
         "description": "One active period of a theme link.",
         "properties": {
@@ -9645,67 +9610,6 @@
         ]
       }
     },
-    "/api/v1/annual/push-token": {
-      "delete": {
-        "description": "Revoke the user's push token.",
-        "operationId": "delete_push_token_api_v1_annual_push_token_delete",
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Delete Push Token",
-        "tags": [
-          "annual"
-        ]
-      },
-      "get": {
-        "description": "Return whether a push token exists and, if so, its hint and times. Never the token.",
-        "operationId": "get_push_token_status_api_v1_annual_push_token_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Push Token Status Api V1 Annual Push Token Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Push Token Status",
-        "tags": [
-          "annual"
-        ]
-      },
-      "post": {
-        "description": "Create or rotate the user's push token.",
-        "operationId": "create_or_rotate_push_token_api_v1_annual_push_token_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Create Or Rotate Push Token Api V1 Annual Push Token Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Create Or Rotate Push Token",
-        "tags": [
-          "annual"
-        ]
-      }
-    },
     "/api/v1/annual/themes": {
       "get": {
         "description": "Return the eligible theme projects and task connections.",
@@ -11189,85 +11093,6 @@
         "summary": "Legacy Goals",
         "tags": [
           "planning"
-        ]
-      }
-    },
-    "/api/v1/key-results/{key_result_id}/push": {
-      "post": {
-        "description": "Store a value that an outside source sends for an automatic key result (FR-010).\n\nBody: ``value`` (a finite JSON number) and ``at`` (ISO 8601 with a zone, not more than five\nminutes in the future). The same value with the same time is stored once: the retry answers\n200 with ``stored: false``. At most 60 pushes a minute per token.",
-        "operationId": "push_value_api_v1_key_results__key_result_id__push_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key_result_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Key Result Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "examples": {
-                "push": {
-                  "value": {
-                    "at": "2027-03-04T09:30:00Z",
-                    "value": 1342
-                  }
-                }
-              },
-              "schema": {
-                "additionalProperties": true,
-                "title": "Body",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PushOut"
-                }
-              }
-            },
-            "description": "The same value was stored before."
-          },
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PushOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "description": "invalid_push_token"
-          },
-          "404": {
-            "description": "not_found"
-          },
-          "409": {
-            "description": "retired or not_automatic"
-          },
-          "422": {
-            "description": "invalid"
-          },
-          "429": {
-            "description": "rate_limited, with Retry-After"
-          }
-        },
-        "summary": "Push Value",
-        "tags": [
-          "push"
         ]
       }
     },

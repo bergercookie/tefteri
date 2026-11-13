@@ -16,7 +16,7 @@ enum AnnualTerm {
 
   /// "Key result".
   keyResult('Key result',
-      'A number that shows whether a goal is met: a start value, a target and a deadline. A goal has one to three.'),
+      'A number or a yes/no answer that shows whether a goal is met. A goal has one to three.'),
 
   /// "Theme project".
   themeProject('Theme project',
@@ -28,7 +28,7 @@ enum AnnualTerm {
 
   /// "Automatic".
   automatic('Automatic',
-      'An outside source may send values to it with your push token. You can still enter values by hand.'),
+      'An outside source may send values to it. You can still enter values by hand.'),
 
   /// "Unmet".
   unmet('Unmet',

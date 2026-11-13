@@ -18,7 +18,6 @@ import 'key_result_form.dart';
 import 'key_result_tile.dart';
 import 'legacy_goals_view.dart';
 import 'plan_history_view.dart';
-import 'push_token_dialog.dart';
 import 'retire_dialog.dart';
 import 'seed_panel.dart';
 import 'theme_picker.dart';
@@ -309,12 +308,6 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
             onPressed: () => showLegacyGoals(context),
             icon: const Icon(Icons.inventory_2_outlined, size: 18),
             label: const Text('Old goals'),
-          ),
-          TextButton.icon(
-            key: const Key('open-push-token'),
-            onPressed: () => showPushTokenDialog(context),
-            icon: const Icon(Icons.key_outlined, size: 18),
-            label: const Text('Push token'),
           ),
           if (plan.editable && plan.goals.isNotEmpty)
             TextButton.icon(

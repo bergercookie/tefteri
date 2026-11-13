@@ -155,20 +155,6 @@ class AnnualApi {
     return kr is Map ? KeyResult.fromJson(Map<String, dynamic>.from(kr)) : null;
   }
 
-  /// `GET /annual/push-token`.
-  Future<PushTokenInfo> pushToken() async => PushTokenInfo.fromJson(
-      _map((await _dio.get<Object?>('/annual/push-token')).data));
-
-  /// `POST /annual/push-token`: a new token, shown once. Answers the token
-  /// and its hint.
-  Future<({String token, String hint})> createPushToken() async {
-    final j = _map((await _dio.post<Object?>('/annual/push-token')).data);
-    return (token: '${j['token'] ?? ''}', hint: '${j['hint'] ?? ''}');
-  }
-
-  /// `DELETE /annual/push-token`.
-  Future<void> deletePushToken() => _dio.delete<Object?>('/annual/push-token');
-
   /// `GET /goals/history`: the old goal rows, read only.
   Future<List<LegacyGoal>> legacyGoals() async {
     final r = await _dio.get<Object?>('/goals/history');

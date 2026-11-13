@@ -140,23 +140,6 @@ the history with the mark "Undone".
 
 ![The history of a year. It lists changes with old and new values and an Undo action.](../images/annual-history.png)
 
-## Use a push token
-
-An automatic source can send values to Tefteri. The source needs a push token.
-
-1. Choose Push token.
-2. Choose Create token.
-3. Copy the token. Tefteri shows the full token only one time.
-4. Give the token to the source.
-
-Tefteri shows only the last four characters after you close the dialog. Choose Create token again
-to replace the token. The old token stops at once.
-
-Do not put the token in a file that other people can read. The token can write values for your
-key results.
-
-![The Push token dialog. It shows a new token, a copy action and a warning.](../images/annual-push-token.png)
-
 ## Plan a past year
 
 A year that ended is read-only. You cannot add or change goals, key results or theme links. You

@@ -1347,17 +1347,46 @@ def test_0025_adds_the_key_result_kind_and_keeps_rows(
     assert "kind" not in {c["name"] for c in inspect(alembic_engine).get_columns("key_results")}
 
 
-def test_the_head_revision_follows_0024() -> None:
+def test_0026_drops_the_value_push_tokens(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0025")
+    alembic_runner.insert_into("users", {"id": _U1} | _USER)
+    alembic_runner.insert_into(
+        "value_push_tokens",
+        {
+            "id": "eeeeeeee-0000-0000-0000-000000000050",
+            "user_id": _U1,
+            "token_hash": "a" * 64,
+            "hint": "abcd",
+            "created_at": datetime(2026, 1, 1),
+            "last_used_at": None,
+        },
+    )
+
+    alembic_runner.migrate_up_to("0026")
+    assert "value_push_tokens" not in inspect(alembic_engine).get_table_names()
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from users").scalar() == 1
+
+    alembic_runner.migrate_down_one()
+    assert "value_push_tokens" in inspect(alembic_engine).get_table_names()
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from value_push_tokens").scalar() == 0
+
+
+def test_the_head_revision_follows_0025() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0025"
-    revision = script.get_revision("0025")
+    assert script.get_current_head() == "0026"
+    revision = script.get_revision("0026")
     assert revision is not None
-    assert revision.down_revision == "0024"
+    assert revision.down_revision == "0025"
+    assert script.get_revision("0025").down_revision == "0024"
     assert script.get_revision("0024").down_revision == "0023"
     assert script.get_revision("0023").down_revision == "0022"
     assert script.get_revision("0022").down_revision == "0021"
@@ -1454,14 +1483,14 @@ def test_0023_creates_review_notes_with_scope_indexes(
     assert "review_notes" not in inspect(alembic_engine).get_table_names()
 
 
-def test_the_head_revision_is_0025_and_it_follows_0024() -> None:
+def test_the_head_revision_is_0026_and_it_follows_0025() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0025"
-    revision = script.get_revision("0025")
+    assert script.get_current_head() == "0026"
+    revision = script.get_revision("0026")
     assert revision is not None
-    assert revision.down_revision == "0024"
+    assert revision.down_revision == "0025"

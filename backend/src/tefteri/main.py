@@ -29,7 +29,6 @@ from tefteri.api.routers import monthly as monthly_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
-from tefteri.api.routers import push as push_router
 from tefteri.api.routers import settings as settings_router
 from tefteri.api.routers import statistics as statistics_router
 from tefteri.api.routers import sync as sync_router
@@ -70,7 +69,6 @@ from tefteri.services.statistics import StatisticsService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 from tefteri.services.users import UserService
-from tefteri.services.value_push import PushTokenService
 from tefteri.services.weekly import WeeklyService
 
 
@@ -219,8 +217,6 @@ def create_app(
         close_service,
         monthly_focus_service,
     )
-    push_token_service = PushTokenService(key_result_service)
-    app.state.push_token_service = push_token_service
     app.state.calendar_service = CalendarService(connection_service)
     note_service = NoteService(connection_service)
     app.state.note_service = note_service
@@ -259,7 +255,6 @@ def create_app(
         annual_router,
         annual_review_router,
         monthly_router,
-        push_router,
         planning_router,
         weekly_router,
         statistics_router,
