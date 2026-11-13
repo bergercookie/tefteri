@@ -40,7 +40,12 @@ async def test_monthly_services_make_no_task_app_write_calls(env: ProjectsEnv) -
     ):
         original = getattr(backend, method_name)
 
-        async def record(*args: Any, _name: str = method_name, _original=original, **kwargs: Any):
+        async def record(
+            *args: Any,
+            _name: str = method_name,
+            _original: Any = original,
+            **kwargs: Any,
+        ) -> Any:
             calls.append(_name)
             return await _original(*args, **kwargs)
 

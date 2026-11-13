@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
+from typing import cast
 
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -23,7 +24,7 @@ YEAR = 2026
 async def _goal(api: AsyncClient, title: str = "Goal") -> str:
     response = await api.post(f"{V1}/annual/{YEAR}/goals/bulk", json={"goals": [{"title": title}]})
     assert response.status_code == 201, response.text
-    return response.json()["goals"][0]["id"]
+    return cast(str, response.json()["goals"][0]["id"])
 
 
 async def _key_result(
@@ -47,7 +48,7 @@ async def _key_result(
         },
     )
     assert response.status_code == 201, response.text
-    return response.json()
+    return cast(dict[str, object], response.json())
 
 
 async def test_new_key_result_has_an_empty_series_and_uses_start_value(

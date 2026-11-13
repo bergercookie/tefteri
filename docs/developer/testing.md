@@ -40,7 +40,8 @@ them unreachable or make their credentials expire.
 Recipes:
 
 - `just backend::test` runs all tests except the smoke tests and the PostgreSQL tests.
-- `just backend::e2e` runs only the end-to-end tests.
+- `just backend::e2e` runs only the end-to-end tests. The annual contract suite is
+  `tests/e2e/test_annual_api.py`. It covers the push status table and the safe retry.
 - `just backend::test-postgres` runs the tests with the `postgres` mark. Set
   `TEFTERI_TEST_POSTGRES_URL` first, for example to a database from `just deploy::up-postgres`.
 

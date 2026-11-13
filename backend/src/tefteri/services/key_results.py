@@ -848,7 +848,7 @@ async def _take_slot(db: AsyncSession, goal_id: uuid.UUID) -> int | None:
             )
         ).scalars()
     )
-    return next_free_slot(taken)
+    return next_free_slot(slot for slot in taken if slot is not None)
 
 
 def _edit_text(field_name: str, value: Any) -> str:

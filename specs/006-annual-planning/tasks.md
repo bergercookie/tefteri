@@ -81,8 +81,8 @@ description: "Task list for feature 006-annual-planning"
 
 ## Phase 5: M5 API
 
-- [ ] T048 [P] [US1] E2E tests in `backend/tests/e2e/test_annual_api.py` for every route of contracts/api.md sections 1 to 3 with the exact response shapes and the error codes, including `GET /annual/{year}`, `/history`, `bulk`, `PATCH`, `retire` and `restore` (with and without `dry_run`), `PUT themes`, `undo`, `themes`, `POST themes`, `values`, `value-on`, `push-token`; another user gets 404 for every id (FR-029)
-- [ ] T049 [P] [US7] E2E tests in `backend/tests/e2e/test_annual_api.py` for the push route of section 4: the status table row by row, the `curl` example of the contract with a fake token, and that `Set-Cookie` or an `X-Tefteri-Client` header is not needed
+- [X] T048 [P] [US1] E2E tests in `backend/tests/e2e/test_annual_api.py` for every route of contracts/api.md sections 1 to 3 with the exact response shapes and the error codes, including `GET /annual/{year}`, `/history`, `bulk`, `PATCH`, `retire` and `restore` (with and without `dry_run`), `PUT themes`, `undo`, `themes`, `POST themes`, `values`, `value-on`, `push-token`; another user gets 404 for every id (FR-029)
+- [X] T049 [P] [US7] E2E tests in `backend/tests/e2e/test_annual_api.py` for the push route of section 4: the status table row by row, the `curl` example of the contract with a fake token, and that `Set-Cookie` or an `X-Tefteri-Client` header is not needed
 - [X] T050 [P] [US8] Add the helper `legacy_goal()` to `backend/tests/integration/conftest.py`: it inserts a `Goal` row of any period type, parent and status directly through the session, for tests of old data
 - [X] T051 [P] [US8] Rewrite `backend/tests/integration/test_planning.py`: remove the hierarchy, breakdown, delete-goal and goal status tests; keep and update the plan, the month and year view and the isolation tests (views without `goals`, with `goal_titles`)
 - [X] T052 [P] [US8] Delete `backend/tests/integration/test_goal_bulk_and_criteria.py`; its criteria case moves to `test_legacy_goals.py` (T039)
@@ -95,7 +95,7 @@ description: "Task list for feature 006-annual-planning"
 - [X] T059 [US8] Change `backend/src/tefteri/api/routers/tasks.py`: check `goal_id` with `AnnualPlanService.linkable_goal` and answer 422 `goal_not_linkable`
 - [X] T060 [US1] Create and register the three services in `backend/src/tefteri/main.py`; include the routers `annual` and `push`; update `backend/src/tefteri/api/routers/reviews.py` only if a type changed
 - [X] T061 Run `just backend::openapi` and commit `docs/openapi.json`
-- [ ] T062 Completion criteria for M5: `just backend::test`, `just backend::e2e`, `just backend::test-postgres` and the OpenAPI snapshot test pass; `tach check` passes; no test of the old goal routes is left
+- [X] T062 Completion criteria for M5: `just backend::test`, `just backend::e2e`, `just backend::test-postgres` and the OpenAPI snapshot test pass; `tach check` passes; no test of the old goal routes is left
 
 ## Phase 6: M6 Client annual plan
 
@@ -135,17 +135,17 @@ description: "Task list for feature 006-annual-planning"
 
 ## Phase 8: M8 Docs and proof
 
-- [ ] T093 [P] [US1] Rename `docs/user/planning-goals.md` to `docs/user/annual-planning.md` and rewrite it in ASD-STE100: plan the year, goals, key results, link themes, create a theme, flags, retire and undo, values, the automatic source and the push token, start a new year from year N, the past year, the history; move the checklist section to `docs/user/planning-checklists.md`; each screenshot has alt text
-- [ ] T094 [P] Write `docs/developer/annual-planning.md`: the tables, the rules in `domain/key_results.py` and `domain/annual_plan.py`, the slot design, the history and undo batches, the push contract with a diagram of the flow, the migration of existing goals, how features 007 and 008 read the plan (`GET /annual/{year}`, `KeyResultService.value_on`); add it to `docs/developer/index.md`; update `architecture.md`, `weekly-planning.md` and `testing.md`
-- [ ] T095 [P] Update the other pages that describe month or week goals in the same change (FR-031): `docs/user/index.md`, `getting-started.md`, `weekly-planning.md` (the anchor of the checklist), `reviews-and-retrospectives.md`, `shortcuts.md` (G is the annual plan), `accounts-and-sign-in.md`
-- [ ] T096 [P] Update `scripts/check_docs.sh`: replace `user/planning-goals.md` by `user/annual-planning.md` and add `user/planning-checklists.md` and `developer/annual-planning.md` to the required list
+- [X] T093 [P] [US1] Rename `docs/user/planning-goals.md` to `docs/user/annual-planning.md` and rewrite it in ASD-STE100: plan the year, goals, key results, link themes, create a theme, flags, retire and undo, values, the automatic source and the push token, start a new year from year N, the past year, the history; move the checklist section to `docs/user/planning-checklists.md`; each screenshot has alt text
+- [X] T094 [P] Write `docs/developer/annual-planning.md`: the tables, the rules in `domain/key_results.py` and `domain/annual_plan.py`, the slot design, the history and undo batches, the push contract with a diagram of the flow, the migration of existing goals, how features 007 and 008 read the plan (`GET /annual/{year}`, `KeyResultService.value_on`); add it to `docs/developer/index.md`; update `architecture.md`, `weekly-planning.md` and `testing.md`
+- [X] T095 [P] Update the other pages that describe month or week goals in the same change (FR-031): `docs/user/index.md`, `getting-started.md`, `weekly-planning.md` (the anchor of the checklist), `reviews-and-retrospectives.md`, `shortcuts.md` (G is the annual plan), `accounts-and-sign-in.md`
+- [X] T096 [P] Update `scripts/check_docs.sh`: replace `user/planning-goals.md` by `user/annual-planning.md` and add `user/planning-checklists.md` and `developer/annual-planning.md` to the required list
 - [X] T097 [P] [US1] Add screenshot tests in `frontend/test/screenshots/annual_screens_test.dart` with fake data (plan with flags, key result form, theme picker empty, retire effect, seed panel, history, value dialog, push token dialog with a fake token, past year, phone width); remove the screenshots of the removed goals and breakdown screens from `frontend/test/screenshots/planning_test.dart`; run `just docs::screenshots`; commit `docs/images/annual-*.png` and the regenerated `planning-week.png`, `planning-month.png`, `planning-year.png`; remove `planning-goals.png` and `planning-breakdown.png`
-- [ ] T098 [US1] Add `scripts/seed_demo.py` and the recipe `just backend::seed-demo` in `backend/backend.just` (constitution II): it seeds a throw-away Vikunja with a project tree and a Tefteri user with an old goal that has criteria text, one month goal and one week goal, and prints the sign-in details; use fake data only
-- [ ] T099 [US1] Browser walkthrough of quickstart section 3 with Playwright (Chromium) against a seeded live Vikunja and the built web client; save a screenshot per step in the scratchpad; record every confusing point; include the old-data check of quickstart section 2
-- [ ] T100 [US1] Fix every usability finding of T099 (wording, spacing, contrast, missing feedback, empty states, phone and dark mode, the order of the steps, the reading of a flag); repeat T099 until a first-time run has no stuck point and takes less than 15 minutes (SC-001); re-run `just docs::screenshots`
-- [ ] T101 Run `just lint` (includes markdownlint and Vale) and fix prose; run `just docs::check` and `just docs::build`
-- [ ] T102 Run `speckit-analyze` and `speckit-converge` for this feature; append any unbuilt work to this file and finish it
-- [ ] T103 Completion criteria for the feature: all tasks checked; `just test`, `just lint`, `just backend::e2e`, `just backend::test-postgres`, `just backend::live-vikunja`, `just docs::check` pass; the walkthrough passes; the counts of quickstart section 2 are in the pull request; spec status set to Implemented; push
+- [X] T098 [US1] Add `scripts/seed_demo.py` and the recipe `just backend::seed-demo` in `backend/backend.just` (constitution II): it seeds a throw-away Vikunja with a project tree and a Tefteri user with an old goal that has criteria text, one month goal and one week goal, and prints the sign-in details; use fake data only
+- [X] T099 [US1] Browser walkthrough of quickstart section 3 with Playwright (Chromium) against a seeded live Vikunja and the built web client; save a screenshot per step in the scratchpad; record every confusing point; include the old-data check of quickstart section 2
+- [X] T100 [US1] Fix every usability finding of T099 (wording, spacing, contrast, missing feedback, empty states, phone and dark mode, the order of the steps, the reading of a flag); repeat T099 until a first-time run has no stuck point and takes less than 15 minutes (SC-001); re-run `just docs::screenshots`
+- [X] T101 Run `just lint` (includes markdownlint and Vale) and fix prose; run `just docs::check` and `just docs::build`
+- [X] T102 Run `speckit-analyze` and `speckit-converge` for this feature; append any unbuilt work to this file and finish it
+- [X] T103 Completion criteria for the feature: all tasks checked; `just test`, `just lint`, `just backend::e2e`, `just backend::test-postgres`, `just backend::live-vikunja`, `just docs::check` pass; the walkthrough passes; the counts of quickstart section 2 are in the pull request; spec status set to Implemented; push
 
 ## Dependencies and order
 

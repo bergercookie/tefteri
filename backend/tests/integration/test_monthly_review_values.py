@@ -22,7 +22,7 @@ from tests.integration.monthly_review_helpers import (
 
 async def test_review_values_are_read_only_until_store_and_are_retry_safe(
     env: ProjectsEnv,
-    monkeypatch,
+    monkeypatch: Any,
 ) -> None:
     rows = await setup_review(env, "Theme")
     key_result = await add_key_result(
@@ -36,7 +36,7 @@ async def test_review_values_are_read_only_until_store_and_are_retry_safe(
     service = env.app.state.monthly_review_service
     backend_calls = []
 
-    def forbidden_source_call(*args, **kwargs):
+    def forbidden_source_call(*args: Any, **kwargs: Any) -> Any:
         backend_calls.append((args, kwargs))
         raise AssertionError("review attempted to pull an automatic value")
 
@@ -307,11 +307,11 @@ async def test_retired_key_result_cannot_take_a_review_value(env: ProjectsEnv) -
 async def _store(
     env: ProjectsEnv,
     service: Any,
-    values: dict,
+    values: dict[Any, float],
     *,
     confirm: bool = False,
-    month=MONTH,
-):
+    month: date = MONTH,
+) -> Any:
     async with env.db() as db:
         return await service.store(
             db,

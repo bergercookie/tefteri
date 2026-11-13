@@ -1,7 +1,7 @@
 """Annual-plan write guards and planning-year state in the user's time zone."""
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from httpx import AsyncClient, Response
@@ -58,7 +58,7 @@ async def _create_goal(
         json={"goals": [{"title": "Annual goal", "key_results": key_results or []}]},
     )
     assert response.status_code == 201, response.text
-    return response.json()["goals"][0]
+    return cast(dict[str, Any], response.json()["goals"][0])
 
 
 @pytest.mark.parametrize(

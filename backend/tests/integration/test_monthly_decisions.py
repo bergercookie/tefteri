@@ -1,6 +1,7 @@
 """Review decisions are versioned and drive only computed next-month suggestions."""
 
-from datetime import timedelta
+from datetime import date, timedelta
+from typing import Any
 
 import pytest
 
@@ -97,6 +98,6 @@ async def test_decision_change_requires_new_version_and_uses_current_version(
     assert suggestions.suggestions == ()
 
 
-async def _suggestions(env: ProjectsEnv, service, month):
+async def _suggestions(env: ProjectsEnv, service: Any, month: date) -> Any:
     async with env.db() as db:
         return await service.suggestions(db, await env.user_id(), month)

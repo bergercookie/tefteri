@@ -10,6 +10,7 @@ import os
 from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -184,7 +185,7 @@ async def test_simultaneous_key_result_adds_respect_the_limit_on_postgres(
     assert created.status_code == 201, created.text
     goal_id = created.json()["goals"][0]["id"]
 
-    async def add(metric: str):
+    async def add(metric: str) -> Any:
         return await pg_api.post(
             f"{V1}/annual/goals/{goal_id}/key-results",
             json={

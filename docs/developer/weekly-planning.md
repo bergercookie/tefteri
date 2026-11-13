@@ -231,7 +231,8 @@ Rows from before this feature are not rewritten. Tefteri maps them when it reads
 | `milestone_id` is null | A legacy project: name, counts and outcome only |
 
 The answers of the look-back and the history carry `legacy: true` for such an entry. Old month and
-week goals stay in their tables as read-only history. The weekly flow does not read them.
+week goals stay in their tables as read-only history. The weekly flow does not read them. Read
+[Annual planning](annual-planning.md) for the yearly goal flow.
 
 ## Archive a project
 

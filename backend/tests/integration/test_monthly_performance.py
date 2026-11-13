@@ -1,6 +1,7 @@
 """Monthly draft review remains fast for a large completed-milestone month."""
 
 import time
+from typing import Any
 
 from tefteri.db.models.milestone import Milestone
 from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
@@ -10,7 +11,7 @@ from tests.integration.monthly_review_helpers import MONTH, add_key_result, setu
 
 
 async def test_review_of_500_done_milestones_completes_under_three_seconds(
-    env: ProjectsEnv, monkeypatch
+    env: ProjectsEnv, monkeypatch: Any
 ) -> None:
     rows = await setup_review(env, "Theme 0", "Theme 1", "Theme 2", "Theme 3", "Theme 4")
     user_id = await env.user_id()
@@ -46,7 +47,7 @@ async def test_review_of_500_done_milestones_completes_under_three_seconds(
     )
     source_calls = []
 
-    def forbidden_source_call(*args, **kwargs):
+    def forbidden_source_call(*args: Any, **kwargs: Any) -> Any:
         source_calls.append((args, kwargs))
         raise AssertionError("review attempted to call an automatic key-result source")
 

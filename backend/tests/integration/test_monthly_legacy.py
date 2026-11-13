@@ -50,10 +50,10 @@ async def test_old_month_rows_are_not_reviewed_or_modified_and_checklists_remain
         draft = await env.app.state.monthly_review_service.draft(db, user_id, MONTH, tz="UTC")
     assert all(item["name"] != "Legacy month goal" for item in draft.snapshot["themes"])
     async with env.db() as db:
-        old_goal = await db.get(Goal, before[0])
-        old_review = await db.get(PeriodReview, before[2])
-        assert old_goal is not None and (old_goal.id, old_goal.title) == before[:2]
-        assert old_review is not None and (old_review.id, old_review.items) == before[2:]
+        stored_goal = await db.get(Goal, before[0])
+        stored_review = await db.get(PeriodReview, before[2])
+        assert stored_goal is not None and (stored_goal.id, stored_goal.title) == before[:2]
+        assert stored_review is not None and (stored_review.id, stored_review.items) == before[2:]
         assert (
             await db.scalar(
                 select(func.count())

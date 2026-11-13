@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
@@ -11,6 +11,7 @@ from tefteri.api.deps import CurrentUser, Db
 from tefteri.domain.annual_plan import today_in
 from tefteri.domain.enums import UpdateSource, ValueSource
 from tefteri.services.annual_plan import (
+    AnnualPlan,
     AnnualPlanService,
     BulkGoalDraft,
     BulkKeyResultDraft,
@@ -19,18 +20,18 @@ from tefteri.services.annual_plan import (
     utc,
 )
 from tefteri.services.errors import Invalid
-from tefteri.services.key_results import KeyResultService
+from tefteri.services.key_results import KeyResultService, SeriesPoint
 from tefteri.services.project_labels import load_trees
 
 router = APIRouter(tags=["annual"])
 
 
 def _annual(request: Request) -> AnnualPlanService:
-    return request.app.state.annual_service
+    return cast(AnnualPlanService, request.app.state.annual_service)
 
 
 def _key_results(request: Request) -> KeyResultService:
-    return request.app.state.key_result_service
+    return cast(KeyResultService, request.app.state.key_result_service)
 
 
 def _retire_answer(effect: object, batch_id: uuid.UUID | None) -> dict[str, object]:
@@ -45,7 +46,7 @@ def _today(request: Request, user: CurrentUser) -> date:
     return today_in(user.timezone, _key_results(request)._clock())
 
 
-async def _plan_of(request: Request, db: Db, user: CurrentUser, year: int) -> object:
+async def _plan_of(request: Request, db: Db, user: CurrentUser, year: int) -> AnnualPlan:
     return await _annual(request).plan(db, user.id, year, tz=user.timezone)
 
 
@@ -54,14 +55,17 @@ async def _goal_from_plan(plan: object, goal_id: uuid.UUID) -> GoalOut | None:
     for goal in goals:
         if goal.id == goal_id:
             return goal
-    for goal in getattr(plan, "retired_goals", []):
+    for goal in cast(list[GoalOut], list(getattr(plan, "retired_goals", []))):
         if goal.id == goal_id:
             return goal
     return None
 
 
 async def _key_result_from_plan(plan: object, key_result_id: uuid.UUID) -> KeyResultOut | None:
-    for goal in list(getattr(plan, "goals", [])) + list(getattr(plan, "retired_goals", [])):
+    all_goals = cast(list[GoalOut], list(getattr(plan, "goals", []))) + cast(
+        list[GoalOut], list(getattr(plan, "retired_goals", []))
+    )
+    for goal in all_goals:
         for key_result in goal.key_results:
             if key_result.id == key_result_id:
                 return key_result
@@ -274,7 +278,7 @@ async def get_key_result_values(
     request: Request,
     db: Db,
     user: CurrentUser,
-) -> list[object]:
+) -> list[SeriesPoint]:
     """Return the full value series of one key result, newest first."""
     key_result = await _key_results(request).get(db, user.id, key_result_id)
     return await _key_results(request).series(db, user.id, key_result)

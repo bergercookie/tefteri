@@ -5316,6 +5316,48 @@
         "title": "ScheduleOut",
         "type": "object"
       },
+      "SeriesPoint": {
+        "description": "One value of the series, as the API answers it.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "on_date": {
+            "format": "date",
+            "title": "On Date",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "value",
+          "at",
+          "on_date",
+          "source",
+          "seq"
+        ],
+        "title": "SeriesPoint",
+        "type": "object"
+      },
       "SettingsOut": {
         "description": "The current user's settings.",
         "properties": {
@@ -8120,7 +8162,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {},
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesPoint"
+                  },
                   "title": "Response Get Key Result Values Api V1 Annual Key Results  Key Result Id  Values Get",
                   "type": "array"
                 }

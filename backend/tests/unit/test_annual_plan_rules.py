@@ -1,6 +1,7 @@
 """The pure rules of the annual plan (spec 006): year state, the limit of three, seeding."""
 
 from datetime import UTC, date, datetime
+from typing import Any
 
 from tefteri.domain.annual_plan import (
     MAX_ACTIVE_KEY_RESULTS,
@@ -105,9 +106,11 @@ def _goal(key: str, krs: tuple[object, ...] = (), status: str = "active") -> obj
     return PastGoal(id=key, status=status, key_results=krs)  # type: ignore[arg-type]
 
 
-def _suggest(goals: list[object], year: int = 2027, from_year: int = 2026, tree=None) -> list:
+def _suggest(
+    goals: list[Any], year: int = 2027, from_year: int = 2026, tree: Any = None
+) -> list[Any]:
     return suggest(
-        goals,  # type: ignore[arg-type]
+        goals,
         year=year,
         from_year=from_year,
         nodes=tree if tree is not None else nodes(ProjectNode("t", None, T)),

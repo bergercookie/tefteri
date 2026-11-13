@@ -3,7 +3,7 @@
 import re
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, Field
@@ -50,11 +50,11 @@ def _month(value: str) -> date:
 
 
 def _focus(request: Request) -> MonthlyFocusService:
-    return request.app.state.monthly_focus_service
+    return cast(MonthlyFocusService, request.app.state.monthly_focus_service)
 
 
 def _review(request: Request) -> MonthlyReviewService:
-    return request.app.state.monthly_review_service
+    return cast(MonthlyReviewService, request.app.state.monthly_review_service)
 
 
 class FocusEntryIn(BaseModel):

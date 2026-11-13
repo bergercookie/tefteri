@@ -1,6 +1,8 @@
 """Monthly review snapshots are immutable records with a mutable current-version pointer."""
 
 import re
+from datetime import date
+from typing import Any, cast
 
 from sqlalchemy import select
 
@@ -75,7 +77,7 @@ async def test_snapshot_read_versions_current_pointer_and_current_snapshots(
 
     original_draft = service.draft
 
-    async def no_recalculation(*args, **kwargs):
+    async def no_recalculation(*args: Any, **kwargs: Any) -> Any:
         raise AssertionError("stored review read recalculated live data")
 
     service.draft = no_recalculation
@@ -138,6 +140,6 @@ async def test_snapshot_source_has_no_snapshot_update_or_delete(env: ProjectsEnv
         ), path
 
 
-async def _versions(env: ProjectsEnv, service, month):
+async def _versions(env: ProjectsEnv, service: Any, month: date) -> list[Any]:
     async with env.db() as db:
-        return await service.versions(db, await env.user_id(), month)
+        return cast(list[Any], await service.versions(db, await env.user_id(), month))

@@ -1,6 +1,7 @@
 """The value series of a key result and the value on a date (spec 006, US7, FR-007 to FR-009)."""
 
 from datetime import UTC, datetime
+from typing import Any, cast
 
 from tefteri.domain.entities import Container
 from tests.conftest import V1
@@ -17,14 +18,14 @@ from tests.integration.annual_helpers import (
 from tests.integration.conftest import ProjectsEnv
 
 
-async def _key_result(env: ProjectsEnv, **fields: object) -> dict[str, object]:
+async def _key_result(env: ProjectsEnv, **fields: object) -> dict[str, Any]:
     freeze(env.api)
     await env.connect(Container("p2", "Unused"))
     goal = await create_goal(env.api, "Run", kr("Distance", start=10, target=100, **fields))  # type: ignore[arg-type]
-    return goal["key_results"][0]
+    return cast(dict[str, Any], goal["key_results"][0])
 
 
-async def _current(env: ProjectsEnv, key_result_id: str) -> object:
+async def _current(env: ProjectsEnv, key_result_id: str) -> Any:
     return key_result_of(await plan(env.api), key_result_id)["current_value"]
 
 

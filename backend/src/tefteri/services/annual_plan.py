@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, overload
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -316,14 +316,14 @@ class AnnualPlanService:
 
         entries_by_kr: dict[uuid.UUID, list[ValueEntry]] = {}
         at_by_kr: dict[uuid.UUID, datetime] = {}
-        for row in value_rows:
-            entries_by_kr.setdefault(row.key_result_id, []).append(
-                ValueEntry(row.value, row.on_date, row.seq)
+        for value_row in value_rows:
+            entries_by_kr.setdefault(value_row.key_result_id, []).append(
+                ValueEntry(value_row.value, value_row.on_date, value_row.seq)
             )
-            at_by_kr[row.key_result_id] = row.at
+            at_by_kr[value_row.key_result_id] = value_row.at
         links_by_kr: dict[uuid.UUID, list[KeyResultTheme]] = {}
-        for row in link_rows:
-            links_by_kr.setdefault(row.key_result_id, []).append(row)
+        for link_row in link_rows:
+            links_by_kr.setdefault(link_row.key_result_id, []).append(link_row)
 
         def key_result_out(row: KeyResult) -> KeyResultOut:
             entries = entries_by_kr.get(row.id, [])
@@ -357,16 +357,19 @@ class AnnualPlanService:
             )
 
         key_results_by_goal: dict[uuid.UUID, list[KeyResultOut]] = {}
-        for row in key_result_rows:
-            key_results_by_goal.setdefault(row.goal_id, []).append(key_result_out(row))
+        for key_result_row in key_result_rows:
+            key_results_by_goal.setdefault(key_result_row.goal_id, []).append(
+                key_result_out(key_result_row)
+            )
         usage: dict[uuid.UUID, ThemeUsageOut] = {}
-        for row in link_rows:
-            if row.ended_at is not None:
+        for usage_link in link_rows:
+            if usage_link.ended_at is not None:
                 continue
             out = usage.setdefault(
-                row.project_id, ThemeUsageOut(row.project_id, names.get(row.project_id, ""), [])
+                usage_link.project_id,
+                ThemeUsageOut(usage_link.project_id, names.get(usage_link.project_id, ""), []),
             )
-            out.key_result_ids.append(row.key_result_id)
+            out.key_result_ids.append(usage_link.key_result_id)
 
         def goal_out(row: Goal) -> GoalOut:
             krs = key_results_by_goal.get(row.id, [])
@@ -795,7 +798,14 @@ class AnnualPlanService:
             source=ChangeSource.USER.value,
             trees=trees,
         )
-        return RestoreOutcome(len(key_results) + 1, links_restored, skipped)
+        return RestoreOutcome(
+            len(key_results) + 1,
+            links_restored,
+            [
+                RestoreSkip(entry.project_id, entry.name, entry.state or "unusable")
+                for entry in skipped
+            ],
+        )
 
     async def _goal_retirement_batch(
         self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID
@@ -1050,13 +1060,13 @@ class AnnualPlanService:
         trees = await load_trees(db, user_id)
         names = {row.id: row.name for tree in trees for row in tree.rows}
         entries_by_kr: dict[uuid.UUID, list[ValueEntry]] = {}
-        for row in value_rows:
-            entries_by_kr.setdefault(row.key_result_id, []).append(
-                ValueEntry(row.value, row.on_date, row.seq)
+        for value_row in value_rows:
+            entries_by_kr.setdefault(value_row.key_result_id, []).append(
+                ValueEntry(value_row.value, value_row.on_date, value_row.seq)
             )
         links_by_kr: dict[uuid.UUID, list[KeyResultTheme]] = {}
-        for row in link_rows:
-            links_by_kr.setdefault(row.key_result_id, []).append(row)
+        for link_row in link_rows:
+            links_by_kr.setdefault(link_row.key_result_id, []).append(link_row)
         past_goals = [
             PastGoal(
                 id=str(row.id),
@@ -1255,15 +1265,14 @@ async def _key_results_by_id(
 
 async def _taken_slots(db: AsyncSession, goal_id: uuid.UUID) -> list[int]:
     """Return the slots the active key results of a goal use (R-03)."""
-    return list(
-        (
-            await db.execute(
-                select(KeyResult.slot).where(
-                    KeyResult.goal_id == goal_id, KeyResult.status == GoalState.ACTIVE.value
-                )
+    slots = (
+        await db.execute(
+            select(KeyResult.slot).where(
+                KeyResult.goal_id == goal_id, KeyResult.status == GoalState.ACTIVE.value
             )
-        ).scalars()
-    )
+        )
+    ).scalars()
+    return [slot for slot in slots if slot is not None]
 
 
 async def _links_by_id(
@@ -1317,6 +1326,14 @@ def _current_label(
         return new_label.value
     node = nodes.get(str(project_id))
     return node.label.value if node is not None and node.label is not None else None
+
+
+@overload
+def utc(value: datetime) -> datetime: ...
+
+
+@overload
+def utc(value: None) -> None: ...
 
 
 def utc(value: datetime | None) -> datetime | None:
