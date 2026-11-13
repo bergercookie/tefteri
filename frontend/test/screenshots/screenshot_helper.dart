@@ -47,8 +47,14 @@ ThemeData screenshotTheme() => tefteriLight;
 /// Pumps [screen] with the fake backend [api] in a fixed-size window.
 ///
 /// [overrides] replace more providers, for example the sign-in state.
-Future<void> pumpScreen(WidgetTester tester, FakeApi api, Widget screen,
-    {List<Override> overrides = const [], Size size = screenshotSize}) async {
+Future<void> pumpScreen(
+  WidgetTester tester,
+  FakeApi api,
+  Widget screen, {
+  List<Override> overrides = const [],
+  Size size = screenshotSize,
+  ThemeData? theme,
+}) async {
   await loadFonts();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -58,7 +64,7 @@ Future<void> pumpScreen(WidgetTester tester, FakeApi api, Widget screen,
     overrides: [dioProvider.overrideWithValue(dio), ...overrides],
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: screenshotTheme(),
+      theme: theme ?? screenshotTheme(),
       home: screen,
     ),
   ));

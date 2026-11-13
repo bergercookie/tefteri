@@ -4,7 +4,6 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tefteri/features/month/month_screen.dart';
 import 'package:tefteri/features/week/week_screen.dart';
 import 'package:tefteri/features/year/year_screen.dart';
 
@@ -206,28 +205,6 @@ FakeApi _api() => FakeApi({
               ]),
       'GET /views/year/2026': periodJson('year', '2026-01-01', '2027-01-01'),
       'GET /annual/2026': _annualPlan,
-      'GET /monthly/2026-11': monthlyJson(
-        month: '2026-11',
-        entries: [
-          monthlyEntryJson('e1', 'p1', 'Health',
-              target: 3, done: 1, countsFrom: '2026-11-01', lastMonthDone: 2),
-          monthlyEntryJson('e2', 'p2', 'Website',
-              target: 2, done: 1, countsFrom: '2026-11-01', lastMonthDone: 1),
-        ],
-        keyResults: [
-          monthlyKeyResultJson(
-              id: 'kr1',
-              goalId: 'g1',
-              goalTitle: 'Run a half marathon',
-              metric: 'Longest run in km',
-              startValue: 5,
-              currentValue: 14,
-              currentAt: '2026-11-01T09:00:00Z',
-              target: 21,
-              deadline: '2026-10-31',
-              themeIds: const ['p1']),
-        ],
-      ),
       'GET /connections': connections,
     });
 
@@ -238,11 +215,6 @@ void main() {
     await pumpScreen(tester, _api(),
         WeekScreen(initialDate: day, today: DateTime(2026, 11, 4)));
     await saveScreenshot('planning-week');
-  });
-
-  testWidgets('monthly view', (tester) async {
-    await pumpScreen(tester, _api(), MonthScreen(initialDate: day));
-    await saveScreenshot('planning-month');
   });
 
   testWidgets('annual view', (tester) async {

@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Plan and review each month around theme projects. In monthly planning the user picks three to five theme projects as the month's focus and sets a milestone-count target for each, and sees the key results behind each choice. At the end of the month the user reviews targets against results, updates key results, sees the gap between milestones shipped and key result movement, sees the off-plan trend, decides what happens to each theme, and stores a review snapshot. This replaces the current goal-based Month view. Source: `specs/planning-cycles/source-spec.md`, with the decisions in `specs/planning-cycles/decisions.md`."
 
