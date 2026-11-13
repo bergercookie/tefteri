@@ -29,6 +29,7 @@ required=(
     user/troubleshooting.md
     developer/setup.md
     developer/testing.md
+    developer/annual-planning.md
     developer/monthly-cycle.md
     developer/releases.md
 )

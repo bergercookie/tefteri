@@ -21,7 +21,7 @@ You can also choose the keyboard button at the top of the screen.
 | W | Week |
 | M | Month |
 | Y | Year |
-| G | Goals |
+| G | Annual plan |
 | O | Projects |
 | R | Reviews |
 | X | Conflicts |

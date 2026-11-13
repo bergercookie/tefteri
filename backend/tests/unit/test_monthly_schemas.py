@@ -270,11 +270,11 @@ def test_monthly_review_and_decision_enum_values_serialize() -> None:
             }
         )
         assert suggestion.model_dump(mode="json")["reason"] == reason.value
-    for reason in SkippedSuggestionReason:
+    for skipped_reason in SkippedSuggestionReason:
         skipped = SkippedSuggestionOut.model_validate(
-            {"project_id": _ID, "name": "Theme", "reason": reason}
+            {"project_id": _ID, "name": "Theme", "reason": skipped_reason}
         )
-        assert skipped.model_dump(mode="json")["reason"] == reason.value
+        assert skipped.model_dump(mode="json")["reason"] == skipped_reason.value
 
 
 def test_history_and_request_enum_values_serialize() -> None:
@@ -342,7 +342,7 @@ def test_history_and_request_enum_values_serialize() -> None:
 def test_schema_rejects_unlisted_monthly_values() -> None:
     """A new domain value cannot silently bypass a response schema."""
     with pytest.raises(ValueError):
-        MonthlyEntryOut.model_validate(_entry(status="not_a_status"))
+        MonthlyEntryOut.model_validate(_entry(status="not_a_status"))  # type: ignore[arg-type]
     with pytest.raises(ValueError):
         FocusSaveIn.model_validate({"entries": [], "dry_run": "maybe"})
     with pytest.raises(ValueError):

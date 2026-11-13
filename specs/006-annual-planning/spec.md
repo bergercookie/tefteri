@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Let the user plan the year once, before it starts: write a few loose goals, give each goal one to three measurable key results, and link each key result to the theme projects that serve it. The links are kept per year as history, can be edited during the year, and missing links are flagged. Goals exist only at the annual level. Month and week goals leave the planning flow. Source: `specs/planning-cycles/source-spec.md`, with the decisions in `specs/planning-cycles/decisions.md`."
 

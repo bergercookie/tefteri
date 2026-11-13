@@ -1,6 +1,7 @@
 """Monthly focus planning, eligible-theme picker and target integration tests."""
 
 from datetime import date
+from typing import Any
 
 import pytest
 from sqlalchemy import select
@@ -78,7 +79,7 @@ async def test_focus_save_reload_soft_count_notes_and_empty_focus(env: ProjectsE
 
 
 async def test_focus_save_rejects_duplicate_foreign_and_past_theme(
-    env: ProjectsEnv, make_user
+    env: ProjectsEnv, make_user: Any
 ) -> None:
     rows = await setup_month(env, Container("t1", "Theme"))
     service = env.app.state.monthly_focus_service
@@ -189,7 +190,7 @@ async def test_targets_round_trip_and_first_current_month_save_counts_from_day_o
     )
 
 
-async def _picker_for_connection(env: ProjectsEnv):
+async def _picker_for_connection(env: ProjectsEnv) -> Any:
     async with env.db() as db:
         return await env.app.state.monthly_focus_service.themes(
             db, await env.user_id(), MONTH, connection_id=env.connection_uuid()

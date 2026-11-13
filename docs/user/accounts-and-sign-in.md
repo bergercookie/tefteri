@@ -5,7 +5,8 @@ This guide also shows the administrator how to manage users.
 
 ## How accounts work
 
-- Each user sees only their own data. This includes connected apps, items, goals and plans.
+- Each user sees only their own data. This includes connected apps, items, annual goals, monthly
+  themes, weekly milestones and plans.
 - Nobody can register an account alone. Only an administrator can add a user.
 - A visitor who is not signed in cannot see any data.
 

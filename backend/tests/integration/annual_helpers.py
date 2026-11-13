@@ -1,7 +1,7 @@
 """Shared steps for the annual planning tests of spec 006 (M4 and M5)."""
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from httpx import ASGITransport, AsyncClient
 
@@ -72,7 +72,7 @@ async def create_goals(
     """Create goals through the bulk route and return the answer."""
     response = await api.post(f"{V1}/annual/{year}/goals/bulk", json={"goals": goals, **extra})
     assert response.status_code == 201, response.text
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 async def create_goal(
@@ -82,7 +82,7 @@ async def create_goal(
     created = await create_goals(
         api, [{"title": title, "key_results": list(key_results)}], year=year
     )
-    return created["goals"][0]
+    return cast(dict[str, Any], created["goals"][0])
 
 
 async def enter_value(
@@ -94,14 +94,14 @@ async def enter_value(
         body["date"] = day
     response = await api.post(f"{V1}/annual/key-results/{key_result_id}/values", json=body)
     assert response.status_code == 201, response.text
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 async def plan(api: AsyncClient, year: int = YEAR) -> dict[str, Any]:
     """The plan of a year."""
     response = await api.get(f"{V1}/annual/{year}")
     assert response.status_code == 200, response.text
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 def key_result_of(plan_json: dict[str, Any], key_result_id: str) -> dict[str, Any]:
@@ -109,7 +109,7 @@ def key_result_of(plan_json: dict[str, Any], key_result_id: str) -> dict[str, An
     for goal in plan_json["goals"] + plan_json["retired_goals"]:
         for item in goal["key_results"]:
             if item["id"] == key_result_id:
-                return item
+                return cast(dict[str, Any], item)
     raise AssertionError(f"no key result {key_result_id}")
 
 

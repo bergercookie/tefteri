@@ -3,7 +3,7 @@
 import json
 import uuid
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -54,7 +54,7 @@ async def _create_goal(
         },
     )
     assert response.status_code == 201, response.text
-    return response.json()["goals"][0]
+    return cast(dict[str, Any], response.json()["goals"][0])
 
 
 def _key_result(metric: str = "Measure", *, themes: list[str] | None = None) -> dict[str, Any]:

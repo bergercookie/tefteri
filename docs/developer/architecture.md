@@ -36,6 +36,15 @@ that the user enters into a key result series. Feature 008 reads current monthly
 versions without recalculating them. Read [Monthly planning and review](monthly-cycle.md) for
 the tables and contracts.
 
+## Annual planning
+
+Annual planning owns the goals of a year. Five tables hold key results, the dated value series,
+theme links, the append-only plan history and the push token. Tefteri derives the current value
+and the progress from the series. A slot between 1 and 3, protected by a unique constraint, limits a
+goal to three active key results. Every user action writes one history batch, and an undo writes
+the reverse batch. The inbound push uses only its own bearer token. Read
+[Annual planning](annual-planning.md) for the tables, the domain rules and the push contract.
+
 ## The planned time of a task
 
 The due date of a task is its planned time. For Vikunja it is the only date that tefteri stores

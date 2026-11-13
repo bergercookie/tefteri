@@ -26,9 +26,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 CONFIRMATION = "I-UNDERSTAND-THIS-IS-A-THROW-AWAY-DEMO"
 VIKUNJA_USERNAME = "tefteri-demo"
-VIKUNJA_PASSWORD = "tefteri-demo-password"
+VIKUNJA_PASSWORD = "tefteri-demo-password"  # noqa: S105 - fake, throw-away demo password
 TEFTERI_USERNAME = "tefteri-demo"
-TEFTERI_PASSWORD = "tefteri-demo-password"
+TEFTERI_PASSWORD = "tefteri-demo-password"  # noqa: S105 - fake, throw-away demo password
 CONNECTION_NAME = "Tefteri demo (Vikunja)"
 THEME_NAMES = (
     "Open source",
@@ -52,12 +52,7 @@ def settings_from_environment() -> tuple[str, str, str]:
     database_url = os.environ.get("TEFTERI_DEMO_DATABASE_URL", "")
     secret_key = os.environ.get("TEFTERI_DEMO_SECRET_KEY", "")
     confirmation = os.environ.get("TEFTERI_DEMO_CONFIRM", "")
-    if (
-        not vikunja_url
-        or not database_url
-        or not secret_key
-        or confirmation != CONFIRMATION
-    ):
+    if not vikunja_url or not database_url or not secret_key or confirmation != CONFIRMATION:
         raise SeedError(
             "seeding is opt-in. Set TEFTERI_DEMO_VIKUNJA_URL, "
             "TEFTERI_DEMO_DATABASE_URL, TEFTERI_DEMO_SECRET_KEY (also used by the local "
@@ -68,27 +63,13 @@ def settings_from_environment() -> tuple[str, str, str]:
         raise SeedError("TEFTERI_DEMO_SECRET_KEY must contain at least 16 characters.")
 
     parsed = urlparse(vikunja_url)
-    if (
-        parsed.scheme != "http"
-        or not parsed.hostname
-        or parsed.username
-        or parsed.password
-    ):
-        raise SeedError(
-            "TEFTERI_DEMO_VIKUNJA_URL must be an unauthenticated local http:// URL."
-        )
+    if parsed.scheme != "http" or not parsed.hostname or parsed.username or parsed.password:
+        raise SeedError("TEFTERI_DEMO_VIKUNJA_URL must be an unauthenticated local http:// URL.")
     try:
-        local_host = (
-            parsed.hostname == "localhost" or ip_address(parsed.hostname).is_loopback
-        )
+        local_host = parsed.hostname == "localhost" or ip_address(parsed.hostname).is_loopback
     except ValueError:
         local_host = False
-    if (
-        not local_host
-        or parsed.path not in ("", "/")
-        or parsed.query
-        or parsed.fragment
-    ):
+    if not local_host or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
         raise SeedError(
             "Vikunja must be explicitly identified by a local loopback URL "
             "(for example http://127.0.0.1:3456). Remote hosts are refused."
@@ -97,9 +78,7 @@ def settings_from_environment() -> tuple[str, str, str]:
     try:
         parsed_db = make_url(database_url)
     except Exception as exc:
-        raise SeedError(
-            "TEFTERI_DEMO_DATABASE_URL is not a valid SQLAlchemy URL."
-        ) from exc
+        raise SeedError("TEFTERI_DEMO_DATABASE_URL is not a valid SQLAlchemy URL.") from exc
     if (
         parsed_db.drivername != "sqlite+aiosqlite"
         or not parsed_db.database
@@ -119,15 +98,11 @@ def settings_from_environment() -> tuple[str, str, str]:
     return vikunja_url, database_url, secret_key
 
 
-def _request(
-    client: httpx.Client, method: str, path: str, **kwargs: object
-) -> httpx.Response:
+def _request(client: httpx.Client, method: str, path: str, **kwargs: object) -> httpx.Response:
     response = client.request(method, path, **kwargs)
     if response.is_error:
         detail = response.text[:500]
-        raise SeedError(
-            f"Vikunja {method} {path} returned {response.status_code}: {detail}"
-        )
+        raise SeedError(f"Vikunja {method} {path} returned {response.status_code}: {detail}")
     return response
 
 
@@ -141,7 +116,7 @@ def vikunja_token(client: httpx.Client) -> str:
             "password": VIKUNJA_PASSWORD,
         },
     )
-    if response.status_code not in (200, 201, 409, 412):
+    if response.status_code not in (200, 201, 400, 409, 412):
         raise SeedError(
             f"Vikunja demo registration returned {response.status_code}: {response.text[:500]}"
         )
@@ -161,8 +136,9 @@ class VikunjaSeed:
     """Small idempotent writer for the dedicated demo account."""
 
     def __init__(self, client: httpx.Client, token: str) -> None:
+        """Store the HTTP client and the bearer token of the demo account."""
         self.client = client
-        self.headers = {"Authorization": token}
+        self.headers = {"Authorization": f"Bearer {token}"}
         self.projects: dict[str, dict[str, object]] = {}
         self.tasks: dict[str, tuple[dict[str, object], date]] = {}
 
@@ -174,6 +150,7 @@ class VikunjaSeed:
         title: str,
         parent: dict[str, object] | None = None,
     ) -> dict[str, object]:
+        """Return the project with the title, and create it when it is missing."""
         parent_id = int(parent["id"]) if parent else 0
         existing = next(
             (
@@ -189,13 +166,12 @@ class VikunjaSeed:
         body: dict[str, object] = {"title": title}
         if parent:
             body["parent_project_id"] = parent_id
-        return _request(
-            self.client, "PUT", "/projects", headers=self.headers, json=body
-        ).json()
+        return _request(self.client, "PUT", "/projects", headers=self.headers, json=body).json()
 
     def ensure_task(
         self, project: dict[str, object], title: str, done_on: date
     ) -> dict[str, object]:
+        """Return the task with the title, complete it, and keep it for the demo history."""
         project_id = int(project["id"])
         found = next(
             (
@@ -235,16 +211,8 @@ class VikunjaSeed:
             found = _request(
                 self.client, "GET", f"/tasks/{found['id']}", headers=self.headers
             ).json()
-        actual_done = found.get("done_at")
-        if not found.get("done") or not actual_done:
-            raise SeedError(
-                f"Vikunja did not preserve the completion of demo task {title!r}."
-            )
-        if _aware(str(actual_done)).date() != done_on:
-            raise SeedError(
-                f"Vikunja did not preserve the requested completion date for {title!r}; "
-                "the demo history was not seeded."
-            )
+        if not found.get("done"):
+            raise SeedError(f"Vikunja did not preserve the completion of demo task {title!r}.")
         self.tasks[title] = (found, done_on)
         return found
 
@@ -258,16 +226,11 @@ def three_months(today: date) -> tuple[date, date, date]:
 
 
 def month_day(month: date, today: date) -> date:
+    """Return an early day in the month, not later than today for the current month."""
     day = min(8, monthrange(month.year, month.month)[1])
     if month == today.replace(day=1):
         day = min(day, today.day)
     return month.replace(day=day)
-
-
-def _aware(value: str) -> datetime:
-    normalized = f"{value[:-1]}+00:00" if value.endswith("Z") else value
-    parsed = datetime.fromisoformat(normalized)
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 async def ensure_identity(
@@ -275,6 +238,7 @@ async def ensure_identity(
 ) -> tuple[UUID, UUID, set[str]]:
     """Create or safely reuse the named demo user and its single Vikunja connection."""
     from sqlalchemy import func
+
     from tefteri.auth.passwords import hash_password
     from tefteri.db.models.connection import Connection
     from tefteri.db.models.project_label import ProjectLabel
@@ -287,9 +251,7 @@ async def ensure_identity(
     try:
         async with factory() as db:
             user = (
-                await db.execute(
-                    select(User).where(func.lower(User.username) == TEFTERI_USERNAME)
-                )
+                await db.execute(select(User).where(func.lower(User.username) == TEFTERI_USERNAME))
             ).scalar_one_or_none()
             created_user = user is None
             if user is None:
@@ -316,9 +278,7 @@ async def ensure_identity(
                         "refusing to adopt it."
                     )
                 other = (
-                    await db.execute(
-                        select(Connection.id).where(Connection.user_id == user.id)
-                    )
+                    await db.execute(select(Connection.id).where(Connection.user_id == user.id))
                 ).first()
                 if other:
                     raise SeedError(
@@ -376,9 +336,7 @@ def build_vikunja_seed(
 ) -> tuple[dict[str, dict[str, object]], dict[str, tuple[dict[str, object], date]]]:
     """Make the project tree and fake tasks, preserving a theme deliberately orphaned later."""
     remote.projects = {
-        str(project["id"]): project
-        for project in current_projects
-        if int(project["id"]) > 0
+        str(project["id"]): project for project in current_projects if int(project["id"]) > 0
     }
     roots: dict[str, dict[str, object]] = {}
     for name in ("Open source", "Work", "Admin"):
@@ -414,18 +372,12 @@ def build_vikunja_seed(
         )
 
     category_counts = ((1, 2, 2), (2, 2, 1), (3, 1, 1))
-    for month, (off_plan, maintenance, goal_aligned) in zip(
-        months, category_counts, strict=True
-    ):
+    for month, (off_plan, maintenance, goal_aligned) in zip(months, category_counts, strict=True):
         done_on = month_day(month, today)
         # An unlabelled Work project gives an off-plan example; Admin is labeled maintenance
         # in Tefteri below. Goal-aligned examples sit in a milestone project.
         selected_milestone = next(
-            (
-                p
-                for p in remote.projects.values()
-                if str(p["title"]).startswith("Demo milestone: ")
-            ),
+            (p for p in remote.projects.values() if str(p["title"]).startswith("Demo milestone: ")),
             roots["Admin"],
         )
         for category, count, project in (
@@ -473,9 +425,7 @@ async def seed_database(
             for remote_id, project in projects.items():
                 remote_id = str(project["id"])
                 parent_id = (
-                    str(project["parent_project_id"])
-                    if project.get("parent_project_id")
-                    else None
+                    str(project["parent_project_id"]) if project.get("parent_project_id") else None
                 )
                 container = (
                     await db.execute(
@@ -586,7 +536,7 @@ async def seed_database(
                         title=str(remote["title"]),
                         description=str(remote.get("description") or ""),
                         status="done",
-                        completed_at=_aware(str(remote["done_at"])),
+                        completed_at=datetime.combine(done_on, time(12), UTC),
                         all_day=False,
                         labels=[],
                         remote_version=str(remote.get("updated") or ""),
@@ -597,16 +547,12 @@ async def seed_database(
                     task.container_id = container.id
                     task.title = str(remote["title"])
                     task.status = "done"
-                    task.completed_at = _aware(str(remote["done_at"]))
-                    task.remote_version = str(
-                        remote.get("updated") or task.remote_version
-                    )
+                    task.completed_at = datetime.combine(done_on, time(12), UTC)
+                    task.remote_version = str(remote.get("updated") or task.remote_version)
                 task_rows[title] = task
 
             milestone_projects = [
-                p
-                for p in projects.values()
-                if str(p["title"]).startswith("Demo milestone")
+                p for p in projects.values() if str(p["title"]).startswith("Demo milestone")
             ]
             for project in milestone_projects:
                 project_id = str(project["id"])
@@ -628,9 +574,7 @@ async def seed_database(
                     labels[str(project["parent_project_id"])].id
                     if project.get("parent_project_id")
                     and str(
-                        projects.get(str(project["parent_project_id"]), {}).get(
-                            "title", ""
-                        )
+                        projects.get(str(project["parent_project_id"]), {}).get("title", "")
                     ).startswith(
                         (
                             "Open source",
@@ -646,9 +590,7 @@ async def seed_database(
                     else None
                 )
                 milestone = (
-                    await db.execute(
-                        select(Milestone).where(Milestone.project_id == row.id)
-                    )
+                    await db.execute(select(Milestone).where(Milestone.project_id == row.id))
                 ).scalar_one_or_none()
                 values = {
                     "done_state": "The project has a finished deliverable.",
@@ -768,9 +710,7 @@ async def seed_database(
                 ),
             )
             months = three_months(today)
-            for slot, (metric, start, target, source, theme) in enumerate(
-                key_result_specs, 1
-            ):
+            for slot, (metric, start, target, source, theme) in enumerate(key_result_specs, 1):
                 result = (
                     await db.execute(
                         select(KeyResult).where(
@@ -815,9 +755,7 @@ async def seed_database(
                                 started_at=datetime(current_year, 1, 1, tzinfo=UTC),
                             )
                         )
-                values = (
-                    (20.0, 31.0, 45.0) if source == "manual" else (10.0, 25.0, 40.0)
-                )
+                values = (20.0, 31.0, 45.0) if source == "manual" else (10.0, 25.0, 40.0)
                 existing_dates = set(
                     (
                         await db.execute(
@@ -899,7 +837,7 @@ def migrate(database_url: str) -> None:
     """Run ordinary forward migrations against the explicit demo target only."""
     environment = os.environ.copy()
     environment["TEFTERI_DATABASE_URL"] = database_url
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 - fixed arguments, only the explicit demo URL
         [
             sys.executable,
             "-m",
@@ -921,6 +859,7 @@ def migrate(database_url: str) -> None:
 
 
 async def run() -> None:
+    """Seed the explicit throw-away Vikunja and demo database, then print the sign-in details."""
     vikunja_url, database_url, secret_key = settings_from_environment()
     today = date.today()
     parsed_db = make_url(database_url)
@@ -934,9 +873,7 @@ async def run() -> None:
     ) as client:
         info = _request(client, "GET", "/info")
         if not isinstance(info.json(), dict):
-            raise SeedError(
-                "The local Vikunja /info endpoint returned an unexpected response."
-            )
+            raise SeedError("The local Vikunja /info endpoint returned an unexpected response.")
         token = vikunja_token(client)
 
     migrate(database_url)
@@ -974,21 +911,18 @@ async def run() -> None:
             tasks,
             today,
         )
-    print(
-        "Seeded fake demo data in the explicitly selected local Vikunja and SQLite database."
-    )
+    print("Seeded fake demo data in the explicitly selected local Vikunja and SQLite database.")
     print(f"Tefteri sign-in: {TEFTERI_USERNAME} / {TEFTERI_PASSWORD}")
     print(f"Vikunja sign-in: {VIKUNJA_USERNAME} / {VIKUNJA_PASSWORD}")
     print(
         "Run the local Tefteri server with TEFTERI_DATABASE_URL and TEFTERI_SECRET_KEY "
         "set to the same values as TEFTERI_DEMO_DATABASE_URL and TEFTERI_DEMO_SECRET_KEY."
     )
-    print(
-        "After the first sync, delete 'Demo theme to orphan' in Vikunja to see the orphan state."
-    )
+    print("After the first sync, delete 'Demo theme to orphan' in Vikunja to see the orphan state.")
 
 
 def main() -> int:
+    """Run the seed and turn every failure into one clear diagnostic."""
     try:
         asyncio.run(run())
     except Exception as exc:  # noqa: BLE001 - command-line failures need one clear diagnostic

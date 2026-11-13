@@ -36,9 +36,10 @@ saves your work as you go, so you can stop and come back later.
 Tefteri keeps your projects and your tasks in your task app. When you give a task a day, tefteri
 writes that day as the due date of the task in your task app.
 
-The weekly session has no goals. Goals are for the year. Monthly planning chooses themes, and
-weekly planning chooses milestones under those themes. Read [Plan your month](monthly-planning.md)
-to set the focus for a month.
+The weekly session has no goals. Goals are for the year. Read
+[Plan for the year](annual-planning.md). Monthly planning chooses themes, and weekly planning
+chooses milestones under those themes. Read
+[Plan your month](monthly-planning.md) to set the focus for a month.
 
 ## Start the session
 

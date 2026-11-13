@@ -9,6 +9,7 @@ setup
 architecture
 design
 sync
+annual-planning
 monthly-cycle
 weekly-planning
 work-categories

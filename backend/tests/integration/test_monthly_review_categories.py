@@ -1,6 +1,7 @@
 """Category counts and trend come from the injected feature-005 reader."""
 
 from datetime import date
+from typing import Any
 
 from tefteri.domain.monthly import CategoryCounts
 from tefteri.domain.work_categories import CategoryCounts as WorkCategoryCounts
@@ -12,11 +13,11 @@ from tests.integration.monthly_review_helpers import MONTH, previous_month, setu
 class FakeCategoryCountsReader:
     """Return fixed work-category counts for selected months."""
 
-    def __init__(self, counts: dict[date, CategoryCounts]) -> None:
+    def __init__(self, counts: dict[date, CategoryCounts | None]) -> None:
         self.counts = counts
         self.calls: list[date] = []
 
-    async def month_counts(self, db, user_id, month_start):  # noqa: ANN001
+    async def month_counts(self, db: Any, user_id: Any, month_start: date) -> CategoryCounts | None:
         self.calls.append(month_start)
         return self.counts.get(month_start)
 
@@ -112,9 +113,17 @@ async def test_statistics_reader_adapts_summary_counts_without_recalculation(
     user_id = await env.user_id()
 
     class FakeStatisticsService:
-        calls: list[tuple] = []
+        calls: list[tuple[Any, ...]] = []
 
-        async def summary(self, db, uid, tz, period, start, today):  # noqa: ANN001
+        async def summary(
+            self,
+            db: Any,
+            uid: Any,
+            tz: Any,
+            period: Any,
+            start: Any,
+            today: Any,
+        ) -> Any:
             self.calls.append((uid, tz, period, start, today))
 
             class Summary:
@@ -125,7 +134,7 @@ async def test_statistics_reader_adapts_summary_counts_without_recalculation(
 
     statistics = FakeStatisticsService()
     reader = StatisticsCategoryCountsReader(
-        statistics,
+        statistics,  # type: ignore[arg-type]
         clock=lambda: env.app.state.clock(),
     )
     async with env.db() as db:

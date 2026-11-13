@@ -6,17 +6,18 @@ a different thing. It has no goals. It works on milestones. Refer to
 
 Monthly planning has its own review. It compares theme targets with finished milestones, shows
 key result movement and work categories, and saves an immutable, versioned snapshot. Refer to
-[Plan your month](monthly-planning.md). The monthly review is separate from the older stored
-period review described on this page.
+[Plan your month](monthly-planning.md). The monthly review is separate from the stored period
+review described on this page.
 
 ## What a review shows
 
-The stored period review counts the goals of the period as planned. Tefteri does not count
-dropped goals. This older review does not list single tasks. The monthly review does not use this
-goal count.
+A review of a year plan counts the annual goals of that year. Tefteri does not count retired
+goals. Tefteri marks a goal complete when its status is done or when the progress of its key
+results reaches the target.
 
-A goal is complete when you mark it complete, or when you complete all its smaller goals and
-tasks. The tasks of a goal only change its progress.
+A review of a month or week plan does not use goals. If the plan is from before annual planning,
+its review can list old month or week goals. Tefteri shows the count as "goals (history)" and
+keeps the list read-only.
 
 Tefteri carries over the goals that are not complete. The review lists them in a separate
 section. Use this list when you plan the next period.
@@ -41,7 +42,7 @@ Add annual goals in annual planning. The plan collects all goals for its year. R
 4. Read the Planned list. A green check mark shows a completed goal.
 5. Read the Carried over list.
 
-![The review of the plan October: get back in shape. It shows the planned goals, the goals that are carried over and the retrospective.](../images/review.png)
+![The review of the plan October: get back in shape. It shows the planned goals, the carried-over goals and the retrospective.](../images/review.png)
 
 Tefteri keeps the review as it was when you opened it the first time. Later changes to goals
 do not change the review. To count the goals again, choose Update review.

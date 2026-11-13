@@ -147,9 +147,8 @@ It does not recalculate the review or join live project, milestone or key result
 `GET /monthly/snapshots?year=YYYY` route exposes the same list. Feature 008 treats the payload
 as versioned data and tolerates fields that are not present in an older schema version.
 
-For the API shapes, see
-[the monthly API contract](../../specs/007-monthly-cycle/contracts/api.md) and
-[the annual review contract](../../specs/008-annual-review/contracts/api.md).
+For the API shapes, see `specs/007-monthly-cycle/contracts/api.md` and
+`specs/008-annual-review/contracts/api.md`.
 
 ## Tests
 

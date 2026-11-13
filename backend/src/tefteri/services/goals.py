@@ -116,7 +116,7 @@ class GoalService:
                 )
                 .group_by(Task.goal_id)
             )
-            counts = {goal_id: count for goal_id, count in rows.tuples()}
+            counts = {goal_id: count for goal_id, count in rows.tuples() if goal_id is not None}
         return [LegacyGoal(g, counts.get(g.id, 0)) for g in goals]
 
     async def create_plan(

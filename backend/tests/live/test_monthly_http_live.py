@@ -24,7 +24,6 @@ from tefteri.api.routers.monthly import (
     SuggestionsOut,
     ThemePickerOut,
 )
-from tests.conftest import V1
 from tests.live.conftest import RealVikunja
 
 pytestmark = pytest.mark.live
@@ -86,13 +85,13 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
     }
 
     async def sync() -> None:
-        response = await api.post(f"{V1}/sync")
+        response = await api.post("/sync")
         assert response.status_code == 200, response.text
         outcomes = response.json()
         assert outcomes and all(item["outcome"] == "ok" for item in outcomes), outcomes
 
     await sync()
-    classification = (await api.get(f"{V1}/projects/classification")).json()
+    classification = (await api.get("/projects/classification")).json()
     project_ids = {
         project["name"]: project["id"]
         for connection in classification["connections"]
@@ -101,20 +100,20 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
     labels = [{"id": project_ids[f"{name} {tag}"], "label": "theme"} for name in names] + [
         {"id": project_ids[f"{name} {tag}"], "label": "milestone"} for name in remote_milestones
     ]
-    labeled = await api.put(f"{V1}/projects/labels", json={"changes": labels})
+    labeled = await api.put("/projects/labels", json={"changes": labels})
     assert labeled.status_code == 200, labeled.text
 
     monday = today - timedelta(days=today.weekday())
-    weekly_candidates = (await api.get(f"{V1}/weekly/{monday}/candidates")).json()
+    weekly_candidates = (await api.get(f"/weekly/{monday}/candidates")).json()
     candidates = {row["name"]: row["container_id"] for row in weekly_candidates}
     for name in remote_milestones:
-        added = await api.post(
-            f"{V1}/weekly/{monday}/projects",
+        added_week = await api.post(
+            f"/weekly/{monday}/projects",
             json={"container_id": candidates[f"{name} {tag}"]},
         )
-        assert added.status_code == 201, added.text
-    assert (await api.post(f"{V1}/weekly/{monday}/spread")).status_code == 200
-    assert (await api.post(f"{V1}/weekly/{monday}/commit")).status_code == 200
+        assert added_week.status_code == 201, added_week.text
+    assert (await api.post(f"/weekly/{monday}/spread")).status_code == 200
+    assert (await api.post(f"/weekly/{monday}/commit")).status_code == 200
     for task_id in task_ids.values():
         await real.update(task_id, done=True)
     await sync()
@@ -127,25 +126,25 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
         assert response.status_code in statuses, response.text
         return model.model_validate(response.json())
 
-    plan = await parsed(await api.get(f"{V1}/monthly/{month}"), MonthlyPlanOut)
+    plan = await parsed(await api.get(f"/monthly/{month}"), MonthlyPlanOut)
     assert plan.focus_known is False
-    past_plan = await parsed(await api.get(f"{V1}/monthly/{previous_month:%Y-%m}"), MonthlyPlanOut)
-    future_plan = await parsed(await api.get(f"{V1}/monthly/{next_month_text}"), MonthlyPlanOut)
+    past_plan = await parsed(await api.get(f"/monthly/{previous_month:%Y-%m}"), MonthlyPlanOut)
+    future_plan = await parsed(await api.get(f"/monthly/{next_month_text}"), MonthlyPlanOut)
     assert {past_plan.state.value, plan.state.value, future_plan.state.value} == {
         "past",
         "current",
         "future",
     }
-    picker = await parsed(await api.get(f"{V1}/monthly/{month}/themes"), ThemePickerOut)
+    picker = await parsed(await api.get(f"/monthly/{month}/themes"), ThemePickerOut)
     assert {str(theme.project_id) for theme in picker.themes} >= {str(a), str(b), str(c), str(d)}
     await parsed(
         await api.get(
-            f"{V1}/monthly/{month}/themes",
+            f"/monthly/{month}/themes",
             params={"q": "Theme A", "connection_id": str(picker.themes[0].connection_id)},
         ),
         ThemePickerOut,
     )
-    await parsed(await api.get(f"{V1}/monthly/{month}/suggestions"), SuggestionsOut)
+    await parsed(await api.get(f"/monthly/{month}/suggestions"), SuggestionsOut)
 
     # Exercise all count-note variants without changing the saved current-month focus.
     for entries, note in (
@@ -153,18 +152,18 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
         ([{"project_id": a, "target": None}], "below"),
         ([{"project_id": project_ids[f"{name} {tag}"], "target": None} for name in names], "above"),
     ):
-        preview = await parsed(
+        focus_preview = await parsed(
             await api.put(
-                f"{V1}/monthly/{next_month_text}/focus",
+                f"/monthly/{next_month_text}/focus",
                 json={"entries": entries, "dry_run": True},
             ),
             FocusSavePreviewOut,
         )
-        assert preview.count_note == note
+        assert focus_preview.count_note == note
 
     initial = await parsed(
         await api.put(
-            f"{V1}/monthly/{month}/focus",
+            f"/monthly/{month}/focus",
             json={
                 "entries": [
                     {"project_id": a, "target": 0},
@@ -180,7 +179,7 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
 
     # Seed manual key results in both update states, and link them to live focus themes.
     goals = await api.post(
-        f"{V1}/annual/{year}/goals/bulk",
+        f"/annual/{year}/goals/bulk",
         json={
             "goals": [
                 {
@@ -212,12 +211,12 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
     )
     assert goals.status_code == 201, goals.text
     updated_id = goals.json()["goals"][0]["key_results"][0]["id"]
-    written = await api.post(f"{V1}/annual/key-results/{updated_id}/values", json={"value": 2})
+    written = await api.post(f"/annual/key-results/{updated_id}/values", json={"value": 2})
     assert written.status_code == 201, written.text
 
     target_preview = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes",
+            f"/monthly/{month}/changes",
             json={"kind": "target", "out_project_id": a, "target": 1, "dry_run": True},
         ),
         FocusChangePreviewOut,
@@ -225,45 +224,45 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
     assert target_preview.effect.message
     target_change = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes",
+            f"/monthly/{month}/changes",
             json={"kind": "target", "out_project_id": a, "target": 1},
         ),
         FocusChangeResultOut,
     )
     swapped = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes",
+            f"/monthly/{month}/changes",
             json={"kind": "swap", "out_project_id": d, "in_project_id": e, "target": 1},
         ),
         FocusChangeResultOut,
     )
-    added = await parsed(
+    added_change = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes",
+            f"/monthly/{month}/changes",
             json={"kind": "add", "in_project_id": f, "target": None},
         ),
         FocusChangeResultOut,
     )
     removed = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes",
+            f"/monthly/{month}/changes",
             json={"kind": "remove", "out_project_id": c},
         ),
         FocusChangeResultOut,
     )
-    assert target_change.batch_id != swapped.batch_id != added.batch_id != removed.batch_id
+    assert target_change.batch_id != swapped.batch_id != added_change.batch_id != removed.batch_id
 
     temporary = project_ids[f"Theme G {tag}"]
     undoable = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes",
+            f"/monthly/{month}/changes",
             json={"kind": "add", "in_project_id": temporary, "target": None},
         ),
         FocusChangeResultOut,
     )
     await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/changes/undo",
+            f"/monthly/{month}/changes/undo",
             json={"batch_id": str(undoable.batch_id)},
         ),
         FocusUndoOut,
@@ -274,20 +273,20 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
     deleted = await real.client.delete(f"{real.base}/projects/{project_c}", headers=real.headers)
     assert deleted.status_code == 200, deleted.text
     relabelled = await api.put(
-        f"{V1}/projects/labels", json={"changes": [{"id": d, "label": "maintenance"}]}
+        "/projects/labels", json={"changes": [{"id": d, "label": "maintenance"}]}
     )
     assert relabelled.status_code == 200, relabelled.text
     await sync()
 
-    history = await parsed(await api.get(f"{V1}/monthly/{month}/history"), FocusHistoryOut)
+    history = await parsed(await api.get(f"/monthly/{month}/history"), FocusHistoryOut)
     assert {item.kind.value for item in history.changes} >= {"swap", "add", "remove", "target"}
     assert any(item.source.value == "undo" for item in history.changes)
 
-    draft = await parsed(await api.get(f"{V1}/monthly/{month}/review"), MonthlyReviewOut)
+    draft = await parsed(await api.get(f"/monthly/{month}/review"), MonthlyReviewOut)
     assert draft.draft and not draft.stored
-    preview = await parsed(
+    review_preview = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/review",
+            f"/monthly/{month}/review",
             json={
                 "decisions": [
                     {"project_id": a, "decision": "carry"},
@@ -300,10 +299,10 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
         ),
         ReviewStorePreviewOut,
     )
-    assert preview.will_create_version == 1
+    assert review_preview.will_create_version == 1
     stored = await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/review",
+            f"/monthly/{month}/review",
             json={
                 "decisions": [
                     {"project_id": a, "decision": "carry"},
@@ -342,26 +341,26 @@ async def test_every_monthly_route_over_tcp_parses_all_seeded_enums(
     assert theme_rows[str(d)].label_changed == "maintenance"
 
     await parsed(
-        await api.get(f"{V1}/monthly/{month}/review", params={"version": 1}),
+        await api.get(f"/monthly/{month}/review", params={"version": 1}),
         MonthlyReviewOut,
     )
     await parsed(
         await api.post(
-            f"{V1}/monthly/{month}/review/current",
+            f"/monthly/{month}/review/current",
             json={"version": 1, "dry_run": True},
         ),
         MakeCurrentPreviewOut,
     )
     await parsed(
-        await api.post(f"{V1}/monthly/{month}/review/current", json={"version": 1}),
+        await api.post(f"/monthly/{month}/review/current", json={"version": 1}),
         MonthlyReviewOut,
     )
     await parsed(
-        await api.get(f"{V1}/monthly/{next_month_text}/suggestions"),
+        await api.get(f"/monthly/{next_month_text}/suggestions"),
         SuggestionsOut,
     )
     snapshots = await parsed(
-        await api.get(f"{V1}/monthly/snapshots", params={"year": year}), SnapshotsOut
+        await api.get("/monthly/snapshots", params={"year": year}), SnapshotsOut
     )
     assert snapshots.year == year
     assert any(item.month == month for item in snapshots.snapshots)
