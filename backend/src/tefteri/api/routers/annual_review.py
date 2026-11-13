@@ -303,13 +303,6 @@ class NextYearOut(BaseModel):
     links: int
 
 
-class StoredPeriodReviewOut(BaseModel):
-    """The stored period review of the year, when one exists."""
-
-    plan_id: uuid.UUID
-    period_start: date
-
-
 class MilestonesShippedOut(BaseModel):
     """The distinct milestones over the snapshots of the year."""
 
@@ -333,7 +326,6 @@ class AnnualReviewOut(BaseModel):
     drill_down: DrillDownOut
     next_year: NextYearOut
     year_note: NoteOut | None
-    stored_period_review: StoredPeriodReviewOut | None
 
 
 class NotePutIn(BaseModel):

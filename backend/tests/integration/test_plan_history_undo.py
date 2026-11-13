@@ -1,6 +1,5 @@
-"""Annual-plan retirement, restore, undo and immutable period-review history."""
+"""Annual-plan retirement, restore, undo and time-ordered history."""
 
-import json
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
@@ -8,9 +7,7 @@ from typing import Any, cast
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from tefteri.db.models.goal import Plan
 from tefteri.db.models.key_result import KeyResult, KeyResultTheme, KeyResultValue
-from tefteri.db.models.review import PeriodReview
 from tefteri.domain.entities import Container
 from tests.conftest import V1
 from tests.integration.conftest import ProjectsEnv
@@ -65,51 +62,6 @@ def _key_result(metric: str = "Measure", *, themes: list[str] | None = None) -> 
         "deadline": f"{YEAR}-12-31",
         "theme_ids": themes or [],
     }
-
-
-async def _review_snapshot(env: ProjectsEnv) -> bytes:
-    async with env.db() as db:
-        rows = list((await db.execute(select(PeriodReview).order_by(PeriodReview.id))).scalars())
-    serialized = [
-        {
-            column.name: (
-                value.isoformat()
-                if isinstance(value, (date, datetime))
-                else str(value)
-                if value is not None and not isinstance(value, (str, int, float, bool, list, dict))
-                else value
-            )
-            for column in PeriodReview.__table__.columns
-            for value in [getattr(row, column.name)]
-        }
-        for row in rows
-    ]
-    return json.dumps(serialized, sort_keys=True, separators=(",", ":")).encode()
-
-
-async def _add_period_review(env: ProjectsEnv) -> None:
-    user_id = await env.user_id()
-    async with env.db() as db:
-        plan = Plan(
-            user_id=user_id,
-            period_type="week",
-            period_start=date(2030, 5, 27),
-            title="Stored review plan",
-            summary="unchanged",
-        )
-        db.add(plan)
-        await db.flush()
-        db.add(
-            PeriodReview(
-                user_id=user_id,
-                plan_id=plan.id,
-                generated_at=NOW,
-                planned_count=2,
-                completed_count=1,
-                carried_over=["one"],
-                items=[{"title": "kept", "state": "active"}],
-            )
-        )
 
 
 async def test_key_result_retire_preview_matches_write_and_preserves_series_and_history(
@@ -295,9 +247,7 @@ async def test_restore_skips_a_theme_that_is_no_longer_eligible(env: ProjectsEnv
     assert [entry["name"] for entry in restored.json()["links_skipped"]] == ["Open source"]
 
 
-async def test_history_is_time_ordered_and_period_reviews_are_unchanged(
-    env: ProjectsEnv,
-) -> None:
+async def test_history_is_time_ordered(env: ProjectsEnv) -> None:
     clock = {"now": NOW}
     _freeze(env.api)
     env.api.app.state.annual_service._clock = lambda: clock["now"]  # type: ignore[attr-defined]
@@ -314,8 +264,6 @@ async def test_history_is_time_ordered_and_period_reviews_are_unchanged(
         json={"theme_ids": [theme_id]},
     )
     assert linked.status_code == 200, linked.text
-    await _add_period_review(env)
-    original_review = await _review_snapshot(env)
 
     clock["now"] += timedelta(seconds=1)
     edited = await env.api.patch(f"{V1}/annual/goals/{goal['id']}", json={"title": "After"})
@@ -324,7 +272,7 @@ async def test_history_is_time_ordered_and_period_reviews_are_unchanged(
     clock["now"] += timedelta(seconds=1)
     retired = await env.api.post(
         f"{V1}/annual/key-results/{key_result_id}/retire",
-        json={"reason": "Keep the review snapshot"},
+        json={"reason": "Keep the history"},
     )
     assert retired.status_code == 200, retired.text
     clock["now"] += timedelta(seconds=1)
@@ -353,5 +301,4 @@ async def test_history_is_time_ordered_and_period_reviews_are_unchanged(
         edit_at = edit_at.replace(tzinfo=UTC)
     assert edit_at == edited_at
     retire_row = next(row for row in history if row["kind"] == "key_result_retired")
-    assert retire_row["reason"] == "Keep the review snapshot"
-    assert await _review_snapshot(env) == original_review
+    assert retire_row["reason"] == "Keep the history"

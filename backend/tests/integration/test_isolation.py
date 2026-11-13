@@ -71,9 +71,6 @@ async def test_other_users_data_is_invisible_and_untouchable(
     key_result = goal["key_results"][0]
     await enter_value(api, key_result["id"], 3)
     token = (await api.post(f"{V1}/annual/push-token")).json()["token"]
-    await api.post(
-        f"{V1}/plans", json={"period_type": "year", "period_start": "2026-01-01", "title": "Plan"}
-    )
     await api.get(f"{V1}/notes/daily/2026-11-02")
     entry_id = None
     sam = await make_user("sam")
@@ -85,7 +82,6 @@ async def test_other_users_data_is_invisible_and_untouchable(
         "calendar",
         "notes",
         "goals/history",
-        "plans",
         "conflicts",
         "sync/status",
     ):

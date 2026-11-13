@@ -48,6 +48,7 @@ class ValueDialog extends StatefulWidget {
 class _ValueDialogState extends State<ValueDialog> {
   final _value = TextEditingController();
   late final _date = TextEditingController(text: isoDate(widget.today));
+  late int _yesNoValue = widget.keyResult.currentValue >= 0.5 ? 1 : 0;
   String? _valueError;
   String? _dateError;
   String? _error;
@@ -61,7 +62,9 @@ class _ValueDialogState extends State<ValueDialog> {
   }
 
   Future<void> _save() async {
-    final value = parseNumber(_value.text);
+    final value = widget.keyResult.yesNo
+        ? _yesNoValue.toDouble()
+        : parseNumber(_value.text);
     final day = parseDay(_date.text);
     setState(() {
       _valueError = value == null ? 'The value must be a number.' : null;
@@ -100,8 +103,10 @@ class _ValueDialogState extends State<ValueDialog> {
           children: [
             Text(kr.metric, style: text.titleSmall),
             Text(
-                'Now ${formatNumber(kr.currentValue)} · start '
-                '${formatNumber(kr.startValue)} · target ${formatNumber(kr.target)}',
+                kr.yesNo
+                    ? 'Now ${kr.yesNoAnswer} · deadline ${kr.deadline}'
+                    : 'Now ${formatNumber(kr.currentValue)} · start '
+                        '${formatNumber(kr.startValue)} · target ${formatNumber(kr.target)}',
                 style: text.bodySmall),
             if (kr.automatic)
               Padding(
@@ -114,16 +119,29 @@ class _ValueDialogState extends State<ValueDialog> {
                 ),
               ),
             const SizedBox(height: Space.sm),
-            TextField(
-              key: const Key('value-field'),
-              controller: _value,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true, signed: true),
-              decoration: InputDecoration(
-                  labelText: 'New value', errorText: _valueError),
-              onSubmitted: (_) => _save(),
-            ),
+            if (kr.yesNo)
+              SegmentedButton<int>(
+                key: const Key('value-yes-no'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('No')),
+                  ButtonSegment(value: 1, label: Text('Yes')),
+                ],
+                selected: {_yesNoValue},
+                onSelectionChanged: (s) =>
+                    setState(() => _yesNoValue = s.first),
+              )
+            else
+              TextField(
+                key: const Key('value-field'),
+                controller: _value,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true, signed: true),
+                decoration: InputDecoration(
+                    labelText: 'New value', errorText: _valueError),
+                onSubmitted: (_) => _save(),
+              ),
             const SizedBox(height: Space.sm),
             TextField(
               key: const Key('value-date'),

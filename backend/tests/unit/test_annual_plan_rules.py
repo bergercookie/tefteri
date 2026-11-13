@@ -92,6 +92,7 @@ def _kr(
         id=key,
         status=status,
         metric=f"Metric {key}",
+        kind="number",
         start_value=start,
         target=target,
         deadline=deadline,

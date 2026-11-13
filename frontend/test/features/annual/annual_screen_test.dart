@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/theme/theme.dart';
@@ -77,14 +78,21 @@ void main() {
     expect(find.text('Sleep better'), findsOneWidget);
   });
 
-  testWidgets('the fourth key result is refused with the limit message',
+  testWidgets('the add key result button is disabled at three key results',
       (tester) async {
     final server = AnnualServer(goals: [_threeKeyResults()]);
     final api = await pumpAnnual(tester, server.routes());
-    await tapKey(tester, 'add-kr-g1');
-    expect(find.byKey(const Key('kr-form')), findsNothing);
-    expect(find.text('A goal can have three key results. Retire one first.'),
-        findsOneWidget);
+    final button =
+        tester.widget<TextButton>(find.byKey(const Key('add-kr-g1')));
+    expect(button.onPressed, isNull);
+    final tooltip = tester.widget<Tooltip>(find
+        .ancestor(
+          of: find.byKey(const Key('add-kr-g1')),
+          matching: find.byType(Tooltip),
+        )
+        .first);
+    expect(tooltip.message,
+        'A goal can have three key results. Retire one first.');
     expect(api.where('POST /annual/goals/g1/key-results'), isEmpty);
   });
 
@@ -220,5 +228,86 @@ void main() {
             of: find.byKey(const Key('year-label')),
             matching: find.text('2031')),
         findsOneWidget);
+  });
+
+  testWidgets('a yes/no key result asks for no numbers', (tester) async {
+    final server = AnnualServer(goals: [annualGoalJson('g1', 'Launch it')]);
+    final api = await pumpAnnual(tester, server.routes());
+    await tapKey(tester, 'add-kr-g1');
+    await tester.tap(find.text('Yes or No'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('kr-start')), findsNothing);
+    expect(find.byKey(const Key('kr-target')), findsNothing);
+    expect(find.byKey(const Key('kr-yes-no-note')), findsOneWidget);
+    await typeKey(tester, 'kr-metric', 'Launch the site');
+    await tapKey(tester, 'kr-save');
+    final body =
+        api.where('POST /annual/goals/g1/key-results').single.data! as Map;
+    expect(body['kind'], 'yes_no');
+    expect(body['start_value'], 0);
+    expect(body['target'], 1);
+    expect(find.byKey(const Key('kr-value-nkr1')), findsOneWidget);
+    expect(find.text('No'), findsWidgets);
+  });
+
+  testWidgets('a yes/no key result takes Yes and No in the value dialog',
+      (tester) async {
+    final server = AnnualServer(goals: [
+      annualGoalJson('g1', 'Launch it', keyResults: [
+        keyResultJson('kr1', 'Launched', kind: 'yes_no', target: 1),
+      ]),
+    ]);
+    final api = await pumpAnnual(
+        tester,
+        server.routes({
+          'POST /annual/key-results/kr1/values': (RequestOptions o) =>
+              {'key_result': null},
+        }));
+    await tapKey(tester, 'kr-value-btn-kr1');
+    expect(find.byKey(const Key('value-field')), findsNothing);
+    expect(find.byKey(const Key('value-yes-no')), findsOneWidget);
+    await tester.tap(find.text('Yes'));
+    await tester.pumpAndSettle();
+    await tapKey(tester, 'value-save');
+    final body =
+        api.where('POST /annual/key-results/kr1/values').single.data! as Map;
+    expect(body['value'], 1);
+  });
+
+  testWidgets('key results collapse per goal and all at once', (tester) async {
+    final server = AnnualServer(goals: [
+      annualGoalJson('g1', 'Get fit', keyResults: [
+        keyResultJson('kr1', 'Runs'),
+        keyResultJson('kr2', 'Push-ups'),
+      ]),
+      annualGoalJson('g2', 'Read more', keyResults: [
+        keyResultJson('kr3', 'Books'),
+      ]),
+    ]);
+    await pumpAnnual(tester, server.routes());
+    expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr2')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
+
+    await tapKey(tester, 'goal-toggle-g1');
+    expect(find.byKey(const Key('kr-kr1')), findsNothing);
+    expect(find.byKey(const Key('kr-kr2')), findsNothing);
+    expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
+    expect(find.text('2 key results hidden'), findsOneWidget);
+
+    await tapKey(tester, 'expand-all-goals');
+    expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr2')), findsOneWidget);
+
+    await tapKey(tester, 'collapse-all-goals');
+    expect(find.byKey(const Key('kr-kr1')), findsNothing);
+    expect(find.byKey(const Key('kr-kr2')), findsNothing);
+    expect(find.byKey(const Key('kr-kr3')), findsNothing);
+    expect(find.text('2 key results hidden'), findsOneWidget);
+    expect(find.text('1 key result hidden'), findsOneWidget);
+
+    await tapKey(tester, 'expand-all-goals');
+    expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
   });
 }

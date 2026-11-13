@@ -30,7 +30,6 @@ from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
 from tefteri.api.routers import push as push_router
-from tefteri.api.routers import reviews as reviews_router
 from tefteri.api.routers import settings as settings_router
 from tefteri.api.routers import statistics as statistics_router
 from tefteri.api.routers import sync as sync_router
@@ -67,7 +66,6 @@ from tefteri.services.monthly_review import (
 from tefteri.services.notes import NoteService
 from tefteri.services.projects import ProjectService
 from tefteri.services.review_notes import ReviewNoteService
-from tefteri.services.reviews import ReviewService
 from tefteri.services.statistics import StatisticsService
 from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
@@ -226,7 +224,6 @@ def create_app(
     app.state.calendar_service = CalendarService(connection_service)
     note_service = NoteService(connection_service)
     app.state.note_service = note_service
-    app.state.review_service = ReviewService(note_service)
     app.state.conflict_service = ConflictService(connection_service)
     app.state.user_service = UserService()
     app.state.google_oauth = (
@@ -264,7 +261,6 @@ def create_app(
         monthly_router,
         push_router,
         planning_router,
-        reviews_router,
         weekly_router,
         statistics_router,
         milestones_router,

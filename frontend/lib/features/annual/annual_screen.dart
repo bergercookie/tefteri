@@ -42,6 +42,7 @@ class AnnualScreen extends ConsumerStatefulWidget {
 class _AnnualScreenState extends ConsumerState<AnnualScreen> {
   late int _year;
   final Set<int> _seedDismissed = {};
+  final Set<String> _collapsedGoals = {};
   bool _seedOpen = false;
   String? _error;
 
@@ -59,6 +60,7 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
   void _go(int year) => setState(() {
         _year = year;
         _seedOpen = false;
+        _collapsedGoals.clear();
         _error = null;
       });
 
@@ -166,6 +168,21 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
             batch, effect.ended.isEmpty ? 'Themes linked.' : 'Links changed.');
       });
 
+  Future<void> _addGoalThemes(AnnualGoal goal) => _run(() async {
+        final active = goal.activeKeyResults;
+        if (active.isEmpty) return;
+        final picked = await pickThemes(context);
+        if (picked == null || picked.isEmpty || !mounted) return;
+        final ids = [for (final t in picked) t.projectId];
+        final batch = await _plan.addGoalThemes(goal.id, ids);
+        _undo(
+          batch,
+          active.length == 1
+              ? 'Theme added to its key result.'
+              : 'Theme added to ${active.length} key results.',
+        );
+      });
+
   void _updateValue(KeyResult kr) => showValueDialog(context,
       keyResult: kr,
       today: _today,
@@ -179,6 +196,7 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
         restoreGoal: (g) => _run(() => _plan.restoreGoal(g.id)),
         editKeyResult: _editKeyResult,
         linkThemes: _linkThemes,
+        addGoalThemes: _addGoalThemes,
         retireKeyResult: _retireKeyResult,
         restoreKeyResult: (k) => _run(() => _plan.restoreKeyResult(k.id)),
         updateValue: _updateValue,
@@ -268,6 +286,24 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
             icon: const Icon(Icons.history, size: 18),
             label: const Text('History'),
           ),
+          if (plan.goals.isNotEmpty)
+            TextButton.icon(
+              key: const Key('expand-all-goals'),
+              onPressed: () => setState(() => _collapsedGoals.clear()),
+              icon: const Icon(Icons.unfold_more, size: 18),
+              label: const Text('Expand all'),
+            ),
+          if (plan.goals.isNotEmpty)
+            TextButton.icon(
+              key: const Key('collapse-all-goals'),
+              onPressed: () => setState(() {
+                _collapsedGoals
+                  ..clear()
+                  ..addAll([for (final g in plan.goals) g.id]);
+              }),
+              icon: const Icon(Icons.unfold_less, size: 18),
+              label: const Text('Collapse all'),
+            ),
           TextButton.icon(
             key: const Key('open-legacy-goals'),
             onPressed: () => showLegacyGoals(context),
@@ -354,7 +390,17 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
                   )
                 else ...[
                   for (final g in plan.goals)
-                    GoalCard(key: ValueKey(g.id), goal: g, actions: actions),
+                    GoalCard(
+                      key: ValueKey(g.id),
+                      goal: g,
+                      actions: actions,
+                      collapsed: _collapsedGoals.contains(g.id),
+                      onToggleCollapsed: () => setState(() {
+                        if (!_collapsedGoals.remove(g.id)) {
+                          _collapsedGoals.add(g.id);
+                        }
+                      }),
+                    ),
                   if (plan.editable)
                     Align(
                       alignment: Alignment.centerLeft,

@@ -1,4 +1,4 @@
-"""Goals and plans.
+"""Goals.
 
 A goal belongs to one period. Since spec 006 the annual plan is the only planning flow that
 owns goals: a row with ``period_type = 'year'`` is an annual goal, and month or week rows are
@@ -50,17 +50,3 @@ class Goal(IdMixin, Base):
     position: Mapped[int] = mapped_column(default=0, server_default=sa.text("0"), nullable=False)
 
     __table_args__ = (sa.Index("ix_goals_user_period", "user_id", "period_type", "period_start"),)
-
-
-class Plan(IdMixin, Base):
-    """A plan groups the goals of one period and is kept after the period ends."""
-
-    __tablename__ = "plans"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    period_type: Mapped[str] = mapped_column(String(8))
-    period_start: Mapped[date] = mapped_column(Date)
-    title: Mapped[str] = mapped_column(String(500))
-    summary: Mapped[str] = mapped_column(Text, default="")

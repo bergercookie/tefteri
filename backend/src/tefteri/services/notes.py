@@ -1,4 +1,4 @@
-"""Note use cases: the daily note, retrospectives, and links between notes and tasks."""
+"""Note use cases: the daily note and links between notes and tasks."""
 
 import uuid
 from datetime import date
@@ -24,7 +24,7 @@ class NoteService:
     """Read and write notes through the connected note app.
 
     The note app is not copied. Tefteri keeps a row only for a note that it created or opened
-    (the daily note, a retrospective), so that a task or a review can point at it.
+    (the daily note), so that a task can point at it.
     """
 
     def __init__(self, connections: ConnectionService) -> None:

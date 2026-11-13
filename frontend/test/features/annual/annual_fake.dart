@@ -40,6 +40,7 @@ class AnnualServer {
     final themeIds = [...(body['theme_ids'] as List? ?? const [])];
     return keyResultJson('nkr${++_n}', '${body['metric']}',
         goalId: goalId,
+        kind: '${body['kind'] ?? 'number'}',
         start: body['start_value'] as num,
         target: body['target'] as num,
         deadline: '${body['deadline']}',

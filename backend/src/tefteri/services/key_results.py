@@ -26,6 +26,7 @@ from tefteri.domain.classification import ProjectNode
 from tefteri.domain.enums import (
     ChangeSource,
     GoalState,
+    KeyResultKind,
     LinkEndReason,
     PlanChangeKind,
     UpdateSource,
@@ -236,6 +237,7 @@ class KeyResultService:
         start_value: float,
         target: float,
         deadline: date,
+        kind: KeyResultKind = KeyResultKind.NUMBER,
         update_source: UpdateSource = UpdateSource.MANUAL,
         theme_ids: Sequence[uuid.UUID] = (),
         trees: Iterable[ConnectionTree] | None = None,
@@ -249,6 +251,9 @@ class KeyResultService:
         the user or the seeding asked for it.
         """
         metric = metric.strip()
+        if kind is KeyResultKind.YES_NO:
+            # A yes/no key result stores No (0) and Yes (1); the form asks for no numbers.
+            start_value, target = 0.0, 1.0
         _validate_key_result(
             metric=metric,
             start_value=start_value,
@@ -264,6 +269,7 @@ class KeyResultService:
             goal_id=goal.id,
             year=goal.period_start.year,
             metric=metric,
+            kind=kind.value,
             start_value=start_value,
             target=target,
             deadline=deadline,
@@ -649,6 +655,56 @@ class KeyResultService:
         key_result.updated_at = utcnow()
         return effect
 
+    async def add_themes(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        key_result: KeyResult,
+        theme_ids: Sequence[uuid.UUID],
+        *,
+        trees: Iterable[ConnectionTree],
+        nodes: Mapping[str, ProjectNode],
+        batch_id: uuid.UUID,
+    ) -> LinkSetEffect:
+        """Add themes to a key result without ending any of its current links.
+
+        This is the bulk action of a goal: every key result gets the same themes, and the
+        links that already exist stay. One ``batch_id`` covers the whole goal, so Undo takes
+        all of it back at once. A theme that is not usable now gives ``not_a_theme``.
+        """
+        self._require_active(key_result)
+        usable = self._eligible_theme_keys(trees)
+        wanted: dict[uuid.UUID, str] = {}
+        for theme_id in theme_ids:
+            if theme_id not in usable:
+                raise Invalid(f"{_theme_name(trees, theme_id)} is not a live theme.", "not_a_theme")
+            wanted[theme_id] = usable[theme_id][0]
+        active = await self.active_links(db, key_result)
+        active_ids = {link.project_id for link in active}
+        effect = LinkSetEffect()
+        for theme_id, name in wanted.items():
+            if theme_id not in active_ids:
+                effect.added.append(ThemeEntry(theme_id, name))
+        had_usable = any(is_usable_link(nodes, str(link.project_id)) for link in active)
+        if effect.added and not had_usable:
+            effect.flags_removed.append(NO_USABLE_THEME)
+        if not effect.added:
+            return effect
+        now = self._clock()
+        for index, entry in enumerate(effect.added):
+            await start_link(
+                db,
+                user_id,
+                key_result.id,
+                entry.project_id,
+                key_result.year,
+                now=now + MICROSECOND * index,
+                batch_id=batch_id,
+                source=ChangeSource.USER.value,
+            )
+        key_result.updated_at = utcnow()
+        return effect
+
     # -- restoring (FR-021) -------------------------------------------------------------------
 
     async def restore(
@@ -797,6 +853,8 @@ class KeyResultService:
             raise Conflict("retired", "A retired key result accepts no new value.")
         if not _finite(value):
             raise Invalid("The value must be a finite number.")
+        if key_result.kind == KeyResultKind.YES_NO.value and value not in (0.0, 1.0):
+            raise Invalid("A yes/no key result takes 0 (No) or 1 (Yes).", "invalid")
         zone = ZoneInfo(tz)
         now = self._clock().astimezone(zone)
         today = now.date()

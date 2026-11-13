@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.domain.annual_plan import today_in
-from tefteri.domain.enums import UpdateSource, ValueSource
+from tefteri.domain.enums import KeyResultKind, UpdateSource, ValueSource
 from tefteri.services.annual_plan import (
     AnnualPlan,
     AnnualPlanService,
@@ -76,9 +76,10 @@ class BulkKeyResultIn(BaseModel):
     """One key result in a bulk create."""
 
     metric: str
-    start_value: float
-    target: float
     deadline: date
+    kind: KeyResultKind = KeyResultKind.NUMBER
+    start_value: float = 0
+    target: float = 1
     update_source: UpdateSource | str = UpdateSource.MANUAL
     theme_ids: list[uuid.UUID] = Field(default_factory=list)
     seeded_from_key_result_id: uuid.UUID | None = None
@@ -109,9 +110,10 @@ class KeyResultCreateIn(BaseModel):
     """Data to create a key result."""
 
     metric: str
-    start_value: float
-    target: float
     deadline: date
+    kind: KeyResultKind = KeyResultKind.NUMBER
+    start_value: float = 0
+    target: float = 1
     update_source: UpdateSource | str = UpdateSource.MANUAL
     theme_ids: list[uuid.UUID] = Field(default_factory=list)
 
@@ -137,6 +139,12 @@ class ThemeSetIn(BaseModel):
 
     theme_ids: list[uuid.UUID] = Field(default_factory=list)
     dry_run: bool = False
+
+
+class GoalThemeAddIn(BaseModel):
+    """Theme ids to add to every active key result of one goal."""
+
+    theme_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class ThemeCreateIn(BaseModel):
@@ -300,6 +308,7 @@ async def bulk_create_goals(
             key_results=[
                 BulkKeyResultDraft(
                     metric=kr.metric,
+                    kind=kr.kind,
                     start_value=kr.start_value,
                     target=kr.target,
                     deadline=kr.deadline,
@@ -379,6 +388,7 @@ async def create_key_result(
         user.id,
         goal,
         metric=body.metric,
+        kind=body.kind,
         start_value=body.start_value,
         target=body.target,
         deadline=body.deadline,
@@ -529,6 +539,37 @@ async def set_key_result_themes(
     return {
         "batch_id": batch_id,
         "key_result": await _key_result_from_plan(plan, key_result_id),
+    }
+
+
+@router.put("/annual/goals/{goal_id}/themes")
+async def add_goal_themes(
+    goal_id: uuid.UUID,
+    body: GoalThemeAddIn,
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+) -> object:
+    """Add themes to every active key result of one goal, in one undoable batch."""
+    goal = await _annual(request).goal(db, user.id, goal_id)
+    trees = await load_trees(db, user.id)
+    nodes = {k: v for tree in trees for k, v in tree.nodes.items()}
+    batch_id = uuid.uuid4()
+    effect = await _annual(request).add_goal_themes(
+        db,
+        user.id,
+        goal_id,
+        body.theme_ids,
+        trees=trees,
+        today=_today(request, user),
+        nodes=nodes,
+        batch_id=batch_id,
+    )
+    plan = await _plan_of(request, db, user, goal.period_start.year)
+    return {
+        "batch_id": batch_id,
+        "effect": effect,
+        "goal": await _goal_from_plan(plan, goal_id),
     }
 
 

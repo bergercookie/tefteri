@@ -3,7 +3,7 @@
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.checklist import ChecklistProgress
 from tefteri.db.models.connection import Connection, SourceContainer
-from tefteri.db.models.goal import Goal, Plan
+from tefteri.db.models.goal import Goal
 from tefteri.db.models.key_result import (
     KeyResult,
     KeyResultTheme,
@@ -22,7 +22,6 @@ from tefteri.db.models.monthly import (
 from tefteri.db.models.note import Note
 from tefteri.db.models.project_label import ProjectLabel, ProjectLabelHistory
 from tefteri.db.models.push_token import ValuePushToken
-from tefteri.db.models.review import PeriodReview
 from tefteri.db.models.review_note import ReviewNote
 from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
@@ -49,8 +48,6 @@ __all__ = [
     "MonthlyReview",
     "MonthlyReviewSnapshot",
     "Note",
-    "PeriodReview",
-    "Plan",
     "ReviewNote",
     "PlanChange",
     "ProjectLabel",

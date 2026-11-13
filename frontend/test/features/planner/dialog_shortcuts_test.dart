@@ -61,7 +61,6 @@ void main() {
         (LogicalKeyboardKey.keyT, 't'),
         (LogicalKeyboardKey.keyG, 'g'),
         (LogicalKeyboardKey.keyW, 'w'),
-        (LogicalKeyboardKey.keyR, 'r'),
         (LogicalKeyboardKey.keyN, 'n'),
       ]) {
         await tester.sendKeyEvent(key, character: ch);

@@ -43,6 +43,7 @@ KEY_RESULT_KEYS = {
     "id",
     "goal_id",
     "metric",
+    "kind",
     "start_value",
     "target",
     "deadline",
@@ -162,6 +163,7 @@ async def test_the_read_routes_have_the_contract_shape(env: ProjectsEnv) -> None
     assert set(suggestions["goals"][0]["key_results"][0]) == {
         "key_result_id",
         "metric",
+        "kind",
         "start_value",
         "target",
         "deadline",

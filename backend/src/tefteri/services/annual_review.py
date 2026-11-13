@@ -18,9 +18,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.connection import Connection
-from tefteri.db.models.goal import Goal, Plan
+from tefteri.db.models.goal import Goal
 from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
-from tefteri.db.models.review import PeriodReview
 from tefteri.db.models.review_note import ReviewNote
 from tefteri.db.models.user import User
 from tefteri.domain.annual_plan import today_in, year_state
@@ -68,15 +67,11 @@ class SnapshotReader(Protocol):
 class PlanReader(Protocol):
     """Read the annual plan and its append-only history (006)."""
 
-    async def plan(
-        self, db: AsyncSession, user_id: uuid.UUID, year: int, *, tz: str
-    ) -> AnnualPlan:
+    async def plan(self, db: AsyncSession, user_id: uuid.UUID, year: int, *, tz: str) -> AnnualPlan:
         """Return the goals, key results and links of one planning year."""
         ...
 
-    async def history(
-        self, db: AsyncSession, user_id: uuid.UUID, year: int
-    ) -> list[PlanChangeOut]:
+    async def history(self, db: AsyncSession, user_id: uuid.UUID, year: int) -> list[PlanChangeOut]:
         """Return the history of the year in time order."""
         ...
 
@@ -180,9 +175,7 @@ class AnnualReviewService:
         self._seeds = seeds
         self._clock = clock
 
-    async def review(
-        self, db: AsyncSession, user_id: uuid.UUID, year: int
-    ) -> dict[str, Any]:
+    async def review(self, db: AsyncSession, user_id: uuid.UUID, year: int) -> dict[str, Any]:
         """Build the whole review of ``year`` and change no row (FR-014, SC-002)."""
         user = await db.get(User, user_id)
         if user is None:
@@ -263,7 +256,6 @@ class AnnualReviewService:
             },
             "next_year": next_year,
             "year_note": self._note_out(year_note),
-            "stored_period_review": await self._stored_period_review(db, user_id, year),
         }
 
     # -- reading helpers ----------------------------------------------------------------------
@@ -290,9 +282,7 @@ class AnnualReviewService:
         rows = list(
             (
                 await db.execute(
-                    select(ReviewNote).where(
-                        ReviewNote.user_id == user_id, ReviewNote.year == year
-                    )
+                    select(ReviewNote).where(ReviewNote.user_id == user_id, ReviewNote.year == year)
                 )
             ).scalars()
         )
@@ -332,9 +322,7 @@ class AnnualReviewService:
         rows = list(
             (
                 await db.execute(
-                    select(Connection).where(
-                        Connection.user_id == user_id, Connection.id.in_(ids)
-                    )
+                    select(Connection).where(Connection.user_id == user_id, Connection.id.in_(ids))
                 )
             ).scalars()
         )
@@ -368,29 +356,6 @@ class AnnualReviewService:
             "unmet_key_results": found.unmet_key_results,
             "links": found.links,
         }
-
-    async def _stored_period_review(
-        self, db: AsyncSession, user_id: uuid.UUID, year: int
-    ) -> dict[str, Any] | None:
-        rows = list(
-            (
-                await db.execute(
-                    select(Plan, PeriodReview)
-                    .join(PeriodReview, PeriodReview.plan_id == Plan.id)
-                    .where(
-                        Plan.user_id == user_id,
-                        Plan.period_type == "year",
-                        Plan.period_start == date(year, 1, 1),
-                    )
-                    .order_by(PeriodReview.generated_at.desc())
-                    .limit(1)
-                )
-            ).all()
-        )
-        if not rows:
-            return None
-        plan, _review = rows[0]
-        return {"plan_id": str(plan.id), "period_start": plan.period_start.isoformat()}
 
     @staticmethod
     def _version(parsed: Sequence[_MonthView], month: str) -> int | None:
@@ -525,13 +490,13 @@ class AnnualReviewService:
             }
             for row in history
             if row.key_result_id == key_result.id
-            and row.kind
-            in ("key_result_edited", "key_result_retired", "key_result_restored")
+            and row.kind in ("key_result_edited", "key_result_retired", "key_result_restored")
         ]
         show_last = last if last is not None and outcome.value != "no_value" else None
         return {
             "id": key_id,
             "metric": key_result.metric,
+            "kind": key_result.kind,
             "start_value": key_result.start_value,
             "target": key_result.target,
             "direction": "up" if key_result.target > key_result.start_value else "down",
@@ -590,9 +555,7 @@ class AnnualReviewService:
                 start = _local_day(link.started_at, tz) or date(link.started_at.year, 1, 1)
                 end = _local_day(link.ended_at, tz)
                 ranges.append(
-                    MonthRange(
-                        start, end, link_months(start, end, key_result_year(key_result))
-                    )
+                    MonthRange(start, end, link_months(start, end, key_result_year(key_result)))
                 )
             project = projects.get(project_id)
             stored_name = self._stored_theme_name(views, str(project_id)) or item["name"]

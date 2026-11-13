@@ -110,6 +110,36 @@ async def test_goal_without_key_result_is_saved_with_a_nonblocking_flag(
     assert goal["key_results"] == []
 
 
+async def test_a_yes_no_key_result_needs_no_numbers(api: AsyncClient) -> None:
+    created = await api.post(
+        f"{V1}/annual/{YEAR}/goals/bulk",
+        json={
+            "goals": [
+                {
+                    "title": "Launch the site",
+                    "key_results": [
+                        {"metric": "Site is live", "kind": "yes_no", "deadline": "2026-12-31"}
+                    ],
+                }
+            ]
+        },
+    )
+    assert created.status_code == 201, created.text
+    result = created.json()["goals"][0]["key_results"][0]
+    assert result["kind"] == "yes_no"
+    assert (result["start_value"], result["target"]) == (0, 1)
+    assert result["current_value"] == 0 and result["met"] is False
+
+    answered = await api.post(f"{V1}/annual/key-results/{result['id']}/values", json={"value": 1})
+    assert answered.status_code == 201, answered.text
+    assert answered.json()["key_result"]["current_value"] == 1
+    assert answered.json()["key_result"]["met"] is True
+
+    refused = await api.post(f"{V1}/annual/key-results/{result['id']}/values", json={"value": 0.5})
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "invalid"
+
+
 async def test_annual_goals_are_private_to_their_owner(
     api: AsyncClient, make_user: MakeUser
 ) -> None:

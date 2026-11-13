@@ -53,16 +53,6 @@
           "state": {
             "$ref": "#/components/schemas/YearState"
           },
-          "stored_period_review": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/StoredPeriodReviewOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "year": {
             "title": "Year",
             "type": "integer"
@@ -91,8 +81,7 @@
           "split",
           "drill_down",
           "next_year",
-          "year_note",
-          "stored_period_review"
+          "year_note"
         ],
         "title": "AnnualReviewOut",
         "type": "object"
@@ -238,6 +227,10 @@
             "title": "Deadline",
             "type": "string"
           },
+          "kind": {
+            "$ref": "#/components/schemas/KeyResultKind",
+            "default": "number"
+          },
           "metric": {
             "title": "Metric",
             "type": "string"
@@ -255,10 +248,12 @@
             "title": "Seeded From Key Result Id"
           },
           "start_value": {
+            "default": 0,
             "title": "Start Value",
             "type": "number"
           },
           "target": {
+            "default": 1,
             "title": "Target",
             "type": "number"
           },
@@ -285,8 +280,6 @@
         },
         "required": [
           "metric",
-          "start_value",
-          "target",
           "deadline"
         ],
         "title": "BulkKeyResultIn",
@@ -2442,6 +2435,21 @@
         "title": "GoalState",
         "type": "string"
       },
+      "GoalThemeAddIn": {
+        "description": "Theme ids to add to every active key result of one goal.",
+        "properties": {
+          "theme_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Theme Ids",
+            "type": "array"
+          }
+        },
+        "title": "GoalThemeAddIn",
+        "type": "object"
+      },
       "GoalTitle": {
         "description": "The title of a goal that a task of a view points to (FR-025).",
         "properties": {
@@ -2666,15 +2674,21 @@
             "title": "Deadline",
             "type": "string"
           },
+          "kind": {
+            "$ref": "#/components/schemas/KeyResultKind",
+            "default": "number"
+          },
           "metric": {
             "title": "Metric",
             "type": "string"
           },
           "start_value": {
+            "default": 0,
             "title": "Start Value",
             "type": "number"
           },
           "target": {
+            "default": 1,
             "title": "Target",
             "type": "number"
           },
@@ -2701,8 +2715,6 @@
         },
         "required": [
           "metric",
-          "start_value",
-          "target",
           "deadline"
         ],
         "title": "KeyResultCreateIn",
@@ -2790,6 +2802,15 @@
         ],
         "title": "KeyResultFlagOut",
         "type": "object"
+      },
+      "KeyResultKind": {
+        "description": "The kind of value a key result holds.",
+        "enum": [
+          "number",
+          "yes_no"
+        ],
+        "title": "KeyResultKind",
+        "type": "string"
       },
       "KeyResultOutcome": {
         "description": "The final result of one key result in an annual review.",
@@ -4543,88 +4564,76 @@
         "title": "PeriodView",
         "type": "object"
       },
-      "PlanHistoryOut": {
-        "description": "A plan in the history, with its review when one was generated.",
+      "PlanOut": {
+        "description": "The plan of one week.",
         "properties": {
-          "period_end": {
-            "format": "date",
-            "title": "Period End",
-            "type": "string"
-          },
-          "period_ended": {
-            "title": "Period Ended",
-            "type": "boolean"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
-          },
-          "plan_id": {
-            "format": "uuid",
-            "title": "Plan Id",
-            "type": "string"
-          },
-          "review": {
+          "committed_at": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ReviewSummaryOut"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Committed At"
           },
-          "title": {
-            "title": "Title",
+          "focus_known": {
+            "title": "Focus Known",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
             "type": "string"
-          }
-        },
-        "required": [
-          "plan_id",
-          "title",
-          "period_type",
-          "period_start",
-          "period_end",
-          "period_ended",
-          "review"
-        ],
-        "title": "PlanHistoryOut",
-        "type": "object"
-      },
-      "PlanIn": {
-        "description": "Data to create a plan.",
-        "properties": {
-          "period_start": {
+          },
+          "milestone_cap": {
+            "default": 3,
+            "title": "Milestone Cap",
+            "type": "integer"
+          },
+          "milestone_count": {
+            "title": "Milestone Count",
+            "type": "integer"
+          },
+          "month": {
             "format": "date",
-            "title": "Period Start",
+            "title": "Month",
             "type": "string"
           },
-          "period_type": {
-            "$ref": "#/components/schemas/PeriodType"
+          "over_cap": {
+            "title": "Over Cap",
+            "type": "boolean"
           },
-          "summary": {
-            "default": "",
-            "title": "Summary",
-            "type": "string"
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__api__routers__weekly__ProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
           },
-          "title": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Title",
+          "retro_skipped": {
+            "title": "Retro Skipped",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
             "type": "string"
           }
         },
         "required": [
-          "period_type",
-          "period_start",
-          "title"
+          "id",
+          "status",
+          "committed_at",
+          "retro_skipped",
+          "milestone_count",
+          "over_cap",
+          "month",
+          "focus_known",
+          "projects"
         ],
-        "title": "PlanIn",
+        "title": "PlanOut",
         "type": "object"
       },
       "ProgressOut": {
@@ -4976,20 +4985,6 @@
         "title": "RetireIn",
         "type": "object"
       },
-      "RetrospectiveIn": {
-        "description": "The retrospective text.",
-        "properties": {
-          "body": {
-            "title": "Body",
-            "type": "string"
-          }
-        },
-        "required": [
-          "body"
-        ],
-        "title": "RetrospectiveIn",
-        "type": "object"
-      },
       "ReviewCategoriesOut": {
         "description": "Category counts supplied by the feature-005 month summary.",
         "properties": {
@@ -5219,36 +5214,6 @@
         "title": "ReviewIn",
         "type": "object"
       },
-      "ReviewItemOut": {
-        "description": "A planned goal or task and whether it was completed when the review was generated.",
-        "properties": {
-          "completed": {
-            "title": "Completed",
-            "type": "boolean"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "id",
-          "title",
-          "completed"
-        ],
-        "title": "ReviewItemOut",
-        "type": "object"
-      },
       "ReviewKeyResultOut": {
         "description": "An annual key result's values and status captured at month end.",
         "properties": {
@@ -5400,6 +5365,41 @@
         "title": "ReviewMilestoneOut",
         "type": "object"
       },
+      "ReviewOut": {
+        "description": "The history after a review, with what the review changed besides the decisions.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntryOut"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "nudges": {
+            "items": {
+              "$ref": "#/components/schemas/NudgeOut"
+            },
+            "title": "Nudges",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HistoryTotalsOut"
+          }
+        },
+        "required": [
+          "entries",
+          "totals"
+        ],
+        "title": "ReviewOut",
+        "type": "object"
+      },
       "ReviewOutsideFocusOut": {
         "description": "A completed milestone not counted under a focused theme.",
         "properties": {
@@ -5535,36 +5535,6 @@
           "values_written"
         ],
         "title": "ReviewStoreResultOut",
-        "type": "object"
-      },
-      "ReviewSummaryOut": {
-        "description": "Counts of a stored review, for the plan history.",
-        "properties": {
-          "completed_count": {
-            "title": "Completed Count",
-            "type": "integer"
-          },
-          "generated_at": {
-            "format": "date-time",
-            "title": "Generated At",
-            "type": "string"
-          },
-          "has_retrospective": {
-            "title": "Has Retrospective",
-            "type": "boolean"
-          },
-          "planned_count": {
-            "title": "Planned Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "generated_at",
-          "planned_count",
-          "completed_count",
-          "has_retrospective"
-        ],
-        "title": "ReviewSummaryOut",
         "type": "object"
       },
       "ReviewThemeOut": {
@@ -6319,27 +6289,6 @@
           "progress"
         ],
         "title": "StatisticsOut",
-        "type": "object"
-      },
-      "StoredPeriodReviewOut": {
-        "description": "The stored period review of the year, when one exists.",
-        "properties": {
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "plan_id": {
-            "format": "uuid",
-            "title": "Plan Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "plan_id",
-          "period_start"
-        ],
-        "title": "StoredPeriodReviewOut",
         "type": "object"
       },
       "SuggestionsOut": {
@@ -7460,7 +7409,7 @@
           "plan": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/tefteri__api__routers__weekly__PlanOut"
+                "$ref": "#/components/schemas/PlanOut"
               },
               {
                 "type": "null"
@@ -8105,42 +8054,6 @@
         "title": "UndoIn",
         "type": "object"
       },
-      "tefteri__api__routers__planning__PlanOut": {
-        "description": "A plan of one period. Goals are no longer part of it (spec 006).",
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
-          },
-          "summary": {
-            "title": "Summary",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "period_type",
-          "period_start",
-          "title",
-          "summary"
-        ],
-        "title": "PlanOut",
-        "type": "object"
-      },
       "tefteri__api__routers__projects__OrphanedOut": {
         "description": "A project that is no longer in the task app.",
         "properties": {
@@ -8332,92 +8245,6 @@
         "title": "UndoIn",
         "type": "object"
       },
-      "tefteri__api__routers__reviews__ReviewOut": {
-        "description": "The review of one plan: a snapshot taken at ``generated_at``.",
-        "properties": {
-          "carried_over": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Carried Over",
-            "type": "array"
-          },
-          "completed_count": {
-            "title": "Completed Count",
-            "type": "integer"
-          },
-          "generated_at": {
-            "format": "date-time",
-            "title": "Generated At",
-            "type": "string"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ReviewItemOut"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "period_end": {
-            "format": "date",
-            "title": "Period End",
-            "type": "string"
-          },
-          "period_ended": {
-            "title": "Period Ended",
-            "type": "boolean"
-          },
-          "period_start": {
-            "format": "date",
-            "title": "Period Start",
-            "type": "string"
-          },
-          "period_type": {
-            "title": "Period Type",
-            "type": "string"
-          },
-          "plan_id": {
-            "format": "uuid",
-            "title": "Plan Id",
-            "type": "string"
-          },
-          "plan_title": {
-            "title": "Plan Title",
-            "type": "string"
-          },
-          "planned_count": {
-            "title": "Planned Count",
-            "type": "integer"
-          },
-          "retrospective": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/tefteri__api__schemas__NoteOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "plan_id",
-          "plan_title",
-          "period_type",
-          "period_start",
-          "period_end",
-          "period_ended",
-          "generated_at",
-          "planned_count",
-          "completed_count",
-          "items",
-          "carried_over",
-          "retrospective"
-        ],
-        "title": "ReviewOut",
-        "type": "object"
-      },
       "tefteri__api__routers__statistics__EmptyOut": {
         "description": "Why a period has no number, and the action that helps.",
         "properties": {
@@ -8558,78 +8385,6 @@
           "title"
         ],
         "title": "TaskIn",
-        "type": "object"
-      },
-      "tefteri__api__routers__weekly__PlanOut": {
-        "description": "The plan of one week.",
-        "properties": {
-          "committed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Committed At"
-          },
-          "focus_known": {
-            "title": "Focus Known",
-            "type": "boolean"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "milestone_cap": {
-            "default": 3,
-            "title": "Milestone Cap",
-            "type": "integer"
-          },
-          "milestone_count": {
-            "title": "Milestone Count",
-            "type": "integer"
-          },
-          "month": {
-            "format": "date",
-            "title": "Month",
-            "type": "string"
-          },
-          "over_cap": {
-            "title": "Over Cap",
-            "type": "boolean"
-          },
-          "projects": {
-            "items": {
-              "$ref": "#/components/schemas/tefteri__api__routers__weekly__ProjectOut"
-            },
-            "title": "Projects",
-            "type": "array"
-          },
-          "retro_skipped": {
-            "title": "Retro Skipped",
-            "type": "boolean"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "status",
-          "committed_at",
-          "retro_skipped",
-          "milestone_count",
-          "over_cap",
-          "month",
-          "focus_known",
-          "projects"
-        ],
-        "title": "PlanOut",
         "type": "object"
       },
       "tefteri__api__routers__weekly__ProjectIn": {
@@ -8817,41 +8572,6 @@
           "committed_tasks"
         ],
         "title": "ProjectOut",
-        "type": "object"
-      },
-      "tefteri__api__routers__weekly__ReviewOut": {
-        "description": "The history after a review, with what the review changed besides the decisions.",
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/HistoryEntryOut"
-            },
-            "title": "Entries",
-            "type": "array"
-          },
-          "notices": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Notices",
-            "type": "array"
-          },
-          "nudges": {
-            "items": {
-              "$ref": "#/components/schemas/NudgeOut"
-            },
-            "title": "Nudges",
-            "type": "array"
-          },
-          "totals": {
-            "$ref": "#/components/schemas/HistoryTotalsOut"
-          }
-        },
-        "required": [
-          "entries",
-          "totals"
-        ],
-        "title": "ReviewOut",
         "type": "object"
       },
       "tefteri__api__routers__weekly__TaskIn": {
@@ -9070,6 +8790,10 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
           "links": {
             "items": {
               "$ref": "#/components/schemas/LinkOut"
@@ -9122,6 +8846,7 @@
           "id",
           "goal_id",
           "metric",
+          "kind",
           "start_value",
           "target",
           "deadline",
@@ -9501,6 +9226,60 @@
           }
         },
         "summary": "Retire Goal",
+        "tags": [
+          "annual"
+        ]
+      }
+    },
+    "/api/v1/annual/goals/{goal_id}/themes": {
+      "put": {
+        "description": "Add themes to every active key result of one goal, in one undoable batch.",
+        "operationId": "add_goal_themes_api_v1_annual_goals__goal_id__themes_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "goal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Goal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalThemeAddIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Add Goal Themes Api V1 Annual Goals  Goal Id  Themes Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Goal Themes",
         "tags": [
           "annual"
         ]
@@ -12586,224 +12365,6 @@
         ]
       }
     },
-    "/api/v1/plans": {
-      "get": {
-        "description": "List plans, newest period first (plans are kept after their period ends).",
-        "operationId": "list_plans_api_v1_plans_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/tefteri__api__routers__planning__PlanOut"
-                  },
-                  "title": "Response List Plans Api V1 Plans Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Plans",
-        "tags": [
-          "planning"
-        ]
-      },
-      "post": {
-        "description": "Create a plan for a period.",
-        "operationId": "create_plan_api_v1_plans_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlanIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__planning__PlanOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Plan",
-        "tags": [
-          "planning"
-        ]
-      }
-    },
-    "/api/v1/plans/{plan_id}": {
-      "get": {
-        "description": "Return one plan.",
-        "operationId": "get_plan_api_v1_plans__plan_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "plan_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Plan Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__planning__PlanOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Plan",
-        "tags": [
-          "planning"
-        ]
-      }
-    },
-    "/api/v1/plans/{plan_id}/review": {
-      "get": {
-        "description": "Return the plan's review; generate it the first time or when ``refresh`` is true.",
-        "operationId": "get_review_api_v1_plans__plan_id__review_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "plan_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Plan Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "refresh",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Refresh",
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__reviews__ReviewOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Review",
-        "tags": [
-          "reviews"
-        ]
-      }
-    },
-    "/api/v1/plans/{plan_id}/review/retrospective": {
-      "put": {
-        "description": "Save the retrospective as a note in the note app and link it to the plan's review.",
-        "operationId": "save_retrospective_api_v1_plans__plan_id__review_retrospective_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "plan_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Plan Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RetrospectiveIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__reviews__ReviewOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Save Retrospective",
-        "tags": [
-          "reviews"
-        ]
-      }
-    },
     "/api/v1/projects": {
       "post": {
         "description": "Create a project in the task app, then record its label (FR-024).\n\nWhen the task app fails nothing is recorded and the answer is the error.",
@@ -13120,32 +12681,6 @@
         "summary": "Restore Project",
         "tags": [
           "projects"
-        ]
-      }
-    },
-    "/api/v1/reviews/history": {
-      "get": {
-        "description": "List all plans, newest period first, each with its review summary when there is one.",
-        "operationId": "plan_history_api_v1_reviews_history_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PlanHistoryOut"
-                  },
-                  "title": "Response Plan History Api V1 Reviews History Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Plan History",
-        "tags": [
-          "reviews"
         ]
       }
     },
@@ -14484,7 +14019,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/tefteri__api__routers__weekly__ReviewOut"
+                  "$ref": "#/components/schemas/ReviewOut"
                 }
               }
             },

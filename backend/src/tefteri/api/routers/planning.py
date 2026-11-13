@@ -1,11 +1,11 @@
-"""Plans, the legacy goal history and the weekly, monthly and annual views."""
+"""The legacy goal history and the weekly, monthly and annual views."""
 
 import uuid
 from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from tefteri.api.deps import CurrentUser, Db
@@ -13,7 +13,6 @@ from tefteri.api.lookups import container_colors, read_only_containers
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
-from tefteri.db.models.goal import Plan
 from tefteri.db.models.task import Task
 from tefteri.domain.periods import PeriodType, period_end, period_start
 from tefteri.domain.timeutil import day_bounds, overlaps
@@ -47,25 +46,6 @@ class LegacyGoalOut(BaseModel):
     criteria: str
     status: str
     linked_tasks: int
-
-
-class PlanIn(BaseModel):
-    """Data to create a plan."""
-
-    period_type: PeriodType
-    period_start: date
-    title: str = Field(min_length=1, max_length=500)
-    summary: str = ""
-
-
-class PlanOut(BaseModel):
-    """A plan of one period. Goals are no longer part of it (spec 006)."""
-
-    id: uuid.UUID
-    period_type: str
-    period_start: date
-    title: str
-    summary: str
 
 
 class PeriodView(BaseModel):
@@ -114,35 +94,6 @@ async def legacy_goals(
         )
         for r in rows
     ]
-
-
-def _plan_out(plan: Plan) -> PlanOut:
-    return PlanOut(
-        id=plan.id,
-        period_type=plan.period_type,
-        period_start=plan.period_start,
-        title=plan.title,
-        summary=plan.summary,
-    )
-
-
-@router.get("/plans")
-async def list_plans(request: Request, db: Db, user: CurrentUser) -> list[PlanOut]:
-    """List plans, newest period first (plans are kept after their period ends)."""
-    return [_plan_out(p) for p in await _goals(request).plans(db, user.id)]
-
-
-@router.post("/plans", status_code=201)
-async def create_plan(body: PlanIn, request: Request, db: Db, user: CurrentUser) -> PlanOut:
-    """Create a plan for a period."""
-    plan = await _goals(request).create_plan(db, user.id, **body.model_dump())
-    return _plan_out(plan)
-
-
-@router.get("/plans/{plan_id}")
-async def get_plan(plan_id: uuid.UUID, request: Request, db: Db, user: CurrentUser) -> PlanOut:
-    """Return one plan."""
-    return _plan_out(await _goals(request).plan(db, user.id, plan_id))
 
 
 async def _period_view(

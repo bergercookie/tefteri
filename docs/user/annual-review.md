@@ -82,6 +82,4 @@ Select **Start next year** to open annual planning with the reviewed year as the
 review creates no goal, key result or link. Annual planning decides what to keep. Read
 [Annual planning](annual-planning.md) for the rules of a new year.
 
-The link **Earlier reviews of this year** opens the stored reviews of the year.
-
 ![The dark theme of the review. The colors and the spacing follow the theme tokens.](../images/annual-review-dark.png)

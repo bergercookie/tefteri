@@ -124,6 +124,12 @@ class AnnualApi {
       _batch(await _dio.put<Object?>('/annual/key-results/$id/themes',
           data: {'theme_ids': themeIds, 'dry_run': false}));
 
+  /// `PUT /annual/goals/{id}/themes`: adds the themes to every active key
+  /// result of the goal. Existing links stay.
+  Future<Batch> addGoalThemes(String goalId, List<String> themeIds) async =>
+      _batch(await _dio.put<Object?>('/annual/goals/$goalId/themes',
+          data: {'theme_ids': themeIds}));
+
   /// `POST /annual/undo`.
   Future<int> undo(String batchId) async {
     final r =

@@ -1,4 +1,4 @@
-"""Goals and plans after spec 006: computed progress, plans and the read-only legacy history.
+"""Goals after spec 006: computed progress and the read-only legacy history.
 
 Goals exist only for a planning year now (``services.annual_plan``). Month and week goals, and
 year goals that are retired or were marked complete, stay as read-only history (FR-022, FR-023):
@@ -12,10 +12,9 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tefteri.db.models.goal import Goal, Plan
+from tefteri.db.models.goal import Goal
 from tefteri.db.models.task import Task
-from tefteri.domain.periods import PeriodType, is_aligned
-from tefteri.services.errors import Invalid, NotFound
+from tefteri.services.errors import NotFound
 
 
 @dataclass(frozen=True)
@@ -118,43 +117,3 @@ class GoalService:
             )
             counts = {goal_id: count for goal_id, count in rows.tuples() if goal_id is not None}
         return [LegacyGoal(g, counts.get(g.id, 0)) for g in goals]
-
-    async def create_plan(
-        self,
-        db: AsyncSession,
-        user_id: uuid.UUID,
-        *,
-        period_type: PeriodType,
-        period_start: date,
-        title: str,
-        summary: str = "",
-    ) -> Plan:
-        """Create a plan for one period."""
-        if not is_aligned(period_type, period_start):
-            raise Invalid(f"a {period_type.value} period must start on its first day")
-        plan = Plan(
-            user_id=user_id,
-            period_type=period_type.value,
-            period_start=period_start,
-            title=title,
-            summary=summary,
-        )
-        db.add(plan)
-        await db.flush()
-        return plan
-
-    async def plans(self, db: AsyncSession, user_id: uuid.UUID) -> list[Plan]:
-        """Return all of the user's plans, newest period first."""
-        rows = await db.execute(
-            select(Plan).where(Plan.user_id == user_id).order_by(Plan.period_start.desc())
-        )
-        return list(rows.scalars())
-
-    async def plan(self, db: AsyncSession, user_id: uuid.UUID, plan_id: uuid.UUID) -> Plan:
-        """Return one plan or raise ``NotFound``."""
-        plan = (
-            await db.execute(select(Plan).where(Plan.id == plan_id, Plan.user_id == user_id))
-        ).scalar_one_or_none()
-        if plan is None:
-            raise NotFound
-        return plan

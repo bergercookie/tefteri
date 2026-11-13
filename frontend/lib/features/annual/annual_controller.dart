@@ -85,6 +85,11 @@ class AnnualPlanController extends StateNotifier<AsyncValue<AnnualPlan>> {
   Future<String?> setThemes(String id, List<String> themeIds) async =>
       (await _then(_api.setThemes(id, themeIds))).batchId;
 
+  /// Adds themes to every active key result of goal [goalId]; answers the
+  /// batch to undo.
+  Future<String?> addGoalThemes(String goalId, List<String> themeIds) async =>
+      (await _then(_api.addGoalThemes(goalId, themeIds))).batchId;
+
   /// Undoes one batch.
   Future<void> undo(String batchId) => _then(_api.undo(batchId));
 

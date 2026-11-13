@@ -182,8 +182,7 @@ class _AnnualReviewScreenState extends ConsumerState<AnnualReviewScreen> {
               review.yearNote == null ? null : () => controller.deleteNote(),
         ),
         const SizedBox(height: Space.lg),
-        NextYearCard(
-            nextYear: review.nextYear, storedReview: review.storedPeriodReview),
+        NextYearCard(nextYear: review.nextYear),
         const SizedBox(height: Space.lg),
         PlanningChecklist(
             kind: ChecklistKind.year, day: DateTime(review.year), card: true),

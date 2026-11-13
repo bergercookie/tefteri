@@ -191,7 +191,7 @@ class PlanNote {
   /// Note id.
   final String id;
 
-  /// `daily`, `retrospective` or `custom` (any other note).
+  /// `daily` or `custom` (any other note).
   final String kind;
 
   /// Note title.

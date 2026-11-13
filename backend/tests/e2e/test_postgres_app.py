@@ -8,7 +8,7 @@ Runs only when ``TEFTERI_TEST_POSTGRES_URL`` is set. The CI Postgres job runs it
 import asyncio
 import os
 from collections.abc import AsyncIterator, Callable, Iterator
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,6 @@ from tefteri.domain.entities import Container, TaskDraft
 from tefteri.main import create_app
 from tests.conftest import ADMIN_PASSWORD, V1, connect_all
 from tests.fakes.world import FakeWorld
-from tests.integration.conftest import legacy_goal
 
 URL = os.environ.get("TEFTERI_TEST_POSTGRES_URL")
 
@@ -119,24 +118,6 @@ async def test_main_flow_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> N
     plan_of_year = (await pg_api.get(f"{V1}/annual/{year}")).json()
     assert plan_of_year["goals"][0]["key_results"][0]["current_value"] == 40
     assert plan_of_year["goals"][0]["progress"] == 0.4
-
-    # Review and retrospective (JSON columns, FKs) of a month with a legacy goal.
-    await legacy_goal(
-        pg_api, period_type="month", period_start=date(2026, 10, 1), title="Old", status="done"
-    )
-    plan = (
-        await pg_api.post(
-            f"{V1}/plans",
-            json={"period_type": "month", "period_start": "2026-10-01", "title": "October"},
-        )
-    ).json()
-    review = (await pg_api.get(f"{V1}/plans/{plan['id']}/review")).json()
-    # A review counts the goals of the period: here the legacy month goal, marked done.
-    assert (review["planned_count"], review["completed_count"]) == (1, 1)
-    saved = await pg_api.put(
-        f"{V1}/plans/{plan['id']}/review/retrospective", json={"body": "Good month."}
-    )
-    assert saved.json()["retrospective"]["kind"] == "retrospective"
 
 
 async def test_conflict_and_cascades_on_postgres(pg_api: AsyncClient, world: FakeWorld) -> None:

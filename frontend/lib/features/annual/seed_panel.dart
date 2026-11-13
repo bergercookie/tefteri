@@ -139,14 +139,15 @@ class _SeedPanelState extends ConsumerState<SeedPanel> {
       ok &= d.error == null;
       final krs = <KeyResultDraft>[];
       for (final k in d.keyResults) {
-        final start = parseNumber(k.start.text);
-        final target = parseNumber(k.target.text);
+        final yesNo = k.source.kind == 'yes_no';
+        final start = yesNo ? 0.0 : parseNumber(k.start.text);
+        final target = yesNo ? 1.0 : parseNumber(k.target.text);
         final day = parseDay(k.deadline.text);
         k.error = k.metric.text.trim().isEmpty
             ? 'Write what you measure.'
-            : start == null || target == null
+            : !yesNo && (start == null || target == null)
                 ? 'The start value and the target must be numbers.'
-                : start == target
+                : !yesNo && start == target
                     ? 'The target must differ from the start value.'
                     : day == null
                         ? 'Write the deadline as YYYY-MM-DD.'
@@ -159,6 +160,7 @@ class _SeedPanelState extends ConsumerState<SeedPanel> {
         }
         krs.add(KeyResultDraft(
           metric: k.metric.text.trim(),
+          kind: k.source.kind,
           startValue: start!,
           target: target!,
           deadline: isoDate(day!),
@@ -330,10 +332,14 @@ class _SeedPanelState extends ConsumerState<SeedPanel> {
                       children: [
                         Expanded(
                           child: Text(
-                            '${k.metric}: unmet, last value '
-                            '${formatNumber(k.startValue)} of '
-                            '${formatNumber(k.target)}'
-                            '${k.themes.isEmpty ? '' : ' · ${k.themes.map((t) => t.name).join(', ')}'}',
+                            k.kind == 'yes_no'
+                                ? '${k.metric}: unmet, last answer '
+                                    '${k.startValue >= 0.5 ? 'Yes' : 'No'}'
+                                    '${k.themes.isEmpty ? '' : ' · ${k.themes.map((t) => t.name).join(', ')}'}'
+                                : '${k.metric}: unmet, last value '
+                                    '${formatNumber(k.startValue)} of '
+                                    '${formatNumber(k.target)}'
+                                    '${k.themes.isEmpty ? '' : ' · ${k.themes.map((t) => t.name).join(', ')}'}',
                             style: text.bodySmall,
                           ),
                         ),
@@ -409,12 +415,14 @@ class _SeedPanelState extends ConsumerState<SeedPanel> {
                 field('draft-kr-metric-$id-${k.source.keyResultId}', k.metric,
                     'Metric',
                     width: 220),
-                field('draft-kr-start-$id-${k.source.keyResultId}', k.start,
-                    'Start value',
-                    width: 110),
-                field('draft-kr-target-$id-${k.source.keyResultId}', k.target,
-                    'Target',
-                    width: 110),
+                if (k.source.kind != 'yes_no') ...[
+                  field('draft-kr-start-$id-${k.source.keyResultId}', k.start,
+                      'Start value',
+                      width: 110),
+                  field('draft-kr-target-$id-${k.source.keyResultId}', k.target,
+                      'Target',
+                      width: 110),
+                ],
                 field('draft-kr-deadline-$id-${k.source.keyResultId}',
                     k.deadline, 'Deadline',
                     width: 130),

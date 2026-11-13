@@ -65,10 +65,6 @@ Map<String, Object?> _api({String state = 'past', bool empty = false}) {
       'body': 'A year of learning and shipping.',
       'updated_at': '2026-01-02T10:00:00Z',
     },
-    storedPeriodReview: {
-      'plan_id': 'p1',
-      'period_start': '2025-01-01',
-    },
   );
 }
 

@@ -121,6 +121,13 @@ class ValueSource(StrEnum):
     AUTOMATIC = "automatic"
 
 
+class KeyResultKind(StrEnum):
+    """The kind of value a key result holds."""
+
+    NUMBER = "number"
+    YES_NO = "yes_no"
+
+
 class PlanChangeKind(StrEnum):
     """What a row of ``plan_changes`` records (spec 006, data-model.md)."""
 

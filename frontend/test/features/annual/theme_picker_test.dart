@@ -192,4 +192,36 @@ void main() {
         matching: find.byType(Checkbox)));
     expect(box.value, isTrue);
   });
+
+  testWidgets('the goal menu adds a theme to all its key results',
+      (tester) async {
+    final server = AnnualServer(
+      goals: [
+        annualGoalJson('g1', 'Get better at open source', keyResults: [
+          keyResultJson('kr1', 'Stars'),
+          keyResultJson('kr2', 'Talks given'),
+        ]),
+      ],
+      themes: themesJson(themes: [themeJson('p1', 'Open source')]),
+    );
+    final api = await pumpAnnual(
+        tester,
+        server.routes({
+          'PUT /annual/goals/g1/themes': (RequestOptions o) {
+            return {'batch_id': 'b7', 'effect': <String, Object?>{}};
+          },
+        }));
+
+    await menu(tester, 'goal-menu-g1', 'Link a theme to all key results');
+    expect(find.byKey(const Key('theme-picker')), findsOneWidget);
+    await tapKey(tester, 'theme-option-p1');
+    await tapKey(tester, 'themes-done');
+
+    final put = api.where('PUT /annual/goals/g1/themes').single;
+    expect(put.data, {
+      'theme_ids': ['p1']
+    });
+    expect(api.where('PUT /annual/key-results/kr1/themes'), isEmpty);
+    expect(find.text('Theme added to 2 key results.'), findsOneWidget);
+  });
 }
