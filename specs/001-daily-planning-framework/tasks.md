@@ -331,7 +331,7 @@ description: "Task list for Tefteri Daily Planning & Execution Framework"
 - [X] T132 [P] Add a docs coverage check `scripts/check_docs.sh` (behind `just docs::check`, shellcheck-clean) that also fails when an image in `docs/` has no alt text or points to a missing file, and that fails when a page listed in `docs/user/index.md` or `docs/developer/index.md` is missing, and when a user guide required by tasks T122, T124-T131, T107 and T114 does not exist
 - [X] T145 [P] Add Mermaid diagrams to the developer guides: architecture layers (`api`, `services`, `domain`, `adapters`) in `docs/developer/architecture.md`, the sync flow with failure isolation in `docs/developer/sync.md`, and the conflict flow in the same page; add `sync` to the developer toctree
 - [X] T146 In `devbox shell` run `just docs::screenshots`, check every image for fake data only and readable text (fonts loaded), fix the screenshot tests, and commit `docs/images/`; repeat by hand when a screen changes
-- [ ] T117 Run the full `quickstart.md` validation (`just lint`, `just test`, just docs::build, `just docs::screenshots`, e2e, Postgres, image build) and fix findings
+- [X] T117 Run the full `quickstart.md` validation (`just lint`, `just test`, just docs::build, `just docs::screenshots`, e2e, Postgres, image build) and fix findings
 
 ---
 
