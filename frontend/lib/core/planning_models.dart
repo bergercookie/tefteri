@@ -256,6 +256,7 @@ class CalendarItem {
     this.start,
     this.end,
     this.connectionId,
+    this.containerId,
     this.status,
     this.clippedStart = false,
     this.project,
@@ -272,6 +273,7 @@ class CalendarItem {
         end: _dt(j['end']),
         allDay: j['all_day'] == true,
         connectionId: j['connection_id'] as String?,
+        containerId: j['container_id'] as String?,
         status: j['status'] as String?,
         clippedStart: j['clipped_start'] == true,
         project: j['project'] as String?,
@@ -308,6 +310,9 @@ class CalendarItem {
 
   /// Owning connection id.
   final String? connectionId;
+
+  /// The calendar of an entry, or the project of a task, when known.
+  final String? containerId;
 
   /// Task status (`open` or `done`); null for events.
   final String? status;

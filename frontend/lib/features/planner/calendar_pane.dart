@@ -18,6 +18,7 @@ import 'details_dialogs.dart';
 import 'new_event_dialog.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
+import 'planner_visibility.dart';
 import 'time_grid.dart';
 
 const double _gutterWidth = 44;
@@ -131,6 +132,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(calendarItemsProvider(widget.weekStart));
+    final visibility = ref.watch(plannerVisibilityProvider);
     final pending = ref.watch(pendingTaskProvider);
     return Column(
       key: const Key('calendar-pane'),
@@ -152,12 +154,23 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                 ],
               ),
             ),
-            data: (list) => _grid(list, pending),
+            data: (list) => _grid(_visible(list, visibility), pending),
           ),
         ),
       ],
     );
   }
+
+  /// Leaves out the task providers and calendars that the user hid.
+  List<CalendarItem> _visible(
+          List<CalendarItem> items, PlannerVisibility visibility) =>
+      [
+        for (final item in items)
+          if (item.isTask
+              ? visibility.showsTaskConnection(item.connectionId)
+              : visibility.showsCalendar(item.containerId))
+            item,
+      ];
 
   /// Today button, arrows and the label of the week. On a narrow screen the
   /// label can shrink, so the row never overflows.

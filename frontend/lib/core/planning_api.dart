@@ -48,11 +48,18 @@ class PlanningApi {
 
   /// `GET /tasks` for the planner: open tasks by [due] filter or by title
   /// search [query]. A non-empty [query] searches all open tasks and the
-  /// server ignores [due].
-  Future<List<PlanTask>> tasks({String? due, String? query}) async {
+  /// server ignores [due]. [excludeConnections] leaves out hidden task
+  /// providers.
+  Future<List<PlanTask>> tasks({
+    String? due,
+    String? query,
+    Iterable<String> excludeConnections = const [],
+  }) async {
     final r = await _dio.get<Object?>('/tasks', queryParameters: {
       if (due != null) 'due': due,
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      if (excludeConnections.isNotEmpty)
+        'exclude_connections': excludeConnections.toList(),
     });
     return [
       for (final t in (r.data as List? ?? const []))
@@ -67,9 +74,13 @@ class PlanningApi {
   }
 
   /// `GET /tasks/counts`: open tasks per planner filter, keyed by the
-  /// filter's API value.
-  Future<Map<String, int>> taskCounts() async {
-    final r = await _dio.get<Object?>('/tasks/counts');
+  /// filter's API value. [excludeConnections] leaves out hidden task providers.
+  Future<Map<String, int>> taskCounts(
+      {Iterable<String> excludeConnections = const []}) async {
+    final r = await _dio.get<Object?>('/tasks/counts', queryParameters: {
+      if (excludeConnections.isNotEmpty)
+        'exclude_connections': excludeConnections.toList(),
+    });
     final data = r.data as Map<String, dynamic>? ?? const {};
     return {for (final e in data.entries) e.key: (e.value as num).toInt()};
   }

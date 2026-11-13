@@ -105,6 +105,20 @@ async def test_counts_match_the_lists(api: AsyncClient, world: FakeWorld) -> Non
     assert counts == {"today": 3, "tomorrow": 2, "week": 7, "all": 10, "none": 1, "overdue": 3}
 
 
+async def test_a_hidden_task_provider_is_left_out_of_the_list_and_the_counts(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    await _seed(api, world)
+    connection = next(
+        c for c in (await api.get(f"{V1}/connections")).json() if c["provider"] == "vikunja"
+    )
+    hidden = {"exclude_connections": [connection["id"]]}
+    listed = await api.get(f"{V1}/tasks", params={"due": "all", **hidden})
+    assert listed.status_code == 200 and listed.json() == []
+    counts = (await api.get(f"{V1}/tasks/counts", params=hidden)).json()
+    assert counts == {"today": 0, "tomorrow": 0, "week": 0, "all": 0, "none": 0, "overdue": 0}
+
+
 async def test_search_matches_titles_case_insensitively_over_all_open_tasks(
     api: AsyncClient, world: FakeWorld
 ) -> None:

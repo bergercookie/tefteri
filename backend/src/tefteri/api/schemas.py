@@ -147,6 +147,8 @@ class CalendarItemOut(BaseModel):
     type: Literal["entry", "task"]
     id: uuid.UUID
     connection_id: uuid.UUID
+    container_id: uuid.UUID | None = None
+    """The calendar of an entry, or the project of a task, when known."""
     title: str
     start: UtcDatetime
     end: UtcDatetime
@@ -174,6 +176,7 @@ class CalendarItemOut(BaseModel):
             type="entry",
             id=e.id,
             connection_id=e.connection_id,
+            container_id=e.container_id,
             title=e.title,
             start=e.start,
             end=e.end,
@@ -201,6 +204,7 @@ class CalendarItemOut(BaseModel):
             type="task",
             id=t.id,
             connection_id=t.connection_id,
+            container_id=t.container_id,
             title=t.title,
             start=start,
             end=end,

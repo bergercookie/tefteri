@@ -145,5 +145,13 @@ async def test_a_task_in_the_calendar_names_its_project(api: AsyncClient, world:
     items = await _calendar(api)
     assert items["Fix form"]["project"] == "Website"
     assert items["Pay rent"]["project"] == "Inbox"
+    containers = {
+        c["name"]: c["id"]
+        for c in (
+            await api.get(f"{V1}/connections/{items['Fix form']['connection_id']}/containers")
+        ).json()
+    }
+    assert items["Fix form"]["container_id"] == containers["Website"]
+    assert items["Pay rent"]["container_id"] == containers["Inbox"]
     entries = [i for i in (await api.get(f"{V1}/calendar")).json() if i["type"] == "entry"]
     assert all(e["project"] is None for e in entries)

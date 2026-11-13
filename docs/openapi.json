@@ -344,6 +344,18 @@
             "title": "Connection Id",
             "type": "string"
           },
+          "container_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Id"
+          },
           "end": {
             "format": "date-time",
             "title": "End",
@@ -13480,6 +13492,28 @@
               "description": "Title search over all open tasks. When set, ``due`` is ignored.",
               "title": "Q"
             }
+          },
+          {
+            "description": "Leave out the tasks of these connections (hidden task providers).",
+            "in": "query",
+            "name": "exclude_connections",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Leave out the tasks of these connections (hidden task providers).",
+              "title": "Exclude Connections"
+            }
           }
         ],
         "responses": {
@@ -13558,6 +13592,30 @@
       "get": {
         "description": "Count the user's open tasks for each planner filter (the badges of the filter chips).",
         "operationId": "task_counts_api_v1_tasks_counts_get",
+        "parameters": [
+          {
+            "description": "Leave out the tasks of these connections (hidden task providers).",
+            "in": "query",
+            "name": "exclude_connections",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Leave out the tasks of these connections (hidden task providers).",
+              "title": "Exclude Connections"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -13572,6 +13630,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Task Counts",

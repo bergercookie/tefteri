@@ -20,7 +20,9 @@ Map<String, Object?> calItem(String type, String id, String title,
         String? project,
         String? color,
         bool readOnly = false,
-        bool clipped = false}) =>
+        bool clipped = false,
+        String connectionId = 'c1',
+        String? containerId}) =>
     {
       'type': type,
       'id': id,
@@ -28,7 +30,8 @@ Map<String, Object?> calItem(String type, String id, String title,
       'start': _iso(start),
       'end': _iso(end ?? start.add(const Duration(hours: 1))),
       'all_day': allDay,
-      'connection_id': 'c1',
+      'connection_id': connectionId,
+      if (containerId != null) 'container_id': containerId,
       if (status != null) 'status': status,
       'clipped_start': clipped,
       if (project != null) 'project': project,
@@ -78,9 +81,10 @@ class RequestOptionsLike {
 }
 
 Future<void> pumpPlanner(WidgetTester tester, FakeApi api,
-        {List<Override> overrides = const []}) =>
+        {List<Override> overrides = const [],
+        Size size = const Size(1000, 2400)}) =>
     pumpWithApi(tester, api, PlannerScreen(initialDate: wednesday),
-        overrides: overrides);
+        overrides: overrides, size: size);
 
 /// Top-left of a day's column in the time grid (global).
 Offset columnTopLeft(WidgetTester tester, DateTime day) {
