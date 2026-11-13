@@ -20,6 +20,7 @@ required=(
     user/scheduling.md
     user/conflicts.md
     user/annual-planning.md
+    user/annual-review.md
     user/planning-checklists.md
     user/monthly-planning.md
     user/weekly-planning.md
@@ -30,6 +31,7 @@ required=(
     developer/setup.md
     developer/testing.md
     developer/annual-planning.md
+    developer/annual-review.md
     developer/monthly-cycle.md
     developer/releases.md
 )

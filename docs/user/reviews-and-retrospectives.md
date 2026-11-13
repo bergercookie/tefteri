@@ -11,9 +11,9 @@ review described on this page.
 
 ## What a review shows
 
-A review of a year plan counts the annual goals of that year. Tefteri does not count retired
-goals. Tefteri marks a goal complete when its status is done or when the progress of its key
-results reaches the target.
+A review of a year plan counts the annual goals of that year. This page describes the stored
+period reviews. The Year view itself is the [annual review](annual-review.md), which reads the
+monthly review snapshots and the annual plan.
 
 A review of a month or week plan does not use goals. If the plan is from before annual planning,
 its review can list old month or week goals. Tefteri shows the count as "goals (history)" and

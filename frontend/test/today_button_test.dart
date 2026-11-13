@@ -5,7 +5,7 @@ import 'package:tefteri/core/periods.dart';
 import 'package:tefteri/features/month/month_screen.dart';
 import 'package:tefteri/features/planner/planner_screen.dart';
 import 'package:tefteri/features/week/week_screen.dart';
-import 'package:tefteri/features/year/year_screen.dart';
+import 'package:tefteri/features/annual_review/annual_review_screen.dart';
 import 'package:tefteri/core/planning_models.dart';
 
 import 'features/planner/planner_helpers.dart';
@@ -50,7 +50,11 @@ void main() {
   });
 
   testWidgets('Year: Today returns to the current year', (tester) async {
-    await pumpWithApi(tester, FakeApi({}), const YearScreen(initialYear: 2020));
+    final api = FakeApi({
+      'GET /annual-review/2020': annualReviewJson(year: 2020),
+      'GET /annual-review/${now.year}': annualReviewJson(year: now.year),
+    });
+    await pumpWithApi(tester, api, const AnnualReviewScreen(initialYear: 2020));
     expect(_text(tester, 'period-label'), '2020');
     await tester.tap(find.byKey(const Key('today-button')));
     await tester.pumpAndSettle();
@@ -96,7 +100,10 @@ void main() {
 
   testWidgets('Today does nothing harmful when already on today',
       (tester) async {
-    await pumpWithApi(tester, FakeApi({}), YearScreen(initialYear: now.year));
+    final api = FakeApi({
+      'GET /annual-review/${now.year}': annualReviewJson(year: now.year),
+    });
+    await pumpWithApi(tester, api, AnnualReviewScreen(initialYear: now.year));
     await tester.tap(find.byKey(const Key('today-button')));
     await tester.pumpAndSettle();
     expect(_text(tester, 'period-label'), '${now.year}');

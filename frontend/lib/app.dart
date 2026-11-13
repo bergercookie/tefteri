@@ -12,6 +12,7 @@ import 'core/shortcuts/app_shortcuts.dart';
 import 'theme/theme.dart';
 import 'features/admin/admin_settings_screen.dart';
 import 'features/annual/annual_screen.dart';
+import 'features/annual_review/annual_review_screen.dart';
 import 'features/admin/users_screen.dart';
 import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
@@ -29,7 +30,6 @@ import 'features/settings/settings_screen.dart';
 import 'features/statistics/drilldown_screen.dart';
 import 'features/week/week_screen.dart';
 import 'features/weekly/weekly_screen.dart';
-import 'features/year/year_screen.dart';
 
 /// Notifies the router whenever the sign-in state changes.
 final authRefreshProvider = Provider<Listenable>((ref) {
@@ -134,9 +134,16 @@ GoRouter buildRouter(Ref ref) {
       ),
       GoRoute(
         path: '/year',
-        builder: (_, s) => YearScreen(
+        builder: (_, s) => AnnualReviewScreen(
             initialYear:
                 DateTime.tryParse(s.uri.queryParameters['date'] ?? '')?.year),
+        routes: [
+          GoRoute(
+            path: ':year',
+            builder: (_, s) => AnnualReviewScreen(
+                initialYear: int.tryParse(s.pathParameters['year'] ?? '')),
+          ),
+        ],
       ),
       statisticsRoute(),
       GoRoute(
@@ -152,7 +159,13 @@ GoRouter buildRouter(Ref ref) {
         path: '/conflicts',
         builder: (_, __) => const ConflictsScreen(),
       ),
-      GoRoute(path: '/review', builder: (_, __) => const PlanHistoryScreen()),
+      GoRoute(
+        path: '/review',
+        builder: (_, s) => PlanHistoryScreen(
+          period: s.uri.queryParameters['period'],
+          year: int.tryParse(s.uri.queryParameters['year'] ?? ''),
+        ),
+      ),
       GoRoute(
         path: '/review/:planId',
         builder: (_, s) => ReviewScreen(planId: s.pathParameters['planId']!),

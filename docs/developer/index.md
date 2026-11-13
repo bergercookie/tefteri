@@ -10,6 +10,7 @@ architecture
 design
 sync
 annual-planning
+annual-review
 monthly-cycle
 weekly-planning
 work-categories

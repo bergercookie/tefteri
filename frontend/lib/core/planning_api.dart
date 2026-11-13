@@ -24,9 +24,6 @@ class PlanningApi {
   /// `GET /views/week/{date}` (the week that holds [date]).
   Future<PeriodView> weekView(String date) => _period('/views/week/$date');
 
-  /// `GET /views/year/{year}`.
-  Future<PeriodView> yearView(int year) => _period('/views/year/$year');
-
   Future<PeriodView> _period(String path) async {
     final r = await _dio.get<Object?>(path);
     return PeriodView.fromJson(r.data! as Map<String, dynamic>);

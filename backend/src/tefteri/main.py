@@ -18,6 +18,7 @@ from tefteri.adapters.vikunja import VikunjaTaskBackend
 from tefteri.api.errors import install_error_handlers
 from tefteri.api.errors_map import install_service_error_handlers
 from tefteri.api.routers import annual as annual_router
+from tefteri.api.routers import annual_review as annual_review_router
 from tefteri.api.routers import auth as auth_router
 from tefteri.api.routers import calendar as calendar_router
 from tefteri.api.routers import checklists as checklists_router
@@ -45,6 +46,7 @@ from tefteri.db.session import create_engine, create_session_factory, session_sc
 from tefteri.domain.enums import ConnectionKind
 from tefteri.security.crypto import TokenCipher
 from tefteri.services.annual_plan import AnnualPlanService
+from tefteri.services.annual_review import AnnualReviewSeedCounter, AnnualReviewService
 from tefteri.services.background_sync import BackgroundSync
 from tefteri.services.calendar import CalendarService
 from tefteri.services.category_recorder import CategoryRecorder
@@ -64,6 +66,7 @@ from tefteri.services.monthly_review import (
 )
 from tefteri.services.notes import NoteService
 from tefteri.services.projects import ProjectService
+from tefteri.services.review_notes import ReviewNoteService
 from tefteri.services.reviews import ReviewService
 from tefteri.services.statistics import StatisticsService
 from tefteri.services.sync import SyncService
@@ -201,6 +204,13 @@ def create_app(
         category_counts_reader,
         clock=lambda: app.state.clock(),
     )
+    app.state.review_note_service = ReviewNoteService(clock=lambda: app.state.clock())
+    app.state.annual_review_service = AnnualReviewService(
+        app.state.monthly_review_service,
+        annual_service,
+        AnnualReviewSeedCounter(annual_service),
+        clock=lambda: app.state.clock(),
+    )
     app.state.weekly_service = WeeklyService(
         task_service,
         connection_service,
@@ -250,6 +260,7 @@ def create_app(
         views_router,
         conflicts_router,
         annual_router,
+        annual_review_router,
         monthly_router,
         push_router,
         planning_router,

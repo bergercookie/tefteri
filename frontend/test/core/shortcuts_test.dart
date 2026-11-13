@@ -87,7 +87,7 @@ void main() {
       'Today',
       'Week',
       'Month',
-      'Year',
+      'Year review',
       'Annual plan',
       'Reviews',
       'Settings',

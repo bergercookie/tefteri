@@ -80,7 +80,9 @@ enter a value by hand when the update source is automatic.
 
 ## Start a plan from an earlier year
 
-When a year has no plan, you can copy goals and unmet key results from an earlier year.
+When a year has no plan, you can copy goals and unmet key results from an earlier year. The
+[annual review](annual-review.md) shows the same offer and opens this screen with the reviewed
+year as the source year.
 
 1. Choose Copy from an earlier year.
 2. Choose the source year.

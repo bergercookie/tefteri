@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "A zoomed-out review of the planning year. It reads the monthly review snapshots stored by feature 007 and never recomputes history. For each goal it shows whether each key result was hit, with the twelve monthly snapshots behind it. It shows which themes served which key results (that year's stored links) and whether the milestones shipped matched the key result movement. It shows the year split of goal-aligned, maintenance and off-plan work (feature 005). It starts the next annual planning session (feature 006) from this year's review. Source: `specs/planning-cycles/source-spec.md`, with the decisions in `specs/planning-cycles/decisions.md`."
 

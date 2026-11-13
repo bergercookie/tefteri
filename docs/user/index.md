@@ -13,6 +13,7 @@ android-widget
 daily-planning
 scheduling
 annual-planning
+annual-review
 planning-checklists
 organizing-projects
 monthly-planning

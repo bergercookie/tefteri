@@ -1214,17 +1214,118 @@ def test_0020_downgrade_restores_the_old_schema(
     assert links == 2  # the goals and the task links are kept
 
 
-def test_the_head_revision_is_0022_and_it_follows_0021() -> None:
+def test_the_head_revision_was_0022_before_0023() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0022"
+    assert script.get_current_head() == "0023"
     revision = script.get_revision("0022")
     assert revision is not None
     assert revision.down_revision == "0021"
     assert script.get_revision("0021").down_revision == "0020"
     # Feature 006 owns 0020, and 0020 follows 0019.
     assert script.get_revision("0020").down_revision == "0019"
+
+
+def test_0023_creates_review_notes_with_scope_indexes(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0019")
+    _seed_0019(alembic_runner)
+    alembic_runner.migrate_up_to("0022")
+    before = set(inspect(alembic_engine).get_table_names())
+    alembic_runner.migrate_up_to("0023")
+    insp = inspect(alembic_engine)
+    assert set(insp.get_table_names()) - before == {"review_notes"}
+    indexes = {i["name"]: i for i in insp.get_indexes("review_notes")}
+    assert indexes["uq_review_notes_year"]["unique"] == 1
+    assert indexes["uq_review_notes_year"]["column_names"] == ["user_id", "year"]
+    assert indexes["uq_review_notes_goal"]["unique"] == 1
+    assert indexes["uq_review_notes_goal"]["column_names"] == ["user_id", "goal_id"]
+    ondelete = {
+        key["constrained_columns"][0]: key["options"].get("ondelete")
+        for key in insp.get_foreign_keys("review_notes")
+    }
+    assert ondelete == {"user_id": "CASCADE", "goal_id": "CASCADE"}
+
+    goal = "eeeeeeee-0000-0000-0000-000000000023"
+    alembic_runner.insert_into(
+        "goals",
+        {
+            "id": goal,
+            "user_id": _U1,
+            "parent_id": None,
+            "period_type": "year",
+            "period_start": date(2025, 1, 1),
+            "title": "A goal",
+            "description": "",
+            "criteria": "",
+            "status": "active",
+            "updated_at": datetime(2025, 1, 1),
+            "retired_at": None,
+            "retired_reason": None,
+            "position": 0,
+        },
+    )
+    note = {
+        "user_id": _U1,
+        "year": 2025,
+        "body": "A year.",
+        "created_at": datetime(2026, 1, 1),
+        "updated_at": datetime(2026, 1, 1),
+    }
+    alembic_runner.insert_into(
+        "review_notes", note | {"id": "eeeeeeee-0000-0000-0000-000000000024", "goal_id": None}
+    )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "review_notes",
+            note | {"id": "eeeeeeee-0000-0000-0000-000000000025", "goal_id": None},
+        )
+    alembic_runner.insert_into(
+        "review_notes",
+        note | {"id": "eeeeeeee-0000-0000-0000-000000000026", "goal_id": goal},
+    )
+    with pytest.raises(IntegrityError):
+        alembic_runner.insert_into(
+            "review_notes",
+            note | {"id": "eeeeeeee-0000-0000-0000-000000000027", "goal_id": goal},
+        )
+    for n, body in ((28, ""), (29, "x" * 2001)):
+        with pytest.raises(IntegrityError):
+            alembic_runner.insert_into(
+                "review_notes",
+                note
+                | {
+                    "id": f"eeeeeeee-0000-0000-0000-0000000000{n}",
+                    "goal_id": None,
+                    "year": 2024,
+                    "body": body,
+                },
+            )
+    with alembic_engine.connect() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        conn.exec_driver_sql(f"delete from goals where id = '{goal}'")
+        conn.commit()
+        assert conn.exec_driver_sql("select count(*) from review_notes").scalar() == 1
+        conn.exec_driver_sql(f"delete from users where id = '{_U1}'")
+        conn.commit()
+        assert conn.exec_driver_sql("select count(*) from review_notes").scalar() == 0
+    alembic_runner.migrate_down_one()
+    assert "review_notes" not in inspect(alembic_engine).get_table_names()
+
+
+def test_the_head_revision_is_0023_and_it_follows_0022() -> None:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config()
+    config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
+    script = ScriptDirectory.from_config(config)
+    assert script.get_current_head() == "0023"
+    revision = script.get_revision("0023")
+    assert revision is not None
+    assert revision.down_revision == "0022"

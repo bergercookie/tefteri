@@ -9,7 +9,6 @@ import 'package:tefteri/features/month/month_screen.dart';
 import 'package:tefteri/features/statistics/drilldown_screen.dart';
 import 'package:tefteri/features/statistics/statistics_models.dart';
 import 'package:tefteri/features/week/week_screen.dart';
-import 'package:tefteri/features/year/year_screen.dart';
 
 import 'fixtures.dart';
 import 'screenshot_helper.dart';
@@ -234,12 +233,6 @@ void main() {
     await pumpScreen(tester, _api(), MonthScreen(initialDate: day),
         size: const Size(1100, 900));
     await saveScreenshot('statistics-month');
-  });
-
-  testWidgets('year with counts and the bar', (tester) async {
-    await pumpScreen(tester, _api(), const YearScreen(initialYear: 2026),
-        size: const Size(1100, 900));
-    await saveScreenshot('statistics-year');
   });
 
   testWidgets('drill-down into goal-aligned tasks of the month',

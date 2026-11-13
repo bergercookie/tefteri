@@ -327,6 +327,224 @@ Map<String, Object?> changeJson(String id, String kind,
 Map<String, Object?> historyJson(List<Object?> changes, {int year = 2030}) =>
     {'year': year, 'changes': changes};
 
+/// One month of `GET /annual-review/{year}`.
+Map<String, Object?> reviewMonthJson(String month,
+        {String status = 'stored', int? version = 1, String? action}) =>
+    {
+      'month': month,
+      'status': status,
+      'version': version,
+      'taken_at': status == 'stored' ? '2030-02-01T10:00:00Z' : null,
+      'schema_version': status == 'stored' ? 1 : null,
+      'action': action ??
+          (status == 'missing' || status == 'open'
+              ? 'open_monthly_review'
+              : null),
+    };
+
+/// One month point of a review series.
+Map<String, Object?> reviewSeriesJson(String month,
+        {num? value, String status = 'stored', bool notStored = false}) =>
+    {'month': month, 'status': status, 'value': value, 'not_stored': notStored};
+
+/// One theme contribution of the review.
+Map<String, Object?> reviewThemeJson(String name,
+        {int shipped = 2,
+        int outside = 0,
+        int? targetSum = 2,
+        double fraction = 0.1,
+        String? hint}) =>
+    {
+      'project_id': 'p1',
+      'connection_id': 'c1',
+      'connection_name': 'Vikunja',
+      'name': name,
+      'label': 'theme',
+      'orphaned': null,
+      'ranges': [
+        {
+          'from': '2030-01-01',
+          'to': null,
+          'months': ['2030-01', '2030-02'],
+        }
+      ],
+      'shipped': shipped,
+      'shipped_outside_focus': outside,
+      'target_sum': targetSum,
+      'months_with_target': targetSum == null ? 0 : 2,
+      'movement': {
+        'from': 10,
+        'to': 12,
+        'fraction': fraction,
+        'months': 2,
+      },
+      'hint': hint,
+      'milestones': [
+        {
+          'milestone_id': 'm1',
+          'name': 'Ship it',
+          'done_on': '2030-02-08',
+          'month': '2030-02',
+          'in_focus': true,
+        }
+      ],
+    };
+
+/// One key result of the annual review.
+Map<String, Object?> reviewKeyResultJson(String id, String metric,
+        {num start = 0,
+        num target = 10,
+        String outcome = 'hit',
+        num? last,
+        String? lastMonth,
+        String state = 'reached',
+        List<Object?> series = const [],
+        List<Object?> themes = const [],
+        List<Object?> changes = const [],
+        List<Object?> flags = const []}) =>
+    {
+      'id': id,
+      'metric': metric,
+      'start_value': start,
+      'target': target,
+      'direction': 'up',
+      'deadline': '2030-12-31',
+      'update_source': 'manual',
+      'status': 'active',
+      'retired_at': null,
+      'outcome': outcome,
+      'last_value': last,
+      'last_month': lastMonth,
+      'last_at': last == null ? null : '2030-10-08T12:00:00Z',
+      'deadline_line': {
+        'state': state,
+        'value': last,
+        'month': lastMonth,
+      },
+      'series': series,
+      'peak': null,
+      'moved_after_snapshot': null,
+      'current_value': last ?? start,
+      'changes': changes,
+      'flags': flags,
+      'themes': themes,
+    };
+
+/// One goal of the annual review.
+Map<String, Object?> reviewGoalJson(String id, String title,
+        {List<Object?> keyResults = const [],
+        String status = 'active',
+        List<Object?> flags = const [],
+        Map<String, Object?>? note}) =>
+    {
+      'id': id,
+      'title': title,
+      'status': status,
+      'retired_at': null,
+      'retired_reason': null,
+      'counts': const {
+        'hit': 0,
+        'missed': 0,
+        'no_value': 0,
+        'retired': 0,
+        'in_progress': 0,
+      },
+      'flags': flags,
+      'note': note,
+      'key_results': keyResults,
+    };
+
+/// The answer of `GET /annual-review/{year}`.
+Map<String, Object?> annualReviewJson({
+  int year = 2030,
+  String state = 'past',
+  int stored = 12,
+  int expected = 12,
+  List<Object?> goals = const [],
+  List<Object?>? months,
+  List<Object?>? missing,
+  Map<String, Object?>? empty,
+  List<Object?> splitMonths = const [],
+  int monthsCovered = 12,
+  int goalAligned = 120,
+  int maintenance = 40,
+  int offPlan = 30,
+  int hidden = 12,
+  Map<String, Object?>? yearNote,
+  Map<String, Object?>? storedPeriodReview,
+  Map<String, Object?>? nextYear,
+}) =>
+    {
+      'year': year,
+      'state': state,
+      'in_progress': state == 'current',
+      'rules': {'hit': 'last_value_reaches_target', 'differ_threshold': 0.25},
+      'months': months ??
+          [
+            for (var m = 1; m <= 12; m++)
+              reviewMonthJson('$year-${m.toString().padLeft(2, '0')}'),
+          ],
+      'coverage': {
+        'stored': stored,
+        'expected': expected,
+        'missing': missing ?? const [],
+      },
+      'empty': empty,
+      'goals': goals,
+      'milestones_shipped': {'count': 24, 'months_covered': stored},
+      'split': {
+        'months_covered': monthsCovered,
+        'counts': {
+          'goal_aligned': goalAligned,
+          'maintenance': maintenance,
+          'off_plan': offPlan,
+        },
+        'total': goalAligned + maintenance + offPlan,
+        'hidden': hidden,
+        'percentages': {
+          'goal_aligned': 63,
+          'maintenance': 21,
+          'off_plan': 16,
+        },
+        'months': [
+          for (var m = 1; m <= 12; m++)
+            {
+              'month': '$year-${m.toString().padLeft(2, '0')}',
+              'status': m <= stored ? 'stored' : 'missing',
+              'counts': {
+                'goal_aligned': 10,
+                'maintenance': 4,
+                'off_plan': 3,
+              },
+              'hidden': 1,
+              'percentages': {
+                'goal_aligned': 59,
+                'maintenance': 23,
+                'off_plan': 18,
+              },
+              'not_stored': false,
+            },
+        ],
+        'trend_note': null,
+      },
+      'drill_down': {
+        'live': true,
+        'route': '/statistics/tasks',
+        'query': {'period': 'year', 'day': '$year-01-01'},
+      },
+      'next_year': nextYear ??
+          {
+            'year': year + 1,
+            'from_year': year,
+            'available': state != 'future',
+            'has_plan': true,
+            'unmet_key_results': 2,
+            'links': 3,
+          },
+      'year_note': yearNote,
+      'stored_period_review': storedPeriodReview,
+    };
+
 /// The answer of `GET /annual/{year}/suggestions`.
 Map<String, Object?> suggestionsJson(
         {int year = 2031,
