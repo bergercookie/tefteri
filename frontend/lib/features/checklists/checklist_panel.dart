@@ -83,11 +83,6 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
     final String summary;
     if (list == null) {
       summary = state.hasError ? 'Could not load it' : 'Loading';
-    } else if (list.readOnly) {
-      summary = list.items.isEmpty
-          ? 'Nothing in the note'
-          : '${list.items.length} ${list.items.length == 1 ? 'item' : 'items'} '
-              'from notes';
     } else if (list.items.isEmpty) {
       summary = 'Not set up yet';
     } else if (list.done == list.items.length) {
@@ -210,77 +205,35 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
     );
   }
 
-  /// A list that comes from the notes app: read it, but do not tick it.
-  Widget _readOnlyItems(BuildContext context, PeriodChecklist list) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final colors = context.tefteri;
-    return Column(
-      key: const Key('checklist-read-only'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: Space.xs),
-        for (var i = 0; i < list.items.length; i++)
-          Container(
-            key: Key('checklist-item-$i'),
-            decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.rule))),
-            padding: const EdgeInsets.symmetric(vertical: Space.xs),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: Space.md, top: 2),
-                  child: Icon(Icons.notes,
-                      size: 18, color: scheme.onSurfaceVariant),
-                ),
-                const SizedBox(width: Space.sm),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 1),
-                    child: Text(list.items[i].text, style: text.bodyMedium),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        const SizedBox(height: Space.xs),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Read from ${list.source}. Change it in your notes app.',
-                key: const Key('checklist-source'),
-                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-            ),
-            TextButton.icon(
-              key: const Key('checklist-refresh'),
-              onPressed: () =>
-                  ref.read(checklistProvider(_key).notifier).load(),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Refresh'),
-            ),
-            TextButton(
-              key: const Key('checklist-edit'),
-              onPressed: () => context.go(checklistSettingsPath),
-              child: const Text('Edit the source'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _items(BuildContext context, PeriodChecklist list) {
-    if (list.readOnly) return _readOnlyItems(context, list);
     final colors = context.tefteri;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final all = list.done == list.items.length;
+    final source = list.source;
+    final fromNotes = source != null && source.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (fromNotes) ...[
+          const SizedBox(height: Space.xs),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.notes, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Space.xs),
+              Expanded(
+                child: Text(
+                  'Read from $source. Ticks stay in Tefteri and are not '
+                  'written to the note.',
+                  key: const Key('checklist-source'),
+                  style:
+                      text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: Space.xs),
         ClipRRect(
           borderRadius: BorderRadius.circular(Corner.pill),
@@ -353,10 +306,23 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
           ),
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton(
-            key: const Key('checklist-edit'),
-            onPressed: () => context.go(checklistSettingsPath),
-            child: const Text('Edit the list'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (fromNotes)
+                TextButton.icon(
+                  key: const Key('checklist-refresh'),
+                  onPressed: () =>
+                      ref.read(checklistProvider(_key).notifier).load(),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Refresh'),
+                ),
+              TextButton(
+                key: const Key('checklist-edit'),
+                onPressed: () => context.go(checklistSettingsPath),
+                child: Text(fromNotes ? 'Edit the source' : 'Edit the list'),
+              ),
+            ],
           ),
         ),
       ],

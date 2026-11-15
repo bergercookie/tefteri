@@ -58,11 +58,6 @@ class Checklist:
         """How many items are ticked."""
         return sum(1 for i in self.items if i.checked)
 
-    @property
-    def read_only(self) -> bool:
-        """A checklist from the notes app is read-only."""
-        return self.source is not None
-
 
 class ChecklistService:
     """Read the checklist of a period and tick its items."""
@@ -97,17 +92,18 @@ class ChecklistService:
 
         The items are the user's current list. A tick for an item that is no longer in the list
         is ignored. When a note path is set, the items are read from that note on every call,
-        so the list is always as new as the note, and it is read-only.
+        so the list is always as new as the note. Ticks stay in tefteri and are never written to
+        the note.
         """
         user = await self._user(db, user_id)
         start = period_start(kind, day)
+        row = await self._row(db, user_id, kind, start)
+        ticked = set(row.checked) if row else set()
         source = str(user.checklist_sources.get(kind.value, "")).strip()
         if source:
             remote = await self._notes.note_by_path(db, user_id, source)
             items = clean_items(list_items_from_html(remote.body))[:MAX_ITEMS]
-            return Checklist(kind, start, [Item(t, False) for t in items], source=source)
-        row = await self._row(db, user_id, kind, start)
-        ticked = set(row.checked) if row else set()
+            return Checklist(kind, start, [Item(t, t in ticked) for t in items], source=source)
         items = clean_items(list(user.checklists.get(kind.value, [])))
         return Checklist(kind, start, [Item(t, t in ticked) for t in items])
 
@@ -120,14 +116,12 @@ class ChecklistService:
         text: str,
         checked: bool,
     ) -> Checklist:
-        """Tick or untick one item in the period and return the checklist."""
+        """Tick or untick one item in the period and return the checklist.
+
+        A checklist from the notes app is ticked in the same way. The tick stays in tefteri;
+        the note is only read, never written.
+        """
         current = await self.get(db, user_id, kind, day)
-        if current.read_only:
-            raise Invalid(
-                "This checklist comes from your notes app and is read-only. "
-                "Change it in your notes app.",
-                "read_only",
-            )
         if text not in {i.text for i in current.items}:
             raise Invalid("That item is not in the checklist. Reload the page.")
         row = await self._row(db, user_id, kind, current.start)

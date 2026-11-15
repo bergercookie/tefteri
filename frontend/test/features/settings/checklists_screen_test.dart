@@ -202,8 +202,9 @@ void main() {
         const ChecklistsScreen());
     expect(_boxEnabled(tester, 'week'), isFalse);
     expect(_boxEnabled(tester, 'month'), isTrue);
-    expect(_count(tester, 'week'), 'Read from Checklists/Weekly.');
-    expect(find.textContaining('cannot be ticked here'), findsOneWidget);
+    expect(_count(tester, 'week'),
+        'Read from Checklists/Weekly. Ticks stay in Tefteri.');
+    expect(find.textContaining('Ticks stay in Tefteri'), findsWidgets);
   });
 
   testWidgets('a notes path is saved alone, and cleared again', (tester) async {
@@ -231,7 +232,8 @@ void main() {
     expect(api.where('PATCH /me/settings').single.data, {
       'checklist_sources': {'week': 'Checklists/Weekly'},
     });
-    expect(_count(tester, 'week'), 'Read from Checklists/Weekly.');
+    expect(_count(tester, 'week'),
+        'Read from Checklists/Weekly. Ticks stay in Tefteri.');
 
     await _typeSource(tester, 'week', '');
     expect(_boxEnabled(tester, 'week'), isTrue);

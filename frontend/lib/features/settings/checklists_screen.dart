@@ -188,8 +188,8 @@ class _ChecklistsScreenState extends ConsumerState<ChecklistsScreen> {
                 'the Month and Year pages. You tick the items there, and the '
                 'list starts clean each week, month or year. You can also '
                 'read a checklist from your notes app: give its path below, '
-                'and the list is read-only and refreshed from the note each '
-                'time it is shown.',
+                'and the list is refreshed from the note each time it is '
+                'shown. Ticks stay in Tefteri.',
                 key: const Key('checklists-intro'),
                 style: text.bodyMedium,
               ),
@@ -272,7 +272,7 @@ class _ChecklistsScreenState extends ConsumerState<ChecklistsScreen> {
             labelText: 'Path in your notes app (optional)',
             hintText: 'Checklists/${k.adjective}',
             helperText: fromNotes
-                ? 'The list is read from this note and cannot be ticked here.'
+                ? 'The list is read from this note. Ticks stay in Tefteri.'
                 : 'Leave empty to write the list below.',
           ),
           onChanged: (_) => setState(() => _justSaved = false),
@@ -290,16 +290,15 @@ class _ChecklistsScreenState extends ConsumerState<ChecklistsScreen> {
             hintText: 'One item on each line',
             alignLabelWithHint: true,
             errorText: problem,
-            helperText: fromNotes
-                ? 'This list is not used while a notes path is set.'
-                : null,
+            helperText:
+                fromNotes ? 'Not used while a notes path is set.' : null,
           ),
           onChanged: (_) => setState(() => _justSaved = false),
         ),
         const SizedBox(height: Space.xs),
         Text(
           fromNotes
-              ? 'Read from $source.'
+              ? 'Read from $source. Ticks stay in Tefteri.'
               : items.isEmpty
                   ? 'No items: there is no ${k.adjective.toLowerCase()} '
                       'checklist.'

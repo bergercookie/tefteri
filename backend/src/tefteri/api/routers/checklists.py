@@ -35,8 +35,6 @@ class ChecklistOut(BaseModel):
     total: int
     source: str | None = None
     """The note path that the list comes from; ``None`` for the user's local list."""
-    read_only: bool = False
-    """True when the list comes from the notes app and its items cannot be ticked."""
 
     @classmethod
     def of(cls, c: Checklist) -> "ChecklistOut":
@@ -48,7 +46,6 @@ class ChecklistOut(BaseModel):
             done=c.done,
             total=len(c.items),
             source=c.source,
-            read_only=c.read_only,
         )
 
 

@@ -759,11 +759,6 @@
           "period_type": {
             "$ref": "#/components/schemas/PeriodType"
           },
-          "read_only": {
-            "default": false,
-            "title": "Read Only",
-            "type": "boolean"
-          },
           "source": {
             "anyOf": [
               {

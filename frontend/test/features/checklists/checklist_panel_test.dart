@@ -225,46 +225,62 @@ void main() {
     expect(find.byKey(const Key('checklist-create')), findsOneWidget);
   });
 
-  testWidgets('a checklist from the notes app is read-only and refreshes',
+  testWidgets('a checklist from the notes app is ticked here and refreshes',
       (tester) async {
-    var reads = 0;
-    final api = FakeApi({
-      _get: (_) {
-        reads++;
-        final items = reads == 1
-            ? ['Look back', 'Clear the inbox']
-            : ['Look back', 'Choose the focus'];
-        return {
+    var noteItems = ['Look back', 'Clear the inbox'];
+    final checked = <String>{};
+    Map<String, Object?> shown() => {
           'period_type': 'week',
           'period_start': '2026-11-02',
           'items': [
-            for (final t in items) {'text': t, 'checked': false},
+            for (final t in noteItems)
+              {'text': t, 'checked': checked.contains(t)},
           ],
-          'done': 0,
-          'total': items.length,
+          'done': checked.where(noteItems.contains).length,
+          'total': noteItems.length,
           'source': 'Checklists/Weekly',
-          'read_only': true,
         };
+    final api = FakeApi({
+      _get: (_) => shown(),
+      _put: (o) {
+        final body = o.data as Map;
+        final text = body['text'] as String;
+        if (body['checked'] == true) {
+          checked.add(text);
+        } else {
+          checked.remove(text);
+        }
+        return shown();
       },
     });
     await _pump(tester, api);
-    expect(_summary(tester), '2 items from notes');
-    expect(find.byKey(const Key('checklist-read-only')), findsOneWidget);
+    expect(_summary(tester), '0 of 2 done');
     expect(find.byKey(const Key('checklist-source')), findsOneWidget);
     expect(find.textContaining('Read from Checklists/Weekly'), findsOneWidget);
-    expect(find.byKey(const Key('checklist-box-0')), findsNothing);
-    expect(find.byKey(const Key('checklist-bar')), findsNothing);
+    expect(find.textContaining('Ticks stay in Tefteri'), findsOneWidget);
+    expect(find.byKey(const Key('checklist-box-0')), findsOneWidget);
+    expect(find.byKey(const Key('checklist-bar')), findsOneWidget);
     expect(find.text('Clear the inbox'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('checklist-item-0')));
+    await tester.tap(find.byKey(const Key('checklist-item-1')));
     await tester.pumpAndSettle();
-    expect(api.where(_put), isEmpty);
+    expect(api.where(_put).single.data,
+        {'text': 'Clear the inbox', 'checked': true});
+    expect(_summary(tester), '1 of 2 done');
 
+    noteItems = ['Look back', 'Choose the focus'];
     await tester.tap(find.byKey(const Key('checklist-refresh')));
     await tester.pumpAndSettle();
     expect(api.where(_get), hasLength(2));
     expect(find.text('Choose the focus'), findsOneWidget);
     expect(find.text('Clear the inbox'), findsNothing);
+    expect(_summary(tester), '0 of 2 done');
+
+    await tester.tap(find.byKey(const Key('checklist-item-1')));
+    await tester.pumpAndSettle();
+    expect(api.where(_put).last.data,
+        {'text': 'Choose the focus', 'checked': true});
+    expect(_summary(tester), '1 of 2 done');
   });
 
   testWidgets('a note without a list offers a refresh, not a new local list',
@@ -277,11 +293,10 @@ void main() {
         'done': 0,
         'total': 0,
         'source': 'Checklists/Weekly',
-        'read_only': true,
       },
     });
     await _pump(tester, api);
-    expect(_summary(tester), 'Nothing in the note');
+    expect(_summary(tester), 'Not set up yet');
     expect(find.textContaining('The note at Checklists/Weekly has no list'),
         findsOneWidget);
     expect(find.byKey(const Key('checklist-refresh')), findsOneWidget);
