@@ -26,10 +26,6 @@ enum AnnualTerm {
   retire('Retire',
       'Stop counting it as active. Its links end, but its history stays, and you can undo or restore it.'),
 
-  /// "Automatic".
-  automatic('Automatic',
-      'An outside source may send values to it. You can still enter values by hand.'),
-
   /// "Unmet".
   unmet('Unmet',
       'The last value of a key result did not reach its target. Only unmet key results are suggested again.');

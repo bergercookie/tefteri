@@ -54,7 +54,7 @@ void main() {
     expect(sent['start_value'], 120);
     expect(sent['target'], 500);
     expect(sent['deadline'], '2030-12-31');
-    expect(sent['update_source'], 'manual');
+    expect(sent.containsKey('update_source'), isFalse);
     expect(find.byKey(const Key('kr-form')), findsNothing);
     expect(find.text('Stars on the main repository'), findsOneWidget);
     final kr = (server.goals.single['key_results'] as List).single as Map;
@@ -164,17 +164,15 @@ void main() {
       expect(find.byKey(Key('annual-hint-$term')), findsNothing);
     }
 
-    testWidgets('planning year, key result, automatic', (tester) async {
+    testWidgets('planning year and key result', (tester) async {
       final server = AnnualServer(goals: [annualGoalJson('g1', 'Get fit')]);
       await pumpAnnual(tester, server.routes());
       await expectOnce(tester, 'planningYear', () async {});
       await expectOnce(tester, 'keyResult', () => tapKey(tester, 'add-kr-g1'));
-      await expectOnce(tester, 'automatic', () async {});
       await tapKey(tester, 'kr-cancel');
       // Closed hints stay closed.
       await tapKey(tester, 'add-kr-g1');
       expect(find.byKey(const Key('annual-hint-keyResult')), findsNothing);
-      expect(find.byKey(const Key('annual-hint-automatic')), findsNothing);
       expect(find.byKey(const Key('annual-hint-planningYear')), findsNothing);
     });
 

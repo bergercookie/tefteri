@@ -63,8 +63,7 @@ void main() {
     expect(values, isEmpty);
   });
 
-  testWidgets(
-      'automatic values have no prompt and shared results repeat by theme',
+  testWidgets('a retired key result has no prompt and shared results repeat',
       (tester) async {
     final snapshot = monthlySnapshotJson(
       themes: [
@@ -73,7 +72,7 @@ void main() {
       ],
       keyResults: [
         monthlyReviewKeyResultJson(
-          updateSource: 'automatic',
+          retired: true,
           themeIds: const ['p1', 'p2'],
           shared: true,
         ),

@@ -106,7 +106,6 @@ void main() {
             'start_value': 250.0,
             'target': 500.0,
             'deadline': '2031-12-31',
-            'update_source': 'manual',
             'theme_ids': ['p1'],
             'seeded_from_key_result_id': 'okr1',
           }

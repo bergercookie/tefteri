@@ -173,7 +173,6 @@ class KeyResult {
     required this.startValue,
     required this.target,
     required this.deadline,
-    required this.updateSource,
     required this.status,
     required this.currentValue,
     this.kind = 'number',
@@ -195,7 +194,6 @@ class KeyResult {
       startValue: start,
       target: _num(j['target']),
       deadline: '${j['deadline'] ?? ''}',
-      updateSource: '${j['update_source'] ?? 'manual'}',
       status: '${j['status'] ?? 'active'}',
       currentValue: _numOrNull(j['current_value']) ?? start,
       currentAt: _date(j['current_at']),
@@ -227,9 +225,6 @@ class KeyResult {
   /// The deadline, `YYYY-MM-DD`.
   final String deadline;
 
-  /// `manual` or `automatic`.
-  final String updateSource;
-
   /// `active` or `retired`.
   final String status;
 
@@ -259,9 +254,6 @@ class KeyResult {
 
   /// The answer of a yes/no key result.
   String get yesNoAnswer => currentValue >= 0.5 ? 'Yes' : 'No';
-
-  /// True when an outside source may push values.
-  bool get automatic => updateSource == 'automatic';
 
   /// The links that have not ended.
   List<ThemeLink> get activeLinks => [
@@ -635,7 +627,6 @@ class SuggestedKeyResult {
     required this.target,
     required this.deadline,
     this.kind = 'number',
-    this.updateSource = 'manual',
     this.themes = const [],
   });
 
@@ -648,7 +639,6 @@ class SuggestedKeyResult {
         startValue: _num(j['start_value']),
         target: _num(j['target']),
         deadline: '${j['deadline'] ?? ''}',
-        updateSource: '${j['update_source'] ?? 'manual'}',
         themes: [
           for (final t in _maps(j['themes']))
             ThemeOption(projectId: '${t['project_id']}', name: '${t['name']}')
@@ -672,9 +662,6 @@ class SuggestedKeyResult {
 
   /// The deadline moved into the new year.
   final String deadline;
-
-  /// `manual` or `automatic`.
-  final String updateSource;
 
   /// The themes whose links are still usable.
   final List<ThemeOption> themes;
@@ -748,7 +735,6 @@ class KeyResultDraft {
     required this.target,
     required this.deadline,
     this.kind = 'number',
-    this.updateSource = 'manual',
     this.themes = const [],
     this.seededFromKeyResultId,
   });
@@ -768,9 +754,6 @@ class KeyResultDraft {
   /// `YYYY-MM-DD`.
   final String deadline;
 
-  /// `manual` or `automatic`.
-  final String updateSource;
-
   /// The themes to link.
   final List<ThemeOption> themes;
 
@@ -784,7 +767,6 @@ class KeyResultDraft {
         'start_value': startValue,
         'target': target,
         'deadline': deadline,
-        'update_source': updateSource,
         'theme_ids': [for (final t in themes) t.projectId],
         if (seededFromKeyResultId != null)
           'seeded_from_key_result_id': seededFromKeyResultId,

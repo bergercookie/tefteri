@@ -164,7 +164,6 @@ class _SeedPanelState extends ConsumerState<SeedPanel> {
           startValue: start!,
           target: target!,
           deadline: isoDate(day!),
-          updateSource: k.source.updateSource,
           themes: k.source.themes,
           seededFromKeyResultId: k.source.keyResultId,
         ));

@@ -13,7 +13,7 @@ The migration `0020_annual_planning` adds these tables and four columns on `goal
 | Table | What it holds |
 | --- | --- |
 | `goals` | A goal of one year. The new columns are `updated_at`, `retired_at`, `retired_reason` and `position`. |
-| `key_results` | The metric, kind (`number` or `yes_no`), start value, target, deadline, update source, status, slot and the seed source. A yes/no key result stores 0 (No) and 1 (Yes). |
+| `key_results` | The metric, kind (`number` or `yes_no`), start value, target, deadline, status, slot and the seed source. A yes/no key result stores 0 (No) and 1 (Yes). |
 | `key_result_values` | The append-only dated series. `seq` orders values entered on the same day. |
 | `key_result_themes` | The link periods between a key result and a theme project. |
 | `plan_changes` | The append-only plan history. Each user action is one `batch_id`. |
@@ -21,6 +21,12 @@ The migration `0020_annual_planning` adds these tables and four columns on `goal
 The migration `0025_key_result_kind` adds `kind` with the default `number`. Existing key results
 stay numbers. The migration `0026_remove_value_push_tokens` removes the push-token table with the
 inbound push contract.
+
+The migration `0029_remove_key_result_update_source` removes `key_results.update_source`. The
+setting said that an outside source pushes values. Nothing wrote such a value after revision 0026,
+so every key result behaved as manual. New value rows always have the source `manual`. Old plan
+history rows can still name `update_source` as a changed field. Old monthly snapshots keep it in
+their stored payload, and the snapshot reader ignores it.
 
 Tefteri derives the current value and the progress. It does not store them. A value row stores `at`,
 the time stamp, and `on_date`, the day of `at` in the user time zone. `value_on` reads the last

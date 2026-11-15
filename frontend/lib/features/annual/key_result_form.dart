@@ -77,7 +77,6 @@ class _KeyResultFormState extends State<KeyResultForm> {
   late final TextEditingController _start;
   late final TextEditingController _target;
   late final TextEditingController _deadline;
-  late bool _automatic;
   late bool _yesNo;
   List<ThemeOption> _themes = const [];
   String? _metricError;
@@ -98,7 +97,6 @@ class _KeyResultFormState extends State<KeyResultForm> {
         TextEditingController(text: e == null ? '' : formatNumber(e.target));
     _deadline =
         TextEditingController(text: e?.deadline ?? '${widget.year}-12-31');
-    _automatic = e?.automatic ?? false;
     _yesNo = e?.yesNo ?? false;
   }
 
@@ -143,7 +141,6 @@ class _KeyResultFormState extends State<KeyResultForm> {
       startValue: start!,
       target: target!,
       deadline: isoDate(deadline!),
-      updateSource: _automatic ? 'automatic' : 'manual',
       themes: _themes,
     );
   }
@@ -266,16 +263,6 @@ class _KeyResultFormState extends State<KeyResultForm> {
                 ),
               ),
               const SizedBox(height: Space.sm),
-              const AnnualTermHint(AnnualTerm.automatic),
-              SwitchListTile(
-                key: const Key('kr-source'),
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Automatic'),
-                subtitle: const Text(
-                    'An outside source may send values. You can still enter values by hand.'),
-                value: _automatic,
-                onChanged: (v) => setState(() => _automatic = v),
-              ),
               if (!editing) ...[
                 const SizedBox(height: Space.xs),
                 Wrap(

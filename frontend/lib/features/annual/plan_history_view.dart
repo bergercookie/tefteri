@@ -47,6 +47,7 @@ const _undoableKinds = {
   'link_ended',
 };
 
+// `update_source` is no longer a field, but old history rows still name it.
 String _field(String f) => switch (f) {
       'update_source' => 'update source',
       'title' => 'text',

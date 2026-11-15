@@ -57,15 +57,9 @@ class AnnualPlanController extends StateNotifier<AsyncValue<AnnualPlan>> {
 
   /// Changes the fields of key result [id] that are not null.
   Future<KeyResult> editKeyResult(String id,
-          {String? metric,
-          double? target,
-          String? deadline,
-          String? updateSource}) =>
+          {String? metric, double? target, String? deadline}) =>
       _then(_api.editKeyResult(id,
-          metric: metric,
-          target: target,
-          deadline: deadline,
-          updateSource: updateSource));
+          metric: metric, target: target, deadline: deadline));
 
   /// Retires goal [goalId]; answers the batch to undo.
   Future<String?> retireGoal(String goalId, {String? reason}) async =>
