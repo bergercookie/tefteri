@@ -109,7 +109,22 @@ class PlannerViewsDialog extends ConsumerWidget {
                   .setShowCalendar(v),
         ),
         const SizedBox(height: Space.sm),
-        _header(context, 'Task providers'),
+        _header(
+          context,
+          'Task providers',
+          action: taskConnections.isEmpty
+              ? null
+              : _ShowAllButton(
+                  key: const Key('planner-task-sources-toggle'),
+                  allShown: taskConnections
+                      .every((c) => visibility.showsTaskConnection(c.id)),
+                  what: 'tasks of every task app',
+                  onChanged: (v) => ref
+                      .read(plannerVisibilityProvider.notifier)
+                      .setTaskConnectionsVisible(
+                          [for (final c in taskConnections) c.id], v),
+                ),
+        ),
         if (taskConnections.isEmpty)
           _empty(context, 'No task apps are connected.')
         else
@@ -137,9 +152,17 @@ class PlannerViewsDialog extends ConsumerWidget {
     );
   }
 
-  Widget _header(BuildContext context, String text) => Padding(
+  Widget _header(BuildContext context, String text, {Widget? action}) =>
+      Padding(
         padding: const EdgeInsets.only(top: Space.sm, bottom: Space.xs),
-        child: Text(text, style: Theme.of(context).textTheme.titleSmall),
+        child: Row(
+          children: [
+            Expanded(
+                child:
+                    Text(text, style: Theme.of(context).textTheme.titleSmall)),
+            if (action != null) action,
+          ],
+        ),
       );
 
   Widget _empty(BuildContext context, String text) => Padding(
@@ -177,6 +200,32 @@ class _CalendarGroup extends ConsumerWidget {
       data: (list) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // One switch for all the calendars of this connection.
+          if (list.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      connection.displayName,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  _ShowAllButton(
+                    key: Key('planner-calendar-group-toggle-${connection.id}'),
+                    allShown: list.every((c) => visibility.showsCalendar(c.id)),
+                    what: 'calendars of ${connection.displayName}',
+                    onChanged: (v) => ref
+                        .read(plannerVisibilityProvider.notifier)
+                        .setCalendarsVisible([for (final c in list) c.id], v),
+                  ),
+                ],
+              ),
+            ),
           for (final calendar in list)
             _CalendarSwitch(
               connection: connection,
@@ -239,4 +288,40 @@ class _CalendarSwitch extends ConsumerWidget {
           .setCalendarVisible(calendar.id, v),
     );
   }
+}
+
+/// "Hide all" while every source of a group is shown, else "Show all".
+class _ShowAllButton extends StatelessWidget {
+  const _ShowAllButton({
+    required this.allShown,
+    required this.what,
+    required this.onChanged,
+    super.key,
+  });
+
+  /// True when every source of the group is shown.
+  final bool allShown;
+
+  /// The sources of the group, for the tooltip ("calendars of Work").
+  final String what;
+
+  /// Called with true to show every source of the group, false to hide them.
+  final void Function(bool visible) onChanged;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: '${allShown ? 'Hide' : 'Show'} the $what',
+        child: TextButton.icon(
+          onPressed: () => onChanged(!allShown),
+          icon: Icon(
+              allShown
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              size: 18),
+          label: Text(allShown ? 'Hide all' : 'Show all'),
+          style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+        ),
+      );
 }

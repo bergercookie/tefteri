@@ -27,6 +27,9 @@ Choose the eye button at the top of the planner. A window shows these switches:
 - **Task providers**: hide the tasks of one connected task app. The other task apps stay visible.
 - **Calendars**: hide the events of one calendar. The other calendars stay visible.
 
+Next to **Task providers**, and next to the name of each calendar connection, a button **Hide
+all** hides all of them at once. When they are hidden, the same button says **Show all**.
+
 ![The window What the planner shows. It has switches for the two columns, for the task app Home tasks, and for the calendars Work, Family and Holidays.](../images/planner-views.png)
 
 A hidden source keeps syncing. Tefteri only leaves it out of the planner, so you can show it again at once.

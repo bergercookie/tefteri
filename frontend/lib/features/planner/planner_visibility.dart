@@ -130,6 +130,21 @@ class PlannerVisibilityController extends StateNotifier<PlannerVisibility> {
     _apply(state.copyWith(hiddenCalendarIds: hidden));
   }
 
+  /// Shows or hides the tasks of every connection in [connectionIds] at once.
+  void setTaskConnectionsVisible(Iterable<String> connectionIds, bool visible) {
+    final hidden = {...state.hiddenTaskConnectionIds};
+    visible ? hidden.removeAll(connectionIds) : hidden.addAll(connectionIds);
+    _apply(state.copyWith(hiddenTaskConnectionIds: hidden));
+  }
+
+  /// Shows or hides every calendar in [containerIds] at once, such as all
+  /// the calendars of one connection.
+  void setCalendarsVisible(Iterable<String> containerIds, bool visible) {
+    final hidden = {...state.hiddenCalendarIds};
+    visible ? hidden.removeAll(containerIds) : hidden.addAll(containerIds);
+    _apply(state.copyWith(hiddenCalendarIds: hidden));
+  }
+
   /// Shows every task provider and calendar again.
   void showAllSources() {
     _apply(state.copyWith(

@@ -160,4 +160,47 @@ void main() {
     expect(controller.state.showTasks, isTrue);
     expect(controller.state.showCalendar, isFalse);
   });
+
+  testWidgets('one button hides or shows all the calendars of a connection',
+      (tester) async {
+    final api = _api();
+    await pumpPlanner(tester, api);
+    await _openViews(tester);
+    final toggle = find.byKey(const Key('planner-calendar-group-toggle-cal1'));
+    expect(find.descendant(of: toggle, matching: find.text('Hide all')),
+        findsOneWidget);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: toggle, matching: find.text('Show all')),
+        findsOneWidget);
+    await tester.tap(find.byKey(const Key('planner-views-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('block-entry-e1')), findsNothing);
+    expect(find.byKey(const Key('block-entry-e2')), findsNothing);
+    // The tasks stay.
+    expect(find.byKey(const Key('block-task-t1')), findsOneWidget);
+
+    await _openViews(tester);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('planner-views-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('block-entry-e1')), findsOneWidget);
+    expect(find.byKey(const Key('block-entry-e2')), findsOneWidget);
+  });
+
+  testWidgets('one button hides or shows the tasks of every task app',
+      (tester) async {
+    final api = _api();
+    await pumpPlanner(tester, api);
+    await _openViews(tester);
+    await tester.tap(find.byKey(const Key('planner-task-sources-toggle')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('planner-views-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('block-task-t1')), findsNothing);
+    expect(find.byKey(const Key('block-task-t2')), findsNothing);
+    expect(find.byKey(const Key('block-entry-e1')), findsOneWidget);
+  });
 }
