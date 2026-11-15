@@ -64,6 +64,27 @@ void main() {
     expect(find.byKey(const Key('task-details')), findsNothing);
   });
 
+  testWidgets('an HTML description also shows formatted', (tester) async {
+    final api = plannerApi(
+      tasksFor: (_) => [
+        _full('t1', 'Write report',
+            due: DateTime(2026, 11, 4, 15),
+            description: '<p><a href="https://example.com/x">link</a></p>'),
+      ],
+    );
+    await pumpPlanner(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await settle(tester);
+
+    expect(_field(tester, 'task-edit-description'),
+        '<p><a href="https://example.com/x">link</a></p>');
+    final formatted = find.byKey(const Key('task-edit-description-formatted'));
+    expect(formatted, findsOneWidget);
+    expect(
+        find.descendant(of: formatted, matching: find.textContaining('link')),
+        findsOneWidget);
+  });
+
   testWidgets('a task without a date or description says so', (tester) async {
     final api = plannerApi(
       tasksFor: (_) => [_full('t1', 'Plan trip')],

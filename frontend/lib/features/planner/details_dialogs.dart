@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/html_description.dart';
 import '../../core/open_url.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
@@ -516,6 +517,15 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
             ),
             onChanged: (_) => setState(() {}),
           ),
+          if (looksLikeHtml(_descriptionCtl.text)) ...[
+            const SizedBox(height: Space.sm),
+            Text('Formatted', style: text.labelMedium),
+            const SizedBox(height: Space.xs),
+            HtmlDescription(
+              key: const Key('task-edit-description-formatted'),
+              html: _descriptionCtl.text,
+            ),
+          ],
           const SizedBox(height: Space.md),
           _Row('Status', task.done ? 'Done' : 'Open', 'status'),
           _Row('On the calendar', _onCalendar(task), 'calendar'),
