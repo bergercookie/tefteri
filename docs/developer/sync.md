@@ -15,7 +15,8 @@ A planning checklist can name a note path per period type (`checklist_sources` o
 returns its `<li>` items in `source`. The local list in `users.checklists` is not used for that
 kind. Ticks still go to `checklist_progress`: they belong to the period and are never written to
 the note. A write in the note shows on the next read, so the client shows the note path and a
-Refresh button beside such a checklist.
+Refresh button beside such a checklist. An HTTP, HTTPS or mail link in an item comes as
+`parts` (runs of words with an optional `url`), so the client can render the link in the item.
 
 ## Sync flow
 

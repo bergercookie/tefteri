@@ -17,11 +17,20 @@ def _service(request: Request) -> ChecklistService:
     return service
 
 
+class ChecklistPartOut(BaseModel):
+    """A run of words in an item; ``url`` is set when the run is a link."""
+
+    text: str
+    url: str | None = None
+
+
 class ChecklistItemOut(BaseModel):
     """One item and whether it is ticked in this period."""
 
     text: str
     checked: bool
+    parts: list[ChecklistPartOut] = Field(default_factory=list)
+    """The runs that build the text, with links. Empty for a local item."""
 
 
 class ChecklistOut(BaseModel):
@@ -42,7 +51,14 @@ class ChecklistOut(BaseModel):
         return cls(
             period_type=c.kind,
             period_start=c.start,
-            items=[ChecklistItemOut(text=i.text, checked=i.checked) for i in c.items],
+            items=[
+                ChecklistItemOut(
+                    text=i.text,
+                    checked=i.checked,
+                    parts=[ChecklistPartOut(text=part.text, url=part.url) for part in i.parts],
+                )
+                for i in c.items
+            ],
             done=c.done,
             total=len(c.items),
             source=c.source,

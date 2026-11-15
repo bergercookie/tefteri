@@ -1,11 +1,13 @@
 /// The planning checklist of a week, month or year, to tick while planning.
 library;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_error.dart';
+import '../../core/open_url.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import 'checklist_controller.dart';
@@ -49,6 +51,35 @@ class PlanningChecklist extends ConsumerStatefulWidget {
 
 class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
   bool _open = false;
+  final _linkRecognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    _disposeLinkRecognizers();
+    super.dispose();
+  }
+
+  void _disposeLinkRecognizers() {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    _linkRecognizers.clear();
+  }
+
+  TapGestureRecognizer _linkRecognizer(String url) {
+    final recognizer = TapGestureRecognizer()..onTap = () => _openLink(url);
+    _linkRecognizers.add(recognizer);
+    return recognizer;
+  }
+
+  Future<void> _openLink(String url) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final opened = await ref.read(openUrlProvider)(Uri.parse(url));
+    if (!opened) {
+      messenger?.showSnackBar(
+          const SnackBar(content: Text('Could not open the link.')));
+    }
+  }
 
   ChecklistKey get _key =>
       (kind: widget.kind, day: _dayKey(widget.day, widget.kind));
@@ -74,6 +105,7 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
 
   @override
   Widget build(BuildContext context) {
+    _disposeLinkRecognizers();
     final state = ref.watch(checklistProvider(_key));
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
@@ -205,6 +237,36 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
     );
   }
 
+  /// The words of an item, with each link in the notes app made tappable.
+  Widget _itemText(BuildContext context, ChecklistItem item, TextStyle? style) {
+    if (item.parts.isEmpty) return Text(item.text, style: style);
+    final scheme = Theme.of(context).colorScheme;
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (final part in item.parts)
+            if (part.url == null)
+              TextSpan(text: part.text)
+            else
+              TextSpan(
+                text: part.text,
+                style: TextStyle(
+                  color: scheme.primary,
+                  decoration: item.checked
+                      ? TextDecoration.combine([
+                          TextDecoration.lineThrough,
+                          TextDecoration.underline
+                        ])
+                      : TextDecoration.underline,
+                ),
+                recognizer: _linkRecognizer(part.url!),
+              ),
+        ],
+      ),
+      style: style,
+    );
+  }
+
   Widget _items(BuildContext context, PeriodChecklist list) {
     final colors = context.tefteri;
     final scheme = Theme.of(context).colorScheme;
@@ -270,9 +332,10 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.only(top: Space.sm),
-                        child: Text(
-                          list.items[i].text,
-                          style: text.bodyMedium?.copyWith(
+                        child: _itemText(
+                          context,
+                          list.items[i],
+                          text.bodyMedium?.copyWith(
                             color: list.items[i].checked
                                 ? scheme.onSurfaceVariant
                                 : null,
