@@ -311,4 +311,34 @@ void main() {
     expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
     expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
   });
+
+  testWidgets('completed key results can be hidden from every goal',
+      (tester) async {
+    final server = AnnualServer(goals: [
+      annualGoalJson('g1', 'Get fit', keyResults: [
+        keyResultJson('kr1', 'Runs', current: 10),
+        keyResultJson('kr2', 'Push-ups', current: 0),
+      ]),
+      annualGoalJson('g2', 'Read more', keyResults: [
+        keyResultJson('kr3', 'Books', current: 5),
+      ]),
+    ]);
+    await pumpAnnual(tester, server.routes());
+    expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr2')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
+
+    await tapKey(tester, 'toggle-completed-goals');
+    expect(find.byKey(const Key('kr-kr1')), findsNothing);
+    expect(find.byKey(const Key('kr-kr2')), findsOneWidget);
+    expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
+    expect(find.byKey(const Key('goal-hidden-g1')), findsOneWidget);
+    expect(find.byKey(const Key('goal-hidden-g2')), findsNothing);
+    expect(find.text('Show completed'), findsOneWidget);
+
+    await tapKey(tester, 'toggle-completed-goals');
+    expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
+    expect(find.byKey(const Key('goal-hidden-g1')), findsNothing);
+    expect(find.text('Hide completed'), findsOneWidget);
+  });
 }

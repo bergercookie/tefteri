@@ -20,6 +20,7 @@ class GoalCard extends StatefulWidget {
     required this.goal,
     required this.actions,
     required this.collapsed,
+    required this.hideCompleted,
     required this.onToggleCollapsed,
     super.key,
   });
@@ -32,6 +33,9 @@ class GoalCard extends StatefulWidget {
 
   /// True when the key results are hidden.
   final bool collapsed;
+
+  /// True when the key results that reached their target are left out.
+  final bool hideCompleted;
 
   /// Shows or hides the key results.
   final VoidCallback onToggleCollapsed;
@@ -53,7 +57,11 @@ class _GoalCardState extends State<GoalCard> {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final quiet = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
-    final active = g.activeKeyResults;
+    final allActive = g.activeKeyResults;
+    final completed = allActive.where((kr) => kr.met).toList();
+    final active = widget.hideCompleted
+        ? allActive.where((kr) => !kr.met).toList()
+        : allActive;
     return Container(
       key: Key('goal-${g.id}'),
       margin: const EdgeInsets.only(bottom: Space.md),
@@ -92,7 +100,7 @@ class _GoalCardState extends State<GoalCard> {
                   itemBuilder: (_) => [
                     const PopupMenuItem(
                         value: 'edit', child: Text('Edit goal')),
-                    if (active.isNotEmpty)
+                    if (allActive.isNotEmpty)
                       const PopupMenuItem(
                         value: 'themes',
                         child: Text('Link a theme to all key results'),
@@ -113,7 +121,7 @@ class _GoalCardState extends State<GoalCard> {
               onAction: (_) => _add(),
               allowed: a.editable ? null : const {},
             ),
-          if (g.criteriaSuggestion != null && active.isEmpty)
+          if (g.criteriaSuggestion != null && allActive.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: Space.sm),
               child: Wrap(
@@ -144,13 +152,13 @@ class _GoalCardState extends State<GoalCard> {
             Padding(
               padding: const EdgeInsets.only(top: Space.xs),
               child: Text(
-                active.isEmpty
+                allActive.isEmpty
                     ? 'No key results'
-                    : '${active.where((kr) => kr.met).length} of '
-                        '${active.length} '
-                        '${active.length == 1 ? 'key result' : 'key results'} '
+                    : '${completed.length} of '
+                        '${allActive.length} '
+                        '${allActive.length == 1 ? 'key result' : 'key results'} '
                         'completed · '
-                        '${active.where((kr) => !kr.met).length} pending',
+                        '${allActive.where((kr) => !kr.met).length} pending',
                 key: Key('goal-collapsed-${g.id}'),
                 style: quiet,
               ),
@@ -160,6 +168,17 @@ class _GoalCardState extends State<GoalCard> {
               const SizedBox(height: Space.sm),
               KeyResultTile(kr: kr, actions: a),
             ],
+            if (widget.hideCompleted && completed.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.sm),
+                child: Text(
+                  '${completed.length} completed '
+                  '${completed.length == 1 ? 'key result' : 'key results'} '
+                  'hidden.',
+                  key: Key('goal-hidden-${g.id}'),
+                  style: quiet,
+                ),
+              ),
             for (final kr in g.retiredKeyResults) ...[
               const SizedBox(height: Space.xs),
               RetiredKeyResultRow(kr: kr, actions: a),
@@ -169,16 +188,16 @@ class _GoalCardState extends State<GoalCard> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Tooltip(
-                  message: active.length >= 3
+                  message: allActive.length >= 3
                       ? keyResultLimitMessage
                       : 'Add a key result',
                   child: TextButton.icon(
                     key: Key('add-kr-${g.id}'),
-                    onPressed: active.length >= 3 ? null : _add,
+                    onPressed: allActive.length >= 3 ? null : _add,
                     icon: const Icon(Icons.add, size: 18),
-                    label: Text(active.isEmpty
+                    label: Text(allActive.isEmpty
                         ? 'Add key result'
-                        : 'Add key result (${active.length} of 3)'),
+                        : 'Add key result (${allActive.length} of 3)'),
                   ),
                 ),
               ),
