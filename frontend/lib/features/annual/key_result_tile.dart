@@ -102,19 +102,6 @@ class KeyResultTile extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(kr.metric, style: text.bodyLarge),
-                    if (kr.automatic)
-                      Container(
-                        key: Key('kr-auto-${kr.id}'),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: Space.sm, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: scheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(Corner.pill),
-                        ),
-                        child: Text('Automatic',
-                            style: text.labelSmall
-                                ?.copyWith(color: scheme.onPrimaryContainer)),
-                      ),
                   ],
                 ),
               ),

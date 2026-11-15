@@ -100,7 +100,7 @@ The schema-v1 payload uses ISO date and time strings. Its root fields are `schem
 | Each `changes` item | `kind`, `on`, `out_project_id`, `out_name`, `in_project_id`, `in_name`, `target_before`, `target_after`, `undone`. |
 | Each `outside_focus` item | `milestone_id`, `name`, `done_on`, `theme_project_id`, `theme_name`. Null theme fields mean no theme. |
 | `categories` | `goal_aligned`, `maintenance`, `off_plan`, `hidden`. These are counts. |
-| Each `key_results` item | `key_result_id`, `goal_id`, `goal_title`, `metric`, `update_source`, `start_value`, `base_value`, `latest_value`, `latest_at`, `change`, `status`, `entered_in_review`, `after_month_end`, `target`, `deadline`, `past_deadline`, `retired`, `theme_ids`, `shared`, `flags`. |
+| Each `key_results` item | `key_result_id`, `goal_id`, `goal_title`, `metric`, `start_value`, `base_value`, `latest_value`, `latest_at`, `change`, `status`, `entered_in_review`, `after_month_end`, `target`, `deadline`, `past_deadline`, `retired`, `theme_ids`, `shared`, `flags`. |
 | Each `decisions` item | `project_id`, `name`, `decision`, `replacement_project_id`, `replacement_name`. |
 
 ### Evolve the payload
@@ -110,6 +110,9 @@ and `build_payload`, then update schema and snapshot tests and the documented pa
 change is not backward-compatible, assign a new `schema_version` and make readers handle both
 versions. Keep the 008 reader tolerant of missing fields. Existing rows keep their old schema
 version and payload forever.
+
+For example, snapshots from before revision 0029 hold `update_source` in each `key_results`
+item. New snapshots do not. The 008 reader ignores the field.
 
 ## Focus seam with weekly planning
 
@@ -134,8 +137,7 @@ focus; it does not store that state on a milestone.
 | 005, work categories | Monthly summary counts through `CategoryCountsReader`, adapted from `StatisticsService`. | Nothing. The monthly review does not classify tasks again. |
 | 006, annual planning | Goals, key results, links, history, latest series values and time stamps. | One value in `key_result_values` for each manual value that the user enters in the review, through `KeyResultService`. |
 
-The feature never pulls an automatic key result value. It reads the value already in the 006
-series. It does not create or change projects, tasks, labels, key result links or key result
+The feature never pulls a key result value. It reads the value already in the 006 series. It does not create or change projects, tasks, labels, key result links or key result
 structure. The typed-value write is the only write outside the monthly feature's tables.
 
 ## Read contract for feature 008

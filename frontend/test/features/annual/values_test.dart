@@ -17,10 +17,7 @@ AnnualServer _server() => AnnualServer(goals: [
             current: 75,
             links: [linkJson('p1', 'Health')]),
         keyResultJson('kr3', 'Stars',
-            start: 100,
-            target: 200,
-            source: 'automatic',
-            links: [linkJson('p2', 'Open source')]),
+            start: 100, target: 200, links: [linkJson('p2', 'Open source')]),
       ]),
     ]);
 
@@ -69,20 +66,12 @@ void main() {
     expect(find.text('50%'), findsOneWidget);
   });
 
-  testWidgets('an automatic key result is marked and takes a manual value',
-      (tester) async {
-    final api = await pumpAnnual(
-        tester,
-        _server().routes({
-          'POST /annual/key-results/kr3/values': {'id': 'v2', 'value': 150},
-        }));
-    expect(find.byKey(const Key('kr-auto-kr3')), findsOneWidget);
-    expect(find.byKey(const Key('kr-auto-kr1')), findsNothing);
+  testWidgets('no key result is marked automatic', (tester) async {
+    await pumpAnnual(tester, _server().routes());
+    expect(find.text('Automatic'), findsNothing);
     await tapKey(tester, 'kr-value-btn-kr3');
-    expect(find.byKey(const Key('value-auto-note')), findsOneWidget);
-    await typeKey(tester, 'value-field', '150');
-    await tapKey(tester, 'value-save');
-    expect(api.where('POST /annual/key-results/kr3/values'), hasLength(1));
+    expect(find.byKey(const Key('value-dialog')), findsOneWidget);
+    expect(find.textContaining('automatic'), findsNothing);
   });
 
   testWidgets('a failed save shows the server message', (tester) async {

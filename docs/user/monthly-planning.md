@@ -98,10 +98,9 @@ key result. It shows these values beside the number of milestones finished under
 helps you compare work with movement in a key result. It does not say that the milestones caused
 the change.
 
-For a manual key result, you can enter a new value or skip it. A value that you enter is saved
-in the key result series. For an automatic key result, the review shows the latest value in the
-series. It does not ask the source for a new value. When a value is shared by more than one
-theme, the review marks it as shared.
+For each key result, you can enter a new value or skip it. A value that you enter is saved in
+the key result series. The review shows the latest value in the series. It does not ask any other
+app for a value. When a value is shared by more than one theme, the review marks it as shared.
 
 ### Work categories and the off-plan trend
 

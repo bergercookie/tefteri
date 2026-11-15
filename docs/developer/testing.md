@@ -51,7 +51,7 @@ Recipes:
 
 - `just backend::test` runs all tests except the smoke tests and the PostgreSQL tests.
 - `just backend::e2e` runs only the end-to-end tests. The annual contract suite is
-  `tests/e2e/test_annual_api.py`. It covers the push status table and the safe retry.
+  `tests/e2e/test_annual_api.py`. It covers the shape of the read routes, the write routes with their history, refused input, and the privacy between users.
 - `just backend::test-postgres` runs the tests with the `postgres` mark. Set
   `TEFTERI_TEST_POSTGRES_URL` first, for example to a database from `just deploy::up-postgres`.
 

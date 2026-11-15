@@ -198,8 +198,7 @@ class _KeyResultGapRowState extends State<_KeyResultGapRow> {
         : latest - base;
     final shared = widget.result['shared'] == true;
     final notUpdated = widget.result['status'] == 'not_updated';
-    final manual = widget.result['update_source'] == 'manual' &&
-        widget.result['retired'] != true;
+    final manual = widget.result['retired'] != true;
     final at = widget.result['latest_at'];
     return Container(
       key: Key('review-key-result-$id'),

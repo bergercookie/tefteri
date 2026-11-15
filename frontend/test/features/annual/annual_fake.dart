@@ -44,7 +44,6 @@ class AnnualServer {
         start: body['start_value'] as num,
         target: body['target'] as num,
         deadline: '${body['deadline']}',
-        source: '${body['update_source'] ?? 'manual'}',
         links: [for (final t in themeIds) linkJson('$t', 'Theme $t')],
         flags: themeIds.isEmpty ? [flagJson('no_usable_theme')] : const []);
   }

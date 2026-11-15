@@ -1,5 +1,5 @@
 /// The dialog that stores a new value of a key result with its date (FR-009).
-/// It is open in every year, also for an automatic key result.
+/// It is open in every year, also a year that ended.
 library;
 
 import 'package:flutter/material.dart';
@@ -108,16 +108,6 @@ class _ValueDialogState extends State<ValueDialog> {
                     : 'Now ${formatNumber(kr.currentValue)} · start '
                         '${formatNumber(kr.startValue)} · target ${formatNumber(kr.target)}',
                 style: text.bodySmall),
-            if (kr.automatic)
-              Padding(
-                padding: const EdgeInsets.only(top: Space.sm),
-                child: Text(
-                  'This key result is automatic. A value you enter here is '
-                  'kept as a manual value.',
-                  key: const Key('value-auto-note'),
-                  style: text.bodySmall,
-                ),
-              ),
             const SizedBox(height: Space.sm),
             if (kr.yesNo)
               SegmentedButton<int>(

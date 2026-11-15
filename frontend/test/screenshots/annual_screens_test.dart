@@ -22,7 +22,6 @@ List<Map<String, Object?>> _goals([int year = 2027]) => [
             current: 220,
             currentAt: '$year-03-01T09:00:00Z',
             deadline: '$year-12-31',
-            source: 'automatic',
             links: [linkJson('p1', 'Open source')]),
         keyResultJson('kr2', 'Talks given',
             goalId: 'g1',
@@ -130,7 +129,6 @@ Future<void> _pump(WidgetTester tester, FakeApi api,
     for (final t in [
       'planningYear',
       'keyResult',
-      'automatic',
       'themeProject',
       'retire',
       'unmet'
