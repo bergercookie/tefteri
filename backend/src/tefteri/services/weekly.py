@@ -308,7 +308,8 @@ class WeeklyService:
         ``projects`` archives the projects that the user finishes in the review.
         ``classification`` creates and labels a new milestone. ``milestones`` and ``closer``
         keep the milestone rows and close them. ``focus`` tells the focus themes of a month
-        (feature 007 supplies it; the default knows none). ``clock`` is injectable for tests.
+        (``MonthlyFocusService`` supplies it; without one, no focus is known). ``clock`` is
+        injectable for tests.
         """
         self._tasks = tasks
         self._connections = connections

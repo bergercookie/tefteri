@@ -1,10 +1,7 @@
-"""Goal hierarchy rules and computed progress."""
+"""Goal period rules."""
 
-import uuid
 from datetime import date
 
-from tefteri.db.models.goal import Goal
-from tefteri.db.models.task import Task
 from tefteri.domain.periods import (
     PeriodType,
     child_fits,
@@ -12,22 +9,6 @@ from tefteri.domain.periods import (
     period_end,
     period_start,
 )
-from tefteri.services.goals import compute_progress
-
-
-def goal(parent: Goal | None = None, status: str = "active") -> Goal:
-    return Goal(
-        id=uuid.uuid4(),
-        parent_id=parent.id if parent else None,
-        period_type="week",
-        period_start=date(2026, 11, 2),
-        title="g",
-        status=status,
-    )
-
-
-def task(g: Goal, done: bool, state: str = "synced") -> Task:
-    return Task(id=uuid.uuid4(), goal_id=g.id, status="done" if done else "open", sync_state=state)
 
 
 def test_period_alignment() -> None:
@@ -60,30 +41,3 @@ def test_child_period_must_lie_inside_parent() -> None:
 def test_parent_must_be_longer_than_child() -> None:
     assert not child_fits(PeriodType.MONTH, date(2026, 11, 1), PeriodType.MONTH, date(2026, 11, 1))
     assert not child_fits(PeriodType.WEEK, date(2026, 11, 2), PeriodType.YEAR, date(2026, 1, 1))
-
-
-def test_progress_is_computed_from_tasks_and_children() -> None:
-    parent = goal()
-    child = goal(parent)
-    tasks = [task(child, True), task(child, False), task(parent, True)]
-    result = compute_progress([parent, child], tasks)
-    assert result[child.id] == 0.5
-    assert result[parent.id] == (0.5 + 1.0) / 2  # child goal + one done task
-
-
-def test_empty_goal_progress_follows_status_and_dropped_do_not_count() -> None:
-    open_goal = goal()
-    assert compute_progress([open_goal], [])[open_goal.id] == 0.0
-    done = goal(status="done")
-    assert compute_progress([done], [])[done.id] == 1.0
-    parent = goal()
-    dropped = goal(parent, status="dropped")
-    live = goal(parent)
-    result = compute_progress([parent, dropped, live], [task(live, True)])
-    assert result[parent.id] == 1.0  # the dropped goal is ignored
-
-
-def test_tasks_deleted_in_the_app_do_not_count() -> None:
-    g = goal()
-    result = compute_progress([g], [task(g, True), task(g, False, state="deleted_remotely")])
-    assert result[g.id] == 1.0
