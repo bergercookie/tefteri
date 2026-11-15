@@ -1,4 +1,4 @@
-/// Weekly view: goals, events and tasks of one week.
+/// Weekly view: the plan, its progress, the work categories and the tasks.
 library;
 
 import 'package:flutter/material.dart';

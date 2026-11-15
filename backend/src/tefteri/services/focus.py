@@ -1,9 +1,10 @@
 """The monthly focus, as far as weekly planning needs to read it (spec 004, research R-14).
 
-Weekly planning shows which themes are in the focus of the month, but the focus itself belongs
-to a later feature (007). This module is the seam: ``FocusProvider`` is what planning reads, and
-``NoFocus`` is the default until that feature exists. Feature 007 supplies a real provider and
-changes only the wiring in ``main.py``.
+Weekly planning shows which themes are in the focus of the month. The focus itself belongs to
+monthly planning (spec 007, ``services.monthly_focus``). This module is the seam:
+``FocusProvider`` is what weekly planning reads. ``MonthlyFocusService`` is the real provider,
+and ``main.py`` wires it. ``NoFocus`` is the fallback for code that has no provider, for example
+a test.
 """
 
 import uuid
@@ -28,7 +29,7 @@ class FocusProvider(Protocol):
 
 
 class NoFocus:
-    """The default provider: there is no monthly focus yet. Feature 007 replaces it in main."""
+    """The fallback provider: it knows no focus. ``main.py`` wires the real one (spec 007)."""
 
     async def themes_for_month(
         self,
