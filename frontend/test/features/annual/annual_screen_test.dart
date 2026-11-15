@@ -277,11 +277,11 @@ void main() {
   testWidgets('key results collapse per goal and all at once', (tester) async {
     final server = AnnualServer(goals: [
       annualGoalJson('g1', 'Get fit', keyResults: [
-        keyResultJson('kr1', 'Runs'),
-        keyResultJson('kr2', 'Push-ups'),
+        keyResultJson('kr1', 'Runs', current: 10),
+        keyResultJson('kr2', 'Push-ups', current: 0),
       ]),
       annualGoalJson('g2', 'Read more', keyResults: [
-        keyResultJson('kr3', 'Books'),
+        keyResultJson('kr3', 'Books', current: 5),
       ]),
     ]);
     await pumpAnnual(tester, server.routes());
@@ -293,7 +293,8 @@ void main() {
     expect(find.byKey(const Key('kr-kr1')), findsNothing);
     expect(find.byKey(const Key('kr-kr2')), findsNothing);
     expect(find.byKey(const Key('kr-kr3')), findsOneWidget);
-    expect(find.text('2 key results hidden'), findsOneWidget);
+    expect(
+        find.text('1 of 2 key results completed · 1 pending'), findsOneWidget);
 
     await tapKey(tester, 'expand-all-goals');
     expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
@@ -303,8 +304,10 @@ void main() {
     expect(find.byKey(const Key('kr-kr1')), findsNothing);
     expect(find.byKey(const Key('kr-kr2')), findsNothing);
     expect(find.byKey(const Key('kr-kr3')), findsNothing);
-    expect(find.text('2 key results hidden'), findsOneWidget);
-    expect(find.text('1 key result hidden'), findsOneWidget);
+    expect(
+        find.text('1 of 2 key results completed · 1 pending'), findsOneWidget);
+    expect(
+        find.text('0 of 1 key result completed · 1 pending'), findsOneWidget);
 
     await tapKey(tester, 'expand-all-goals');
     expect(find.byKey(const Key('kr-kr1')), findsOneWidget);
