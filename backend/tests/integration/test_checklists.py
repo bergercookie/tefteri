@@ -262,3 +262,22 @@ async def test_a_source_needs_a_notes_connection(api: AsyncClient) -> None:
     r = await api.get(f"{V1}/checklists/week/2026-11-04")
     assert r.status_code == 422
     assert "connect a note app" in r.json()["detail"]
+
+
+async def test_links_in_a_note_checklist_are_returned_with_their_item(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    await _note_checklist(
+        api,
+        world,
+        "Checklists/Weekly",
+        "<ul><li>Read <a href='https://example.com/post'>the post</a></li></ul>",
+    )
+    item = (await api.get(f"{V1}/checklists/week/2026-11-04")).json()["items"][0]
+    assert item["text"] == "Read the post"
+    assert item["parts"] == [
+        {"text": "Read ", "url": None},
+        {"text": "the post", "url": "https://example.com/post"},
+    ]
+    ticked = await _tick(api, "2026-11-04", "Read the post")
+    assert ticked.json()["items"][0]["checked"] is True

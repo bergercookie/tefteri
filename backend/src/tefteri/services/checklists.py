@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.checklist import ChecklistProgress
 from tefteri.db.models.user import User
-from tefteri.domain.checklist_html import list_items_from_html
+from tefteri.domain.checklist_html import ChecklistHtmlItem, list_items_from_html
 from tefteri.domain.periods import PeriodType, period_start
 from tefteri.services.errors import Invalid, NotFound
 from tefteri.services.notes import NoteService
@@ -35,12 +35,36 @@ def clean_items(items: list[str]) -> list[str]:
     return list(seen.values())
 
 
+def clean_html_items(items: list[ChecklistHtmlItem]) -> list[ChecklistHtmlItem]:
+    """Drop the empty items and the repeats of a list from the notes app."""
+    seen: set[str] = set()
+    out: list[ChecklistHtmlItem] = []
+    for item in items:
+        key = item.text.casefold()
+        if item.text and key not in seen:
+            seen.add(key)
+            out.append(item)
+            if len(out) == MAX_ITEMS:
+                break
+    return out
+
+
+@dataclass(frozen=True)
+class Part:
+    """A run of words in an item; ``url`` is set when the run is a link."""
+
+    text: str
+    url: str | None = None
+
+
 @dataclass(frozen=True)
 class Item:
     """One item of a checklist and whether it is ticked in the period."""
 
     text: str
     checked: bool
+    parts: tuple[Part, ...] = ()
+    """The runs that build the text, with links. Empty for a local item."""
 
 
 @dataclass(frozen=True)
@@ -102,8 +126,20 @@ class ChecklistService:
         source = str(user.checklist_sources.get(kind.value, "")).strip()
         if source:
             remote = await self._notes.note_by_path(db, user_id, source)
-            items = clean_items(list_items_from_html(remote.body))[:MAX_ITEMS]
-            return Checklist(kind, start, [Item(t, t in ticked) for t in items], source=source)
+            remote_items = clean_html_items(list_items_from_html(remote.body))
+            return Checklist(
+                kind,
+                start,
+                [
+                    Item(
+                        item.text,
+                        item.text in ticked,
+                        tuple(Part(part.text, part.url) for part in item.parts),
+                    )
+                    for item in remote_items
+                ],
+                source=source,
+            )
         items = clean_items(list(user.checklists.get(kind.value, [])))
         return Checklist(kind, start, [Item(t, t in ticked) for t in items])
 

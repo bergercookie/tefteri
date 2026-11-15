@@ -519,17 +519,33 @@ enum ChecklistKind {
   final String noun;
 }
 
+/// A run of words in a checklist item. [url] is set when the run is a link.
+@immutable
+class ChecklistPart {
+  /// Creates a part.
+  const ChecklistPart(this.text, {this.url});
+
+  /// The words of the part.
+  final String text;
+
+  /// The target of the link, or null for plain words.
+  final String? url;
+}
+
 /// One item of a checklist, ticked or not in a period.
 @immutable
 class ChecklistItem {
   /// Creates an item.
-  const ChecklistItem(this.text, {this.checked = false});
+  const ChecklistItem(this.text, {this.checked = false, this.parts = const []});
 
   /// The words of the item.
   final String text;
 
   /// True when the item is ticked in the period.
   final bool checked;
+
+  /// The runs that build [text], with links. Empty for a local item.
+  final List<ChecklistPart> parts;
 }
 
 /// The checklist of one week, month or year (`/checklists/{kind}/{day}`).
@@ -542,8 +558,15 @@ class PeriodChecklist {
   factory PeriodChecklist.fromJson(Map<String, dynamic> j) => PeriodChecklist(
         [
           for (final i in (j['items'] as List? ?? const []))
-            ChecklistItem('${(i as Map)['text']}',
-                checked: i['checked'] == true),
+            ChecklistItem(
+              '${(i as Map)['text']}',
+              checked: i['checked'] == true,
+              parts: [
+                for (final p in (i['parts'] as List? ?? const []))
+                  ChecklistPart('${(p as Map)['text']}',
+                      url: p['url'] as String?),
+              ],
+            ),
         ],
         source: j['source'] as String?,
       );
@@ -560,7 +583,9 @@ class PeriodChecklist {
   /// The same checklist with [text] ticked or unticked.
   PeriodChecklist withTick(String text, bool checked) => PeriodChecklist([
         for (final i in items)
-          i.text == text ? ChecklistItem(i.text, checked: checked) : i,
+          i.text == text
+              ? ChecklistItem(i.text, checked: checked, parts: i.parts)
+              : i,
       ], source: source);
 }
 

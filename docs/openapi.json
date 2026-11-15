@@ -725,6 +725,13 @@
             "title": "Checked",
             "type": "boolean"
           },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistPartOut"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
           "text": {
             "title": "Text",
             "type": "string"
@@ -783,6 +790,31 @@
           "total"
         ],
         "title": "ChecklistOut",
+        "type": "object"
+      },
+      "ChecklistPartOut": {
+        "description": "A run of words in an item; ``url`` is set when the run is a link.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ChecklistPartOut",
         "type": "object"
       },
       "ChecklistSourcesOut": {

@@ -50,6 +50,9 @@ Tags inside an item, such as bold or a paragraph, are ignored. Their words stay.
 nested list become items too, after their parent. Empty items and repeats are removed, as for a
 local list.
 
+A web link in an item stays a link. Choose it to open it in your browser. Tefteri keeps the
+words of a link that is not a web or email address, but does not make it a link.
+
 Ticks belong to the period, as for a local checklist. A new week, month or year starts clean,
 and an earlier period keeps its ticks. When you change an item in the note, Tefteri sees it as a
 new item, so it is not ticked. A tick for an item that left the note is ignored.

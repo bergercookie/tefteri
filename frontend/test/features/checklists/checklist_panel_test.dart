@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tefteri/core/api_client.dart';
+import 'package:tefteri/core/open_url.dart';
 import 'package:tefteri/core/planning_models.dart';
 import 'package:tefteri/features/checklists/checklist_panel.dart';
 
@@ -36,7 +38,9 @@ FakeApi _server(Map<String, bool> state, {Object? onPut}) => FakeApi({
     });
 
 Future<void> _pump(WidgetTester tester, FakeApi api,
-    {bool collapsible = false, bool card = false}) async {
+    {bool collapsible = false,
+    bool card = false,
+    List<Override> overrides = const []}) async {
   tester.view.physicalSize = const Size(600, 1200);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -59,7 +63,7 @@ Future<void> _pump(WidgetTester tester, FakeApi api,
         builder: (_, __) => const Scaffold(body: Text('the settings page'))),
   ]);
   await tester.pumpWidget(ProviderScope(
-    overrides: [dioProvider.overrideWithValue(dio)],
+    overrides: [dioProvider.overrideWithValue(dio), ...overrides],
     child: MaterialApp.router(routerConfig: router),
   ));
   await tester.pumpAndSettle();
@@ -281,6 +285,49 @@ void main() {
     expect(api.where(_put).last.data,
         {'text': 'Choose the focus', 'checked': true});
     expect(_summary(tester), '1 of 2 done');
+  });
+
+  testWidgets('a link in a note item is shown and opens', (tester) async {
+    final opened = <Uri>[];
+    final api = FakeApi({
+      _get: {
+        'period_type': 'week',
+        'period_start': '2026-11-02',
+        'items': [
+          {
+            'text': 'Read the post before the review',
+            'checked': false,
+            'parts': [
+              {'text': 'Read ', 'url': null},
+              {'text': 'the post', 'url': 'https://example.com/post'},
+              {'text': ' before the review', 'url': null},
+            ],
+          },
+        ],
+        'done': 0,
+        'total': 1,
+        'source': 'Checklists/Weekly',
+      },
+    });
+    await _pump(tester, api, overrides: [
+      openUrlProvider.overrideWithValue((uri) async {
+        opened.add(uri);
+        return true;
+      }),
+    ]);
+    final whole = find.byWidgetPredicate((widget) =>
+        widget is Text &&
+        widget.textSpan?.toPlainText() == 'Read the post before the review');
+    expect(whole, findsOneWidget);
+    final span = tester.widget<Text>(whole).textSpan! as TextSpan;
+    final link = span.children!
+        .whereType<TextSpan>()
+        .firstWhere((child) => child.text == 'the post');
+    expect(link.style?.decoration, TextDecoration.underline);
+
+    (link.recognizer! as TapGestureRecognizer).onTap!();
+    await tester.pumpAndSettle();
+    expect(opened.single.toString(), 'https://example.com/post');
   });
 
   testWidgets('a note without a list offers a refresh, not a new local list',
