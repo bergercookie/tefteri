@@ -50,7 +50,6 @@ def kr(
     start: float = 0,
     target: float = 10,
     deadline: str | None = None,
-    source: str = "manual",
     themes: list[str] | None = None,
     year: int = YEAR,
 ) -> dict[str, Any]:
@@ -60,7 +59,6 @@ def kr(
         "start_value": start,
         "target": target,
         "deadline": deadline or f"{year}-12-31",
-        "update_source": source,
         "theme_ids": themes or [],
     }
 

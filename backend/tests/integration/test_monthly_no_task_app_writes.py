@@ -64,9 +64,7 @@ async def test_monthly_services_make_no_task_app_write_calls(env: ProjectsEnv) -
             tz="UTC",
         )
         await env.app.state.monthly_review_service.draft(db, await env.user_id(), MONTH, tz="UTC")
-    key_result = await add_key_result(
-        env, rows, metric="Manual", themes=("Theme",), source="manual"
-    )
+    key_result = await add_key_result(env, rows, metric="Manual", themes=("Theme",))
     async with env.db() as db:
         await env.app.state.monthly_review_service.store(
             db,

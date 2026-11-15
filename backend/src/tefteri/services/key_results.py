@@ -29,7 +29,6 @@ from tefteri.domain.enums import (
     KeyResultKind,
     LinkEndReason,
     PlanChangeKind,
-    UpdateSource,
     ValueSource,
 )
 from tefteri.domain.key_results import (
@@ -238,7 +237,6 @@ class KeyResultService:
         target: float,
         deadline: date,
         kind: KeyResultKind = KeyResultKind.NUMBER,
-        update_source: UpdateSource = UpdateSource.MANUAL,
         theme_ids: Sequence[uuid.UUID] = (),
         trees: Iterable[ConnectionTree] | None = None,
         source: str = ChangeSource.USER.value,
@@ -273,7 +271,6 @@ class KeyResultService:
             start_value=start_value,
             target=target,
             deadline=deadline,
-            update_source=update_source.value,
             status=GoalState.ACTIVE.value,
             slot=slot,
             position=position,
@@ -320,7 +317,6 @@ class KeyResultService:
         metric: str | None = None,
         target: float | None = None,
         deadline: date | None = None,
-        update_source: UpdateSource | None = None,
         now: datetime | None = None,
     ) -> list[PlanChange]:
         """Change the editable fields; each changed field adds one history row (FR-018).
@@ -341,8 +337,6 @@ class KeyResultService:
             edits["target"] = target
         if deadline is not None:
             edits["deadline"] = deadline
-        if update_source is not None:
-            edits["update_source"] = update_source.value
         if not edits:
             return []
         # Validate the full key result with the new values (FR-005).

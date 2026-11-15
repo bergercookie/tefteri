@@ -35,7 +35,6 @@ from tefteri.domain.enums import (
     LinkEndReason,
     PlanChangeKind,
     ProjectLabel,
-    UpdateSource,
     YearState,
 )
 from tefteri.domain.key_results import (
@@ -95,7 +94,6 @@ class KeyResultOut:
     start_value: float
     target: float
     deadline: date
-    update_source: str
     status: str
     current_value: float
     current_at: datetime | None
@@ -216,7 +214,6 @@ class BulkKeyResultDraft:
     target: float
     deadline: date
     kind: KeyResultKind = KeyResultKind.NUMBER
-    update_source: UpdateSource = UpdateSource.MANUAL
     theme_ids: Sequence[uuid.UUID] = ()
     seeded_from_id: uuid.UUID | None = None
     """The key result of year N that this one was copied from, when seeding."""
@@ -349,7 +346,6 @@ class AnnualPlanService:
                 start_value=row.start_value,
                 target=row.target,
                 deadline=row.deadline,
-                update_source=row.update_source,
                 status=row.status,
                 current_value=current,
                 current_at=utc(at_by_kr.get(row.id)),
@@ -539,7 +535,6 @@ class AnnualPlanService:
                     start_value=start_value,
                     target=target,
                     deadline=kr.deadline,
-                    update_source=kr.update_source.value,
                     status=GoalState.ACTIVE.value,
                     slot=slot_number,
                     position=slot_number - 1,
@@ -601,7 +596,6 @@ class AnnualPlanService:
                         start_value=row.start_value,
                         target=row.target,
                         deadline=row.deadline,
-                        update_source=row.update_source,
                         status=row.status,
                         current_value=row.start_value,
                         current_at=None,
@@ -1166,14 +1160,10 @@ class AnnualPlanService:
         """Return the suggestions of year N in the shape of ``GET /annual/{year}/suggestions``.
 
         ``has_plan`` is false when year N has no goal. Each key result carries the themes whose
-        link is still usable, by id and name, and its update source. Nothing is written.
+        link is still usable, by id and name. Nothing is written.
         """
         has_plan = bool(await self._goal_rows(db, user_id, from_year))
         found = await self.suggestions(db, user_id, year, from_year=from_year)
-        kr_ids = [uuid.UUID(kr.key_result_id) for g in found for kr in g.key_results]
-        sources = {
-            row.id: row.update_source for row in await _key_results_by_id(db, user_id, kr_ids)
-        }
         trees = await load_trees(db, user_id)
         names = {str(row.id): row.name for tree in trees for row in tree.rows}
         return {
@@ -1192,9 +1182,6 @@ class AnnualPlanService:
                             "start_value": kr.start_value,
                             "target": kr.target,
                             "deadline": kr.deadline,
-                            "update_source": sources.get(
-                                uuid.UUID(kr.key_result_id), UpdateSource.MANUAL.value
-                            ),
                             "themes": [
                                 {"project_id": key, "name": names.get(key, "")}
                                 for key in kr.theme_keys
@@ -1313,21 +1300,6 @@ async def _key_results_of(
     if order_by is not None:
         query = query.order_by(order_by, KeyResult.id)
     return list((await db.execute(query)).scalars())
-
-
-async def _key_results_by_id(
-    db: AsyncSession, user_id: uuid.UUID, ids: Sequence[uuid.UUID]
-) -> list[KeyResult]:
-    """Return the user's key results with the given ids."""
-    return list(
-        (
-            await db.execute(
-                select(KeyResult).where(
-                    KeyResult.user_id == user_id, KeyResult.id.in_(_or_none(ids))
-                )
-            )
-        ).scalars()
-    )
 
 
 async def _taken_slots(db: AsyncSession, goal_id: uuid.UUID) -> list[int]:

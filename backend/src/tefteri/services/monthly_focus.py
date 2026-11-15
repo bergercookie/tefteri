@@ -95,7 +95,6 @@ class MonthlyKeyResult:
     current_at: datetime | None
     target: float
     deadline: date
-    update_source: str
     past_deadline: bool
     theme_ids: list[uuid.UUID]
     flags: list[dict[str, Any]]
@@ -506,7 +505,6 @@ class MonthlyFocusService:
                             current_at=key_result.current_at,
                             target=key_result.target,
                             deadline=key_result.deadline,
-                            update_source=key_result.update_source,
                             past_deadline=key_result.deadline < today,
                             theme_ids=usable_links,
                             flags=flags,

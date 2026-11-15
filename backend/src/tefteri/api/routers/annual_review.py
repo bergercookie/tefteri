@@ -212,7 +212,6 @@ class KeyResultOut(BaseModel):
     target: float
     direction: str
     deadline: date
-    update_source: str
     status: str
     retired_at: UtcDatetime | None
     outcome: KeyResultOutcome

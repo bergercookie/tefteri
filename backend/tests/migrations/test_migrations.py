@@ -1386,6 +1386,74 @@ def test_0028_adds_an_empty_uid_to_cached_events(
     assert "uid" not in columns
 
 
+def test_0029_drops_the_update_source_and_keeps_every_key_result(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0028")
+    alembic_runner.insert_into("users", {"id": _U1} | _USER)
+    goal = "eeeeeeee-0000-0000-0000-000000000060"
+    alembic_runner.insert_into(
+        "goals",
+        {
+            "id": goal,
+            "user_id": _U1,
+            "parent_id": None,
+            "period_type": "year",
+            "period_start": date(2026, 1, 1),
+            "title": "Goal",
+            "description": "",
+            "criteria": "",
+            "status": "active",
+            "updated_at": datetime(2026, 1, 1),
+            "retired_at": None,
+            "retired_reason": None,
+            "position": 0,
+        },
+    )
+    results = {
+        "ffffffff-0000-0000-0000-000000000061": ("manual", 1),
+        "ffffffff-0000-0000-0000-000000000062": ("automatic", 2),
+    }
+    for result, (source, slot) in results.items():
+        alembic_runner.insert_into(
+            "key_results",
+            {
+                "id": result,
+                "user_id": _U1,
+                "goal_id": goal,
+                "year": 2026,
+                "metric": f"Metric {slot}",
+                "kind": "number",
+                "start_value": 0,
+                "target": 10,
+                "deadline": date(2026, 12, 31),
+                "update_source": source,
+                "status": "active",
+                "slot": slot,
+                "position": slot - 1,
+                "created_at": datetime(2026, 1, 1),
+                "updated_at": datetime(2026, 1, 1),
+            },
+        )
+
+    alembic_runner.migrate_up_to("0029")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("key_results")}
+    assert "update_source" not in columns
+    with alembic_engine.connect() as conn:
+        assert conn.exec_driver_sql("select count(*) from key_results").scalar() == 2
+        assert (
+            conn.exec_driver_sql("select count(*) from key_results where slot is not null").scalar()
+            == 2
+        )
+
+    alembic_runner.migrate_down_one()
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("key_results")}
+    assert "update_source" in columns
+    with alembic_engine.connect() as conn:
+        sources = conn.exec_driver_sql("select distinct update_source from key_results").all()
+    assert [row[0] for row in sources] == ["manual"]
+
+
 def test_the_head_revision_follows_0026() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -1393,10 +1461,11 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0028"
-    revision = script.get_revision("0028")
+    assert script.get_current_head() == "0029"
+    revision = script.get_revision("0029")
     assert revision is not None
-    assert revision.down_revision == "0027"
+    assert revision.down_revision == "0028"
+    assert script.get_revision("0028").down_revision == "0027"
     assert script.get_revision("0027").down_revision == "0026"
     assert script.get_revision("0026").down_revision == "0025"
     assert script.get_revision("0025").down_revision == "0024"
@@ -1503,10 +1572,11 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0028"
-    revision = script.get_revision("0028")
+    assert script.get_current_head() == "0029"
+    revision = script.get_revision("0029")
     assert revision is not None
-    assert revision.down_revision == "0027"
+    assert revision.down_revision == "0028"
+    assert script.get_revision("0028").down_revision == "0027"
     assert script.get_revision("0027").down_revision == "0026"
 
 

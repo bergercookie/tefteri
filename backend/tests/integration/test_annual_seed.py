@@ -76,7 +76,6 @@ async def test_suggestions_come_from_the_year_before_and_write_nothing(env: Proj
     stars = first["key_results"][0]
     assert stars["key_result_id"] == source["stars"]["id"]
     assert (stars["start_value"], stars["target"], stars["deadline"]) == (220, 500, f"{NEW}-12-31")
-    assert stars["update_source"] == "manual"
     # The link to the theme that became a milestone is not offered.
     assert stars["themes"] == [
         {"project_id": source["themes"]["Open source"], "name": "Open source"}

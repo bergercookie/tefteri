@@ -108,7 +108,6 @@ class KeyResultEntry:
     deadline: date | None
     retired: bool
     status: str | None
-    update_source: str | None
 
 
 @dataclass(frozen=True)
@@ -172,7 +171,6 @@ def _key_result(raw: dict[str, Any]) -> KeyResultEntry | None:
         deadline=_day(raw.get("deadline")),
         retired=_flag(raw.get("retired")),
         status=_text(raw.get("status")),
-        update_source=_text(raw.get("update_source")),
     )
 
 

@@ -44,7 +44,6 @@ class KeyResult(IdMixin, Base):
     start_value: Mapped[float] = mapped_column(Float, nullable=False)
     target: Mapped[float] = mapped_column(Float, nullable=False)
     deadline: Mapped[date] = mapped_column(Date, nullable=False)
-    update_source: Mapped[str] = mapped_column(String(9), nullable=False)  # manual|automatic
     status: Mapped[str] = mapped_column(String(8), default="active", nullable=False)
     slot: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     """1 to 3 while active, ``None`` when retired (R-03). Unique with ``goal_id``."""
@@ -87,7 +86,7 @@ class KeyResultValue(IdMixin, Base):
     """The time stamp of the value, given by the user or by the push."""
     on_date: Mapped[date] = mapped_column(Date, nullable=False)
     """The day of ``at`` in the user time zone when the row was written (R-08)."""
-    source: Mapped[str] = mapped_column(String(9), nullable=False)  # manual|automatic
+    source: Mapped[str] = mapped_column(String(9), nullable=False)  # manual
     seq: Mapped[int] = mapped_column(nullable=False)
     """1, 2, 3 ... per key result. A higher ``seq`` was entered later."""
     entered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
