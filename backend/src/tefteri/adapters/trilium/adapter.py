@@ -43,7 +43,8 @@ class TriliumNoteBackend:
     ) -> None:
         """Use ``client`` against ``base_url`` with an ETAPI ``token``."""
         self._client = client
-        self._base = clean_base_url(base_url) + "/etapi"
+        self._site = clean_base_url(base_url)
+        self._base = self._site + "/etapi"
         self._headers = {"Authorization": token}
         self._root = root_note_id
 
@@ -118,6 +119,10 @@ class TriliumNoteBackend:
             if str(child.get("title", "")).casefold() == title.casefold():
                 return cast(dict[str, Any], child)
         return None
+
+    def note_url(self, remote_id: str) -> str | None:
+        """Return the address that opens the note in the Trilium web app."""
+        return f"{self._site}/#root/{remote_id}"
 
     async def get_note_by_path(self, path: str) -> RemoteNote:
         """Fetch the note at a path of titles below the root note.

@@ -205,6 +205,15 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
   /// A task has a day when it has a due date or a planned start.
   bool _hasDay(PlanTask t) => t.isScheduled || t.scheduledStart != null;
 
+  /// Says whether the task is done and when, or that it is still pending.
+  String _status(PlanTask t) {
+    if (!t.done) return 'Pending - not done yet';
+    final at = t.completedAt?.toLocal();
+    return at == null
+        ? 'Done - completion time not known'
+        : 'Done ${dateKey(at)} ${hhmm(at)}';
+  }
+
   Widget _taskTile(PlanTask t, PeriodView v) {
     final title = t.goalId == null ? null : v.goalTitles[t.goalId];
     // A goal of an old month or week plan shows as history.
@@ -229,6 +238,13 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           if (t.project != null && t.project!.isNotEmpty)
             ProjectChip(name: t.project!, color: t.projectColor),
           Text(goal == null ? time : '$time - $goal'),
+          Text(
+            _status(t),
+            key: Key('task-status-${t.id}'),
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: t.done ? context.tefteri.done : null),
+          ),
         ],
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [

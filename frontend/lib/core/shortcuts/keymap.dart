@@ -63,6 +63,12 @@ class NewTaskIntent extends Intent {
   const NewTaskIntent();
 }
 
+/// Opens the pop-up that creates a calendar event.
+class NewEventIntent extends Intent {
+  /// Creates the intent.
+  const NewEventIntent();
+}
+
 /// Opens the find bar.
 class FindIntent extends Intent {
   /// Creates the intent.
@@ -130,6 +136,12 @@ final List<AppShortcut> appShortcuts = [
     description: 'Create a new task',
     activator: CharacterActivator('n'),
     intent: NewTaskIntent(),
+  ),
+  const AppShortcut(
+    keys: 'Shift+N',
+    description: 'Schedule a new calendar event',
+    activator: CharacterActivator('N'),
+    intent: NewEventIntent(),
   ),
   const AppShortcut(
     keys: 'Ctrl+F',

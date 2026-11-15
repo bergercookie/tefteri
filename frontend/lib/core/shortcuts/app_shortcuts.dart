@@ -6,9 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/planner/new_event_dialog.dart';
 import '../../features/planner/new_task_dialog.dart';
 import '../../features/settings/sync_controller.dart';
 import '../auth_controller.dart';
+import '../event_input.dart';
 import '../find.dart';
 import 'keymap.dart';
 
@@ -92,6 +94,16 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
             (_) {
               final context = _navigator?.context;
               if (context != null) showNewTaskDialog(context);
+            },
+            (_) => _signedIn && _plainAllowed(),
+          ),
+          NewEventIntent: _KeyAction<NewEventIntent>(
+            (_) {
+              final context = _navigator?.context;
+              if (context != null) {
+                showNewEventDialog(context,
+                    start: nextFullHour(DateTime.now()));
+              }
             },
             (_) => _signedIn && _plainAllowed(),
           ),

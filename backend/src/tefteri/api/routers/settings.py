@@ -1,5 +1,6 @@
 """Per-user settings endpoints."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter
@@ -10,6 +11,7 @@ from tefteri.services.checklists import MAX_ITEM_LENGTH, MAX_ITEMS
 from tefteri.services.settings import (
     MAX_REMINDER_MINUTES,
     MAX_SOURCE_PATH_LENGTH,
+    UNSET,
     SettingsService,
     UserSettings,
 )
@@ -58,6 +60,8 @@ class SettingsOut(BaseModel):
     checklists: ChecklistsOut
     checklist_sources: ChecklistSourcesOut
     """A path means that the checklist is read from the notes app and cannot be ticked."""
+    default_event_container_id: uuid.UUID | None
+    """The calendar that a new event starts in, or null when the user has not chosen one."""
 
     @classmethod
     def of(cls, s: UserSettings) -> "SettingsOut":
@@ -67,6 +71,7 @@ class SettingsOut(BaseModel):
             default_reminder_minutes=s.default_reminder_minutes,
             checklists=ChecklistsOut(**s.checklists),
             checklist_sources=ChecklistSourcesOut(**s.checklist_sources),
+            default_event_container_id=s.default_event_container_id,
         )
 
 
@@ -89,6 +94,8 @@ class SettingsPatch(BaseModel):
     default_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
     checklists: ChecklistsPatch | None = None
     checklist_sources: ChecklistSourcesPatch | None = None
+    default_event_container_id: uuid.UUID | None = None
+    """The calendar for new events; an explicit null clears the choice."""
 
 
 @router.get("")
@@ -111,6 +118,11 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
                 body.checklist_sources.model_dump(exclude_none=True)
                 if body.checklist_sources
                 else None
+            ),
+            default_event_container_id=(
+                body.default_event_container_id
+                if "default_event_container_id" in body.model_fields_set
+                else UNSET
             ),
         )
     )

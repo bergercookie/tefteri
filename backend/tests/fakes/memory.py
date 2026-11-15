@@ -373,6 +373,10 @@ class FakeNoteBackend(_FakeBase):
         self._guard()
         return self.notes[remote_id]
 
+    def note_url(self, remote_id: str) -> str | None:
+        """Return a made-up web address of a note."""
+        return f"https://notes.test/#root/{remote_id}"
+
     async def get_note_by_path(self, path: str) -> RemoteNote:
         """Fetch a note through a path that a test put in ``paths``."""
         self._guard()

@@ -36,6 +36,7 @@ class PlanTask {
     this.projectColor,
     this.labels = const [],
     this.url,
+    this.completedAt,
   });
 
   /// Parses a task JSON object.
@@ -54,6 +55,7 @@ class PlanTask {
         projectColor: j['project_color'] as String?,
         labels: [for (final l in (j['labels'] as List? ?? const [])) '$l'],
         url: j['url'] as String?,
+        completedAt: _dt(j['completed_at']),
       );
 
   /// Task id.
@@ -97,6 +99,10 @@ class PlanTask {
 
   /// Page of the task in the task app, when it has one.
   final String? url;
+
+  /// When the task was done, or null while it is open (or when the task app
+  /// did not say).
+  final DateTime? completedAt;
 
   /// True when the task is complete.
   bool get done => status == 'done';
@@ -527,6 +533,7 @@ class UserSettings {
     this.defaultReminderMinutes = defaultReminderOffset,
     this.checklists = const {},
     this.checklistSources = const {},
+    this.defaultEventContainerId,
   });
 
   /// Parses the settings JSON object.
@@ -547,6 +554,7 @@ class UserSettings {
           for (final kind in ChecklistKind.values)
             kind: '${((j['checklist_sources'] as Map?)?[kind.name]) ?? ''}',
         },
+        defaultEventContainerId: j['default_event_container_id'] as String?,
       );
 
   /// When true, a date-only drop gets a random time of day on that date.
@@ -554,6 +562,10 @@ class UserSettings {
 
   /// Minutes before its due time that a new task reminder fires.
   final int defaultReminderMinutes;
+
+  /// Id of the calendar that a new event starts in, or null to start in the
+  /// calendar of the last event.
+  final String? defaultEventContainerId;
 
   /// The planning checklists: the items to go through at each kind of
   /// planning. A kind without items has no checklist.
@@ -623,7 +635,7 @@ class ChecklistItem {
 @immutable
 class PeriodChecklist {
   /// Creates a checklist.
-  const PeriodChecklist(this.items, {this.source});
+  const PeriodChecklist(this.items, {this.source, this.sourceUrl});
 
   /// Parses the checklist JSON object.
   factory PeriodChecklist.fromJson(Map<String, dynamic> j) => PeriodChecklist(
@@ -640,6 +652,7 @@ class PeriodChecklist {
             ),
         ],
         source: j['source'] as String?,
+        sourceUrl: j['source_url'] as String?,
       );
 
   /// The items of the user's list. Empty when they have not made one.
@@ -647,6 +660,9 @@ class PeriodChecklist {
 
   /// The note path that the list comes from, or null for a local list.
   final String? source;
+
+  /// The address of that note in the notes app, or null when the app has none.
+  final String? sourceUrl;
 
   /// How many items are ticked.
   int get done => items.where((i) => i.checked).length;
@@ -657,7 +673,7 @@ class PeriodChecklist {
           i.text == text
               ? ChecklistItem(i.text, checked: checked, parts: i.parts)
               : i,
-      ], source: source);
+      ], source: source, sourceUrl: sourceUrl);
 }
 
 /// What a new reminder uses until the user changes it: 15 minutes.

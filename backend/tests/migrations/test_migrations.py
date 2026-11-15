@@ -11,7 +11,7 @@ from pytest_alembic.tests import (
     test_up_down_consistency,
     test_upgrade,
 )
-from sqlalchemy import Engine, inspect
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 __all__ = [
@@ -1578,6 +1578,22 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     assert revision.down_revision == "0028"
     assert script.get_revision("0028").down_revision == "0027"
     assert script.get_revision("0027").down_revision == "0026"
+
+
+def test_0029_adds_the_default_event_calendar_and_keeps_users(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0028")
+    alembic_runner.insert_into("users", {"id": "11111111-1111-1111-1111-111111111111"} | _USER)
+    alembic_runner.migrate_up_to("0029")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
+    assert "default_event_container_id" in columns
+    with alembic_engine.connect() as conn:
+        value = conn.execute(text("SELECT default_event_container_id FROM users")).scalar_one()
+    assert value is None
+    alembic_runner.migrate_down_to("0028")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
+    assert "default_event_container_id" not in columns
 
 
 def test_0027_adds_checklist_source_paths_and_keeps_users(

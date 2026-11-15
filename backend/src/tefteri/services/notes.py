@@ -101,6 +101,10 @@ class NoteService:
                 "note_not_found",
             ) from exc
 
+    def note_url(self, connection: Connection, remote_id: str) -> str | None:
+        """Return the web address of a note in the notes app, when the app has one."""
+        return self._backend(connection).note_url(remote_id)
+
     async def daily(self, db: AsyncSession, user_id: uuid.UUID, day: date) -> Note:
         """Return the daily note for ``day``; the note app creates it when missing."""
         connection = await self.notes_connection(db, user_id)

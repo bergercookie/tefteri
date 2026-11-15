@@ -243,6 +243,7 @@ void main() {
           'done': checked.where(noteItems.contains).length,
           'total': noteItems.length,
           'source': 'Checklists/Weekly',
+          'source_url': 'https://notes.test/#root/n1',
         };
     final api = FakeApi({
       _get: (_) => shown(),
@@ -260,8 +261,9 @@ void main() {
     await _pump(tester, api);
     expect(_summary(tester), '0 of 2 done');
     expect(find.byKey(const Key('checklist-source')), findsOneWidget);
-    expect(find.textContaining('Read from Checklists/Weekly'), findsOneWidget);
-    expect(find.textContaining('Ticks stay in Tefteri'), findsOneWidget);
+    expect(find.textContaining('Read from Checklists/Weekly in the notes app.'),
+        findsOneWidget);
+    expect(find.textContaining('Ticks stay'), findsNothing);
     expect(find.byKey(const Key('checklist-box-0')), findsOneWidget);
     expect(find.byKey(const Key('checklist-bar')), findsOneWidget);
     expect(find.text('Clear the inbox'), findsOneWidget);
@@ -348,5 +350,60 @@ void main() {
         findsOneWidget);
     expect(find.byKey(const Key('checklist-refresh')), findsOneWidget);
     expect(find.byKey(const Key('checklist-create')), findsNothing);
+  });
+
+  testWidgets('the note path is a link that opens the note in the notes app',
+      (tester) async {
+    final opened = <Uri>[];
+    final api = FakeApi({
+      _get: {
+        'period_type': 'week',
+        'period_start': '2026-11-02',
+        'items': [
+          {'text': 'Clear the inbox', 'checked': false},
+        ],
+        'done': 0,
+        'total': 1,
+        'source': 'Checklists/Weekly',
+        'source_url': 'https://notes.test/#root/n1',
+      },
+    });
+    await _pump(tester, api, overrides: [
+      openUrlProvider.overrideWithValue((uri) async {
+        opened.add(uri);
+        return true;
+      }),
+    ]);
+    final text = tester.widget<Text>(find.byKey(const Key('checklist-source')));
+    final link = (text.textSpan! as TextSpan)
+        .children!
+        .whereType<TextSpan>()
+        .firstWhere((s) => s.text == 'Checklists/Weekly');
+    expect(link.style?.decoration, TextDecoration.underline);
+    (link.recognizer! as TapGestureRecognizer).onTap!();
+    await tester.pumpAndSettle();
+    expect(opened.single.toString(), 'https://notes.test/#root/n1');
+  });
+
+  testWidgets('without an address the note path is plain text', (tester) async {
+    final api = FakeApi({
+      _get: {
+        'period_type': 'week',
+        'period_start': '2026-11-02',
+        'items': [
+          {'text': 'Clear the inbox', 'checked': false},
+        ],
+        'done': 0,
+        'total': 1,
+        'source': 'Checklists/Weekly',
+      },
+    });
+    await _pump(tester, api);
+    final text = tester.widget<Text>(find.byKey(const Key('checklist-source')));
+    final spans =
+        (text.textSpan! as TextSpan).children!.whereType<TextSpan>().toList();
+    expect(spans.every((s) => s.recognizer == null), isTrue);
+    expect(text.textSpan!.toPlainText(),
+        'Read from Checklists/Weekly in the notes app.');
   });
 }

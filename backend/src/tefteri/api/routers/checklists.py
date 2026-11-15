@@ -44,6 +44,8 @@ class ChecklistOut(BaseModel):
     total: int
     source: str | None = None
     """The note path that the list comes from; ``None`` for the user's local list."""
+    source_url: str | None = None
+    """The address of that note in the notes app, to open it."""
 
     @classmethod
     def of(cls, c: Checklist) -> "ChecklistOut":
@@ -62,6 +64,7 @@ class ChecklistOut(BaseModel):
             done=c.done,
             total=len(c.items),
             source=c.source,
+            source_url=c.source_url,
         )
 
 

@@ -76,6 +76,8 @@ class Checklist:
     items: list[Item]
     source: str | None = None
     """The note path that the list comes from, or ``None`` for the user's local list."""
+    source_url: str | None = None
+    """The web address of that note in the notes app, when the app has pages for notes."""
 
     @property
     def done(self) -> int:
@@ -126,6 +128,7 @@ class ChecklistService:
         source = str(user.checklist_sources.get(kind.value, "")).strip()
         if source:
             remote = await self._notes.note_by_path(db, user_id, source)
+            connection = await self._notes.notes_connection(db, user_id)
             remote_items = clean_html_items(list_items_from_html(remote.body))
             return Checklist(
                 kind,
@@ -139,6 +142,7 @@ class ChecklistService:
                     for item in remote_items
                 ],
                 source=source,
+                source_url=self._notes.note_url(connection, remote.remote_id),
             )
         items = clean_items(list(user.checklists.get(kind.value, [])))
         return Checklist(kind, start, [Item(t, t in ticked) for t in items])

@@ -34,6 +34,18 @@ class User(IdMixin, CreatedMixin, Base):
         Integer, default=15, server_default=text("15")
     )
     """How many minutes before its due time a new task reminder fires."""
+    default_event_container_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey(
+            "source_containers.id",
+            ondelete="SET NULL",
+            name="fk_users_default_event_container_id",
+            use_alter=True,
+        ),
+        nullable=True,
+        default=None,
+    )
+    """The calendar that a new event starts in, or ``None`` to start in the last one used."""
 
 
 class AuthSession(IdMixin, CreatedMixin, Base):
