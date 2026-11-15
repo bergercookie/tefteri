@@ -8,6 +8,7 @@ OFF = {
     "random_time_on_date_drop": False,
     "default_reminder_minutes": 15,
     "checklists": {"week": [], "month": [], "year": []},
+    "checklist_sources": {"week": "", "month": "", "year": ""},
 }
 
 
@@ -66,3 +67,27 @@ async def test_default_reminder_must_be_within_a_week(api: AsyncClient) -> None:
         assert r.status_code == 422
     ok = await api.patch(f"{V1}/me/settings", json={"default_reminder_minutes": 7 * 24 * 60})
     assert ok.status_code == 200
+
+
+async def test_checklist_sources_are_cleaned_and_can_be_cleared(api: AsyncClient) -> None:
+    r = await api.patch(
+        f"{V1}/me/settings",
+        json={"checklist_sources": {"week": "  Checklists /  Weekly  "}},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["checklist_sources"] == {
+        "week": "Checklists /  Weekly",
+        "month": "",
+        "year": "",
+    }
+    # A path for another kind leaves the first one alone.
+    await api.patch(f"{V1}/me/settings", json={"checklist_sources": {"year": "Annual"}})
+    got = (await api.get(f"{V1}/me/settings")).json()["checklist_sources"]
+    assert got == {"week": "Checklists /  Weekly", "month": "", "year": "Annual"}
+    # An empty path brings the local list back.
+    cleared = await api.patch(f"{V1}/me/settings", json={"checklist_sources": {"week": ""}})
+    assert cleared.json()["checklist_sources"]["week"] == ""
+    too_long = await api.patch(f"{V1}/me/settings", json={"checklist_sources": {"week": "x" * 501}})
+    assert too_long.status_code == 422
+    unknown = await api.patch(f"{V1}/me/settings", json={"checklist_sources": {"decade": "x"}})
+    assert unknown.status_code == 422

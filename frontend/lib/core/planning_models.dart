@@ -455,6 +455,7 @@ class UserSettings {
     required this.randomTimeOnDateDrop,
     this.defaultReminderMinutes = defaultReminderOffset,
     this.checklists = const {},
+    this.checklistSources = const {},
   });
 
   /// Parses the settings JSON object.
@@ -471,6 +472,10 @@ class UserSettings {
                 '$i',
             ],
         },
+        checklistSources: {
+          for (final kind in ChecklistKind.values)
+            kind: '${((j['checklist_sources'] as Map?)?[kind.name]) ?? ''}',
+        },
       );
 
   /// When true, a date-only drop gets a random time of day on that date.
@@ -483,8 +488,15 @@ class UserSettings {
   /// planning. A kind without items has no checklist.
   final Map<ChecklistKind, List<String>> checklists;
 
+  /// The note path of each checklist. A non-empty path means that the
+  /// checklist is read from the notes app and is read-only.
+  final Map<ChecklistKind, String> checklistSources;
+
   /// The items of the checklist of [kind].
   List<String> itemsOf(ChecklistKind kind) => checklists[kind] ?? const [];
+
+  /// The note path of the checklist of [kind]; empty when it is local.
+  String sourceOf(ChecklistKind kind) => checklistSources[kind] ?? '';
 }
 
 /// The kind of planning that a checklist belongs to.
@@ -524,16 +536,27 @@ class ChecklistItem {
 @immutable
 class PeriodChecklist {
   /// Creates a checklist.
-  const PeriodChecklist(this.items);
+  const PeriodChecklist(this.items, {this.source, this.readOnly = false});
 
   /// Parses the checklist JSON object.
-  factory PeriodChecklist.fromJson(Map<String, dynamic> j) => PeriodChecklist([
-        for (final i in (j['items'] as List? ?? const []))
-          ChecklistItem('${(i as Map)['text']}', checked: i['checked'] == true),
-      ]);
+  factory PeriodChecklist.fromJson(Map<String, dynamic> j) => PeriodChecklist(
+        [
+          for (final i in (j['items'] as List? ?? const []))
+            ChecklistItem('${(i as Map)['text']}',
+                checked: i['checked'] == true),
+        ],
+        source: j['source'] as String?,
+        readOnly: j['read_only'] == true,
+      );
 
   /// The items of the user's list. Empty when they have not made one.
   final List<ChecklistItem> items;
+
+  /// The note path that the list comes from, or null for a local list.
+  final String? source;
+
+  /// True when the list comes from the notes app and cannot be ticked.
+  final bool readOnly;
 
   /// How many items are ticked.
   int get done => items.where((i) => i.checked).length;
@@ -542,7 +565,7 @@ class PeriodChecklist {
   PeriodChecklist withTick(String text, bool checked) => PeriodChecklist([
         for (final i in items)
           i.text == text ? ChecklistItem(i.text, checked: checked) : i,
-      ]);
+      ], source: source, readOnly: readOnly);
 }
 
 /// What a new reminder uses until the user changes it: 15 minutes.

@@ -759,6 +759,22 @@
           "period_type": {
             "$ref": "#/components/schemas/PeriodType"
           },
+          "read_only": {
+            "default": false,
+            "title": "Read Only",
+            "type": "boolean"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -772,6 +788,74 @@
           "total"
         ],
         "title": "ChecklistOut",
+        "type": "object"
+      },
+      "ChecklistSourcesOut": {
+        "description": "The note path of each checklist that comes from the notes app.",
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "week": {
+            "title": "Week",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week",
+          "month",
+          "year"
+        ],
+        "title": "ChecklistSourcesOut",
+        "type": "object"
+      },
+      "ChecklistSourcesPatch": {
+        "additionalProperties": false,
+        "description": "Source paths to replace; an empty path goes back to the local list.",
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "title": "ChecklistSourcesPatch",
         "type": "object"
       },
       "ChecklistsOut": {
@@ -5818,6 +5902,9 @@
       "SettingsOut": {
         "description": "The current user's settings.",
         "properties": {
+          "checklist_sources": {
+            "$ref": "#/components/schemas/ChecklistSourcesOut"
+          },
           "checklists": {
             "$ref": "#/components/schemas/ChecklistsOut"
           },
@@ -5833,7 +5920,8 @@
         "required": [
           "random_time_on_date_drop",
           "default_reminder_minutes",
-          "checklists"
+          "checklists",
+          "checklist_sources"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -5842,6 +5930,16 @@
         "additionalProperties": false,
         "description": "Settings to change; fields that are left out stay as they are.",
         "properties": {
+          "checklist_sources": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChecklistSourcesPatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "checklists": {
             "anyOf": [
               {
@@ -10297,7 +10395,7 @@
     },
     "/api/v1/checklists/{kind}/{day}": {
       "get": {
-        "description": "Return the checklist of the week, month or year that holds ``day``.\n\nThe ticks belong to that period: the next period starts with a clean list.",
+        "description": "Return the checklist of the week, month or year that holds ``day``.\n\nThe ticks belong to that period: the next period starts with a clean list. When the\nchecklist comes from the notes app, it is read from the note on every call.",
         "operationId": "get_checklist_api_v1_checklists__kind___day__get",
         "parameters": [
           {

@@ -1,7 +1,7 @@
 """Trilium Next note adapter (ETAPI, token auth)."""
 
 from datetime import date
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -107,6 +107,59 @@ class TriliumNoteBackend:
     async def get_note(self, remote_id: str) -> RemoteNote:
         """Fetch one note with its content."""
         return await self._note(await self._call("GET", f"/notes/{remote_id}"))
+
+    async def _child_by_title(self, parent_id: str, title: str) -> dict[str, Any] | None:
+        """Return the child of ``parent_id`` whose title is ``title``, ignoring case."""
+        parent = await self._call("GET", f"/notes/{parent_id}")
+        for child_id in parent.get("childNoteIds", []):
+            if is_system_note(child_id):
+                continue
+            child = await self._call("GET", f"/notes/{child_id}")
+            if str(child.get("title", "")).casefold() == title.casefold():
+                return cast(dict[str, Any], child)
+        return None
+
+    async def get_note_by_path(self, path: str) -> RemoteNote:
+        """Fetch the note at a path of titles below the root note.
+
+        A plain note id and the ``#root/<note id>`` part of a Trilium address also work.
+        """
+        raw = path.strip()
+        if not raw:
+            raise BackendError("no note path given")
+        if "#" in raw:
+            fragment = raw.rsplit("#", 1)[1].strip("/")
+            parts = [part for part in fragment.split("/") if part]
+            if parts and (parts[0] in ("root", self._root)):
+                parts = parts[1:]
+            if parts:
+                return await self.get_note(parts[-1])
+        parts = [part.strip() for part in raw.split("/") if part.strip()]
+        if not parts:
+            return await self.get_note(self._root)
+        if len(parts) == 1:
+            # A note id is a path of one part; a child title may look like one too.
+            try:
+                return await self.get_note(parts[0])
+            except (AuthExpired, BackendUnavailable, RemoteConflict):
+                raise
+            except BackendError:
+                pass
+        root = await self._call("GET", f"/notes/{self._root}")
+        if (
+            parts[0] == root.get("noteId")
+            or parts[0].casefold() == str(root.get("title", "")).casefold()
+        ):
+            parts = parts[1:]
+        if not parts:
+            return await self._note(root)
+        parent = root
+        for part in parts:
+            child = await self._child_by_title(parent["noteId"], part)
+            if child is None:
+                raise BackendError(f"no note at path {path!r}")
+            parent = child
+        return await self._note(parent)
 
     async def create_note(self, draft: NoteDraft) -> RemoteNote:
         """Create a text note below the root note."""

@@ -365,10 +365,20 @@ class FakeNoteBackend(_FakeBase):
         """Start empty."""
         super().__init__(containers)
         self.notes: dict[str, RemoteNote] = {}
+        self.paths: dict[str, str] = {}
+        """Note paths that a test made up, mapped to remote ids."""
 
     async def get_note(self, remote_id: str) -> RemoteNote:
         """Fetch a note."""
         self._guard()
+        return self.notes[remote_id]
+
+    async def get_note_by_path(self, path: str) -> RemoteNote:
+        """Fetch a note through a path that a test put in ``paths``."""
+        self._guard()
+        remote_id = self.paths.get(path)
+        if remote_id is None:
+            raise BackendError(f"no note at path {path!r}")
         return self.notes[remote_id]
 
     async def create_note(self, draft: NoteDraft) -> RemoteNote:

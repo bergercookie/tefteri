@@ -178,6 +178,14 @@ class NoteBackend(Backend, Protocol):
         """Fetch one note."""
         ...
 
+    async def get_note_by_path(self, path: str) -> RemoteNote:
+        """Fetch the note at a slash-separated path below the configured root.
+
+        A note id, or the ``#root/...`` part of a Trilium address, also works. Raise
+        ``BackendError`` when no note is at ``path``.
+        """
+        ...
+
     async def create_note(self, draft: NoteDraft) -> RemoteNote:
         """Create a note."""
         ...

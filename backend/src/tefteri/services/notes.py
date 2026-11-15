@@ -14,6 +14,7 @@ from tefteri.db.models.task import Task
 from tefteri.db.repositories.items import NoteRepository, TaskNoteLinkRepository
 from tefteri.domain.entities import NoteDraft, NotePatch, RemoteNote
 from tefteri.domain.enums import ConnectionKind, SyncState
+from tefteri.domain.errors import BackendError
 from tefteri.domain.ports import NoteBackend
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import Invalid, NotFound, guard
@@ -86,6 +87,19 @@ class NoteService:
         if note is None:
             raise NotFound
         return note
+
+    async def note_by_path(self, db: AsyncSession, user_id: uuid.UUID, path: str) -> RemoteNote:
+        """Read a note at a path in the notes app, without copying it."""
+        connection = await self.notes_connection(db, user_id)
+        try:
+            return await guard(connection, self._backend(connection).get_note_by_path(path))
+        except BackendError as exc:
+            # A missing note, or an address that is not a note. The app itself is reachable.
+            raise Invalid(
+                f"No note at {path!r} in {connection.display_name}. "
+                "Check the path in Settings, Checklists.",
+                "note_not_found",
+            ) from exc
 
     async def daily(self, db: AsyncSession, user_id: uuid.UUID, day: date) -> Note:
         """Return the daily note for ``day``; the note app creates it when missing."""

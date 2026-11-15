@@ -20,6 +20,11 @@ void main() {
             'month': checklistExamples.values.elementAt(1),
             'year': <String>[],
           },
+          'checklist_sources': {
+            'week': '',
+            'month': '',
+            'year': 'Checklists/Annual',
+          },
         },
       }),
       const ChecklistsScreen(),

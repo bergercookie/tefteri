@@ -13,6 +13,11 @@ The ports are in `tefteri.domain.ports`. All methods are `async`.
 | `CalendarBackend` | Calendar entries | Google Calendar |
 | `NoteBackend` | Notes and daily notes | Trilium Next |
 
+A note backend also has `get_note_by_path(path)`, because a planning checklist can name a note
+path. The Trilium adapter walks the child notes below the configured root and matches the titles
+without case. A note id, or the `#root/...` part of a Trilium address, also works. Raise
+`BackendError` when no note is at the path.
+
 Each port extends `Backend`. `Backend` has three common methods:
 
 - `capabilities()` returns the set of optional features that the app supports.

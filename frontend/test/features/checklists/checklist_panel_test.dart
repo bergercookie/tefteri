@@ -224,4 +224,67 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('checklist-create')), findsOneWidget);
   });
+
+  testWidgets('a checklist from the notes app is read-only and refreshes',
+      (tester) async {
+    var reads = 0;
+    final api = FakeApi({
+      _get: (_) {
+        reads++;
+        final items = reads == 1
+            ? ['Look back', 'Clear the inbox']
+            : ['Look back', 'Choose the focus'];
+        return {
+          'period_type': 'week',
+          'period_start': '2026-11-02',
+          'items': [
+            for (final t in items) {'text': t, 'checked': false},
+          ],
+          'done': 0,
+          'total': items.length,
+          'source': 'Checklists/Weekly',
+          'read_only': true,
+        };
+      },
+    });
+    await _pump(tester, api);
+    expect(_summary(tester), '2 items from notes');
+    expect(find.byKey(const Key('checklist-read-only')), findsOneWidget);
+    expect(find.byKey(const Key('checklist-source')), findsOneWidget);
+    expect(find.textContaining('Read from Checklists/Weekly'), findsOneWidget);
+    expect(find.byKey(const Key('checklist-box-0')), findsNothing);
+    expect(find.byKey(const Key('checklist-bar')), findsNothing);
+    expect(find.text('Clear the inbox'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('checklist-item-0')));
+    await tester.pumpAndSettle();
+    expect(api.where(_put), isEmpty);
+
+    await tester.tap(find.byKey(const Key('checklist-refresh')));
+    await tester.pumpAndSettle();
+    expect(api.where(_get), hasLength(2));
+    expect(find.text('Choose the focus'), findsOneWidget);
+    expect(find.text('Clear the inbox'), findsNothing);
+  });
+
+  testWidgets('a note without a list offers a refresh, not a new local list',
+      (tester) async {
+    final api = FakeApi({
+      _get: {
+        'period_type': 'week',
+        'period_start': '2026-11-02',
+        'items': <Object?>[],
+        'done': 0,
+        'total': 0,
+        'source': 'Checklists/Weekly',
+        'read_only': true,
+      },
+    });
+    await _pump(tester, api);
+    expect(_summary(tester), 'Nothing in the note');
+    expect(find.textContaining('The note at Checklists/Weekly has no list'),
+        findsOneWidget);
+    expect(find.byKey(const Key('checklist-refresh')), findsOneWidget);
+    expect(find.byKey(const Key('checklist-create')), findsNothing);
+  });
 }

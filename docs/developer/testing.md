@@ -42,7 +42,10 @@ smoke test is `tests/live/test_annual_review_live.py`. Read
 [Annual review](annual-review.md) for the rules and the readers.
 
 The fake apps are in `tests/fakes/`. They keep their items in memory, and a test can make
-them unreachable or make their credentials expire.
+them unreachable or make their credentials expire. `FakeNoteBackend.paths` maps a note path to a
+remote id for the checklist tests in `integration/test_checklists.py`. The HTML list reader has
+unit tests in `unit/test_checklist_html.py`, and the Trilium path lookup is in
+`integration/adapters/test_trilium.py`.
 
 Recipes:
 

@@ -7,12 +7,17 @@ import '../../support/fake_api.dart';
 Map<String, Object?> _settings(
         {List<String> week = const [],
         List<String> month = const [],
-        List<String> year = const []}) =>
+        List<String> year = const [],
+        Map<String, String> sources = const {}}) =>
     {
       'random_time_on_date_drop': false,
       'default_reminder_minutes': 15,
       'checklists': {'week': week, 'month': month, 'year': year},
+      'checklist_sources': {'week': '', 'month': '', 'year': '', ...sources},
     };
+
+bool _boxEnabled(WidgetTester tester, String kind) =>
+    tester.widget<TextField>(find.byKey(Key('checklist-box-$kind'))).enabled!;
 
 String _box(WidgetTester tester, String kind) => tester
     .widget<TextField>(find.byKey(Key('checklist-box-$kind')))
@@ -37,6 +42,13 @@ Future<void> _save(WidgetTester tester) async {
   final f = find.byKey(const Key('checklists-save'));
   await tester.ensureVisible(f);
   await tester.tap(f);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _typeSource(WidgetTester tester, String kind, String text) async {
+  final f = find.byKey(Key('checklist-source-$kind'));
+  await tester.ensureVisible(f);
+  await tester.enterText(f, text);
   await tester.pumpAndSettle();
 }
 
@@ -178,5 +190,55 @@ void main() {
     await pumpWithApi(tester, FakeApi({}), const ChecklistsScreen());
     expect(find.byKey(const Key('checklists-load-error')), findsOneWidget);
     expect(find.byKey(const Key('checklists-retry')), findsOneWidget);
+  });
+
+  testWidgets('a notes path makes the local list read-only', (tester) async {
+    await pumpWithApi(
+        tester,
+        FakeApi({
+          'GET /me/settings': _settings(
+              week: ['Local item'], sources: {'week': 'Checklists/Weekly'}),
+        }),
+        const ChecklistsScreen());
+    expect(_boxEnabled(tester, 'week'), isFalse);
+    expect(_boxEnabled(tester, 'month'), isTrue);
+    expect(_count(tester, 'week'), 'Read from Checklists/Weekly.');
+    expect(find.textContaining('cannot be ticked here'), findsOneWidget);
+  });
+
+  testWidgets('a notes path is saved alone, and cleared again', (tester) async {
+    var stored = _settings(week: ['Local item']);
+    final api = FakeApi({
+      'GET /me/settings': (_) => stored,
+      'PATCH /me/settings': (o) {
+        final body = o.data as Map;
+        final sources = (body['checklist_sources'] as Map?) ?? const {};
+        stored = _settings(
+          week: ['Local item'],
+          sources: {
+            if (sources['week'] != null) 'week': '${sources['week']}',
+          },
+        );
+        return stored;
+      },
+    });
+    await pumpWithApi(tester, api, const ChecklistsScreen());
+
+    await _typeSource(tester, 'week', 'Checklists/Weekly');
+    expect(_boxEnabled(tester, 'week'), isFalse);
+    expect(_canSave(tester), isTrue);
+    await _save(tester);
+    expect(api.where('PATCH /me/settings').single.data, {
+      'checklist_sources': {'week': 'Checklists/Weekly'},
+    });
+    expect(_count(tester, 'week'), 'Read from Checklists/Weekly.');
+
+    await _typeSource(tester, 'week', '');
+    expect(_boxEnabled(tester, 'week'), isTrue);
+    await _save(tester);
+    expect(api.where('PATCH /me/settings').last.data, {
+      'checklist_sources': {'week': ''},
+    });
+    expect(_count(tester, 'week'), '1 item');
   });
 }

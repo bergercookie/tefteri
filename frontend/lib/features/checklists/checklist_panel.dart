@@ -83,6 +83,11 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
     final String summary;
     if (list == null) {
       summary = state.hasError ? 'Could not load it' : 'Loading';
+    } else if (list.readOnly) {
+      summary = list.items.isEmpty
+          ? 'Nothing in the note'
+          : '${list.items.length} ${list.items.length == 1 ? 'item' : 'items'} '
+              'from notes';
     } else if (list.items.isEmpty) {
       summary = 'Not set up yet';
     } else if (list.done == list.items.length) {
@@ -128,7 +133,7 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
           ],
         ),
       ),
-      data: (c) => c.items.isEmpty ? _hint(context) : _items(context, c),
+      data: (c) => c.items.isEmpty ? _hint(context, c) : _items(context, c),
     );
 
     final content = widget.collapsible
@@ -169,35 +174,106 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
   }
 
   /// What to show when there is no list yet: why it helps and a way to make one.
-  Widget _hint(BuildContext context) {
+  Widget _hint(BuildContext context, PeriodChecklist list) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final kind = widget.kind;
+    final source = list.source;
+    final fromNotes = source != null && source.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.only(top: Space.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'You have no ${kind.adjective.toLowerCase()} checklist yet. '
-            'List what you want to go through every ${kind.noun}, and tick it '
-            'off here while you plan. It starts clean each ${kind.noun}.',
+            fromNotes
+                ? 'The note at $source has no list items yet. Add an HTML list '
+                    'in your notes app, then refresh.'
+                : 'You have no ${kind.adjective.toLowerCase()} checklist yet. '
+                    'List what you want to go through every ${kind.noun}, and '
+                    'tick it off here while you plan. It starts clean each '
+                    '${kind.noun}.',
             key: const Key('checklist-hint'),
             style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: Space.sm),
           OutlinedButton.icon(
-            key: const Key('checklist-create'),
-            icon: const Icon(Icons.checklist),
-            label: const Text('Create a checklist'),
-            onPressed: () => context.go(checklistSettingsPath),
+            key: Key(fromNotes ? 'checklist-refresh' : 'checklist-create'),
+            icon: Icon(fromNotes ? Icons.refresh : Icons.checklist),
+            label: Text(fromNotes ? 'Refresh' : 'Create a checklist'),
+            onPressed: fromNotes
+                ? () => ref.read(checklistProvider(_key).notifier).load()
+                : () => context.go(checklistSettingsPath),
           ),
         ],
       ),
     );
   }
 
+  /// A list that comes from the notes app: read it, but do not tick it.
+  Widget _readOnlyItems(BuildContext context, PeriodChecklist list) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final colors = context.tefteri;
+    return Column(
+      key: const Key('checklist-read-only'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: Space.xs),
+        for (var i = 0; i < list.items.length; i++)
+          Container(
+            key: Key('checklist-item-$i'),
+            decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: colors.rule))),
+            padding: const EdgeInsets.symmetric(vertical: Space.xs),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: Space.md, top: 2),
+                  child: Icon(Icons.notes,
+                      size: 18, color: scheme.onSurfaceVariant),
+                ),
+                const SizedBox(width: Space.sm),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Text(list.items[i].text, style: text.bodyMedium),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: Space.xs),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Read from ${list.source}. Change it in your notes app.',
+                key: const Key('checklist-source'),
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+            TextButton.icon(
+              key: const Key('checklist-refresh'),
+              onPressed: () =>
+                  ref.read(checklistProvider(_key).notifier).load(),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Refresh'),
+            ),
+            TextButton(
+              key: const Key('checklist-edit'),
+              onPressed: () => context.go(checklistSettingsPath),
+              child: const Text('Edit the source'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _items(BuildContext context, PeriodChecklist list) {
+    if (list.readOnly) return _readOnlyItems(context, list);
     final colors = context.tefteri;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;

@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from tefteri.api.deps import CurrentUser, Db
@@ -10,7 +10,11 @@ from tefteri.domain.periods import PeriodType
 from tefteri.services.checklists import MAX_ITEM_LENGTH, Checklist, ChecklistService
 
 router = APIRouter(prefix="/checklists", tags=["checklists"])
-_service = ChecklistService()
+
+
+def _service(request: Request) -> ChecklistService:
+    service: ChecklistService = request.app.state.checklist_service
+    return service
 
 
 class ChecklistItemOut(BaseModel):
@@ -29,6 +33,10 @@ class ChecklistOut(BaseModel):
     """The user's list for this kind of planning. Empty when they have not defined one."""
     done: int
     total: int
+    source: str | None = None
+    """The note path that the list comes from; ``None`` for the user's local list."""
+    read_only: bool = False
+    """True when the list comes from the notes app and its items cannot be ticked."""
 
     @classmethod
     def of(cls, c: Checklist) -> "ChecklistOut":
@@ -39,6 +47,8 @@ class ChecklistOut(BaseModel):
             items=[ChecklistItemOut(text=i.text, checked=i.checked) for i in c.items],
             done=c.done,
             total=len(c.items),
+            source=c.source,
+            read_only=c.read_only,
         )
 
 
@@ -52,17 +62,22 @@ class TickIn(BaseModel):
 
 
 @router.get("/{kind}/{day}")
-async def get_checklist(kind: PeriodType, day: date, db: Db, user: CurrentUser) -> ChecklistOut:
+async def get_checklist(
+    kind: PeriodType, day: date, request: Request, db: Db, user: CurrentUser
+) -> ChecklistOut:
     """Return the checklist of the week, month or year that holds ``day``.
 
-    The ticks belong to that period: the next period starts with a clean list.
+    The ticks belong to that period: the next period starts with a clean list. When the
+    checklist comes from the notes app, it is read from the note on every call.
     """
-    return ChecklistOut.of(await _service.get(db, user.id, kind, day))
+    return ChecklistOut.of(await _service(request).get(db, user.id, kind, day))
 
 
 @router.put("/{kind}/{day}/items")
 async def tick_item(
-    kind: PeriodType, day: date, body: TickIn, db: Db, user: CurrentUser
+    kind: PeriodType, day: date, body: TickIn, request: Request, db: Db, user: CurrentUser
 ) -> ChecklistOut:
     """Tick or untick one item of the checklist of that period."""
-    return ChecklistOut.of(await _service.tick(db, user.id, kind, day, body.text, body.checked))
+    return ChecklistOut.of(
+        await _service(request).tick(db, user.id, kind, day, body.text, body.checked)
+    )

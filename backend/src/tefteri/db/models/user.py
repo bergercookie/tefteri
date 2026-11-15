@@ -26,6 +26,10 @@ class User(IdMixin, CreatedMixin, Base):
         JSON, default=dict, server_default=text("'{}'")
     )
     """The user's planning checklists: the items for ``week``, ``month`` and ``year``."""
+    checklist_sources: Mapped[dict[str, str]] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'")
+    )
+    """The note path that each checklist comes from, by period type, when it is read-only."""
     default_reminder_minutes: Mapped[int] = mapped_column(
         Integer, default=15, server_default=text("15")
     )

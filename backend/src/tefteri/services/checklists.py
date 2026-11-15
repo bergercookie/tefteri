@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.checklist import ChecklistProgress
 from tefteri.db.models.user import User
+from tefteri.domain.checklist_html import list_items_from_html
 from tefteri.domain.periods import PeriodType, period_start
 from tefteri.services.errors import Invalid, NotFound
+from tefteri.services.notes import NoteService
 
 MAX_ITEMS = 50
 """A checklist holds at most this many items."""
@@ -48,15 +50,26 @@ class Checklist:
     kind: PeriodType
     start: date
     items: list[Item]
+    source: str | None = None
+    """The note path that the list comes from, or ``None`` for the user's local list."""
 
     @property
     def done(self) -> int:
         """How many items are ticked."""
         return sum(1 for i in self.items if i.checked)
 
+    @property
+    def read_only(self) -> bool:
+        """A checklist from the notes app is read-only."""
+        return self.source is not None
+
 
 class ChecklistService:
     """Read the checklist of a period and tick its items."""
+
+    def __init__(self, notes: NoteService) -> None:
+        """Use ``notes`` to read a checklist that lives in the notes app."""
+        self._notes = notes
 
     async def _user(self, db: AsyncSession, user_id: uuid.UUID) -> User:
         user = await db.get(User, user_id)
@@ -83,10 +96,16 @@ class ChecklistService:
         """Return the checklist of the period of type ``kind`` that holds ``day``.
 
         The items are the user's current list. A tick for an item that is no longer in the list
-        is ignored.
+        is ignored. When a note path is set, the items are read from that note on every call,
+        so the list is always as new as the note, and it is read-only.
         """
         user = await self._user(db, user_id)
         start = period_start(kind, day)
+        source = str(user.checklist_sources.get(kind.value, "")).strip()
+        if source:
+            remote = await self._notes.note_by_path(db, user_id, source)
+            items = clean_items(list_items_from_html(remote.body))[:MAX_ITEMS]
+            return Checklist(kind, start, [Item(t, False) for t in items], source=source)
         row = await self._row(db, user_id, kind, start)
         ticked = set(row.checked) if row else set()
         items = clean_items(list(user.checklists.get(kind.value, [])))
@@ -103,6 +122,12 @@ class ChecklistService:
     ) -> Checklist:
         """Tick or untick one item in the period and return the checklist."""
         current = await self.get(db, user_id, kind, day)
+        if current.read_only:
+            raise Invalid(
+                "This checklist comes from your notes app and is read-only. "
+                "Change it in your notes app.",
+                "read_only",
+            )
         if text not in {i.text for i in current.items}:
             raise Invalid("That item is not in the checklist. Reload the page.")
         row = await self._row(db, user_id, kind, current.start)
