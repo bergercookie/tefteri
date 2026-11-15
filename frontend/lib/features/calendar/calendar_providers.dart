@@ -9,7 +9,8 @@ import '../../core/planning_models.dart';
 /// Number of days shown at one time.
 const calendarDays = 7;
 
-/// Loads calendar items for the week that starts on the given local day.
+/// Loads calendar items for the 7 days from the given local day. The planner
+/// shows all of them, or the first three or the first one.
 final calendarItemsProvider =
     FutureProvider.family<List<CalendarItem>, DateTime>((ref, from) {
   final to = DateTime(from.year, from.month, from.day + calendarDays);

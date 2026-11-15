@@ -8,7 +8,8 @@ You can see what you must do and when you have time, on one screen.
 ## What the two columns show
 
 The left column is the task list. At the top you find the filters and the search box.
-The right column is the calendar for one week. It shows your calendar entries and your tasks together.
+The right column is the calendar. It shows your calendar entries and your tasks together. By
+default it shows one week. Refer to [Show a week, three days or one day](#show-a-week-three-days-or-one-day).
 
 Task blocks have a colored outline and a check mark. Calendar entries have no outline. An entry
 from a Google calendar has the color that you chose for that calendar in Google Calendar: a
@@ -73,11 +74,26 @@ sidebar has a line to drag only when the window is wide enough to show the names
 
 ## Move to today
 
-Choose Today at the top of the calendar to go to the week of today. The calendar scrolls to the current time.
+Choose Today at the top of the calendar to go to today. The calendar scrolls to the current time.
 To move by one week, choose the arrows next to the Today button. You can also press the Left arrow key and the Right arrow key.
+In the 3 days view, the arrows move by three days. In the Day view, they move by one day.
 The arrow keys do not work while you type in the search box.
 Every screen with a calendar or a period has a Today button: the planner, Today, Week, Month and Year.
 The Month view is for the monthly theme focus and review. Read [Plan your month](monthly-planning.md).
+
+## Show a week, three days or one day
+
+The menu at the right of the calendar header sets how many days the calendar shows:
+
+- Week: Monday to Sunday. This is the default.
+- 3 days: three days. The first day is today, or the day that you move to with the arrows.
+- Day: one day.
+
+On a narrow screen, the menu shows an icon instead of the name. Tefteri keeps your choice on this
+device and uses it the next time you open the planner.
+
+When you change the view and today is on the screen, the new view also shows today. If today is
+not on the screen, the new view starts on the first day that you saw.
 
 ## Mark a task as done with Ctrl and a click
 
@@ -319,7 +335,7 @@ Open the Conflicts screen and choose the version that you want to keep. See [Sol
 ## Use the planner on a phone
 
 On a narrow screen, the two columns do not fit. The planner shows two tabs: Tasks and Calendar.
-Your filter, your search text and your week stay the same when you change tabs.
+Your filter, your search text and your days stay the same when you change tabs.
 
 ![The planner on a narrow screen. The Tasks tab shows the filters, the search box and three tasks, each with a Schedule button.](../images/planner-narrow-tasks.png)
 
