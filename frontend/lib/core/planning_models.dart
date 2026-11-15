@@ -536,7 +536,7 @@ class ChecklistItem {
 @immutable
 class PeriodChecklist {
   /// Creates a checklist.
-  const PeriodChecklist(this.items, {this.source, this.readOnly = false});
+  const PeriodChecklist(this.items, {this.source});
 
   /// Parses the checklist JSON object.
   factory PeriodChecklist.fromJson(Map<String, dynamic> j) => PeriodChecklist(
@@ -546,7 +546,6 @@ class PeriodChecklist {
                 checked: i['checked'] == true),
         ],
         source: j['source'] as String?,
-        readOnly: j['read_only'] == true,
       );
 
   /// The items of the user's list. Empty when they have not made one.
@@ -555,9 +554,6 @@ class PeriodChecklist {
   /// The note path that the list comes from, or null for a local list.
   final String? source;
 
-  /// True when the list comes from the notes app and cannot be ticked.
-  final bool readOnly;
-
   /// How many items are ticked.
   int get done => items.where((i) => i.checked).length;
 
@@ -565,7 +561,7 @@ class PeriodChecklist {
   PeriodChecklist withTick(String text, bool checked) => PeriodChecklist([
         for (final i in items)
           i.text == text ? ChecklistItem(i.text, checked: checked) : i,
-      ], source: source, readOnly: readOnly);
+      ], source: source);
 }
 
 /// What a new reminder uses until the user changes it: 15 minutes.

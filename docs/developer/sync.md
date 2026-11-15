@@ -12,9 +12,10 @@ that a task link can point at it. It does not hold the notes of the note app.
 
 A planning checklist can name a note path per period type (`checklist_sources` of the user).
 `GET /checklists/{kind}/{day}` then reads that note through the note adapter on every call and
-returns its `<li>` items with `read_only: true`. The local list in `users.checklists` is not used
-for that kind, and a tick is refused. A write in the note shows on the next read, so the client
-shows the note path and a Refresh button beside such a checklist.
+returns its `<li>` items in `source`. The local list in `users.checklists` is not used for that
+kind. Ticks still go to `checklist_progress`: they belong to the period and are never written to
+the note. A write in the note shows on the next read, so the client shows the note path and a
+Refresh button beside such a checklist.
 
 ## Sync flow
 

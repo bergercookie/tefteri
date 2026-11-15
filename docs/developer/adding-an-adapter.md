@@ -16,7 +16,8 @@ The ports are in `tefteri.domain.ports`. All methods are `async`.
 A note backend also has `get_note_by_path(path)`, because a planning checklist can name a note
 path. The Trilium adapter walks the child notes below the configured root and matches the titles
 without case. A note id, or the `#root/...` part of a Trilium address, also works. Raise
-`BackendError` when no note is at the path.
+`BackendError` when no note is at the path. The checklist service only reads the note: ticks are
+stored in tefteri and never written to the note.
 
 Each port extends `Backend`. `Backend` has three common methods:
 

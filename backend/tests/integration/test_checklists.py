@@ -40,7 +40,6 @@ async def test_no_checklist_is_defined_at_first(api: AsyncClient) -> None:
         "done": 0,
         "total": 0,
         "source": None,
-        "read_only": False,
     }
 
 
@@ -205,7 +204,7 @@ async def _note_checklist(
     return backend, note
 
 
-async def test_a_checklist_can_come_from_a_note_and_is_read_only(
+async def test_a_checklist_can_come_from_a_note_and_is_ticked_in_tefteri(
     api: AsyncClient, world: FakeWorld
 ) -> None:
     backend, note = await _note_checklist(
@@ -219,23 +218,32 @@ async def test_a_checklist_can_come_from_a_note_and_is_read_only(
 
     got = (await api.get(f"{V1}/checklists/week/2026-11-04")).json()
     assert got["source"] == "Checklists/Weekly"
-    assert got["read_only"] is True
     assert [i["text"] for i in got["items"]] == ["Look back at last week", "Clear the inbox"]
     assert [i["checked"] for i in got["items"]] == [False, False]
     assert got["done"] == 0 and got["total"] == 2
 
-    refused = await _tick(api, "2026-11-04", "Clear the inbox")
-    assert refused.status_code == 422
-    assert refused.json()["code"] == "read_only"
+    # The items are ticked in tefteri; the note is only read.
+    ticked = (await _tick(api, "2026-11-04", "Clear the inbox")).json()
+    assert ticked["done"] == 1
+    assert [i["checked"] for i in ticked["items"]] == [False, True]
+    unchanged = await backend.get_note(note.remote_id)
+    assert unchanged.body == "<ul><li>Look back at last week</li><li>Clear the inbox</li></ul>"
+    assert (await api.get(f"{V1}/checklists/week/2026-11-04")).json()["done"] == 1
+    assert (await api.get(f"{V1}/checklists/week/2026-11-09")).json()["done"] == 0
 
     # Every read asks the note again, so a change in the notes app shows at once.
+    # A tick whose item left the note is dropped; a new item starts unticked.
     await backend.update_note(
         note.remote_id,
-        NotePatch(body="<ul><li>Look back</li><li>Choose the focus</li></ul>"),
-        note.version,
+        NotePatch(body="<ul><li>Look back at last week</li><li>Choose the focus</li></ul>"),
+        unchanged.version,
     )
     fresh = (await api.get(f"{V1}/checklists/week/2026-11-04")).json()
-    assert [i["text"] for i in fresh["items"]] == ["Look back", "Choose the focus"]
+    assert [i["text"] for i in fresh["items"]] == ["Look back at last week", "Choose the focus"]
+    assert fresh["done"] == 0
+    again = (await _tick(api, "2026-11-04", "Choose the focus")).json()
+    assert again["done"] == 1
+    assert (await api.get(f"{V1}/checklists/week/2026-11-04")).json()["done"] == 1
 
 
 async def test_a_missing_note_path_is_refused_with_a_message(
