@@ -17,6 +17,17 @@ project in Vikunja in the same way. A finished task stays green.
 A red dot and a red line show the current time in the column of the current day. The line moves while you work.
 A task with a date and no time shows in the row called all day.
 
+Rest the mouse pointer on a block, or on a task in the task list, to see its whole title and
+when it is. For an event you also see its calendar, and for a task its project.
+
+### An event that is in two calendars
+
+You can see the calendar of another person in your Google account. When that person invites you
+to one of their events, Google keeps a copy of the event in each calendar. The planner shows such
+an event once. Its block has the colors of both calendars, in diagonal bands, and a small stack
+icon. The line on its left edge has one part in the color of each calendar. Rest the pointer on
+the block to read, for example, "Available in both calendars Work and Sam".
+
 When you sync, both columns update.
 
 ## Choose what the planner shows

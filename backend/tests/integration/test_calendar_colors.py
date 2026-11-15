@@ -71,3 +71,27 @@ async def test_the_views_carry_the_color_too(api: AsyncClient, world: FakeWorld)
     assert [e["color"] for e in day["entries"]] == ["#d50000"]
     week = (await api.get(f"{V1}/views/week/{entry.start.date()}")).json()
     assert [e["color"] for e in week["entries"]] == ["#d50000"]
+
+
+async def test_copies_of_one_event_carry_its_calendar_and_uid(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    # The owner of "mine" sees the calendar of a colleague too, and was invited to one of the
+    # colleague's events: Google holds a copy of that event in each calendar, with one UID.
+    calendar = world.calendars["default"]
+    calendar.containers = [
+        Container("mine", "Mine", color="#d50000"),
+        Container("theirs", "Theirs", color="#33b679"),
+    ]
+    start = datetime.now(UTC).replace(microsecond=0) + timedelta(days=1)
+    for entry_id, cal in (("mine::x", "mine"), ("theirs::x", "theirs")):
+        calendar.entries[entry_id] = RemoteEntry(
+            entry_id, cal, "Review", start, start + timedelta(hours=1), "v1", uid="x@google.com"
+        )
+    await _connect(api)
+
+    items = (await api.get(f"{V1}/calendar")).json()
+    assert sorted((i["calendar"], i["uid"]) for i in items) == [
+        ("Mine", "x@google.com"),
+        ("Theirs", "x@google.com"),
+    ]

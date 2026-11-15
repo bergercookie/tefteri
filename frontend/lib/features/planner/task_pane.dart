@@ -305,7 +305,18 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
       data: t,
       label: t.title,
       dimmed: pending,
-      child: HoverLift(id: t.id, child: row),
+      child: HoverLift(
+        id: t.id,
+        // Resting the mouse on a row shows the whole title (a long one is cut
+        // after two lines) and when the task is due.
+        child: Tooltip(
+          key: Key('task-tooltip-${t.id}'),
+          message: '${t.title}\n${_due(t)}',
+          triggerMode: TooltipTriggerMode.manual,
+          waitDuration: const Duration(milliseconds: 400),
+          child: row,
+        ),
+      ),
     );
   }
 

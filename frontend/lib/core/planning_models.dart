@@ -262,6 +262,9 @@ class CalendarItem {
     this.project,
     this.color,
     this.readOnly = false,
+    this.calendar,
+    this.uid,
+    this.alsoIn = const [],
   });
 
   /// Parses one calendar item JSON object.
@@ -279,7 +282,59 @@ class CalendarItem {
         project: j['project'] as String?,
         color: j['color'] as String?,
         readOnly: j['read_only'] == true,
+        calendar: j['calendar'] as String?,
+        uid: j['uid'] as String?,
       );
+
+  /// This event, shown once for itself and its copies in [others]: the same
+  /// event in other calendars (see [uid]).
+  CalendarItem withCopies(List<CalendarItem> others) => CalendarItem(
+        type: type,
+        id: id,
+        title: title,
+        allDay: allDay,
+        start: start,
+        end: end,
+        connectionId: connectionId,
+        containerId: containerId,
+        status: status,
+        clippedStart: clippedStart,
+        project: project,
+        color: color,
+        readOnly: readOnly,
+        calendar: calendar,
+        uid: uid,
+        alsoIn: [
+          ...alsoIn,
+          for (final o in others)
+            EventCopy(
+                containerId: o.containerId, name: o.calendar, color: o.color),
+        ],
+      );
+
+  /// For an event: the name of its calendar, when known.
+  final String? calendar;
+
+  /// For an event: its iCalendar UID. Copies of one event in several
+  /// calendars (the owner of one calendar was invited to an event of another)
+  /// have the same UID.
+  final String? uid;
+
+  /// The other calendars that hold a copy of this event. Empty for most.
+  final List<EventCopy> alsoIn;
+
+  /// True for an event that is shown once for copies in several calendars.
+  bool get isShared => alsoIn.isNotEmpty;
+
+  /// Names of every calendar that holds this event, its own first.
+  List<String> get calendarNames => [
+        if (calendar != null) calendar!,
+        for (final c in alsoIn)
+          if (c.name != null) c.name!,
+      ];
+
+  /// Colors (`#rrggbb` or null) of every calendar that holds this event.
+  List<String?> get calendarColors => [color, for (final c in alsoIn) c.color];
 
   /// The calendar of an event is read-only: the user cannot move it.
   final bool readOnly;
@@ -329,6 +384,22 @@ class CalendarItem {
 
   /// True for a task that is done.
   bool get isDone => isTask && status == 'done';
+}
+
+/// A copy of an event in another calendar.
+@immutable
+class EventCopy {
+  /// Creates the reference to a copy.
+  const EventCopy({this.containerId, this.name, this.color});
+
+  /// The calendar of the copy.
+  final String? containerId;
+
+  /// Name of that calendar.
+  final String? name;
+
+  /// Color of that calendar, as `#rrggbb`, or null.
+  final String? color;
 }
 
 /// A sync conflict with both versions of the item.

@@ -13,6 +13,7 @@ import '../../theme/theme.dart';
 import '../settings/planner_settings_card.dart' show userSettingsProvider;
 import 'picker_field.dart';
 import 'planner_providers.dart';
+import 'shared_events.dart';
 
 /// Loads one task from the server, by id.
 final taskDetailProvider = FutureProvider.family<PlanTask, String>(
@@ -623,6 +624,9 @@ class EventDetailsDialog extends StatelessWidget {
           children: [
             _Row('When', _when, 'when'),
             const _Row('Type', 'Calendar event', 'type'),
+            if (event.calendarNames.isNotEmpty)
+              _Row(event.isShared ? 'Calendars' : 'Calendar',
+                  calendarsLine(event)!, 'calendar'),
           ],
         ),
       ),

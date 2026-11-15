@@ -19,6 +19,7 @@ import 'new_event_dialog.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
 import 'planner_visibility.dart';
+import 'shared_events.dart';
 import 'time_grid.dart';
 
 const double _gutterWidth = 44;
@@ -154,7 +155,9 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                 ],
               ),
             ),
-            data: (list) => _grid(_visible(list, visibility), pending),
+            // Copies of one event in two shown calendars show once.
+            data: (list) =>
+                _grid(mergeSharedEvents(_visible(list, visibility)), pending),
           ),
         ),
       ],
@@ -437,6 +440,66 @@ Color _accentColor(BuildContext context, CalendarItem i) {
   return parseCalendarColor(i.color) ?? c.task;
 }
 
+/// The fill of a block of an event that several calendars hold: the tint of
+/// each calendar in turn, in diagonal bands with sharp edges, so that the
+/// block reads as belonging to all of them. Null for other items.
+Gradient? _sharedFill(BuildContext context, CalendarItem i) {
+  if (!i.isShared) return null;
+  final tints = [
+    for (final hex in i.calendarColors)
+      calendarTint(context, parseCalendarColor(hex) ?? context.tefteri.event),
+  ];
+  final colors = <Color>[];
+  final stops = <double>[];
+  for (var n = 0; n < tints.length; n++) {
+    colors.addAll([tints[n], tints[n]]);
+    stops.addAll([n / tints.length, (n + 1) / tints.length]);
+  }
+  return LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: colors,
+    stops: stops,
+  );
+}
+
+/// The strong bar on the left edge of a block, with [key]. An event that
+/// several calendars hold has one segment in the color of each calendar.
+Widget _accentBar(BuildContext context, CalendarItem item, Key key) {
+  if (!item.isShared) {
+    return Container(key: key, width: 3, color: _accentColor(context, item));
+  }
+  return SizedBox(
+    key: key,
+    width: 3,
+    child: Column(
+      children: [
+        for (final hex in item.calendarColors)
+          Expanded(
+            child: ColoredBox(
+                color: parseCalendarColor(hex) ?? context.tefteri.event),
+          ),
+      ],
+    ),
+  );
+}
+
+/// A small mark on a block of an event that several calendars hold.
+class _SharedMark extends StatelessWidget {
+  const _SharedMark({required this.item});
+
+  final CalendarItem item;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: Icon(Icons.layers_outlined,
+            key: Key('shared-${item.id}'),
+            size: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
+      );
+}
+
 /// A small label with a solid background and square corners that names the
 /// project of a task, so that it can be read without opening the task.
 class _ProjectTag extends StatelessWidget {
@@ -496,42 +559,51 @@ class _AllDayChip extends StatelessWidget {
                 const EdgeInsets.only(left: 7, right: 3, top: 3, bottom: 3),
             decoration: BoxDecoration(
               color: _blockColor(context, item),
+              // An event of several calendars has the tint of each of them.
+              gradient: _sharedFill(context, item),
               // The accent bar on the left edge.
               border: Border(
                   left:
                       BorderSide(color: _accentColor(context, item), width: 3)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text?.copyWith(
-                        decoration:
-                            item.isDone ? TextDecoration.lineThrough : null)),
-                if (item.project != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    // Flexible: the tag takes its own width, up to the chip.
-                    child: Row(children: [
-                      Flexible(
-                        child: _ProjectTag(
-                            key: Key('project-tag-${item.id}'),
-                            name: item.project!,
-                            maxWidth: double.infinity),
-                      ),
-                    ]),
-                  ),
-              ],
-            ),
+            child: _chipBody(text),
           ),
         ));
     if (!item.isTask) return chip;
     return PlannerDraggable<CalendarItem>(
         data: item, label: item.title, dimmed: pending, child: chip);
   }
+
+  Widget _chipBody(TextStyle? text) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text(item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text?.copyWith(
+                      decoration:
+                          item.isDone ? TextDecoration.lineThrough : null)),
+            ),
+            if (item.isShared) _SharedMark(item: item),
+          ]),
+          if (item.project != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              // Flexible: the tag takes its own width, up to the chip.
+              child: Row(children: [
+                Flexible(
+                  child: _ProjectTag(
+                      key: Key('project-tag-${item.id}'),
+                      name: item.project!,
+                      maxWidth: double.infinity),
+                ),
+              ]),
+            ),
+        ],
+      );
 }
 
 class _DayColumn extends ConsumerStatefulWidget {
@@ -862,6 +934,8 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: _blockColor(context, i),
+            // An event of several calendars has the tint of each of them.
+            gradient: _sharedFill(context, i),
             borderRadius: BorderRadius.circular(Corner.sm),
           ),
           // A strong edge on the left and a tint: terracotta for tasks, ink
@@ -869,11 +943,7 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                key: Key('block-accent-${i.type}-${i.id}'),
-                width: 3,
-                color: _accentColor(context, i),
-              ),
+              _accentBar(context, i, Key('block-accent-${i.type}-${i.id}')),
               Expanded(
                 child: Padding(
                   padding:
@@ -902,6 +972,7 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
                                 name: project,
                                 maxWidth: colWidth * 0.45),
                           ],
+                          if (i.isShared) _SharedMark(item: i),
                           if (i.clippedStart)
                             Tooltip(
                               message: 'Continues from previous day',
@@ -996,7 +1067,8 @@ class _DayHeader extends StatelessWidget {
 }
 
 /// Opens the details pop-up of [item] when the user taps [child]: the task for
-/// a task block, the event for an event.
+/// a task block, the event for an event. A mouse resting on [child] shows the
+/// details in a tooltip.
 ///
 /// Ctrl and a click on a task block mark the task as done, and open nothing. A
 /// task that is done stays as it is (no second click reopens it by mistake),
@@ -1010,7 +1082,15 @@ class _OpenDetails extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ControlKey.watch();
-    return _gesture(context, ref);
+    // Resting the mouse on a block shows its whole title and details. Touch
+    // has no hover, and a long press there drags, so it shows nothing.
+    return Tooltip(
+      key: Key('item-tooltip-${item.type}-${item.id}'),
+      message: itemTooltip(item),
+      triggerMode: TooltipTriggerMode.manual,
+      waitDuration: const Duration(milliseconds: 400),
+      child: _gesture(context, ref),
+    );
   }
 
   Widget _gesture(BuildContext context, WidgetRef ref) => GestureDetector(
