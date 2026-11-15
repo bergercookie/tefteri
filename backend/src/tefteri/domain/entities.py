@@ -92,6 +92,9 @@ class RemoteEntry:
     all_day: bool = False
     recurrence: str | None = None
     location: str = ""
+    uid: str = ""
+    """The id of the event that is the same in every calendar holding a copy of it (the iCalendar
+    UID). An event to which another calendar was invited has one copy in each calendar."""
 
 
 @dataclass(frozen=True)

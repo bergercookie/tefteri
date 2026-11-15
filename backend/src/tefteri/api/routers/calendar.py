@@ -55,24 +55,27 @@ async def list_calendar(
 ) -> list[CalendarItemOut]:
     """Return calendar entries and tasks with a due date (``type`` says which) in a window.
 
-    A timed task is the block that ends at its due time; a date-only task is ``all_day``.
+    A timed task is the block that ends at its due time; a date-only task is ``all_day``. An
+    entry names its calendar and carries the ``uid`` of the event: an event that sits in two
+    shown calendars comes once from each, and the client shows the copies as one.
     """
     items: list[CalendarItemOut] = []
     colors = await container_colors(db, user.id)
     locked = await read_only_containers(db, user.id)
-    entries = (
-        await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user.id))
-    ).scalars()
-    for e in entries:
-        if e.sync_state == "deleted_remotely":
-            continue
-        items.append(CalendarItemOut.of_entry(e, colors, locked))
+    # Names of the calendars of entries and of the projects of tasks.
     projects = {
         c.id: c.name
         for c in (
             await db.execute(select(SourceContainer).where(SourceContainer.user_id == user.id))
         ).scalars()
     }
+    entries = (
+        await db.execute(select(CalendarEntry).where(CalendarEntry.user_id == user.id))
+    ).scalars()
+    for e in entries:
+        if e.sync_state == "deleted_remotely":
+            continue
+        items.append(CalendarItemOut.of_entry(e, colors, locked, projects))
     tasks = (
         await db.execute(select(Task).where(Task.user_id == user.id, Task.due_at.is_not(None)))
     ).scalars()

@@ -1375,6 +1375,17 @@ def test_0026_drops_the_value_push_tokens(
         assert conn.exec_driver_sql("select count(*) from value_push_tokens").scalar() == 0
 
 
+def test_0028_adds_an_empty_uid_to_cached_events(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0028")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("calendar_entries")}
+    assert "uid" in columns
+    alembic_runner.migrate_down_one()
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("calendar_entries")}
+    assert "uid" not in columns
+
+
 def test_the_head_revision_follows_0026() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -1382,10 +1393,11 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0027"
-    revision = script.get_revision("0027")
+    assert script.get_current_head() == "0028"
+    revision = script.get_revision("0028")
     assert revision is not None
-    assert revision.down_revision == "0026"
+    assert revision.down_revision == "0027"
+    assert script.get_revision("0027").down_revision == "0026"
     assert script.get_revision("0026").down_revision == "0025"
     assert script.get_revision("0025").down_revision == "0024"
     assert script.get_revision("0024").down_revision == "0023"
@@ -1491,10 +1503,11 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0027"
-    revision = script.get_revision("0027")
+    assert script.get_current_head() == "0028"
+    revision = script.get_revision("0028")
     assert revision is not None
-    assert revision.down_revision == "0026"
+    assert revision.down_revision == "0027"
+    assert script.get_revision("0027").down_revision == "0026"
 
 
 def test_0027_adds_checklist_source_paths_and_keeps_users(

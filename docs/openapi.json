@@ -316,6 +316,17 @@
             "title": "All Day",
             "type": "boolean"
           },
+          "calendar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar"
+          },
           "clipped_start": {
             "default": false,
             "title": "Clipped Start",
@@ -402,6 +413,17 @@
             ],
             "title": "Type",
             "type": "string"
+          },
+          "uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uid"
           }
         },
         "required": [
@@ -10219,7 +10241,7 @@
     },
     "/api/v1/calendar": {
       "get": {
-        "description": "Return calendar entries and tasks with a due date (``type`` says which) in a window.\n\nA timed task is the block that ends at its due time; a date-only task is ``all_day``.",
+        "description": "Return calendar entries and tasks with a due date (``type`` says which) in a window.\n\nA timed task is the block that ends at its due time; a date-only task is ``all_day``. An\nentry names its calendar and carries the ``uid`` of the event: an event that sits in two\nshown calendars comes once from each, and the client shows the copies as one.",
         "operationId": "list_calendar_api_v1_calendar_get",
         "parameters": [
           {

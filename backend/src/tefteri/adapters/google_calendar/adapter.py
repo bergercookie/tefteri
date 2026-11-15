@@ -135,6 +135,7 @@ class GoogleCalendarBackend:
             recurrence=";".join(data["recurrence"]) if data.get("recurrence") else None,
             location=data.get("location", ""),
             version=data.get("etag", ""),
+            uid=data.get("iCalUID", ""),
         )
 
     async def list_containers(self) -> list[Container]:

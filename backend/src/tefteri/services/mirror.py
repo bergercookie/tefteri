@@ -58,6 +58,7 @@ def entry_values(item: RemoteEntry, container_row_id: uuid.UUID | None) -> dict[
         "all_day": item.all_day,
         "recurrence": item.recurrence,
         "location": item.location,
+        "uid": item.uid,
     }
 
 

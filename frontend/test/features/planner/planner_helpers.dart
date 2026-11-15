@@ -22,7 +22,9 @@ Map<String, Object?> calItem(String type, String id, String title,
         bool readOnly = false,
         bool clipped = false,
         String connectionId = 'c1',
-        String? containerId}) =>
+        String? containerId,
+        String? calendar,
+        String? uid}) =>
     {
       'type': type,
       'id': id,
@@ -37,6 +39,8 @@ Map<String, Object?> calItem(String type, String id, String title,
       if (project != null) 'project': project,
       if (color != null) 'color': color,
       if (readOnly) 'read_only': true,
+      if (calendar != null) 'calendar': calendar,
+      if (uid != null) 'uid': uid,
     };
 
 /// A task JSON object with a due date. Local time; `null` means no due date.

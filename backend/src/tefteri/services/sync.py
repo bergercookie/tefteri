@@ -81,6 +81,8 @@ def _upsert(
         or row.sync_state == SyncState.DELETED_REMOTELY.value
         # A task finished before ``completed_at`` existed gets its completion day now.
         or (values.get("completed_at") is not None and row.completed_at is None)
+        # An event cached before ``uid`` existed gets it now.
+        or (values.get("uid") and not row.uid)
     ):
         for key, value in values.items():
             setattr(row, key, value)

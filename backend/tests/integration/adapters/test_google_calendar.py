@@ -73,7 +73,9 @@ async def test_lists_entries_with_pagination_and_skips_cancelled(
     token_route()
     route = respx.get(f"{API}/calendars/{CAL}/events")
     route.side_effect = [
-        httpx.Response(200, json={"items": [event("e1")], "nextPageToken": "p2"}),
+        httpx.Response(
+            200, json={"items": [event("e1", iCalUID="e1@google.com")], "nextPageToken": "p2"}
+        ),
         httpx.Response(
             200,
             json={
@@ -88,6 +90,8 @@ async def test_lists_entries_with_pagination_and_skips_cancelled(
     page = await backend.list_entries(Container(CAL, "Family"), NOW, NOW.replace(day=30), None)
     assert [e.remote_id for e in page.items] == [join_id(CAL, "e1"), join_id(CAL, "e2")]
     assert page.items[1].all_day and page.sync_token == "sync1"
+    # The UID is the same in each calendar that holds a copy of the event.
+    assert [e.uid for e in page.items] == ["e1@google.com", ""]
     assert route.calls[0].request.url.params["singleEvents"] == "true"
 
 

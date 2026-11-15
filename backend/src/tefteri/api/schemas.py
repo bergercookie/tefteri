@@ -161,6 +161,11 @@ class CalendarItemOut(BaseModel):
     """The color of its calendar (an entry) or of its project (a task), as ``#rrggbb``."""
     read_only: bool = False
     """For an entry: its calendar is read-only, so the user cannot move or change it."""
+    calendar: str | None = None
+    """For an entry: the name of its calendar."""
+    uid: str | None = None
+    """For an entry: the iCalendar UID of the event. Copies of one event in several calendars
+    (another calendar was invited to it) have the same UID, so the client can show them once."""
 
     @classmethod
     def of_entry(
@@ -168,11 +173,17 @@ class CalendarItemOut(BaseModel):
         e: CalendarEntry,
         colors: dict[uuid.UUID, str] | None = None,
         read_only: set[uuid.UUID] | None = None,
+        names: dict[uuid.UUID, str] | None = None,
     ) -> "CalendarItemOut":
-        """Build from an entry. ``colors`` maps container ids to calendar colors."""
+        """Build from an entry.
+
+        ``colors`` maps container ids to calendar colors and ``names`` to calendar names.
+        """
         return cls(
             color=(colors or {}).get(e.container_id) if e.container_id else None,
             read_only=bool(read_only and e.container_id in read_only),
+            calendar=(names or {}).get(e.container_id) if e.container_id else None,
+            uid=e.uid or None,
             type="entry",
             id=e.id,
             connection_id=e.connection_id,
