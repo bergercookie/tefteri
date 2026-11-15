@@ -52,7 +52,7 @@ read why. Retire a key result to free a place.
 ## Show or hide the key results of a goal
 
 Choose the arrow next to a goal to hide or show its key results. A hidden goal shows how many key
-results it holds. Use Expand all or Collapse all above the goals to change every goal at once.
+results are completed and how many are still pending. Use Expand all or Collapse all above the goals to change every goal at once.
 
 ## Link theme projects
 

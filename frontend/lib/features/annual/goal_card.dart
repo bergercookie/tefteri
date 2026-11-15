@@ -146,7 +146,11 @@ class _GoalCardState extends State<GoalCard> {
               child: Text(
                 active.isEmpty
                     ? 'No key results'
-                    : '${active.length} key ${active.length == 1 ? 'result' : 'results'} hidden',
+                    : '${active.where((kr) => kr.met).length} of '
+                        '${active.length} '
+                        '${active.length == 1 ? 'key result' : 'key results'} '
+                        'completed · '
+                        '${active.where((kr) => !kr.met).length} pending',
                 key: Key('goal-collapsed-${g.id}'),
                 style: quiet,
               ),
