@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/project_chip.dart';
+import '../../core/section_heading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
@@ -166,7 +167,6 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
   }
 
   Widget _content(PeriodView v) {
-    final heading = Theme.of(context).textTheme.titleMedium;
     return ListView(
       padding: const EdgeInsets.all(8),
       children: [
@@ -177,8 +177,15 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         // These views are about the plan, not the calendar, so they list no
         // events. Only the week lists single tasks.
         if (v.periodType == 'week') ...[
-          Text('Tasks', style: heading),
-          if (v.tasks.isEmpty) const Text('No tasks.', key: Key('no-tasks')),
+          const SectionHeading(
+            title: 'Due this week',
+            info: 'Every task with a due date in this week, done or not. '
+                'A tick marks a done task. A task that you finished without a '
+                'due date in this week is not here: refer to Completed this '
+                'week.',
+          ),
+          if (v.tasks.isEmpty)
+            const Text('No tasks are due this week.', key: Key('no-tasks')),
           for (final t in v.tasks) _taskTile(t, v),
         ],
         if (widget.footer != null) ...[
