@@ -42,6 +42,7 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
   late int _year;
   final Set<int> _seedDismissed = {};
   final Set<String> _collapsedGoals = {};
+  bool _hideCompleted = false;
   bool _seedOpen = false;
   String? _error;
 
@@ -284,6 +285,15 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
           ),
           if (plan.goals.isNotEmpty)
             TextButton.icon(
+              key: const Key('toggle-completed-goals'),
+              onPressed: () => setState(() => _hideCompleted = !_hideCompleted),
+              icon: Icon(
+                  _hideCompleted ? Icons.visibility : Icons.visibility_off,
+                  size: 18),
+              label: Text(_hideCompleted ? 'Show completed' : 'Hide completed'),
+            ),
+          if (plan.goals.isNotEmpty)
+            TextButton.icon(
               key: const Key('expand-all-goals'),
               onPressed: () => setState(() => _collapsedGoals.clear()),
               icon: const Icon(Icons.unfold_more, size: 18),
@@ -385,6 +395,7 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
                       goal: g,
                       actions: actions,
                       collapsed: _collapsedGoals.contains(g.id),
+                      hideCompleted: _hideCompleted,
                       onToggleCollapsed: () => setState(() {
                         if (!_collapsedGoals.remove(g.id)) {
                           _collapsedGoals.add(g.id);

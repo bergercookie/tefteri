@@ -53,6 +53,9 @@ read why. Retire a key result to free a place.
 Choose the arrow next to a goal to hide or show its key results. A hidden goal shows how many key
 results are completed and how many are still pending. Use Expand all or Collapse all above the goals to change every goal at once.
 
+Choose Hide completed above the goals to leave the key results that reached their target out of
+every goal card. The card says how many are hidden. Choose Show completed to show them again.
+
 ## Link theme projects
 
 A key result can serve one or more theme projects. A theme can serve more than one key result.
