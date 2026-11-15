@@ -1,4 +1,4 @@
-"""Goals after spec 006: computed progress and the read-only legacy history.
+"""Goals after spec 006: the read-only legacy history.
 
 Goals exist only for a planning year now (``services.annual_plan``). Month and week goals, and
 year goals that are retired or were marked complete, stay as read-only history (FR-022, FR-023):
@@ -25,40 +25,8 @@ class LegacyGoal:
     linked_tasks: int
 
 
-def compute_progress(goals: list[Goal], tasks: list[Task]) -> dict[uuid.UUID, float]:
-    """Return progress (0..1) for every goal, computed from smaller goals and linked tasks.
-
-    Each linked task counts 1 if done, else 0. Each smaller goal counts its own progress.
-    Dropped goals and tasks deleted in the app do not count. A goal with nothing under it is
-    1.0 when its status is ``done``, else 0.0.
-    """
-    children: dict[uuid.UUID, list[Goal]] = {}
-    for g in goals:
-        if g.parent_id is not None and g.status != "dropped":
-            children.setdefault(g.parent_id, []).append(g)
-    linked: dict[uuid.UUID, list[Task]] = {}
-    for t in tasks:
-        if t.goal_id is not None and t.sync_state != "deleted_remotely":
-            linked.setdefault(t.goal_id, []).append(t)
-    by_id = {g.id: g for g in goals}
-    cache: dict[uuid.UUID, float] = {}
-
-    def of(goal_id: uuid.UUID) -> float:
-        if goal_id in cache:
-            return cache[goal_id]
-        parts = [of(c.id) for c in children.get(goal_id, [])]
-        parts += [1.0 if t.status == "done" else 0.0 for t in linked.get(goal_id, [])]
-        value = (
-            sum(parts) / len(parts) if parts else (1.0 if by_id[goal_id].status == "done" else 0.0)
-        )
-        cache[goal_id] = value
-        return value
-
-    return {g.id: of(g.id) for g in goals}
-
-
 class GoalService:
-    """Read goals and their progress, the legacy history, and manage plans."""
+    """Read goals and the legacy history. Annual planning owns every write (spec 006)."""
 
     async def get(self, db: AsyncSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> Goal:
         """Return one of the user's goals or raise ``NotFound``."""
@@ -72,11 +40,6 @@ class GoalService:
     async def all(self, db: AsyncSession, user_id: uuid.UUID) -> list[Goal]:
         """Return every goal of the user."""
         return list((await db.execute(select(Goal).where(Goal.user_id == user_id))).scalars())
-
-    async def progress(self, db: AsyncSession, user_id: uuid.UUID) -> dict[uuid.UUID, float]:
-        """Return the computed progress of all the user's goals."""
-        tasks = list((await db.execute(select(Task).where(Task.user_id == user_id))).scalars())
-        return compute_progress(await self.all(db, user_id), tasks)
 
     async def history(
         self,
