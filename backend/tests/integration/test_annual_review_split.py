@@ -2,13 +2,13 @@
 
 from datetime import UTC, datetime
 
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def test_the_year_bar_is_the_sum_of_the_months(env) -> None:
+async def test_the_year_bar_is_the_sum_of_the_months(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -52,7 +52,7 @@ async def test_the_year_bar_is_the_sum_of_the_months(env) -> None:
     assert month_rows[0]["not_stored"] is False
 
 
-async def test_live_changes_do_not_change_the_bar(env) -> None:
+async def test_live_changes_do_not_change_the_bar(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -76,9 +76,7 @@ async def test_live_changes_do_not_change_the_bar(env) -> None:
         first = await env.app.state.annual_review_service.review(db, user_id, 2025)
         # A changed task category in the live rows is not read by the review.
         await db.execute(
-            __import__("sqlalchemy").text(
-                "update task_categories set category = 'off_plan'"
-            )
+            __import__("sqlalchemy").text("update task_categories set category = 'off_plan'")
         )
         second = await env.app.state.annual_review_service.review(db, user_id, 2025)
     assert first["split"]["counts"] == second["split"]["counts"]

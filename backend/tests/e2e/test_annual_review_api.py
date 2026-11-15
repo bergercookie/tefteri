@@ -1,7 +1,9 @@
 """E2E tests of the annual review API (spec 008, M3)."""
 
 from datetime import UTC, datetime
+from typing import Any
 
+from httpx import AsyncClient
 from sqlalchemy import select
 
 from tefteri.db.models.user import User
@@ -11,15 +13,16 @@ from tests.integration.conftest import make_snapshot, store_snapshot
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def _store(api) -> None:
-    api.app.state.clock = lambda: TODAY_AT
-    api.app.state.key_result_service._clock = lambda: TODAY_AT
-    async with session_scope(api.app.state.session_factory) as db:
+async def _store(api: AsyncClient) -> None:
+    app: Any = api.app  # type: ignore[attr-defined]
+    app.state.clock = lambda: TODAY_AT
+    app.state.key_result_service._clock = lambda: TODAY_AT
+    async with session_scope(app.state.session_factory) as db:
         user = (await db.execute(select(User).where(User.username == "admin"))).scalar_one()
         await store_snapshot(db, user.id, "2025-01", make_snapshot("2025-01"))
 
 
-async def test_review_shape_for_every_year_state(api) -> None:
+async def test_review_shape_for_every_year_state(api: AsyncClient) -> None:
     await _store(api)
     past = await api.get("/api/v1/annual-review/2025")
     assert past.status_code == 200, past.text
@@ -49,14 +52,14 @@ async def test_review_shape_for_every_year_state(api) -> None:
     assert empty.json()["empty"]["reason"] == "no_goals"
 
 
-async def test_a_year_outside_the_range_is_invalid(api) -> None:
+async def test_a_year_outside_the_range_is_invalid(api: AsyncClient) -> None:
     for year in (1999, 2101):
         response = await api.get(f"/api/v1/annual-review/{year}")
         assert response.status_code == 422
         assert response.json()["code"] == "invalid"
 
 
-async def test_notes_over_http(api) -> None:
+async def test_notes_over_http(api: AsyncClient) -> None:
     await _store(api)
     put = await api.put(
         "/api/v1/annual-review/2025/notes", json={"goal_id": None, "body": "A year."}
@@ -69,6 +72,6 @@ async def test_notes_over_http(api) -> None:
     assert missing.status_code == 404
 
 
-async def test_the_old_year_view_still_answers(api) -> None:
+async def test_the_old_year_view_still_answers(api: AsyncClient) -> None:
     response = await api.get("/api/v1/views/year/2025")
     assert response.status_code == 200

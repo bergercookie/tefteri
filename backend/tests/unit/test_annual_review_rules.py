@@ -1,6 +1,8 @@
 """Unit tests of the annual review rules (spec 008, M1)."""
 
 from datetime import UTC, date, datetime
+from typing import Any
+from zoneinfo import ZoneInfo
 
 from tefteri.domain.annual_review import (
     DeadlineLine,
@@ -134,7 +136,7 @@ def test_outcome_for_a_lower_target_is_hit_at_or_below() -> None:
 
 
 def test_no_value_retired_and_in_progress() -> None:
-    common = {
+    common: dict[str, Any] = {
         "year_state": "past",
         "key_result_status": "active",
         "goal_status": "active",
@@ -173,7 +175,7 @@ def test_deadline_line() -> None:
         deadline=date(2025, 10, 31),
         year=2025,
         today=TODAY,
-        tz=UTC,
+        tz=ZoneInfo("UTC"),
     )
     assert line == DeadlineLine(DeadlineState.REACHED, 120, "2025-09")
 
@@ -186,7 +188,7 @@ def test_deadline_line() -> None:
             deadline=date(2025, 2, 28),
             year=2025,
             today=TODAY,
-            tz=UTC,
+            tz=ZoneInfo("UTC"),
         ).state
         is DeadlineState.NO_VALUE
     )
@@ -199,7 +201,7 @@ def test_deadline_line() -> None:
             deadline=date(2025, 12, 31),
             year=2025,
             today=TODAY,
-            tz=UTC,
+            tz=ZoneInfo("UTC"),
         ).state
         is DeadlineState.REACHED
     )
@@ -215,7 +217,7 @@ def test_deadline_after_the_year_end_is_open() -> None:
             deadline=date(2026, 3, 1),
             year=2025,
             today=TODAY,
-            tz=UTC,
+            tz=ZoneInfo("UTC"),
         ).state
         is DeadlineState.OPEN
     )

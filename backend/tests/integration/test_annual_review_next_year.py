@@ -2,13 +2,13 @@
 
 from datetime import UTC, date, datetime
 
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def test_next_year_counts_match_planning(env) -> None:
+async def test_next_year_counts_match_planning(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")

@@ -2,8 +2,8 @@
 # Hooks call the tools directly. They never call `just lint`.
 #
 # `pass_filenames: false` means the tool checks a whole project, not only the changed files.
-# Vendored Spec Kit files (.specify/, .claude/) are not ours to lint.
-exclude: ^(\.specify|\.claude)/
+# Vendored Spec Kit files (.specify/, .claude/, .opencode/) are not ours to lint.
+exclude: ^(\.specify|\.claude|\.opencode)/
 repos:
   - repo: local
     hooks:

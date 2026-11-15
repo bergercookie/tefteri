@@ -37,9 +37,7 @@ class ReviewNote(IdMixin, CreatedMixin, Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "length(body) BETWEEN 1 AND 2000", name="ck_review_notes_body_length"
-        ),
+        CheckConstraint("length(body) BETWEEN 1 AND 2000", name="ck_review_notes_body_length"),
         CheckConstraint("year BETWEEN 2000 AND 2100", name="ck_review_notes_year"),
         Index(
             "uq_review_notes_year",

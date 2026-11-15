@@ -31,9 +31,7 @@ def upgrade() -> None:
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint(
-            "length(body) BETWEEN 1 AND 2000", name="ck_review_notes_body_length"
-        ),
+        sa.CheckConstraint("length(body) BETWEEN 1 AND 2000", name="ck_review_notes_body_length"),
         sa.CheckConstraint("year BETWEEN 2000 AND 2100", name="ck_review_notes_year"),
     )
     op.create_index("ix_review_notes_user_id", "review_notes", ["user_id"])

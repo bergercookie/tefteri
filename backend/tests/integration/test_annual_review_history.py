@@ -8,13 +8,13 @@ from tefteri.db.models.goal import Goal
 from tefteri.db.models.key_result import PlanChange
 from tefteri.db.models.project_label import ProjectLabel as ProjectLabelRow
 from tefteri.domain.enums import PlanChangeKind
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def test_retired_goal_and_retarget_change(env) -> None:
+async def test_retired_goal_and_retarget_change(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -76,7 +76,7 @@ async def test_retired_goal_and_retarget_change(env) -> None:
     assert goal_out["key_results"][0]["changes"][0]["field"] == "target"
 
 
-async def test_orphaned_and_relabelled_themes_stay(env) -> None:
+async def test_orphaned_and_relabelled_themes_stay(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")

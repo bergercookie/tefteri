@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
@@ -23,7 +23,7 @@ def _entry(key_result_id: str, value: float, month: int) -> dict[str, object]:
     }
 
 
-async def test_eight_of_twelve_months_are_missing(env) -> None:
+async def test_eight_of_twelve_months_are_missing(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -68,7 +68,7 @@ async def test_eight_of_twelve_months_are_missing(env) -> None:
             assert month["action"] == "open_monthly_review"
 
 
-async def test_a_year_with_no_goals_and_no_snapshots(env) -> None:
+async def test_a_year_with_no_goals_and_no_snapshots(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     user_id = await env.user_id()
     async with env.db() as db:
@@ -84,7 +84,7 @@ async def test_a_year_with_no_goals_and_no_snapshots(env) -> None:
     }
 
 
-async def test_old_shape_without_categories_is_not_stored(env) -> None:
+async def test_old_shape_without_categories_is_not_stored(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -101,7 +101,7 @@ async def test_old_shape_without_categories_is_not_stored(env) -> None:
     assert review["split"]["months_covered"] == 0
 
 
-async def test_a_reopened_month_uses_the_current_version(env) -> None:
+async def test_a_reopened_month_uses_the_current_version(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")

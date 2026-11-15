@@ -79,9 +79,7 @@ def _entry_at(snapshot: SnapshotView, key_result_id: str) -> KeyResultEntry | No
     return snapshot.key_results.get(key_result_id)
 
 
-def last_value(
-    snapshots: Sequence[SnapshotView], key_result_id: str
-) -> LastValue | None:
+def last_value(snapshots: Sequence[SnapshotView], key_result_id: str) -> LastValue | None:
     """Return the newest snapshot value with a time stamp, or ``None`` (FR-003, R-03).
 
     The start value is never used: a key result with no stored value has no last value. The
@@ -183,9 +181,7 @@ def deadline_line(
     month, _, entry = best
     value = float(entry.latest_value or 0.0)
     state = (
-        DeadlineState.REACHED
-        if is_met(start_value, target, value)
-        else DeadlineState.NOT_REACHED
+        DeadlineState.REACHED if is_met(start_value, target, value) else DeadlineState.NOT_REACHED
     )
     return DeadlineLine(state, value, month)
 
@@ -193,9 +189,7 @@ def deadline_line(
 # -- the series -------------------------------------------------------------------------------
 
 
-def month_statuses(
-    year: int, stored_months: Iterable[object], today: date
-) -> list[MonthStatus]:
+def month_statuses(year: int, stored_months: Iterable[object], today: date) -> list[MonthStatus]:
     """Return the status of the twelve months of ``year`` (FR-010, R-13).
 
     A stored month is ``stored``; a month before today's month without a snapshot is ``missing``;
@@ -396,11 +390,7 @@ def contribution(
         if snapshot is None:
             continue
         theme = next(
-            (
-                entry
-                for entry in snapshot.themes
-                if (entry.project_id or "") == (project_id or "")
-            ),
+            (entry for entry in snapshot.themes if (entry.project_id or "") == (project_id or "")),
             None,
         )
         if theme is not None:
@@ -506,9 +496,7 @@ class YearSplit:
     total: int
 
 
-def year_split(
-    snapshots: Sequence[SnapshotView], *, year: int, today: date
-) -> YearSplit:
+def year_split(snapshots: Sequence[SnapshotView], *, year: int, today: date) -> YearSplit:
     """Build the year split from stored counts only; the hidden count stays apart (R-06)."""
     by_month = {month_key(s.month): s for s in snapshots if month_key(s.month)}
     statuses = month_statuses(year, by_month, today)

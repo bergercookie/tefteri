@@ -15,11 +15,7 @@ from tests.integration.conftest import ProjectsEnv
 def _themes(key_result: dict[str, object]) -> set[str]:
     links = key_result["links"]
     assert isinstance(links, list)
-    return {
-        str(link["name"])  # type: ignore[index]
-        for link in links
-        if link["active"]  # type: ignore[index]
-    }
+    return {str(link["name"]) for link in links if link["active"]}
 
 
 async def test_a_theme_is_added_to_every_active_key_result_in_one_undoable_batch(
