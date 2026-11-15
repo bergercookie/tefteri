@@ -17,6 +17,42 @@ Start from an example to add a list that you can edit.
 To change or remove an item, edit its line and choose Save. Renaming an item makes it a new item,
 so it is not ticked in the current period.
 
+## Read a checklist from your notes app
+
+You can keep the checklist in your notes app instead of in Tefteri. Tefteri reads the list from
+a note each time it shows the checklist, so a change in the note appears at once. A checklist
+from your notes app is read-only: you cannot tick its items in Tefteri.
+
+1. In your notes app, write the checklist as an HTML list, one item for each `<li>`. The
+   CKEditor in Trilium Next makes this list when you choose the bulleted list button.
+2. Open the menu, choose Settings, then choose Checklists.
+3. In the part of the week, month or year checklist that you want, type the path of the note in
+   **Path in your notes app**.
+4. Choose Save.
+
+The path is the title of each note from the root note of the Trilium Next connection, with a
+slash between the titles. For example, `Checklists/Weekly` finds the note `Weekly` below the
+note `Checklists` below the root note. You can also paste a note ID, or the `#root/...` part of
+a Trilium Next address. Tefteri uses the first notes connection of your account.
+
+This is the HTML that Tefteri reads:
+
+```html
+<ul>
+  <li>Look back at last week</li>
+  <li>Check the calendar for the week</li>
+  <li>Clear the inbox</li>
+</ul>
+```
+
+Tags inside an item, such as bold or a paragraph, are ignored. Their words stay. The words of a
+nested list become items too, after their parent. Empty items and repeats are removed, as for a
+local list.
+
+To stop reading the note, delete the path and choose Save. The local list below the path is
+used again. The source path is a setting of the current user, so every device shows the same
+checklist.
+
 ## Use a checklist
 
 The weekly checklist appears beside the weekly planning steps. Read
@@ -26,4 +62,8 @@ The annual checklist appears in annual planning. Choose an item to tick or untic
 saved for that week or year. A new week or year starts with a clean checklist, while earlier
 periods keep their ticks. Checklist items are reminders; they do not stop you from saving a plan.
 
-When no checklist exists for a period, Tefteri shows a message and an action to create one.
+A checklist that comes from your notes app shows its path and a Refresh button. It has no
+checkboxes, because the note is the only place to change it.
+
+When no checklist exists for a period, Tefteri shows a message and an action to create one. When
+a note path is set but the note has no list, Tefteri says so and offers Refresh.

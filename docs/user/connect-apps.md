@@ -101,9 +101,11 @@ The base URL is the address that you use to open Trilium Next, for example
 `#`, and it ignores `/etapi` at the end.
 
 Tefteri does not copy your notes. A sync only checks that the address and the token still work.
-Tefteri reads and writes a note only when it needs it. This is the daily note of a day. Tefteri
-does not read your other notes, and it does not store them. If you used an older version, tefteri
-removes the copies that it made of your notes.
+Tefteri reads and writes a note only when it needs it. These are the daily note of a day and the
+checklist notes that you choose in Settings, Checklists. Tefteri does not read your other notes,
+and it does not store them. If you used an older version, tefteri removes the copies that it made
+of your notes. Read [Planning checklists](planning-checklists.md#read-a-checklist-from-your-notes-app)
+for the checklist path.
 
 ## Use Sync
 

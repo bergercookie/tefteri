@@ -98,10 +98,15 @@ class PlanningApi {
     bool? randomTimeOnDateDrop,
     int? defaultReminderMinutes,
     Map<ChecklistKind, List<String>>? checklists,
+    Map<ChecklistKind, String>? checklistSources,
   }) async {
     final r = await _dio.patch<Object?>('/me/settings', data: {
       if (checklists != null)
         'checklists': {for (final e in checklists.entries) e.key.name: e.value},
+      if (checklistSources != null)
+        'checklist_sources': {
+          for (final e in checklistSources.entries) e.key.name: e.value
+        },
       if (randomTimeOnDateDrop != null)
         'random_time_on_date_drop': randomTimeOnDateDrop,
       if (defaultReminderMinutes != null)

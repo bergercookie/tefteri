@@ -48,6 +48,7 @@ from tefteri.services.annual_review import AnnualReviewSeedCounter, AnnualReview
 from tefteri.services.background_sync import BackgroundSync
 from tefteri.services.calendar import CalendarService
 from tefteri.services.category_recorder import CategoryRecorder
+from tefteri.services.checklists import ChecklistService
 from tefteri.services.classification import ClassificationService
 from tefteri.services.commitments import WeeklyCommitments
 from tefteri.services.conflicts import ConflictService
@@ -220,6 +221,7 @@ def create_app(
     app.state.calendar_service = CalendarService(connection_service)
     note_service = NoteService(connection_service)
     app.state.note_service = note_service
+    app.state.checklist_service = ChecklistService(note_service)
     app.state.conflict_service = ConflictService(connection_service)
     app.state.user_service = UserService()
     app.state.google_oauth = (

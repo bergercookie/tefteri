@@ -7,7 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.services.checklists import MAX_ITEM_LENGTH, MAX_ITEMS
-from tefteri.services.settings import MAX_REMINDER_MINUTES, SettingsService, UserSettings
+from tefteri.services.settings import (
+    MAX_REMINDER_MINUTES,
+    MAX_SOURCE_PATH_LENGTH,
+    SettingsService,
+    UserSettings,
+)
 
 router = APIRouter(prefix="/me/settings", tags=["settings"])
 _service = SettingsService()
@@ -36,6 +41,14 @@ class ChecklistsPatch(BaseModel):
     year: _Items | None = None
 
 
+class ChecklistSourcesOut(BaseModel):
+    """The note path of each checklist that comes from the notes app."""
+
+    week: str
+    month: str
+    year: str
+
+
 class SettingsOut(BaseModel):
     """The current user's settings."""
 
@@ -43,6 +56,8 @@ class SettingsOut(BaseModel):
     default_reminder_minutes: int
     """Minutes before its due time that a new task reminder fires."""
     checklists: ChecklistsOut
+    checklist_sources: ChecklistSourcesOut
+    """A path means that the checklist is read from the notes app and cannot be ticked."""
 
     @classmethod
     def of(cls, s: UserSettings) -> "SettingsOut":
@@ -51,7 +66,18 @@ class SettingsOut(BaseModel):
             random_time_on_date_drop=s.random_time_on_date_drop,
             default_reminder_minutes=s.default_reminder_minutes,
             checklists=ChecklistsOut(**s.checklists),
+            checklist_sources=ChecklistSourcesOut(**s.checklist_sources),
         )
+
+
+class ChecklistSourcesPatch(BaseModel):
+    """Source paths to replace; an empty path goes back to the local list."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    week: str | None = Field(default=None, max_length=MAX_SOURCE_PATH_LENGTH)
+    month: str | None = Field(default=None, max_length=MAX_SOURCE_PATH_LENGTH)
+    year: str | None = Field(default=None, max_length=MAX_SOURCE_PATH_LENGTH)
 
 
 class SettingsPatch(BaseModel):
@@ -62,6 +88,7 @@ class SettingsPatch(BaseModel):
     random_time_on_date_drop: bool | None = None
     default_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
     checklists: ChecklistsPatch | None = None
+    checklist_sources: ChecklistSourcesPatch | None = None
 
 
 @router.get("")
@@ -80,5 +107,10 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
             random_time_on_date_drop=body.random_time_on_date_drop,
             default_reminder_minutes=body.default_reminder_minutes,
             checklists=body.checklists.model_dump(exclude_none=True) if body.checklists else None,
+            checklist_sources=(
+                body.checklist_sources.model_dump(exclude_none=True)
+                if body.checklist_sources
+                else None
+            ),
         )
     )

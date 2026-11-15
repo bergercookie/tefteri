@@ -11,7 +11,12 @@ from tefteri.adapters.trilium import TriliumNoteBackend
 from tefteri.adapters.trilium.adapter import clean_base_url
 from tefteri.domain.entities import NoteDraft, NotePatch
 from tefteri.domain.enums import ConnectionStatus
-from tefteri.domain.errors import AuthExpired, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import (
+    AuthExpired,
+    BackendError,
+    BackendUnavailable,
+    RemoteConflict,
+)
 
 BASE = "https://trilium.test/etapi"
 
@@ -177,3 +182,45 @@ async def test_an_unreachable_server_names_the_address(backend: TriliumNoteBacke
     health = await backend.check_connection()
     assert health.status is ConnectionStatus.ERROR and health.detail == "unreachable"
     assert "trilium.test" in health.message and "name not known" in health.message
+
+
+@respx.mock
+async def test_a_note_path_is_read_by_titles_below_the_root(
+    backend: TriliumNoteBackend,
+) -> None:
+    root = {**meta("root", "Root"), "childNoteIds": ["c1"]}
+    checklists = {**meta("c1", "Checklists"), "childNoteIds": ["c2"]}
+    weekly = {**meta("c2", "Weekly"), "childNoteIds": []}
+    respx.get(f"{BASE}/notes/root").respond(json=root)
+    respx.get(f"{BASE}/notes/c1").respond(json=checklists)
+    respx.get(f"{BASE}/notes/c2").respond(json=weekly)
+    respx.get(f"{BASE}/notes/c2/content").respond(
+        text="<ul><li>Clear the inbox</li></ul>", headers={"content-type": "text/html"}
+    )
+    note = await backend.get_note_by_path("/Root/Checklists/Weekly")
+    assert note.remote_id == "c2"
+    assert note.body == "<ul><li>Clear the inbox</li></ul>"
+
+
+@respx.mock
+async def test_a_note_id_or_a_trilium_address_finds_the_note(
+    backend: TriliumNoteBackend,
+) -> None:
+    respx.get(f"{BASE}/notes/n9").respond(json=meta("n9", "Weekly"))
+    respx.get(f"{BASE}/notes/n9/content").respond(
+        text="<ul><li>Plan</li></ul>", headers={"content-type": "text/html"}
+    )
+    by_id = await backend.get_note_by_path("n9")
+    assert by_id.remote_id == "n9"
+    by_link = await backend.get_note_by_path("https://trilium.test/#root/n9")
+    assert by_link.remote_id == "n9"
+
+
+@respx.mock
+async def test_a_path_with_no_note_raises_a_backend_error(
+    backend: TriliumNoteBackend,
+) -> None:
+    root = {**meta("root", "Root"), "childNoteIds": []}
+    respx.get(f"{BASE}/notes/root").respond(json=root)
+    with pytest.raises(BackendError):
+        await backend.get_note_by_path("Checklists/Weekly")

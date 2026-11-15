@@ -6,9 +6,15 @@ calendar, it copies the items into the cache tables (`tasks`, `calendar_entries`
 
 A note app is not copied. A sync of a note connection only calls `check_connection` (the address
 and the token), and it reports the result like any other sync. Tefteri reads and writes the few
-notes that it needs when it needs them: the daily note. The `notes` table has a row for a note
-that tefteri created or opened, so that a task link can point at it. It does not hold the notes of
-the note app.
+notes that it needs when it needs them: the daily note, and the checklist notes that the user
+chose in the settings. The `notes` table has a row for a note that tefteri created or opened, so
+that a task link can point at it. It does not hold the notes of the note app.
+
+A planning checklist can name a note path per period type (`checklist_sources` of the user).
+`GET /checklists/{kind}/{day}` then reads that note through the note adapter on every call and
+returns its `<li>` items with `read_only: true`. The local list in `users.checklists` is not used
+for that kind, and a tick is refused. A write in the note shows on the next read, so the client
+shows the note path and a Refresh button beside such a checklist.
 
 ## Sync flow
 

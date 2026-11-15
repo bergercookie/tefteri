@@ -2,7 +2,10 @@
 
 from httpx import AsyncClient
 
-from tests.conftest import V1
+from tefteri.domain.entities import NoteDraft, NotePatch, RemoteNote
+from tests.conftest import V1, connect_all
+from tests.fakes.memory import FakeNoteBackend
+from tests.fakes.world import FakeWorld
 
 LISTS = {
     "week": ["Review the calendar", "Clear the inbox", "Check the goals"],
@@ -36,6 +39,8 @@ async def test_no_checklist_is_defined_at_first(api: AsyncClient) -> None:
         "items": [],
         "done": 0,
         "total": 0,
+        "source": None,
+        "read_only": False,
     }
 
 
@@ -182,3 +187,70 @@ async def test_checklists_are_per_user_and_need_a_session(api: AsyncClient) -> N
     api.headers.pop("Authorization", None)
     api.cookies.clear()
     assert (await api.get(f"{V1}/checklists/week/2026-11-04")).status_code == 401
+
+
+async def _define_source(api: AsyncClient, kind: str, path: str) -> None:
+    r = await api.patch(f"{V1}/me/settings", json={"checklist_sources": {kind: path}})
+    assert r.status_code == 200, r.text
+
+
+async def _note_checklist(
+    api: AsyncClient, world: FakeWorld, path: str, body: str
+) -> tuple[FakeNoteBackend, RemoteNote]:
+    await connect_all(api)
+    backend = world.notes["default"]
+    note = await backend.create_note(NoteDraft("A checklist", body))
+    backend.paths[path] = note.remote_id
+    await _define_source(api, "week", path)
+    return backend, note
+
+
+async def test_a_checklist_can_come_from_a_note_and_is_read_only(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    backend, note = await _note_checklist(
+        api,
+        world,
+        "Checklists/Weekly",
+        "<ul><li>Look back at last week</li><li>Clear the inbox</li></ul>",
+    )
+    settings = (await api.get(f"{V1}/me/settings")).json()
+    assert settings["checklist_sources"]["week"] == "Checklists/Weekly"
+
+    got = (await api.get(f"{V1}/checklists/week/2026-11-04")).json()
+    assert got["source"] == "Checklists/Weekly"
+    assert got["read_only"] is True
+    assert [i["text"] for i in got["items"]] == ["Look back at last week", "Clear the inbox"]
+    assert [i["checked"] for i in got["items"]] == [False, False]
+    assert got["done"] == 0 and got["total"] == 2
+
+    refused = await _tick(api, "2026-11-04", "Clear the inbox")
+    assert refused.status_code == 422
+    assert refused.json()["code"] == "read_only"
+
+    # Every read asks the note again, so a change in the notes app shows at once.
+    await backend.update_note(
+        note.remote_id,
+        NotePatch(body="<ul><li>Look back</li><li>Choose the focus</li></ul>"),
+        note.version,
+    )
+    fresh = (await api.get(f"{V1}/checklists/week/2026-11-04")).json()
+    assert [i["text"] for i in fresh["items"]] == ["Look back", "Choose the focus"]
+
+
+async def test_a_missing_note_path_is_refused_with_a_message(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    await connect_all(api)
+    await _define_source(api, "month", "Checklists/NotThere")
+    r = await api.get(f"{V1}/checklists/month/2026-11-04")
+    assert r.status_code == 422
+    assert r.json()["code"] == "note_not_found"
+    assert "Checklists/NotThere" in r.json()["detail"]
+
+
+async def test_a_source_needs_a_notes_connection(api: AsyncClient) -> None:
+    await _define_source(api, "week", "Checklists/Weekly")
+    r = await api.get(f"{V1}/checklists/week/2026-11-04")
+    assert r.status_code == 422
+    assert "connect a note app" in r.json()["detail"]
