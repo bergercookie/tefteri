@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/section_heading.dart';
 import '../../theme/theme.dart';
 import 'category_style.dart';
 import 'category_task_list.dart';
@@ -36,7 +37,11 @@ class CompletedByCategory extends ConsumerWidget {
       key: const Key('completed-by-category'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Completed this week', style: text.titleMedium),
+        const SectionHeading(
+          title: 'Completed this week',
+          info: 'Every task that you finished this week, whatever its due '
+              'date, in three groups: goal-aligned, maintenance and off-plan.',
+        ),
         Text(
           'A live list: it shows the tasks as of the last sync.',
           style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),

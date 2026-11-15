@@ -106,6 +106,19 @@ void main() {
     expect(find.textContaining('Not scheduled'), findsWidgets);
   });
 
+  testWidgets('each task section explains itself in a tip', (tester) async {
+    await _pump(tester, _api());
+    expect(find.text('Due this week'), findsOneWidget);
+    final due = tester.widget<Tooltip>(find.ancestor(
+        of: find.byKey(const Key('info-Due this week')),
+        matching: find.byType(Tooltip)));
+    expect(due.message, contains('done or not'));
+    final done = tester.widget<Tooltip>(find.ancestor(
+        of: find.byKey(const Key('info-Completed this week')),
+        matching: find.byType(Tooltip)));
+    expect(done.message, contains('whatever its due date'));
+  });
+
   testWidgets('a task shows its annual goal, and an old goal as history',
       (tester) async {
     final api = _api({'PATCH /tasks/t1': taskJson('t1', 'x')});

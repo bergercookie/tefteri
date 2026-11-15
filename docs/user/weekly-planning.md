@@ -92,6 +92,9 @@ of the statistics of the week. They are not a separate list.
 - Under the planning cards, the list Completed this week shows every completed task, in three
   groups. Each task shows its day and its project. The list has no limit. Choose Show more to
   load more tasks.
+- The list Due this week is different. It shows every task with a due date in this week, done or
+  not. A tick marks a done task. A task that you finished without a due date in this week is not
+  in this list. Put the pointer on the info icon next to the name of a list to read what it shows.
 - In the card Committed plan, the large number of a day is the tasks from your plan. The small
   numbers are all the tasks that you completed that day, by category.
 - The done and left counts, the cadence and the burndown chart count only the tasks that you
