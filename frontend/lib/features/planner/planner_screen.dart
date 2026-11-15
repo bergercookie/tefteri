@@ -12,6 +12,7 @@ import '../../core/shell.dart';
 import '../settings/sync_controller.dart';
 import 'calendar_pane.dart';
 import 'planner_providers.dart';
+import 'planner_span.dart';
 import 'planner_visibility.dart';
 import 'planner_views_dialog.dart';
 import 'schedule_dialog.dart';
@@ -26,11 +27,12 @@ const double twoColumnMinWidth = 840;
 /// Shows the task column and the calendar side by side. Drag a task onto a
 /// time slot to plan it; the due date in the task app is set for you.
 class PlannerScreen extends ConsumerStatefulWidget {
-  /// Creates the screen; the calendar shows the week that holds
-  /// [initialDate] (default today).
+  /// Creates the screen; the calendar shows the days that hold
+  /// [initialDate] (default today): its week, or the day and the days after
+  /// it, as the user chose.
   const PlannerScreen({this.initialDate, this.clock = DateTime.now, super.key});
 
-  /// A day in the week to show first.
+  /// A day to show first.
   final DateTime? initialDate;
 
   /// Gives the current time (the red line on the calendar). Tests replace it.
@@ -41,20 +43,37 @@ class PlannerScreen extends ConsumerStatefulWidget {
 }
 
 class _PlannerScreenState extends ConsumerState<PlannerScreen> {
-  late DateTime _weekStart;
+  /// The day the user looks at. The calendar starts on it, or on the Monday
+  /// before it in the week view.
+  late DateTime _anchor;
   int _tab = 0;
 
   @override
   void initState() {
     super.initState();
-    _weekStart = _mondayOf(widget.initialDate ?? widget.clock());
+    _anchor = _dayOf(widget.initialDate ?? widget.clock());
   }
 
-  static DateTime _mondayOf(DateTime d) =>
-      DateTime(d.year, d.month, d.day - (d.weekday - 1));
+  static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  void _shift(int weeks) => setState(() => _weekStart =
-      DateTime(_weekStart.year, _weekStart.month, _weekStart.day + 7 * weeks));
+  PlannerSpan get _span => ref.read(plannerSpanProvider);
+
+  DateTime get _start => _span.startFor(_anchor);
+
+  /// Moves by [steps] spans: a week, three days or one day.
+  void _shift(int steps) => setState(() => _anchor =
+      DateTime(_anchor.year, _anchor.month, _anchor.day + steps * _span.days));
+
+  /// Shows [span]. When today is on the screen, the new view holds it too;
+  /// otherwise it starts where the old one starts.
+  void _setSpan(PlannerSpan span) {
+    final today = _dayOf(widget.clock());
+    final start = _start;
+    final end = DateTime(start.year, start.month, start.day + _span.days);
+    setState(() => _anchor =
+        !today.isBefore(start) && today.isBefore(end) ? today : start);
+    ref.read(plannerSpanProvider.notifier).set(span);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +84,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     });
     final error = ref.watch(plannerErrorProvider);
     final visibility = ref.watch(plannerVisibilityProvider);
+    ref.watch(plannerSpanProvider); // the calendar follows the span
     return AppShell(
       title: 'Planner',
       actions: IconButton(
@@ -77,8 +97,9 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
             : Icons.visibility_off_outlined),
         onPressed: () => showPlannerViewsDialog(context),
       ),
-      // Left and right arrow move by one week. A text field handles the
-      // arrows itself first (to move the cursor), so typing is not affected.
+      // Left and right arrow move by one week, three days or one day. A text
+      // field handles the arrows itself first (to move the cursor), so typing
+      // is not affected.
       body: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _shift(-1),
@@ -109,10 +130,12 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   }
 
   CalendarPane _calendar() => CalendarPane(
-        weekStart: _weekStart,
-        onShiftWeek: _shift,
+        start: _start,
+        span: _span,
+        onShift: _shift,
+        onSpan: _setSpan,
         clock: widget.clock,
-        onToday: () => setState(() => _weekStart = _mondayOf(widget.clock())),
+        onToday: () => setState(() => _anchor = _dayOf(widget.clock())),
       );
 
   Widget _wide(double available) {
@@ -143,7 +166,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     );
   }
 
-  /// Two tabs that stay alive, so the filter, the search text and the week
+  /// Two tabs that stay alive, so the filter, the search text and the days
   /// survive a switch. Tasks are scheduled with a dialog instead of a drag.
   /// When the user hides one pane, the other fills the screen.
   Widget _narrow() {
@@ -187,9 +210,10 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   }
 
   Future<void> _chooseTime(PlanTask task) async {
+    final start = _start;
     final days = [
       for (var i = 0; i < 14; i++)
-        DateTime(_weekStart.year, _weekStart.month, _weekStart.day + i),
+        DateTime(start.year, start.month, start.day + i),
     ];
     final now = widget.clock();
     final today = DateTime(now.year, now.month, now.day);

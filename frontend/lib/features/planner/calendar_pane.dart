@@ -18,6 +18,7 @@ import 'details_dialogs.dart';
 import 'new_event_dialog.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
+import 'planner_span.dart';
 import 'planner_visibility.dart';
 import 'shared_events.dart';
 import 'time_grid.dart';
@@ -26,30 +27,38 @@ const double _gutterWidth = 44;
 const double _minBlockHeight = 22;
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/// A week of events and task blocks.
+/// A week, three days or one day of events and task blocks.
 ///
 /// Drop a task on a day column to plan it: the block starts at the slot under
 /// the pointer and the server stores the due date one hour later. Drop it on
 /// the all-day row to plan the date only. Task blocks can be dragged again to
 /// move them, or back to the task column to unschedule them.
 class CalendarPane extends ConsumerStatefulWidget {
-  /// Creates the pane for the week that starts on [weekStart] (a Monday).
+  /// Creates the pane for the [span] of days that starts on [start].
   const CalendarPane({
-    required this.weekStart,
-    required this.onShiftWeek,
+    required this.start,
+    required this.onShift,
     required this.onToday,
+    this.span = PlannerSpan.week,
+    this.onSpan,
     this.clock = DateTime.now,
     super.key,
   });
 
-  /// First day of the shown week.
-  final DateTime weekStart;
+  /// First day shown: a Monday in the week view.
+  final DateTime start;
 
-  /// Called with -1 or 1 to move by one week.
-  final void Function(int weeks) onShiftWeek;
+  /// How many days the pane shows.
+  final PlannerSpan span;
 
-  /// Called when the user asks for the current week.
+  /// Called with -1 or 1 to move by one [span].
+  final void Function(int steps) onShift;
+
+  /// Called when the user asks for today.
   final VoidCallback onToday;
+
+  /// Called when the user chooses another span. Without it there is no menu.
+  final ValueChanged<PlannerSpan>? onSpan;
 
   /// Gives the current time. Tests replace it.
   final DateTime Function() clock;
@@ -80,7 +89,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     });
   }
 
-  /// Shows the week of today and scrolls the grid to the current time.
+  /// Shows today and scrolls the grid to the current time.
   void _goToToday() {
     widget.onToday();
     setState(() => _now = widget.clock());
@@ -125,14 +134,13 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   List<DateTime> get _days => [
-        for (var i = 0; i < calendarDays; i++)
-          DateTime(widget.weekStart.year, widget.weekStart.month,
-              widget.weekStart.day + i),
+        for (var i = 0; i < widget.span.days; i++)
+          DateTime(widget.start.year, widget.start.month, widget.start.day + i),
       ];
 
   @override
   Widget build(BuildContext context) {
-    final items = ref.watch(calendarItemsProvider(widget.weekStart));
+    final items = ref.watch(calendarItemsProvider(widget.start));
     final visibility = ref.watch(plannerVisibilityProvider);
     final pending = ref.watch(pendingTaskProvider);
     return Column(
@@ -175,39 +183,101 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
             item,
       ];
 
-  /// Today button, arrows and the label of the week. On a narrow screen the
-  /// label can shrink, so the row never overflows.
+  /// The label of the shown days: "Week of 2026-11-02",
+  /// "2026-11-04 to 2026-11-06" or "Wed 2026-11-04".
+  String get _label {
+    final days = _days;
+    return switch (widget.span) {
+      PlannerSpan.week => 'Week of ${dateKey(widget.start)}',
+      PlannerSpan.threeDays =>
+        '${dateKey(days.first)} to ${dateKey(days.last)}',
+      PlannerSpan.day =>
+        '${_weekdays[widget.start.weekday - 1]} ${dateKey(widget.start)}',
+    };
+  }
+
+  /// Today button, arrows, the label of the days and the span menu. On a
+  /// narrow screen the label can shrink, so the row never overflows.
   Widget _nav() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 4),
-        child: Row(
-          children: [
-            OutlinedButton(
-              key: const Key('today-button'),
-              onPressed: _goToToday,
-              child: const Text('Today'),
+        child: LayoutBuilder(
+            builder: (context, c) => Row(
+                  children: [
+                    OutlinedButton(
+                      key: const Key('today-button'),
+                      onPressed: _goToToday,
+                      child: const Text('Today'),
+                    ),
+                    IconButton(
+                      key: const Key('prev-week'),
+                      tooltip: 'Previous ${widget.span.unit} (Left arrow)',
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed: () => widget.onShift(-1),
+                    ),
+                    IconButton(
+                      key: const Key('next-week'),
+                      tooltip: 'Next ${widget.span.unit} (Right arrow)',
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => widget.onShift(1),
+                    ),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: Text(
+                        _label,
+                        key: const Key('week-label'),
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    if (widget.onSpan != null)
+                      _spanMenu(compact: c.maxWidth < _compactNavWidth),
+                  ],
+                )),
+      );
+
+  /// Below this width the span menu shows an icon instead of its name.
+  static const double _compactNavWidth = 440;
+
+  static IconData _spanIcon(PlannerSpan span) => switch (span) {
+        PlannerSpan.week => Icons.view_week_outlined,
+        PlannerSpan.threeDays => Icons.view_column_outlined,
+        PlannerSpan.day => Icons.view_day_outlined,
+      };
+
+  /// A button that names the span and opens the list of spans. When
+  /// [compact], it shows the icon of the span instead of its name.
+  Widget _spanMenu({required bool compact}) => PopupMenuButton<PlannerSpan>(
+        key: const Key('planner-span-button'),
+        tooltip: 'Choose how many days to show',
+        initialValue: widget.span,
+        onSelected: widget.onSpan,
+        itemBuilder: (_) => [
+          for (final s in PlannerSpan.values)
+            PopupMenuItem(
+              key: Key('planner-span-${s.name}'),
+              value: s,
+              child: Row(children: [
+                Icon(_spanIcon(s), size: 20),
+                const SizedBox(width: Space.sm),
+                Text(s.label),
+              ]),
             ),
-            IconButton(
-              key: const Key('prev-week'),
-              tooltip: 'Previous week (Left arrow)',
-              icon: const Icon(Icons.chevron_left),
-              onPressed: () => widget.onShiftWeek(-1),
-            ),
-            IconButton(
-              key: const Key('next-week'),
-              tooltip: 'Next week (Right arrow)',
-              icon: const Icon(Icons.chevron_right),
-              onPressed: () => widget.onShiftWeek(1),
-            ),
-            const SizedBox(width: Space.sm),
-            Expanded(
-              child: Text(
-                'Week of ${dateKey(widget.weekStart)}',
-                key: const Key('week-label'),
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-          ],
+        ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: Space.sm, vertical: Space.xs),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (compact)
+                Icon(_spanIcon(widget.span),
+                    semanticLabel: widget.span.label, size: 20)
+              else
+                Text(widget.span.label,
+                    style: Theme.of(context).textTheme.labelLarge),
+              const Icon(Icons.arrow_drop_down),
+            ],
+          ),
         ),
       );
 
