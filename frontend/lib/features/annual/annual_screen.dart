@@ -109,15 +109,12 @@ class _AnnualScreenState extends ConsumerState<AnnualScreen> {
         onSave: (d) async {
           final changed = d.metric != kr.metric ||
               d.target != kr.target ||
-              d.deadline != kr.deadline ||
-              d.updateSource != kr.updateSource;
+              d.deadline != kr.deadline;
           if (!changed) return;
           await _plan.editKeyResult(kr.id,
               metric: d.metric != kr.metric ? d.metric : null,
               target: d.target != kr.target ? d.target : null,
-              deadline: d.deadline != kr.deadline ? d.deadline : null,
-              updateSource:
-                  d.updateSource != kr.updateSource ? d.updateSource : null);
+              deadline: d.deadline != kr.deadline ? d.deadline : null);
         },
       );
 

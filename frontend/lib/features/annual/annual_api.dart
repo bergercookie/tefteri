@@ -75,16 +75,12 @@ class AnnualApi {
 
   /// `PATCH /annual/key-results/{id}` with the changed fields only.
   Future<KeyResult> editKeyResult(String id,
-          {String? metric,
-          double? target,
-          String? deadline,
-          String? updateSource}) async =>
+          {String? metric, double? target, String? deadline}) async =>
       KeyResult.fromJson(
           _map((await _dio.patch<Object?>('/annual/key-results/$id', data: {
         if (metric != null) 'metric': metric,
         if (target != null) 'target': target,
         if (deadline != null) 'deadline': deadline,
-        if (updateSource != null) 'update_source': updateSource,
       }))
               .data));
 

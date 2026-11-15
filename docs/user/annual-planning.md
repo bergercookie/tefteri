@@ -37,7 +37,6 @@ result. A key result has:
 - A start value and a target.
 - A deadline in the planning year.
 - A current value. It starts at the start value.
-- An update source: manual or automatic.
 
 For a Yes or No key result, Tefteri hides the start value and the target. The answer starts as No.
 Choose Update value and then Yes or No. A Yes answer counts as done.
@@ -47,7 +46,7 @@ The target must not equal the start value. The deadline must be in the planning 
 The Add key result button is off when a goal already has three key results. Point at the button to
 read why. Retire a key result to free a place.
 
-![The form for a key result. It shows the type Number or Yes or No, the metric, start value, target, deadline, update source and themes.](../images/annual-key-result-form.png)
+![The form for a key result. It shows the type Number or Yes or No, the metric, start value, target, deadline and themes.](../images/annual-key-result-form.png)
 
 ## Show or hide the key results of a goal
 
@@ -94,8 +93,8 @@ solves it.
 4. Choose a date.
 5. Choose Save.
 
-Each value stays in the history of the key result. The latest value is the current value. You can
-enter a value by hand when the update source is automatic.
+Each value stays in the history of the key result. The latest value is the current value.
+Tefteri does not read values from other apps. You enter every value.
 
 ![The Update value dialog. It has a value and a date.](../images/annual-value.png)
 
@@ -120,7 +119,7 @@ you save.
 ## Change or retire a goal
 
 Open the menu on a goal or a key result to edit it. You can change a goal title. You can change
-the metric, target, deadline and update source of a key result.
+the metric, target and deadline of a key result.
 
 Retire a goal or a key result when it no longer belongs in the plan. Tefteri shows what the
 retire changes before you confirm it. A retired item stays in the year history. You can restore
