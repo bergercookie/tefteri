@@ -93,9 +93,7 @@ class ReviewNoteService:
         rows = list(
             (
                 await db.execute(
-                    select(ReviewNote).where(
-                        ReviewNote.user_id == user_id, ReviewNote.year == year
-                    )
+                    select(ReviewNote).where(ReviewNote.user_id == user_id, ReviewNote.year == year)
                 )
             ).scalars()
         )
@@ -104,9 +102,7 @@ class ReviewNoteService:
     async def _find(
         self, db: AsyncSession, user_id: uuid.UUID, year: int, goal_id: uuid.UUID | None
     ) -> ReviewNote | None:
-        query = select(ReviewNote).where(
-            ReviewNote.user_id == user_id, ReviewNote.year == year
-        )
+        query = select(ReviewNote).where(ReviewNote.user_id == user_id, ReviewNote.year == year)
         query = query.where(
             ReviewNote.goal_id.is_(None) if goal_id is None else ReviewNote.goal_id == goal_id
         )

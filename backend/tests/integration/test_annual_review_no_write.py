@@ -5,15 +5,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.base import Base
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def _digest(db) -> str:
+async def _digest(db: AsyncSession) -> str:
     digest = hashlib.sha256()
     for table in sorted(Base.metadata.tables):
         digest.update(table.encode())
@@ -22,32 +23,33 @@ async def _digest(db) -> str:
     return digest.hexdigest()
 
 
-async def test_opening_the_review_changes_no_row(env) -> None:
+async def test_opening_the_review_changes_no_row(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
-    key_result = await add_key_result(
-        env, rows, metric="Stars", themes=("Open source",), year=2025
-    )
+    key_result = await add_key_result(env, rows, metric="Stars", themes=("Open source",), year=2025)
     user_id = await env.user_id()
     async with env.db() as db:
         await store_snapshot(
             db,
             user_id,
             "2025-01",
-            make_snapshot("2025-01", key_results=[
-                {
-                    "key_result_id": str(key_result.id),
-                    "start_value": 0,
-                    "base_value": 0,
-                    "latest_value": 30,
-                    "latest_at": "2025-01-08T12:00:00Z",
-                    "target": 100,
-                    "deadline": "2025-12-31",
-                    "status": "active",
-                    "retired": False,
-                }
-            ]),
+            make_snapshot(
+                "2025-01",
+                key_results=[
+                    {
+                        "key_result_id": str(key_result.id),
+                        "start_value": 0,
+                        "base_value": 0,
+                        "latest_value": 30,
+                        "latest_at": "2025-01-08T12:00:00Z",
+                        "target": 100,
+                        "deadline": "2025-12-31",
+                        "status": "active",
+                        "retired": False,
+                    }
+                ],
+            ),
         )
     async with env.db() as db:
         before = await _digest(db)

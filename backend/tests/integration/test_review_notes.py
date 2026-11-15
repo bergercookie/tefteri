@@ -5,13 +5,13 @@ from datetime import UTC, date, datetime
 from sqlalchemy import select
 
 from tefteri.db.models.goal import Goal
-from tests.integration.conftest import legacy_goal
+from tests.integration.conftest import ProjectsEnv, legacy_goal
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def _goal(env):
+async def _goal(env: ProjectsEnv) -> Goal:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -23,13 +23,11 @@ async def _goal(env):
         year=2025,
     )
     async with env.db() as db:
-        goal = (
-            await db.execute(select(Goal).where(Goal.id == key_result.goal_id))
-        ).scalar_one()
+        goal = (await db.execute(select(Goal).where(Goal.id == key_result.goal_id))).scalar_one()
     return goal
 
 
-async def test_put_replace_delete_and_undo(env) -> None:
+async def test_put_replace_delete_and_undo(env: ProjectsEnv) -> None:
     goal = await _goal(env)
     put = await env.api.put(
         "/api/v1/annual-review/2025/notes", json={"goal_id": None, "body": "  A year.  "}
@@ -65,7 +63,7 @@ async def test_put_replace_delete_and_undo(env) -> None:
     assert undo.json()["body"] == "A better year."
 
 
-async def test_invalid_and_not_found_notes(env) -> None:
+async def test_invalid_and_not_found_notes(env: ProjectsEnv) -> None:
     goal = await _goal(env)
     empty = await env.api.put(
         "/api/v1/annual-review/2025/notes", json={"goal_id": None, "body": "   "}
@@ -89,7 +87,7 @@ async def test_invalid_and_not_found_notes(env) -> None:
     assert missing.status_code == 404
 
 
-async def test_a_future_year_is_refused(env) -> None:
+async def test_a_future_year_is_refused(env: ProjectsEnv) -> None:
     await _goal(env)
     future = await env.api.put(
         "/api/v1/annual-review/2028/notes", json={"goal_id": None, "body": "Too soon."}
@@ -98,11 +96,9 @@ async def test_a_future_year_is_refused(env) -> None:
     assert future.json()["code"] == "future_year"
 
 
-async def test_a_month_goal_is_not_a_note_scope(env) -> None:
+async def test_a_month_goal_is_not_a_note_scope(env: ProjectsEnv) -> None:
     await _goal(env)
-    month_goal = await legacy_goal(
-        env.api, period_type="month", period_start=date(2025, 3, 1)
-    )
+    month_goal = await legacy_goal(env.api, period_type="month", period_start=date(2025, 3, 1))
     response = await env.api.put(
         "/api/v1/annual-review/2025/notes",
         json={"goal_id": str(month_goal), "body": "No."},

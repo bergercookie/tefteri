@@ -3,13 +3,13 @@
 import time
 from datetime import UTC, datetime
 
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def test_a_large_year_is_built_in_under_500_ms(env) -> None:
+async def test_a_large_year_is_built_in_under_500_ms(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     names = tuple(f"Theme {n}" for n in range(20))

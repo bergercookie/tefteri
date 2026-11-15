@@ -52,17 +52,17 @@ def test_every_enum_field_uses_the_domain_enum() -> None:
 
 
 def test_every_enum_member_is_accepted_by_its_model() -> None:
-    for member in KeyResultOutcome:
-        assert member.value in {item.value for item in KeyResultOutcome}
-    for member in DeadlineState:
-        assert member.value in {item.value for item in DeadlineState}
-    for member in MonthStatus:
-        assert member.value in {item.value for item in MonthStatus}
-    for member in ThemeHint:
-        assert member.value in {item.value for item in ThemeHint}
-    for member in ReviewEmptyReason:
-        assert router.EmptyOut(reason=member, actions=[]).reason is member
-    for member in YearState:
-        assert member.value in {item.value for item in YearState}
-    for member in OrphanReason:
-        assert router.OrphanedOut(reason=member, at=None).reason is member
+    for outcome in KeyResultOutcome:
+        assert outcome.value in {item.value for item in KeyResultOutcome}
+    for deadline in DeadlineState:
+        assert deadline.value in {item.value for item in DeadlineState}
+    for month in MonthStatus:
+        assert month.value in {item.value for item in MonthStatus}
+    for hint in ThemeHint:
+        assert hint.value in {item.value for item in ThemeHint}
+    for empty in ReviewEmptyReason:
+        assert router.EmptyOut(reason=empty, actions=[]).reason is empty
+    for year in YearState:
+        assert year.value in {item.value for item in YearState}
+    for orphan in OrphanReason:
+        assert router.OrphanedOut(reason=orphan, at=None).reason is orphan

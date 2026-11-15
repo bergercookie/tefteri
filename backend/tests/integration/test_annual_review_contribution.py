@@ -5,13 +5,13 @@ from datetime import UTC, date, datetime
 from sqlalchemy import select
 
 from tefteri.db.models.key_result import KeyResultTheme
-from tests.integration.conftest import make_snapshot, store_snapshot
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-def _kr(key_result_id, value: float, base: float, month: int) -> dict[str, object]:
+def _kr(key_result_id: str, value: float, base: float, month: int) -> dict[str, object]:
     return {
         "key_result_id": key_result_id,
         "metric": "Stars",
@@ -26,7 +26,7 @@ def _kr(key_result_id, value: float, base: float, month: int) -> dict[str, objec
     }
 
 
-def _theme(project_id, name: str, month: int, shipped: int = 1) -> dict[str, object]:
+def _theme(project_id: str, name: str, month: int, shipped: int = 1) -> dict[str, object]:
     return {
         "project_id": project_id,
         "name": name,
@@ -44,7 +44,7 @@ def _theme(project_id, name: str, month: int, shipped: int = 1) -> dict[str, obj
     }
 
 
-async def test_theme_contribution_and_hint(env) -> None:
+async def test_theme_contribution_and_hint(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source", "Routine")
@@ -98,7 +98,7 @@ async def test_theme_contribution_and_hint(env) -> None:
     assert theme["ranges"][0]["to"] is None
 
 
-async def test_a_link_that_ended_only_counts_its_dates(env) -> None:
+async def test_a_link_that_ended_only_counts_its_dates(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -171,7 +171,7 @@ async def test_a_link_that_ended_only_counts_its_dates(env) -> None:
     assert review["milestones_shipped"]["count"] == 2
 
 
-async def test_mirror_hint_and_no_hint_without_a_target(env) -> None:
+async def test_mirror_hint_and_no_hint_without_a_target(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")

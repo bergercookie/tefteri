@@ -6,11 +6,12 @@ import pytest
 from httpx import AsyncClient
 
 from tefteri.api.routers.annual_review import AnnualReviewOut, NoteDeletedOut, NoteWriteOut
+from tests.live.conftest import RealVikunja
 
 pytestmark = pytest.mark.live
 
 
-async def test_annual_review_over_http(monthly_http_server: AsyncClient, real) -> None:
+async def test_annual_review_over_http(monthly_http_server: AsyncClient, real: RealVikunja) -> None:
     api = monthly_http_server
     tag = uuid.uuid4().hex[:8]
     project = await real.client.put(
@@ -34,7 +35,9 @@ async def test_annual_review_over_http(monthly_http_server: AsyncClient, real) -
 
     future = await api.get("/annual-review/2028")
     assert future.status_code == 200
-    assert AnnualReviewOut.model_validate(future.json()).empty.reason.value == "future_year"
+    future_empty = AnnualReviewOut.model_validate(future.json()).empty
+    assert future_empty is not None
+    assert future_empty.reason.value == "future_year"
 
     put = await api.put(
         "/annual-review/2024/notes", json={"goal_id": None, "body": "A note over HTTP."}

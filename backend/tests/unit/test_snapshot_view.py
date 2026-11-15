@@ -18,9 +18,7 @@ def test_a_full_payload_loads_every_field() -> None:
                     "target": 2,
                     "done": 1,
                     "status": "in_focus",
-                    "milestones": [
-                        {"milestone_id": "m1", "name": "One", "done_on": "2025-03-03"}
-                    ],
+                    "milestones": [{"milestone_id": "m1", "name": "One", "done_on": "2025-03-03"}],
                     "key_result_ids": ["kr"],
                 }
             ],

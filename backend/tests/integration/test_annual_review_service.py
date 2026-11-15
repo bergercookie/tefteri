@@ -1,18 +1,20 @@
 """Integration tests of the annual review service (spec 008, M2)."""
 
 from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy import select
 
 from tefteri.db.models.goal import Goal
-from tests.integration.conftest import make_snapshot, store_review_note, store_snapshot
+from tefteri.db.models.key_result import KeyResult
+from tests.integration.conftest import ProjectsEnv, make_snapshot, store_review_note, store_snapshot
 from tests.integration.monthly_review_helpers import add_key_result, setup_review
 
 TODAY = date(2026, 11, 13)
 TODAY_AT = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
-async def _prepare(env):
+async def _prepare(env: ProjectsEnv) -> tuple[dict[str, Any], KeyResult]:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -52,7 +54,7 @@ def _key_result(title: str, value: float, at: str) -> dict[str, object]:
     }
 
 
-async def test_review_of_a_past_year(env) -> None:
+async def test_review_of_a_past_year(env: ProjectsEnv) -> None:
     rows, key_result = await _prepare(env)
     user_id = await env.user_id()
     async with env.db() as db:
@@ -116,11 +118,12 @@ async def test_review_of_a_past_year(env) -> None:
     assert review["year_note"] is None
 
 
-async def test_note_is_returned_on_the_review(env) -> None:
+async def test_note_is_returned_on_the_review(env: ProjectsEnv) -> None:
     rows, key_result = await _prepare(env)
     user_id = await env.user_id()
     async with env.db() as db:
         goal = (await db.execute(select(Goal))).scalars().first()
+        assert goal is not None
         await store_snapshot(
             db,
             user_id,
@@ -139,7 +142,7 @@ async def test_note_is_returned_on_the_review(env) -> None:
     assert review["goals"][0]["note"]["body"] == "Talks went well."
 
 
-async def test_no_snapshots_still_lists_goals(env) -> None:
+async def test_no_snapshots_still_lists_goals(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -163,7 +166,7 @@ async def test_no_snapshots_still_lists_goals(env) -> None:
     assert all(point["value"] is None for point in found["series"])
 
 
-async def test_current_year_is_in_progress(env) -> None:
+async def test_current_year_is_in_progress(env: ProjectsEnv) -> None:
     env.app.state.clock = lambda: TODAY_AT
     env.app.state.key_result_service._clock = lambda: TODAY_AT
     rows = await setup_review(env, "Open source")
@@ -191,7 +194,7 @@ async def test_current_year_is_in_progress(env) -> None:
     assert review["coverage"]["expected"] == 11
 
 
-async def test_future_year(env) -> None:
+async def test_future_year(env: ProjectsEnv) -> None:
     user_id = await env.user_id()
     async with env.db() as db:
         review = await env.app.state.annual_review_service.review(db, user_id, 2028)
@@ -200,7 +203,7 @@ async def test_future_year(env) -> None:
     assert review["next_year"]["available"] is False
 
 
-async def test_api_returns_the_review_with_enum_values(env) -> None:
+async def test_api_returns_the_review_with_enum_values(env: ProjectsEnv) -> None:
     rows, key_result = await _prepare(env)
     user_id = await env.user_id()
     async with env.db() as db:
