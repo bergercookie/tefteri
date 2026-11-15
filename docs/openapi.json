@@ -264,18 +264,6 @@
             },
             "title": "Theme Ids",
             "type": "array"
-          },
-          "update_source": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UpdateSource"
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "default": "manual",
-            "title": "Update Source"
           }
         },
         "required": [
@@ -2832,18 +2820,6 @@
             },
             "title": "Theme Ids",
             "type": "array"
-          },
-          "update_source": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UpdateSource"
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "default": "manual",
-            "title": "Update Source"
           }
         },
         "required": [
@@ -2889,20 +2865,6 @@
               }
             ],
             "title": "Target"
-          },
-          "update_source": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UpdateSource"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Update Source"
           }
         },
         "title": "KeyResultEditIn",
@@ -4013,9 +3975,6 @@
             },
             "title": "Theme Ids",
             "type": "array"
-          },
-          "update_source": {
-            "$ref": "#/components/schemas/UpdateSource"
           }
         },
         "required": [
@@ -4028,7 +3987,6 @@
           "current_at",
           "target",
           "deadline",
-          "update_source",
           "past_deadline",
           "theme_ids",
           "flags"
@@ -5407,9 +5365,6 @@
             },
             "title": "Theme Ids",
             "type": "array"
-          },
-          "update_source": {
-            "$ref": "#/components/schemas/UpdateSource"
           }
         },
         "required": [
@@ -5417,7 +5372,6 @@
           "goal_id",
           "goal_title",
           "metric",
-          "update_source",
           "start_value",
           "base_value",
           "latest_value",
@@ -7313,15 +7267,6 @@
         "title": "UndoOut",
         "type": "object"
       },
-      "UpdateSource": {
-        "description": "Who keeps a key result's values up to date (spec 006, FR-004).",
-        "enum": [
-          "manual",
-          "automatic"
-        ],
-        "title": "UpdateSource",
-        "type": "string"
-      },
       "UserIn": {
         "description": "Data to create a user.",
         "properties": {
@@ -7907,10 +7852,6 @@
             },
             "title": "Themes",
             "type": "array"
-          },
-          "update_source": {
-            "title": "Update Source",
-            "type": "string"
           }
         },
         "required": [
@@ -7920,7 +7861,6 @@
           "target",
           "direction",
           "deadline",
-          "update_source",
           "status",
           "retired_at",
           "outcome",
@@ -8948,10 +8888,6 @@
           "target": {
             "title": "Target",
             "type": "number"
-          },
-          "update_source": {
-            "title": "Update Source",
-            "type": "string"
           }
         },
         "required": [
@@ -8962,7 +8898,6 @@
           "start_value",
           "target",
           "deadline",
-          "update_source",
           "status",
           "current_value",
           "current_at",

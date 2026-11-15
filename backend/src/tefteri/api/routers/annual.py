@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.domain.annual_plan import today_in
-from tefteri.domain.enums import KeyResultKind, UpdateSource, ValueSource
+from tefteri.domain.enums import KeyResultKind, ValueSource
 from tefteri.services.annual_plan import (
     AnnualPlan,
     AnnualPlanService,
@@ -80,7 +80,6 @@ class BulkKeyResultIn(BaseModel):
     kind: KeyResultKind = KeyResultKind.NUMBER
     start_value: float = 0
     target: float = 1
-    update_source: UpdateSource | str = UpdateSource.MANUAL
     theme_ids: list[uuid.UUID] = Field(default_factory=list)
     seeded_from_key_result_id: uuid.UUID | None = None
 
@@ -114,7 +113,6 @@ class KeyResultCreateIn(BaseModel):
     kind: KeyResultKind = KeyResultKind.NUMBER
     start_value: float = 0
     target: float = 1
-    update_source: UpdateSource | str = UpdateSource.MANUAL
     theme_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
@@ -124,7 +122,6 @@ class KeyResultEditIn(BaseModel):
     metric: str | None = None
     target: float | None = None
     deadline: date | None = None
-    update_source: UpdateSource | str | None = None
 
 
 class RetireIn(BaseModel):
@@ -272,11 +269,6 @@ async def bulk_create_goals(
                     start_value=kr.start_value,
                     target=kr.target,
                     deadline=kr.deadline,
-                    update_source=(
-                        UpdateSource(kr.update_source)
-                        if isinstance(kr.update_source, str)
-                        else kr.update_source
-                    ),
                     theme_ids=kr.theme_ids,
                     seeded_from_id=kr.seeded_from_key_result_id,
                 )
@@ -352,11 +344,6 @@ async def create_key_result(
         start_value=body.start_value,
         target=body.target,
         deadline=body.deadline,
-        update_source=(
-            UpdateSource(body.update_source)
-            if isinstance(body.update_source, str)
-            else body.update_source
-        ),
         theme_ids=body.theme_ids,
         trees=trees,
     )
@@ -383,11 +370,6 @@ async def edit_key_result(
         metric=body.metric,
         target=body.target,
         deadline=body.deadline,
-        update_source=(
-            UpdateSource(body.update_source)
-            if isinstance(body.update_source, str)
-            else body.update_source
-        ),
     )
     plan = await _plan_of(request, db, user, key_result.year)
     return await _key_result_from_plan(plan, key_result_id)

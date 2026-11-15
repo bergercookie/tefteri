@@ -32,7 +32,6 @@ from tefteri.domain.enums import (
     ThemeDecision,
     ThemeSuggestionReason,
     TrendState,
-    UpdateSource,
 )
 
 _ID = uuid.uuid4()
@@ -72,7 +71,6 @@ def _snapshot(
     *,
     update_status: KeyResultUpdate = KeyResultUpdate.NOT_UPDATED,
     decision: ThemeDecision = ThemeDecision.LATER,
-    update_source: UpdateSource = UpdateSource.MANUAL,
     flags: tuple[MonthlyFlagCode, ...] = (),
 ) -> dict[str, object]:
     return {
@@ -111,7 +109,6 @@ def _snapshot(
                 "goal_id": _ID,
                 "goal_title": "Goal",
                 "metric": "Metric",
-                "update_source": update_source,
                 "start_value": 0,
                 "base_value": 0,
                 "latest_value": 0,
@@ -152,7 +149,6 @@ def _key_result(*, flag: MonthlyFlagCode) -> dict[str, object]:
         "current_at": None,
         "target": 10,
         "deadline": date(2030, 12, 31),
-        "update_source": UpdateSource.MANUAL,
         "past_deadline": False,
         "theme_ids": [],
         "flags": [{"code": flag, "actions": [], "reasons": []}],
@@ -189,25 +185,6 @@ def test_monthly_plan_enum_values_serialize() -> None:
         assert MonthlyEntryOut.model_validate(_entry(orphan_reason=reason)).orphaned is not None
     for label in ProjectLabel:
         assert MonthlyEntryOut.model_validate(_entry(label=label)).label_changed is label
-    for source in UpdateSource:
-        key_result = MonthlyKeyResultOut.model_validate(
-            {
-                "id": _ID,
-                "goal_id": _ID,
-                "goal_title": "Goal",
-                "metric": "Metric",
-                "start_value": 0,
-                "current_value": 0,
-                "current_at": None,
-                "target": 10,
-                "deadline": date(2030, 12, 31),
-                "update_source": source,
-                "past_deadline": False,
-                "theme_ids": [],
-                "flags": [],
-            }
-        )
-        assert key_result.model_dump(mode="json")["update_source"] == source.value
     for code in MonthlyFlagCode:
         key_result = MonthlyKeyResultOut.model_validate(_key_result(flag=code))
         assert key_result.model_dump(mode="json")["flags"][0]["code"] == code.value

@@ -501,7 +501,6 @@ class AnnualReviewService:
             "target": key_result.target,
             "direction": "up" if key_result.target > key_result.start_value else "down",
             "deadline": key_result.deadline,
-            "update_source": key_result.update_source,
             "status": key_result.status,
             "retired_at": _utc(key_result.retired_at),
             "outcome": outcome.value,

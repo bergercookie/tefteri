@@ -42,14 +42,12 @@ async def test_review_of_500_done_milestones_completes_under_three_seconds(
                 for index, project in enumerate(projects)
             ]
         )
-    await add_key_result(
-        env, rows, metric="Automatic metric", themes=("Theme 0",), source="automatic"
-    )
+    await add_key_result(env, rows, metric="Metric", themes=("Theme 0",))
     source_calls = []
 
     def forbidden_source_call(*args: Any, **kwargs: Any) -> Any:
         source_calls.append((args, kwargs))
-        raise AssertionError("review attempted to call an automatic key-result source")
+        raise AssertionError("review attempted to call an outside source")
 
     monkeypatch.setattr(env.app.state.connection_service, "backend_for", forbidden_source_call)
     started = time.perf_counter()

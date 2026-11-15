@@ -43,7 +43,6 @@ KEY_RESULT_KEYS = {
     "start_value",
     "target",
     "deadline",
-    "update_source",
     "status",
     "current_value",
     "current_at",
@@ -163,7 +162,6 @@ async def test_the_read_routes_have_the_contract_shape(env: ProjectsEnv) -> None
         "start_value",
         "target",
         "deadline",
-        "update_source",
         "themes",
     }
 

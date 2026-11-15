@@ -24,7 +24,6 @@ from tefteri.domain.enums import (
     ThemeDecision,
     ThemeSuggestionReason,
     TrendState,
-    UpdateSource,
 )
 from tefteri.domain.monthly import CategoryCounts, off_plan_share, trend
 from tefteri.services.errors import Invalid, NoSuchVersion
@@ -165,7 +164,6 @@ class MonthlyKeyResultOut(BaseModel):
     current_at: datetime | None
     target: float
     deadline: date
-    update_source: UpdateSource
     past_deadline: bool
     theme_ids: list[uuid.UUID]
     flags: list[MonthlyKeyResultFlagOut]
@@ -309,7 +307,6 @@ class ReviewKeyResultOut(BaseModel):
     goal_id: uuid.UUID
     goal_title: str
     metric: str
-    update_source: UpdateSource
     start_value: float
     base_value: float
     latest_value: float

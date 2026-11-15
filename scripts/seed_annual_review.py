@@ -78,7 +78,6 @@ async def seed(db: AsyncSession, year: int) -> None:
         start_value=120,
         target=500,
         deadline=date(year, 12, 31),
-        update_source="manual",
         status="active",
         slot=1,
         position=0,
