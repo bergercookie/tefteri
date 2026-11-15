@@ -2,13 +2,16 @@
 
 from httpx import AsyncClient
 
+from tefteri.domain.entities import Container
 from tests.conftest import V1
+from tests.fakes.world import FakeWorld
 
 OFF = {
     "random_time_on_date_drop": False,
     "default_reminder_minutes": 15,
     "checklists": {"week": [], "month": [], "year": []},
     "checklist_sources": {"week": "", "month": "", "year": ""},
+    "default_event_container_id": None,
 }
 
 
@@ -91,3 +94,40 @@ async def test_checklist_sources_are_cleaned_and_can_be_cleared(api: AsyncClient
     assert too_long.status_code == 422
     unknown = await api.patch(f"{V1}/me/settings", json={"checklist_sources": {"decade": "x"}})
     assert unknown.status_code == 422
+
+
+async def test_default_event_calendar_is_chosen_and_cleared(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    world.calendars["default"].containers = [Container("work", "Work")]
+    connection = await api.post(
+        f"{V1}/connections",
+        json={
+            "provider": "google_calendar",
+            "display_name": "G",
+            "settings": {},
+            "credentials": {"token": "t"},
+        },
+    )
+    calendar = (await api.get(f"{V1}/connections/{connection.json()['id']}/containers")).json()[0]
+    chosen = await api.patch(
+        f"{V1}/me/settings", json={"default_event_container_id": calendar["id"]}
+    )
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["default_event_container_id"] == calendar["id"]
+    # Another setting leaves the choice alone; an explicit null clears it.
+    await api.patch(f"{V1}/me/settings", json={"random_time_on_date_drop": True})
+    assert (await api.get(f"{V1}/me/settings")).json()["default_event_container_id"] == (
+        calendar["id"]
+    )
+    cleared = await api.patch(f"{V1}/me/settings", json={"default_event_container_id": None})
+    assert cleared.json()["default_event_container_id"] is None
+
+
+async def test_default_event_calendar_must_be_a_calendar_of_the_user(api: AsyncClient) -> None:
+    unknown = await api.patch(
+        f"{V1}/me/settings",
+        json={"default_event_container_id": "00000000-0000-0000-0000-000000000001"},
+    )
+    assert unknown.status_code == 422
+    assert unknown.json()["code"] == "unknown_calendar"

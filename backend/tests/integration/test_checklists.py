@@ -40,6 +40,7 @@ async def test_no_checklist_is_defined_at_first(api: AsyncClient) -> None:
         "done": 0,
         "total": 0,
         "source": None,
+        "source_url": None,
     }
 
 
@@ -218,6 +219,7 @@ async def test_a_checklist_can_come_from_a_note_and_is_ticked_in_tefteri(
 
     got = (await api.get(f"{V1}/checklists/week/2026-11-04")).json()
     assert got["source"] == "Checklists/Weekly"
+    assert got["source_url"] == f"https://notes.test/#root/{note.remote_id}"
     assert [i["text"] for i in got["items"]] == ["Look back at last week", "Clear the inbox"]
     assert [i["checked"] for i in got["items"]] == [False, False]
     assert got["done"] == 0 and got["total"] == 2

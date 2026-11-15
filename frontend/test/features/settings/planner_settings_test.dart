@@ -107,6 +107,7 @@ void main() {
       },
     });
     await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
+    await tester.pumpAndSettle();
     expect(
         tester
             .widget<DropdownButton<int>>(
@@ -114,5 +115,78 @@ void main() {
             .value,
         45);
     expect(find.text('45 minutes before'), findsOneWidget);
+  });
+
+  group('the calendar for new events', () {
+    Map<String, Object?> containers() => {
+          'GET /connections': [
+            connectionJson('c2', 'calendar', 'Work calendar'),
+          ],
+          'GET /connections/c2/containers': [
+            {'id': 'k1', 'name': 'Work', 'enabled': true, 'read_only': false},
+            {'id': 'k2', 'name': 'Home', 'enabled': true, 'read_only': false},
+            {'id': 'k3', 'name': 'Shared', 'enabled': true, 'read_only': true},
+          ],
+        };
+
+    testWidgets('starts on last used, lists the calendars that can change',
+        (tester) async {
+      final api = FakeApi({
+        ...containers(),
+        'GET /me/settings': {
+          'random_time_on_date_drop': false,
+          'default_event_container_id': null,
+        },
+      });
+      await pumpWithApi(
+          tester, api, const Scaffold(body: PlannerSettingsCard()));
+      await tester.pumpAndSettle();
+      final select = find.byKey(const Key('default-event-calendar-select'));
+      expect(tester.widget<DropdownButton<String?>>(select).value, isNull);
+      expect(find.text('Last used'), findsOneWidget);
+      await tester.tap(select);
+      await tester.pumpAndSettle();
+      expect(find.text('Work'), findsWidgets);
+      expect(find.text('Home'), findsWidgets);
+      expect(find.text('Shared'), findsNothing); // read-only
+    });
+
+    testWidgets('saves the choice and saves null for last used',
+        (tester) async {
+      String? stored;
+      final api = FakeApi({
+        ...containers(),
+        'GET /me/settings': (_) => {
+              'random_time_on_date_drop': false,
+              'default_event_container_id': stored,
+            },
+        'PATCH /me/settings': (o) {
+          stored = (o.data as Map)['default_event_container_id'] as String?;
+          return {
+            'random_time_on_date_drop': false,
+            'default_event_container_id': stored,
+          };
+        },
+      });
+      await pumpWithApi(
+          tester, api, const Scaffold(body: PlannerSettingsCard()));
+      await tester.pumpAndSettle();
+      final select = find.byKey(const Key('default-event-calendar-select'));
+      await tester.tap(select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Home').last);
+      await tester.pumpAndSettle();
+      expect(api.where('PATCH /me/settings').single.data,
+          {'default_event_container_id': 'k2'});
+      expect(tester.widget<DropdownButton<String?>>(select).value, 'k2');
+
+      await tester.tap(select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Last used').last);
+      await tester.pumpAndSettle();
+      expect(api.where('PATCH /me/settings').last.data,
+          {'default_event_container_id': null});
+      expect(tester.widget<DropdownButton<String?>>(select).value, isNull);
+    });
   });
 }

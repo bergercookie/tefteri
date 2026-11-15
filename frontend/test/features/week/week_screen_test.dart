@@ -19,6 +19,12 @@ Map<String, Object?> _week() => periodJson(
       },
       tasks: [
         {...taskJson('t1', 'Write plan'), 'goal_id': 'g1'},
+        {
+          ...taskJson('t5', 'Send the invoice', status: 'done'),
+          'completed_at':
+              DateTime(2026, 11, 3, 16, 45).toUtc().toIso8601String(),
+        },
+        taskJson('t6', 'Fix the old bug', status: 'done'),
         {...taskJson('t4', 'Review a pull request'), 'goal_id': 'a1'},
         {
           ...taskJson('t2', 'Call Sam'),
@@ -104,6 +110,17 @@ void main() {
     expect(find.byKey(const Key('no-events')), findsNothing);
     expect(find.text('Write plan'), findsOneWidget);
     expect(find.textContaining('Not scheduled'), findsWidgets);
+  });
+
+  testWidgets('each due task says whether it is done and when, or pending',
+      (tester) async {
+    await _pump(tester, _api());
+    String status(String id) =>
+        tester.widget<Text>(find.byKey(Key('task-status-$id'))).data!;
+    expect(status('t1'), 'Pending - not done yet');
+    expect(status('t2'), 'Pending - not done yet');
+    expect(status('t5'), 'Done 2026-11-03 16:45');
+    expect(status('t6'), 'Done - completion time not known');
   });
 
   testWidgets('each task section explains itself in a tip', (tester) async {

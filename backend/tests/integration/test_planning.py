@@ -26,6 +26,11 @@ async def test_a_task_scheduled_in_a_week_shows_in_the_week_view(api: AsyncClien
     assert week["start"] == "2026-11-02" and week["end"] == "2026-11-09"
     assert [t["title"] for t in week["tasks"]] == ["Buy shoes"]
     assert "goals" not in week and week["goal_titles"] == {}
+    # An open task has no completion time; a done one has.
+    assert week["tasks"][0]["status"] == "open" and week["tasks"][0]["completed_at"] is None
+    assert (await api.post(f"{V1}/tasks/{task['id']}/complete")).status_code == 200
+    done = (await api.get(f"{V1}/views/week/2026-11-03")).json()["tasks"][0]
+    assert done["status"] == "done" and done["completed_at"] is not None
 
 
 async def test_a_task_linked_to_an_annual_goal_is_listed_and_titled(api: AsyncClient) -> None:

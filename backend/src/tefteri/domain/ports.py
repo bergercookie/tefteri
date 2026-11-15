@@ -186,6 +186,10 @@ class NoteBackend(Backend, Protocol):
         """
         ...
 
+    def note_url(self, remote_id: str) -> str | None:
+        """Return the web address of a note, or ``None`` when the app has no pages for notes."""
+        ...
+
     async def create_note(self, draft: NoteDraft) -> RemoteNote:
         """Create a note."""
         ...

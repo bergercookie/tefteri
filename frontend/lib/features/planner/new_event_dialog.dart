@@ -1,86 +1,27 @@
 /// The menu of a right click on an empty slot of the calendar, and the pop-up
 /// that adds an event to a calendar.
+///
+/// Shift+N opens the pop-up on every page. The day, the time and the length are
+/// text fields that take typed input (`YYYYMMDD`, `YYYYMMDDTHHmm`, `HHmm`,
+/// `1h30`), and each has a button for a picker.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_client.dart';
 import '../../core/api_error.dart';
 import '../../core/calendar_color.dart';
+import '../../core/event_calendars.dart';
+import '../../core/event_input.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
+import '../settings/planner_settings_card.dart';
 import 'new_task_dialog.dart';
-import 'picker_field.dart';
 import 'planner_providers.dart';
 
-/// A calendar that a new event can go into: it is on, and the user can change
-/// what it holds.
-class EventCalendar {
-  /// Creates a calendar.
-  const EventCalendar({
-    required this.connectionId,
-    required this.connectionName,
-    required this.containerId,
-    required this.name,
-    this.color,
-  });
-
-  /// Id of the connection that holds the calendar.
-  final String connectionId;
-
-  /// Name of that connection (a Google account).
-  final String connectionName;
-
-  /// Id of the calendar in tefteri.
-  final String containerId;
-
-  /// Name of the calendar.
-  final String name;
-
-  /// Its color in the calendar app (`#rrggbb`), or null.
-  final String? color;
-}
-
-/// Every calendar of every calendar connection that is on and not read-only.
-final eventCalendarsProvider = FutureProvider<List<EventCalendar>>((ref) async {
-  final dio = ref.watch(dioProvider);
-  Future<List<Map<String, dynamic>>> list(String path) async {
-    final r = await dio.get<Object?>(path);
-    return [
-      for (final e in (r.data as List? ?? const []))
-        if (e is Map<String, dynamic>) e,
-    ];
-  }
-
-  final out = <EventCalendar>[];
-  for (final c in await list('/connections')) {
-    if (c['kind'] != 'calendar') continue;
-    final id = '${c['id']}';
-    for (final p in await list('/connections/$id/containers')) {
-      if (p['enabled'] == false || p['read_only'] == true) continue;
-      out.add(EventCalendar(
-        connectionId: id,
-        connectionName: '${c['display_name']}',
-        containerId: '${p['id']}',
-        name: '${p['name']}',
-        color: p['color'] as String?,
-      ));
-    }
-  }
-  out.sort((a, b) {
-    final byConnection = a.connectionName.compareTo(b.connectionName);
-    return byConnection != 0
-        ? byConnection
-        : a.name.toLowerCase().compareTo(b.name.toLowerCase());
-  });
-  return out;
-});
-
-/// The calendar of the last new event. The next one starts there.
-final lastEventCalendarProvider = StateProvider<String?>((_) => null);
+export '../../core/event_calendars.dart';
 
 /// Opens the menu of a right click at [at] on an empty slot that starts at
 /// [start]. [allDay] is true for the all-day row. The menu offers a new event
@@ -144,14 +85,27 @@ Future<void> showNewEventDialog(BuildContext context,
       builder: (_) => NewEventDialog(start: start, allDay: allDay),
     );
 
+/// Lengths that the button next to the length field offers.
+const List<Duration> eventLengthPresets = [
+  Duration(minutes: 15),
+  Duration(minutes: 30),
+  Duration(minutes: 45),
+  Duration(hours: 1),
+  Duration(minutes: 90),
+  Duration(hours: 2),
+  Duration(hours: 3),
+  Duration(hours: 4),
+];
+
 /// Adds an event to one of the calendars of the user. The user gives the
-/// title, the calendar, the day, the times (or all day) and a place.
+/// title, the calendar, the day, the start time and the length (or all day)
+/// and a place.
 class NewEventDialog extends ConsumerStatefulWidget {
   /// Creates the pop-up. The event starts at [start]; [allDay] starts it as an
   /// all-day event.
   const NewEventDialog({required this.start, this.allDay = false, super.key});
 
-  /// Where the user clicked.
+  /// Where the user clicked, or the next full hour.
   final DateTime start;
 
   /// The event starts as an all-day event.
@@ -164,11 +118,11 @@ class NewEventDialog extends ConsumerStatefulWidget {
 class _NewEventDialogState extends ConsumerState<NewEventDialog> {
   final _title = TextEditingController();
   final _location = TextEditingController();
+  late final _day = TextEditingController(text: formatDay(widget.start));
+  late final _time = TextEditingController(
+      text: formatTime(TimeOfDay.fromDateTime(widget.start)));
+  final _length = TextEditingController(text: '1h');
   EventCalendar? _calendar;
-  late DateTime _date =
-      DateTime(widget.start.year, widget.start.month, widget.start.day);
-  late TimeOfDay _from = TimeOfDay.fromDateTime(widget.start);
-  late TimeOfDay _to = _after(_from);
   late bool _allDay = widget.allDay;
   bool _busy = false;
   String? _error;
@@ -177,72 +131,88 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
   void dispose() {
     _title.dispose();
     _location.dispose();
+    _day.dispose();
+    _time.dispose();
+    _length.dispose();
     super.dispose();
   }
 
-  /// One hour after [t], but not after the end of the day.
-  static TimeOfDay _after(TimeOfDay t) => t.hour >= 23
-      ? const TimeOfDay(hour: 23, minute: 59)
-      : TimeOfDay(hour: t.hour + 1, minute: t.minute);
+  DateTime? get _dayValue => parseDay(_day.text);
 
-  static int _minutes(TimeOfDay t) => t.hour * 60 + t.minute;
+  TimeOfDay? get _timeValue => parseTime(_time.text);
 
-  static String _hm(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  Duration? get _lengthValue => parseEventLength(_length.text);
 
-  bool get _timesOk => _allDay || _minutes(_to) > _minutes(_from);
+  bool get _inputOk =>
+      _dayValue != null &&
+      (_allDay || (_timeValue != null && _lengthValue != null));
 
   bool get _canCreate =>
-      !_busy && _calendar != null && _title.text.trim().isNotEmpty && _timesOk;
+      !_busy && _calendar != null && _title.text.trim().isNotEmpty && _inputOk;
+
+  /// The start of the event, or null while the input is not valid.
+  DateTime? get _startValue {
+    final d = _dayValue;
+    final t = _allDay ? const TimeOfDay(hour: 0, minute: 0) : _timeValue;
+    return d == null || t == null
+        ? null
+        : DateTime(d.year, d.month, d.day, t.hour, t.minute);
+  }
+
+  void _set(TextEditingController c, String text) => c.value = TextEditingValue(
+      text: text, selection: TextSelection.collapsed(offset: text.length));
+
+  /// A full `YYYYMMDDTHHmm` in the day or the time field sets both fields.
+  void _typed(String text) {
+    final p = parseDayAndTime(text);
+    if (p != null && p.time != null) {
+      _set(_day, formatDay(p.day));
+      _set(_time, formatTime(p.time!));
+    }
+    setState(() {});
+  }
+
+  /// Writes a valid value of [c] in the standard form when the user leaves it.
+  void _tidy(TextEditingController c, String? Function() standard) {
+    final text = standard();
+    if (text != null && text != c.text) _set(c, text);
+    if (mounted) setState(() {});
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: _dayValue ?? widget.start,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
-      setState(() => _date = DateTime(picked.year, picked.month, picked.day));
+      setState(() => _set(_day, formatDay(picked)));
     }
   }
 
-  Future<void> _pickFrom() async {
-    final picked = await showTimePicker(context: context, initialTime: _from);
-    if (picked == null || !mounted) return;
-    setState(() {
-      // Keep the length of the event when the start moves.
-      final length = _minutes(_to) - _minutes(_from);
-      _from = picked;
-      final end = _minutes(picked) + (length > 0 ? length : 60);
-      _to = end >= 24 * 60
-          ? const TimeOfDay(hour: 23, minute: 59)
-          : TimeOfDay(hour: end ~/ 60, minute: end % 60);
-    });
-  }
-
-  Future<void> _pickTo() async {
-    final picked = await showTimePicker(context: context, initialTime: _to);
-    if (picked != null && mounted) setState(() => _to = picked);
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+        context: context,
+        initialTime: _timeValue ?? TimeOfDay.fromDateTime(widget.start));
+    if (picked != null && mounted) {
+      setState(() => _set(_time, formatTime(picked)));
+    }
   }
 
   Future<void> _create() async {
     final calendar = _calendar;
-    if (calendar == null || !_canCreate) return;
+    final from = _startValue;
+    if (calendar == null || from == null || !_canCreate) return;
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final actions = ref.read(plannerActionsProvider);
     final remember = ref.read(lastEventCalendarProvider.notifier);
-    final DateTime start;
-    final DateTime end;
-    if (_allDay) {
-      start = _date;
-      end = DateTime(_date.year, _date.month, _date.day + 1);
-    } else {
-      start = DateTime(
-          _date.year, _date.month, _date.day, _from.hour, _from.minute);
-      end = DateTime(_date.year, _date.month, _date.day, _to.hour, _to.minute);
-    }
+    final day = _dayValue!;
+    final start = _allDay ? DateTime(day.year, day.month, day.day) : from;
+    final end = _allDay
+        ? DateTime(day.year, day.month, day.day + 1)
+        : start.add(_lengthValue!);
     setState(() {
       _busy = true;
       _error = null;
@@ -275,18 +245,68 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
     navigator.pop();
   }
 
+  /// A text field for typed input, with a button that opens a picker.
+  Widget _typedField({
+    required String name,
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required String? Function() standard,
+    required bool valid,
+    required String problem,
+    required IconData icon,
+    required String pickTooltip,
+    required VoidCallback onPick,
+    ValueChanged<String>? onChanged,
+  }) {
+    return Focus(
+      onFocusChange: (focused) {
+        if (!focused) _tidy(controller, standard);
+      },
+      child: TextField(
+        key: Key('new-event-$name'),
+        controller: controller,
+        enabled: !_busy,
+        keyboardType: TextInputType.datetime,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          errorText: valid ? null : problem,
+          suffixIcon: IconButton(
+            key: Key('new-event-$name-pick'),
+            tooltip: pickTooltip,
+            visualDensity: VisualDensity.compact,
+            icon: Icon(icon, size: 18),
+            onPressed: _busy ? null : onPick,
+          ),
+        ),
+        onChanged: onChanged ?? (_) => setState(() {}),
+        onSubmitted: (_) => _tidy(controller, standard),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final calendars = ref.watch(eventCalendarsProvider);
+    final settings = ref.watch(userSettingsProvider);
     final remembered = ref.watch(lastEventCalendarProvider);
+    final wanted = settings.valueOrNull?.defaultEventContainerId;
     final list = calendars.valueOrNull ?? const <EventCalendar>[];
-    // Start in the calendar of the last event, else in the first one.
-    _calendar ??= list.isEmpty
-        ? null
-        : list.firstWhere((c) => c.containerId == remembered,
-            orElse: () => list.first);
+    // Start in the calendar that the user chose in the settings, else in the
+    // calendar of the last event, else in the first one. Wait for the settings
+    // so that the choice does not jump when they arrive.
+    if (_calendar == null && !settings.isLoading && list.isNotEmpty) {
+      EventCalendar? named(String? id) =>
+          list.where((c) => c.containerId == id).firstOrNull;
+      _calendar = named(wanted) ?? named(remembered) ?? list.first;
+    }
     final width =
         440.0.clamp(0, MediaQuery.sizeOf(context).width - 96).toDouble();
+    final start = _startValue;
+    final length = _lengthValue;
+    final end = start != null && length != null ? start.add(length) : null;
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.enter, control: true): () {
@@ -321,16 +341,24 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: Space.md),
-                _calendarPicker(calendars, list),
+                _calendarPicker(calendars, settings, list),
                 const SizedBox(height: Space.md),
-                PickerField(
-                  fieldKey: const ValueKey('new-event-date'),
-                  clearKey: const Key('new-event-date-clear'),
+                _typedField(
+                  name: 'date',
+                  controller: _day,
                   label: 'Day',
-                  value: dateKey(_date),
-                  empty: 'No date',
-                  onTap: _busy ? null : _pickDate,
-                  onClear: null,
+                  hint: 'YYYYMMDD',
+                  standard: () {
+                    final d = _dayValue;
+                    return d == null ? null : formatDay(d);
+                  },
+                  valid: _dayValue != null,
+                  problem: 'Type the day as YYYYMMDD',
+                  icon: Icons.calendar_today_outlined,
+                  pickTooltip: 'Pick a day',
+                  onPick: _pickDate,
+                  // YYYYMMDDTHHmm here sets the time too.
+                  onChanged: _typed,
                 ),
                 SwitchListTile(
                   key: const Key('new-event-all-day'),
@@ -339,43 +367,48 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
                   value: _allDay,
                   onChanged: _busy ? null : (v) => setState(() => _allDay = v),
                 ),
-                if (!_allDay)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: PickerField(
-                          fieldKey: const ValueKey('new-event-start'),
-                          clearKey: const Key('new-event-start-clear'),
-                          label: 'Starts at',
-                          value: _hm(_from),
-                          empty: '-',
-                          onTap: _busy ? null : _pickFrom,
-                          onClear: null,
-                        ),
-                      ),
-                      const SizedBox(width: Space.sm),
-                      Expanded(
-                        child: PickerField(
-                          fieldKey: const ValueKey('new-event-end'),
-                          clearKey: const Key('new-event-end-clear'),
-                          label: 'Ends at',
-                          value: _hm(_to),
-                          empty: '-',
-                          onTap: _busy ? null : _pickTo,
-                          onClear: null,
-                        ),
-                      ),
-                    ],
+                if (!_allDay) ...[
+                  _typedField(
+                    name: 'start',
+                    controller: _time,
+                    label: 'Starts at',
+                    hint: 'HHmm',
+                    standard: () {
+                      final t = _timeValue;
+                      return t == null ? null : formatTime(t);
+                    },
+                    valid: _timeValue != null,
+                    problem: 'Type the time as HHmm',
+                    icon: Icons.schedule_outlined,
+                    pickTooltip: 'Pick a time',
+                    onPick: _pickTime,
+                    // YYYYMMDDTHHmm here sets the day too.
+                    onChanged: _typed,
                   ),
-                if (!_timesOk)
-                  Padding(
-                    padding: const EdgeInsets.only(top: Space.xs),
-                    child: Text('The event must end after it starts.',
-                        key: const Key('new-event-times-error'),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.error)),
+                  const SizedBox(height: Space.md),
+                  _typedField(
+                    name: 'length',
+                    controller: _length,
+                    label: 'Length',
+                    hint: '1h30',
+                    standard: () {
+                      final d = _lengthValue;
+                      return d == null ? null : formatEventLength(d);
+                    },
+                    valid: _lengthValue != null,
+                    problem: 'Type minutes or hours, such as 45m or 1h30',
+                    icon: Icons.timer_outlined,
+                    pickTooltip: 'Choose a length',
+                    onPick: _chooseLength,
                   ),
+                  if (end != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Space.xs),
+                      child: Text('Ends ${formatDay(end)} ${hhmm(end)}',
+                          key: const Key('new-event-ends'),
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                ],
                 const SizedBox(height: Space.md),
                 TextField(
                   key: const Key('new-event-location'),
@@ -403,10 +436,35 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
     );
   }
 
-  Widget _calendarPicker(
-      AsyncValue<List<EventCalendar>> calendars, List<EventCalendar> list) {
+  /// The "pick" button of the length field opens a menu of common lengths.
+  Future<void> _chooseLength() async {
+    final box = context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (box == null || overlay == null) return;
+    final centre = box.localToGlobal(box.size.center(Offset.zero));
+    final picked = await showMenu<Duration>(
+      context: context,
+      position: RelativeRect.fromRect(Rect.fromLTWH(centre.dx, centre.dy, 1, 1),
+          Offset.zero & overlay.size),
+      items: [
+        for (final d in eventLengthPresets)
+          PopupMenuItem(
+            key: Key('new-event-length-${formatEventLength(d)}'),
+            value: d,
+            child: Text(formatEventLength(d)),
+          ),
+      ],
+    );
+    if (picked != null && mounted) {
+      setState(() => _set(_length, formatEventLength(picked)));
+    }
+  }
+
+  Widget _calendarPicker(AsyncValue<List<EventCalendar>> calendars,
+      AsyncValue<Object?> settings, List<EventCalendar> list) {
     final text = Theme.of(context).textTheme;
-    if (calendars.isLoading) {
+    if (calendars.isLoading || settings.isLoading) {
       return const SizedBox(
           height: 48, child: Center(child: LinearProgressIndicator()));
     }

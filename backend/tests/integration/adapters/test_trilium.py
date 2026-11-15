@@ -224,3 +224,8 @@ async def test_a_path_with_no_note_raises_a_backend_error(
     respx.get(f"{BASE}/notes/root").respond(json=root)
     with pytest.raises(BackendError):
         await backend.get_note_by_path("Checklists/Weekly")
+
+
+def test_a_note_has_an_address_in_the_web_app() -> None:
+    backend = TriliumNoteBackend(httpx.AsyncClient(), "https://trilium.test/sub/#root/abc", "t")
+    assert backend.note_url("n9") == "https://trilium.test/sub/#root/n9"

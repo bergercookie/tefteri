@@ -3,11 +3,13 @@
 import uuid
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.user import User
 from tefteri.services.checklists import KINDS, clean_items
-from tefteri.services.errors import NotFound
+from tefteri.services.errors import Invalid, NotFound
 
 MAX_REMINDER_MINUTES = 7 * 24 * 60
 """A reminder fires at most a week before the due time."""
@@ -25,13 +27,26 @@ class UserSettings:
     """The planning checklists by period type: ``week``, ``month`` and ``year``."""
     checklist_sources: dict[str, str]
     """The note path of each read-only checklist, by period type. Empty when it is local."""
+    default_event_container_id: uuid.UUID | None = None
+    """The calendar that a new event starts in, or ``None`` when the user has not chosen one."""
+
+
+class _Unset:
+    """Marks a setting that the caller leaves as it is, because ``None`` is a value for it."""
+
+
+UNSET = _Unset()
 
 
 def _of(user: User) -> UserSettings:
     lists = {k.value: list(user.checklists.get(k.value, [])) for k in KINDS}
     sources = {k.value: str(user.checklist_sources.get(k.value, "")).strip() for k in KINDS}
     return UserSettings(
-        user.random_time_on_date_drop, user.default_reminder_minutes, lists, sources
+        user.random_time_on_date_drop,
+        user.default_reminder_minutes,
+        lists,
+        sources,
+        user.default_event_container_id,
     )
 
 
@@ -59,6 +74,7 @@ class SettingsService:
         default_reminder_minutes: int | None = None,
         checklists: dict[str, list[str]] | None = None,
         checklist_sources: dict[str, str] | None = None,
+        default_event_container_id: uuid.UUID | None | _Unset = UNSET,
     ) -> UserSettings:
         """Change the fields that are not ``None`` and return the new settings."""
         user = await db.get(User, user_id)
@@ -84,5 +100,24 @@ class SettingsService:
                 else:
                     sources.pop(kind, None)
             user.checklist_sources = {k: v for k, v in sources.items() if v}
+        if not isinstance(default_event_container_id, _Unset):
+            if default_event_container_id is not None:
+                await _check_calendar(db, user_id, default_event_container_id)
+            user.default_event_container_id = default_event_container_id
         await db.flush()
         return _of(user)
+
+
+async def _check_calendar(db: AsyncSession, user_id: uuid.UUID, container_id: uuid.UUID) -> None:
+    """Raise ``Invalid`` unless the container is a calendar of the user that can be changed."""
+    row = (
+        await db.execute(
+            select(SourceContainer, Connection)
+            .join(Connection, Connection.id == SourceContainer.connection_id)
+            .where(SourceContainer.id == container_id, SourceContainer.user_id == user_id)
+        )
+    ).first()
+    if row is None or row[1].kind != "calendar":
+        raise Invalid("Choose one of your calendars.", "unknown_calendar")
+    if row[0].read_only:
+        raise Invalid("You cannot add events to this calendar.", "calendar_read_only")

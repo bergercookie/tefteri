@@ -1,11 +1,13 @@
 /// Planner settings: what happens when a task is dropped on a day without a
-/// time, and how long before its due time a task reminder fires.
+/// time, how long before its due time a task reminder fires, and the calendar
+/// that a new event starts in.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/event_calendars.dart';
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/reminder_text.dart';
@@ -51,6 +53,52 @@ class PlannerSettingsCard extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
     }
     ref.invalidate(userSettingsProvider);
+  }
+
+  /// The choice of the calendar that Shift+N and the new event pop-up start in.
+  Widget _eventCalendar(BuildContext context, WidgetRef ref, UserSettings s) {
+    final calendars = ref.watch(eventCalendarsProvider);
+    final list = calendars.valueOrNull ?? const <EventCalendar>[];
+    final chosen = s.defaultEventContainerId;
+    // A calendar that is off or read-only is not offered, so the choice falls
+    // back to "last used" on screen until the user picks another.
+    final value = list.any((c) => c.containerId == chosen) ? chosen : null;
+    final many = list.map((c) => c.connectionName).toSet().length > 1;
+    return ListTile(
+      title: const Text('Calendar for new events'),
+      subtitle: Text(calendars.hasError
+          ? apiErrorMessage(calendars.error!)
+          : 'The calendar that the new event pop-up (Shift+N) starts in. '
+              'Without a choice it starts in the calendar of your last event.'),
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 200),
+        child: DropdownButton<String?>(
+          key: const Key('default-event-calendar-select'),
+          value: value,
+          isExpanded: true,
+          style: Theme.of(context).textTheme.bodyMedium,
+          items: [
+            const DropdownMenuItem<String?>(
+                value: null, child: Text('Last used')),
+            for (final c in list)
+              DropdownMenuItem<String?>(
+                value: c.containerId,
+                child: Text(many ? '${c.name} (${c.connectionName})' : c.name,
+                    overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (id) {
+            if (id == value) return;
+            _save(
+                context,
+                ref,
+                () => ref
+                    .read(planningApiProvider)
+                    .updateSettings(defaultEventCalendar: (id: id)));
+          },
+        ),
+      ),
+    );
   }
 
   Widget _card(
@@ -115,6 +163,7 @@ class PlannerSettingsCard extends ConsumerWidget {
                 },
               ),
             ),
+            _eventCalendar(context, ref, s),
           ],
         ),
       ),

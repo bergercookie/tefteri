@@ -234,10 +234,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('new-event-dialog')), findsOneWidget);
       String value(String key) =>
-          tester.widget<Text>(find.byKey(Key(key))).data!;
-      expect(value('new-event-date-value'), '2026-11-04');
-      expect(value('new-event-start-value'), '13:15');
-      expect(value('new-event-end-value'), '14:15'); // one hour
+          tester.widget<TextField>(find.byKey(Key(key))).controller!.text;
+      expect(value('new-event-date'), '2026-11-04');
+      expect(value('new-event-start'), '13:15');
+      expect(value('new-event-length'), '1h');
+      expect(find.text('Ends 2026-11-04 14:15'), findsOneWidget);
     });
 
     testWidgets('creates the event in a calendar that can be changed',
@@ -315,21 +316,21 @@ void main() {
           isNull);
     });
 
-    testWidgets('an event that ends before it starts is refused',
+    testWidgets('an event that starts late may run past midnight',
         (tester) async {
-      await pumpPlanner(tester, _api());
-      // A click at 23:30: the end is capped at 23:59, still after the start.
+      final api = _api();
+      await pumpPlanner(tester, api);
       await _rightClickAt(tester, slotPoint(tester, wednesday, 23, 30));
       await tester.tap(find.byKey(const Key('slot-new-event')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('new-event-times-error')), findsNothing);
+      expect(find.text('Ends 2026-11-05 00:30'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('new-event-title')), 'Late');
       await tester.pump();
-      expect(
-          tester
-              .widget<FilledButton>(find.byKey(const Key('new-event-create')))
-              .onPressed,
-          isNotNull);
+      await tester.tap(find.byKey(const Key('new-event-create')));
+      await tester.pumpAndSettle();
+      final body = api.where('POST /calendar/entries').single.data! as Map;
+      expect(DateTime.parse('${body['end']}').toLocal(),
+          DateTime(2026, 11, 5, 0, 30));
     });
 
     testWidgets('shows the reason when the calendar app refuses',

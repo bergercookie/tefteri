@@ -285,9 +285,24 @@ class _PlanningChecklistState extends ConsumerState<PlanningChecklist> {
               Icon(Icons.notes, size: 18, color: scheme.onSurfaceVariant),
               const SizedBox(width: Space.xs),
               Expanded(
-                child: Text(
-                  'Read from $source. Ticks stay in Tefteri and are not '
-                  'written to the note.',
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Read from '),
+                      if (list.sourceUrl == null || list.sourceUrl!.isEmpty)
+                        TextSpan(text: source)
+                      else
+                        TextSpan(
+                          text: source,
+                          style: TextStyle(
+                            color: scheme.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: _linkRecognizer(list.sourceUrl!),
+                        ),
+                      const TextSpan(text: ' in the notes app.'),
+                    ],
+                  ),
                   key: const Key('checklist-source'),
                   style:
                       text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),

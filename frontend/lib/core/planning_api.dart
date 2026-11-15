@@ -93,10 +93,12 @@ class PlanningApi {
 
   /// `PATCH /me/settings`.
   ///
-  /// Sends only the settings that are given.
+  /// Sends only the settings that are given. [defaultEventCalendar] is a
+  /// record so that `(id: null)` can clear the choice while null leaves it.
   Future<UserSettings> updateSettings({
     bool? randomTimeOnDateDrop,
     int? defaultReminderMinutes,
+    ({String? id})? defaultEventCalendar,
     Map<ChecklistKind, List<String>>? checklists,
     Map<ChecklistKind, String>? checklistSources,
   }) async {
@@ -111,6 +113,8 @@ class PlanningApi {
         'random_time_on_date_drop': randomTimeOnDateDrop,
       if (defaultReminderMinutes != null)
         'default_reminder_minutes': defaultReminderMinutes,
+      if (defaultEventCalendar != null)
+        'default_event_container_id': defaultEventCalendar.id,
     });
     return UserSettings.fromJson(r.data! as Map<String, dynamic>);
   }

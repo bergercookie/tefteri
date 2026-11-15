@@ -46,6 +46,8 @@ class TaskOut(BaseModel):
     """The color of its project in the task app, as ``#rrggbb``."""
     labels: list[str] = []
     url: str | None = None
+    completed_at: UtcDatetime | None = None
+    """When the task was done; ``None`` while it is open."""
 
     @classmethod
     def of(
@@ -75,6 +77,7 @@ class TaskOut(BaseModel):
             project_color=project_color,
             labels=list(t.labels or []),
             url=url,
+            completed_at=t.completed_at if t.status == "done" else None,
         )
 
 

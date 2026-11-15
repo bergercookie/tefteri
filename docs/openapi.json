@@ -787,6 +787,17 @@
             ],
             "title": "Source"
           },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -5911,6 +5922,18 @@
           "checklists": {
             "$ref": "#/components/schemas/ChecklistsOut"
           },
+          "default_event_container_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Event Container Id"
+          },
           "default_reminder_minutes": {
             "title": "Default Reminder Minutes",
             "type": "integer"
@@ -5924,7 +5947,8 @@
           "random_time_on_date_drop",
           "default_reminder_minutes",
           "checklists",
-          "checklist_sources"
+          "checklist_sources",
+          "default_event_container_id"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -5952,6 +5976,18 @@
                 "type": "null"
               }
             ]
+          },
+          "default_event_container_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Event Container Id"
           },
           "default_reminder_minutes": {
             "anyOf": [
@@ -6634,6 +6670,18 @@
       "TaskOut": {
         "description": "A cached task.",
         "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
           "connection_id": {
             "format": "uuid",
             "title": "Connection Id",
