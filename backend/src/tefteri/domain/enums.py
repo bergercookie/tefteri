@@ -107,18 +107,10 @@ class GoalState(StrEnum):
     RETIRED = "retired"
 
 
-class UpdateSource(StrEnum):
-    """Who keeps a key result's values up to date (spec 006, FR-004)."""
-
-    MANUAL = "manual"
-    AUTOMATIC = "automatic"
-
-
 class ValueSource(StrEnum):
-    """Where a stored value of a key result came from (spec 006, FR-009)."""
+    """Where a stored value of a key result came from. The user types every value."""
 
     MANUAL = "manual"
-    AUTOMATIC = "automatic"
 
 
 class KeyResultKind(StrEnum):

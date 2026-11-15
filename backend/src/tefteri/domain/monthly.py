@@ -449,7 +449,6 @@ class KeyResultInput:
     goal_id: Identifier
     goal_title: str
     metric: str
-    update_source: str
     start_value: float
     base_value: float
     latest_value: float
@@ -556,7 +555,6 @@ def build_payload(review: MonthlyReviewInput) -> dict[str, object]:
             "goal_id": item.goal_id,
             "goal_title": item.goal_title,
             "metric": item.metric,
-            "update_source": item.update_source,
             "start_value": item.start_value,
             "base_value": item.base_value,
             "latest_value": item.latest_value,

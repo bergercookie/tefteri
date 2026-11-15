@@ -35,7 +35,6 @@ def _key_result(title: str, value: float, at: str) -> dict[str, object]:
         "goal_id": None,
         "goal_title": "Goal",
         "metric": "Stars",
-        "update_source": "manual",
         "start_value": 100,
         "base_value": 100,
         "latest_value": value,
@@ -128,9 +127,7 @@ async def test_note_is_returned_on_the_review(env) -> None:
             "2025-01",
             make_snapshot(
                 "2025-01",
-                key_results=[
-                    _key_result(str(key_result.id), 150, "2025-01-08T12:00:00Z")
-                ],
+                key_results=[_key_result(str(key_result.id), 150, "2025-01-08T12:00:00Z")],
             ),
         )
         await store_review_note(db, user_id, 2025, goal_id=None, body="A year of learning.")
@@ -213,9 +210,7 @@ async def test_api_returns_the_review_with_enum_values(env) -> None:
             "2025-01",
             make_snapshot(
                 "2025-01",
-                key_results=[
-                    _key_result(str(key_result.id), 150, "2025-01-08T12:00:00Z")
-                ],
+                key_results=[_key_result(str(key_result.id), 150, "2025-01-08T12:00:00Z")],
             ),
         )
     response = await env.api.get("/api/v1/annual-review/2025")

@@ -556,7 +556,6 @@ class MonthlyReviewService:
                     goal_id=str(row.goal_id),
                     goal_title=goal_titles[key_result_id],
                     metric=row.metric,
-                    update_source=row.update_source,
                     start_value=row.start_value,
                     base_value=start_value,
                     latest_value=latest_value,
@@ -642,11 +641,7 @@ class MonthlyReviewService:
             decisions=normalized_decisions,
         )
         snapshot = build_payload(review_input)
-        prompts = tuple(
-            uuid.UUID(item.key_result_id)
-            for item in kr_inputs
-            if item.update_source == "manual" and not item.retired
-        )
+        prompts = tuple(uuid.UUID(item.key_result_id) for item in kr_inputs if not item.retired)
         effects = tuple(
             ReviewEffect(
                 project_id=uuid.UUID(item.project_id),

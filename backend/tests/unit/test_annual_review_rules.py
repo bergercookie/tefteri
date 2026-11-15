@@ -57,7 +57,6 @@ def entry(
         deadline=date(2025, 12, 31),
         retired=False,
         status="active",
-        update_source="manual",
     )
 
 
@@ -145,13 +144,9 @@ def test_no_value_retired_and_in_progress() -> None:
     }
     assert key_result_outcome(**common) is KeyResultOutcome.NO_VALUE
     assert (
-        key_result_outcome(**{**common, "key_result_status": "retired"})
-        is KeyResultOutcome.RETIRED
+        key_result_outcome(**{**common, "key_result_status": "retired"}) is KeyResultOutcome.RETIRED
     )
-    assert (
-        key_result_outcome(**{**common, "goal_status": "retired"})
-        is KeyResultOutcome.RETIRED
-    )
+    assert key_result_outcome(**{**common, "goal_status": "retired"}) is KeyResultOutcome.RETIRED
     assert (
         key_result_outcome(
             **{
@@ -289,9 +284,7 @@ def test_movement_sign_and_hint() -> None:
         start_value=0, target=100, first_base=10, last_value=20, months=3, complete=True
     )
     assert move is not None and move.fraction == 0.1
-    away = movement(
-        start_value=0, target=100, first_base=10, last_value=5, months=3, complete=True
-    )
+    away = movement(start_value=0, target=100, first_base=10, last_value=5, months=3, complete=True)
     assert away is not None and away.fraction < 0
     assert (
         theme_hint(shipped=3, target_sum=3, move=move, months_with_target=3)
@@ -304,9 +297,7 @@ def test_movement_sign_and_hint() -> None:
         theme_hint(shipped=0, target_sum=3, move=quarter, months_with_target=3)
         is ThemeHint.MOVEMENT_NOT_FROM_THEME
     )
-    assert (
-        theme_hint(shipped=3, target_sum=3, move=quarter, months_with_target=3) is None
-    )
+    assert theme_hint(shipped=3, target_sum=3, move=quarter, months_with_target=3) is None
     assert theme_hint(shipped=3, target_sum=None, move=move, months_with_target=0) is None
 
 
@@ -378,13 +369,16 @@ def test_year_split_sums_stored_counts_and_hidden_stays_apart() -> None:
     assert split.total == 50
     assert split.hidden == 3
     assert split.counts.total == 50
-    assert sum(
-        (
-            split.percentages.goal_aligned,
-            split.percentages.maintenance,
-            split.percentages.off_plan,
+    assert (
+        sum(
+            (
+                split.percentages.goal_aligned,
+                split.percentages.maintenance,
+                split.percentages.off_plan,
+            )
         )
-    ) == 100
+        == 100
+    )
     assert split.months[2].not_stored is True
 
 
@@ -401,9 +395,7 @@ def test_read_snapshot_is_tolerant() -> None:
                     "target": 2,
                     "done": 1,
                     "status": "in_focus",
-                    "milestones": [
-                        {"milestone_id": "m", "name": "M", "done_on": "2025-01-03"}
-                    ],
+                    "milestones": [{"milestone_id": "m", "name": "M", "done_on": "2025-01-03"}],
                     "key_result_ids": ["kr"],
                 }
             ],
@@ -433,7 +425,6 @@ def test_read_snapshot_is_tolerant() -> None:
                     "deadline": "2025-12-31",
                     "retired": False,
                     "status": "active",
-                    "update_source": "manual",
                 }
             ],
         }

@@ -56,17 +56,6 @@ async def test_two_values_on_one_date_are_kept_and_the_later_entry_wins(env: Pro
     assert await _current(env, item["id"]) == 35
 
 
-async def test_a_manual_entry_on_an_automatic_key_result_is_stored_as_manual(
-    env: ProjectsEnv,
-) -> None:
-    item = await _key_result(env, source="automatic")
-
-    stored = await enter_value(env.api, item["id"], 12, f"{YEAR}-06-01")
-
-    assert stored["source"] == "manual"
-    assert key_result_of(await plan(env.api), item["id"])["update_source"] == "automatic"
-
-
 async def test_bad_values_future_dates_and_retired_key_results_are_refused(
     env: ProjectsEnv,
 ) -> None:

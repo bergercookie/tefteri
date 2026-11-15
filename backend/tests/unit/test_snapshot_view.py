@@ -66,3 +66,26 @@ def test_missing_and_unknown_fields_do_not_fail() -> None:
     )
     assert malformed.categories is None
     assert malformed.key_results["kr"].latest_value is None
+
+
+def test_a_snapshot_stored_with_the_removed_update_source_still_loads() -> None:
+    """Snapshots are immutable. Old ones keep ``update_source``; the reader ignores it."""
+    view = read_snapshot(
+        {
+            "schema_version": 1,
+            "month": "2025-03-01",
+            "key_results": [
+                {
+                    "key_result_id": "kr",
+                    "update_source": "automatic",
+                    "start_value": 0,
+                    "latest_value": 4,
+                    "target": 10,
+                }
+            ],
+        }
+    )
+
+    entry = view.key_results["kr"]
+    assert (entry.start_value, entry.latest_value, entry.target) == (0, 4, 10)
+    assert not hasattr(entry, "update_source")

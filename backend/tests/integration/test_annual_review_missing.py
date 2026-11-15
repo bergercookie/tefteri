@@ -12,7 +12,6 @@ def _entry(key_result_id: str, value: float, month: int) -> dict[str, object]:
     return {
         "key_result_id": key_result_id,
         "metric": "Stars",
-        "update_source": "manual",
         "start_value": 10,
         "base_value": 10,
         "latest_value": value,
@@ -59,9 +58,7 @@ async def test_eight_of_twelve_months_are_missing(env) -> None:
         "2025-10",
     ]
     gaps = [
-        point
-        for point in review["goals"][0]["key_results"][0]["series"]
-        if point["value"] is None
+        point for point in review["goals"][0]["key_results"][0]["series"] if point["value"] is None
     ]
     assert len(gaps) == 4
     assert all(point["status"] == "missing" for point in gaps)

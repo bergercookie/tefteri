@@ -194,7 +194,6 @@ def test_build_payload_is_plain_json_uses_stored_names_and_has_no_shares_or_effo
                 goal_id="goal",
                 goal_title="Goal title",
                 metric="One measure",
-                update_source="manual",
                 start_value=10,
                 base_value=12,
                 latest_value=14,

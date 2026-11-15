@@ -698,19 +698,17 @@ async def seed_database(
                     "Published repository stars",
                     12.0,
                     500.0,
-                    "manual",
                     theme_projects.get("Open source"),
                 ),
                 (
                     "Community contributors",
                     4.0,
                     100.0,
-                    "automatic",
                     theme_projects.get("Product quality"),
                 ),
             )
             months = three_months(today)
-            for slot, (metric, start, target, source, theme) in enumerate(key_result_specs, 1):
+            for slot, (metric, start, target, theme) in enumerate(key_result_specs, 1):
                 result = (
                     await db.execute(
                         select(KeyResult).where(
@@ -728,7 +726,6 @@ async def seed_database(
                         start_value=start,
                         target=target,
                         deadline=date(current_year, 12, 31),
-                        update_source=source,
                         status="active",
                         slot=slot,
                         position=slot - 1,
@@ -755,7 +752,7 @@ async def seed_database(
                                 started_at=datetime(current_year, 1, 1, tzinfo=UTC),
                             )
                         )
-                values = (20.0, 31.0, 45.0) if source == "manual" else (10.0, 25.0, 40.0)
+                values = (20.0, 31.0, 45.0) if slot == 1 else (10.0, 25.0, 40.0)
                 existing_dates = set(
                     (
                         await db.execute(
@@ -786,7 +783,7 @@ async def seed_database(
                             value=value,
                             at=stamp,
                             on_date=on_date,
-                            source=source,
+                            source="manual",
                             seq=next_seq,
                         )
                     )

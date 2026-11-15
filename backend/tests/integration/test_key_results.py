@@ -35,7 +35,6 @@ async def _key_result(
     start: float = 0,
     target: float = 10,
     deadline: str = "2026-12-31",
-    source: str = "manual",
 ) -> dict[str, object]:
     response = await api.post(
         f"{V1}/annual/goals/{goal_id}/key-results",
@@ -44,7 +43,6 @@ async def _key_result(
             "start_value": start,
             "target": target,
             "deadline": deadline,
-            "update_source": source,
         },
     )
     assert response.status_code == 201, response.text
@@ -129,7 +127,6 @@ async def test_editing_fields_records_old_and_new_values_and_start_is_immutable(
             "metric": "  New measure ",
             "target": 20,
             "deadline": "2026-11-30",
-            "update_source": "automatic",
             "start_value": 7,
         },
     )
@@ -137,17 +134,16 @@ async def test_editing_fields_records_old_and_new_values_and_start_is_immutable(
     assert response.json()["metric"] == "New measure"
     assert response.json()["target"] == 20
     assert response.json()["start_value"] == 0
-    assert response.json()["update_source"] == "automatic"
+    assert "update_source" not in response.json()
 
     history = (await api.get(f"{V1}/annual/{YEAR}/history")).json()["changes"]
     edits = [row for row in history if row["kind"] == "key_result_edited"]
-    assert {row["field"] for row in edits} == {"metric", "target", "deadline", "update_source"}
+    assert {row["field"] for row in edits} == {"metric", "target", "deadline"}
     values = {row["field"]: (row["old_value"], row["new_value"]) for row in edits}
     assert values == {
         "metric": ("Measure", "New measure"),
         "target": ("10.0", "20.0"),
         "deadline": ("2026-12-31", "2026-11-30"),
-        "update_source": ("manual", "automatic"),
     }
 
 

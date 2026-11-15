@@ -28,9 +28,8 @@ async def test_review_values_are_read_only_until_store_and_are_retry_safe(
     key_result = await add_key_result(
         env,
         rows,
-        metric="Automatic metric",
+        metric="Series metric",
         themes=("Theme",),
-        source="automatic",
         values=((MONTH - timedelta(days=2), 14), (MONTH + timedelta(days=3), 21)),
     )
     service = env.app.state.monthly_review_service
@@ -38,7 +37,7 @@ async def test_review_values_are_read_only_until_store_and_are_retry_safe(
 
     def forbidden_source_call(*args: Any, **kwargs: Any) -> Any:
         backend_calls.append((args, kwargs))
-        raise AssertionError("review attempted to pull an automatic value")
+        raise AssertionError("review attempted to pull a value from an outside source")
 
     monkeypatch.setattr(env.app.state.connection_service, "backend_for", forbidden_source_call)
     async with env.db() as db:

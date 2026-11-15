@@ -116,9 +116,9 @@ def _check_0020(conn: Any) -> None:
     ).scalar_one()
     insert = text(
         "insert into key_results (id, user_id, goal_id, year, metric, start_value,"
-        " target, deadline, update_source, status, slot, position, created_at,"
+        " target, deadline, status, slot, position, created_at,"
         " updated_at) values (gen_random_uuid(), :user_id, :goal_id, 2027, 'm', 0, 1,"
-        " '2027-12-31', 'manual', 'active', 1, 0, now(), now())"
+        " '2027-12-31', 'active', 1, 0, now(), now())"
     )
     key_result = {"user_id": user_id, "goal_id": goal_id}
     # Two active key results cannot share a slot on PostgreSQL (R-03).

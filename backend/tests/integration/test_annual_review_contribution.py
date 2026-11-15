@@ -15,7 +15,6 @@ def _kr(key_result_id, value: float, base: float, month: int) -> dict[str, objec
     return {
         "key_result_id": key_result_id,
         "metric": "Stars",
-        "update_source": "manual",
         "start_value": 0,
         "base_value": base,
         "latest_value": value,
