@@ -36,6 +36,13 @@ repos:
         pass_filenames: false
         files: ^(backend/|tach\.toml$)
 
+      - id: migration-heads
+        name: alembic (single migration head)
+        entry: scripts/check_migration_heads.sh
+        language: system
+        pass_filenames: false
+        files: ^backend/migrations/
+
       # ---- Frontend (Flutter) ----
       - id: flutter-analyze
         name: flutter analyze
