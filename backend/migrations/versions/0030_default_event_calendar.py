@@ -1,14 +1,14 @@
 """user setting: the calendar that a new event starts in
 
-Revision ID: 0029
-Revises: 0028
+Revision ID: 0030
+Revises: 0029
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0029"
-down_revision = "0028"
+revision = "0030"
+down_revision = "0029"
 branch_labels = None
 depends_on = None
 

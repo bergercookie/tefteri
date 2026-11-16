@@ -1461,7 +1461,8 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0029"
+    assert script.get_current_head() == "0030"
+    assert script.get_revision("0030").down_revision == "0029"
     revision = script.get_revision("0029")
     assert revision is not None
     assert revision.down_revision == "0028"
@@ -1572,7 +1573,8 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0029"
+    assert script.get_current_head() == "0030"
+    assert script.get_revision("0030").down_revision == "0029"
     revision = script.get_revision("0029")
     assert revision is not None
     assert revision.down_revision == "0028"
@@ -1580,18 +1582,18 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     assert script.get_revision("0027").down_revision == "0026"
 
 
-def test_0029_adds_the_default_event_calendar_and_keeps_users(
+def test_0030_adds_the_default_event_calendar_and_keeps_users(
     alembic_runner: MigrationContext, alembic_engine: Engine
 ) -> None:
-    alembic_runner.migrate_up_to("0028")
-    alembic_runner.insert_into("users", {"id": "11111111-1111-1111-1111-111111111111"} | _USER)
     alembic_runner.migrate_up_to("0029")
+    alembic_runner.insert_into("users", {"id": "11111111-1111-1111-1111-111111111111"} | _USER)
+    alembic_runner.migrate_up_to("0030")
     columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     assert "default_event_container_id" in columns
     with alembic_engine.connect() as conn:
         value = conn.execute(text("SELECT default_event_container_id FROM users")).scalar_one()
     assert value is None
-    alembic_runner.migrate_down_to("0028")
+    alembic_runner.migrate_down_to("0029")
     columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     assert "default_event_container_id" not in columns
 
