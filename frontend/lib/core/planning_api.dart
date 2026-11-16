@@ -119,6 +119,20 @@ class PlanningApi {
     return UserSettings.fromJson(r.data! as Map<String, dynamic>);
   }
 
+  /// `GET /me/settings/export`: the settings as a file body that [importSettings]
+  /// reads.
+  Future<Map<String, dynamic>> exportSettings() async {
+    final r = await _dio.get<Object?>('/me/settings/export');
+    return Map<String, dynamic>.from(r.data! as Map);
+  }
+
+  /// `POST /me/settings/import`: applies an export. The server refuses a file
+  /// that is not a Tefteri settings export and changes nothing then.
+  Future<UserSettings> importSettings(Map<String, dynamic> file) async {
+    final r = await _dio.post<Object?>('/me/settings/import', data: file);
+    return UserSettings.fromJson(r.data! as Map<String, dynamic>);
+  }
+
   /// `GET /checklists/{kind}/{day}`: the checklist of the week, month or
   /// year that holds [day].
   Future<PeriodChecklist> checklist(ChecklistKind kind, DateTime day) async {

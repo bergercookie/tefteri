@@ -1,7 +1,7 @@
 """Per-user settings endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
@@ -125,4 +125,60 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
                 else UNSET
             ),
         )
+    )
+
+
+EXPORT_FORMAT: Literal["tefteri-settings"] = "tefteri-settings"
+"""Names the kind of file, so that an unrelated JSON file is not imported by mistake."""
+EXPORT_VERSION: Literal[1] = 1
+"""Raised when the export changes in a way that an older import cannot read."""
+
+
+class ExportedSettings(BaseModel):
+    """The settings that move between installations.
+
+    The calendar for new events is left out: it is an id of this installation. Connections are
+    left out too, because they hold the credentials of other services.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    random_time_on_date_drop: bool | None = None
+    default_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
+    checklists: ChecklistsPatch | None = None
+    checklist_sources: ChecklistSourcesPatch | None = None
+
+
+class SettingsExport(BaseModel):
+    """A file with the user's settings, to keep or to import into another account."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    format: Literal["tefteri-settings"] = EXPORT_FORMAT
+    version: Literal[1] = EXPORT_VERSION
+    settings: ExportedSettings
+
+
+@router.get("/export")
+async def export_settings(db: Db, user: CurrentUser) -> SettingsExport:
+    """Return the current user's settings as a file that ``POST /me/settings/import`` reads."""
+    s = await _service.get(db, user.id)
+    return SettingsExport(
+        settings=ExportedSettings(
+            random_time_on_date_drop=s.random_time_on_date_drop,
+            default_reminder_minutes=s.default_reminder_minutes,
+            checklists=ChecklistsPatch(**s.checklists),
+            checklist_sources=ChecklistSourcesPatch(**s.checklist_sources),
+        )
+    )
+
+
+@router.post("/import")
+async def import_settings(body: SettingsExport, db: Db, user: CurrentUser) -> SettingsOut:
+    """Apply an export to the current user. Settings that the file leaves out stay as they are."""
+    patch = SettingsPatch(**body.settings.model_dump(exclude_none=True))
+    return await update_settings(
+        patch,
+        db,
+        user,
     )

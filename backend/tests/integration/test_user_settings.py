@@ -131,3 +131,102 @@ async def test_default_event_calendar_must_be_a_calendar_of_the_user(api: AsyncC
     )
     assert unknown.status_code == 422
     assert unknown.json()["code"] == "unknown_calendar"
+
+
+async def test_export_then_import_restores_the_settings(api: AsyncClient) -> None:
+    await api.patch(
+        f"{V1}/me/settings",
+        json={
+            "random_time_on_date_drop": True,
+            "default_reminder_minutes": 45,
+            "checklists": {"week": ["Review inbox", "Plan focus"], "year": ["Set goals"]},
+            "checklist_sources": {"month": "Notes/Monthly"},
+        },
+    )
+    exported = (await api.get(f"{V1}/me/settings/export")).json()
+    assert exported["format"] == "tefteri-settings"
+    assert exported["version"] == 1
+    assert "default_event_container_id" not in exported["settings"]
+    assert exported["settings"]["checklists"] == {
+        "week": ["Review inbox", "Plan focus"],
+        "month": [],
+        "year": ["Set goals"],
+    }
+
+    await api.patch(
+        f"{V1}/me/settings",
+        json={
+            "random_time_on_date_drop": False,
+            "default_reminder_minutes": 0,
+            "checklists": {"week": ["Other"]},
+            "checklist_sources": {"month": ""},
+        },
+    )
+    imported = await api.post(f"{V1}/me/settings/import", json=exported)
+    assert imported.status_code == 200
+    restored = (await api.get(f"{V1}/me/settings")).json()
+    assert imported.json() == restored
+    assert restored["random_time_on_date_drop"] is True
+    assert restored["default_reminder_minutes"] == 45
+    assert restored["checklists"]["week"] == ["Review inbox", "Plan focus"]
+    assert restored["checklist_sources"]["month"] == "Notes/Monthly"
+    assert (await api.get(f"{V1}/me/settings/export")).json() == exported
+
+
+async def test_import_into_another_account(api: AsyncClient) -> None:
+    await api.patch(f"{V1}/me/settings", json={"default_reminder_minutes": 60})
+    exported = (await api.get(f"{V1}/me/settings/export")).json()
+    await api.post(f"{V1}/users", json={"username": "sam", "password": "sam-password-1"})
+    token = (
+        await api.post(f"{V1}/auth/login", json={"username": "sam", "password": "sam-password-1"})
+    ).json()["token"]
+    sam = {"Authorization": f"Bearer {token}"}
+    done = await api.post(f"{V1}/me/settings/import", json=exported, headers=sam)
+    assert done.json()["default_reminder_minutes"] == 60
+
+
+async def test_import_keeps_what_the_file_leaves_out(api: AsyncClient) -> None:
+    await api.patch(
+        f"{V1}/me/settings",
+        json={"random_time_on_date_drop": True, "checklists": {"week": ["Keep me"]}},
+    )
+    file = {
+        "format": "tefteri-settings",
+        "version": 1,
+        "settings": {"default_reminder_minutes": 30},
+    }
+    got = (await api.post(f"{V1}/me/settings/import", json=file)).json()
+    assert got["default_reminder_minutes"] == 30
+    assert got["random_time_on_date_drop"] is True
+    assert got["checklists"]["week"] == ["Keep me"]
+
+
+async def test_import_refuses_a_wrong_or_invalid_file_and_changes_nothing(
+    api: AsyncClient,
+) -> None:
+    await api.patch(f"{V1}/me/settings", json={"default_reminder_minutes": 45})
+    bad_files = [
+        {"format": "other", "version": 1, "settings": {}},
+        {"format": "tefteri-settings", "version": 2, "settings": {}},
+        {"format": "tefteri-settings", "version": 1},
+        {"format": "tefteri-settings", "version": 1, "settings": {"is_admin": True}},
+        {"format": "tefteri-settings", "version": 1, "settings": {"default_reminder_minutes": -1}},
+        {
+            "format": "tefteri-settings",
+            "version": 1,
+            "settings": {"random_time_on_date_drop": True, "default_reminder_minutes": 10**9},
+        },
+    ]
+    for bad in bad_files:
+        assert (await api.post(f"{V1}/me/settings/import", json=bad)).status_code == 422, bad
+    after = (await api.get(f"{V1}/me/settings")).json()
+    assert after["default_reminder_minutes"] == 45
+    assert after["random_time_on_date_drop"] is False
+
+
+async def test_export_and_import_need_a_session(api: AsyncClient) -> None:
+    file = {"format": "tefteri-settings", "version": 1, "settings": {}}
+    api.headers.pop("Authorization", None)
+    api.cookies.clear()
+    assert (await api.get(f"{V1}/me/settings/export")).status_code == 401
+    assert (await api.post(f"{V1}/me/settings/import", json=file)).status_code == 401

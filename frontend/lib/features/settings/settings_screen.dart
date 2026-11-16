@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/settings_list.dart';
 import '../../core/shell.dart';
+import 'settings_transfer_card.dart';
 import 'versions_card.dart';
 
 /// Lists the settings pages of the signed-in user: Connections and Change
@@ -18,7 +19,13 @@ class SettingsScreen extends StatelessWidget {
     return AppShell(
       title: 'Settings',
       body: SettingsList(
-          footer: isInstalledClient ? const VersionsCard() : null,
+          footer: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SettingsTransferCard(),
+              if (isInstalledClient) const VersionsCard(),
+            ],
+          ),
           entries: const [
             SettingsEntry(
               keyName: 'connections',

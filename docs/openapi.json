@@ -2052,6 +2052,58 @@
         "title": "EntryPatch",
         "type": "object"
       },
+      "ExportedSettings": {
+        "additionalProperties": false,
+        "description": "The settings that move between installations.\n\nThe calendar for new events is left out: it is an id of this installation. Connections are\nleft out too, because they hold the credentials of other services.",
+        "properties": {
+          "checklist_sources": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChecklistSourcesPatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checklists": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChecklistsPatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_reminder_minutes": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Reminder Minutes"
+          },
+          "random_time_on_date_drop": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Time On Date Drop"
+          }
+        },
+        "title": "ExportedSettings",
+        "type": "object"
+      },
       "FlagReasonOut": {
         "description": "Why a key result has no usable theme.",
         "properties": {
@@ -5911,6 +5963,32 @@
           "not_stored"
         ],
         "title": "SeriesPointOut",
+        "type": "object"
+      },
+      "SettingsExport": {
+        "additionalProperties": false,
+        "description": "A file with the user's settings, to keep or to import into another account.",
+        "properties": {
+          "format": {
+            "const": "tefteri-settings",
+            "default": "tefteri-settings",
+            "title": "Format",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ExportedSettings"
+          },
+          "version": {
+            "const": 1,
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "title": "SettingsExport",
         "type": "object"
       },
       "SettingsOut": {
@@ -11283,6 +11361,70 @@
           }
         },
         "summary": "Update Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/settings/export": {
+      "get": {
+        "description": "Return the current user's settings as a file that ``POST /me/settings/import`` reads.",
+        "operationId": "export_settings_api_v1_me_settings_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsExport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/settings/import": {
+      "post": {
+        "description": "Apply an export to the current user. Settings that the file leaves out stay as they are.",
+        "operationId": "import_settings_api_v1_me_settings_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsExport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Settings",
         "tags": [
           "settings"
         ]
