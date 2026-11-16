@@ -121,3 +121,14 @@ Delete a user only when you do not need the data of the user again.
 5. Confirm the deletion.
 
 Tefteri removes the account and the data of the user. You cannot undo this action.
+
+## Export and import your settings
+
+Open the menu, choose Settings, and find the Export and import card.
+
+- Export shows your planner settings and checklists as text. Choose Copy and keep it
+  somewhere safe.
+- Import takes that text. Paste it and choose Import. Anything the text leaves out stays as it is.
+
+Connections are not included, because they hold your passwords and tokens. The calendar for new
+events is not included either, because it belongs to one installation.
