@@ -130,5 +130,11 @@ Open the menu, choose Settings, and find the Export and import card.
   somewhere safe.
 - Import takes that text. Paste it and choose Import. Anything the text leaves out stays as it is.
 
-Connections are not included, because they hold your passwords and tokens. The calendar for new
-events is not included either, because it belongs to one installation.
+Before you export, you can tick Include connections. The text then also holds your connections
+with their passwords and tokens, and the calendar for new events. Anyone who has this text can use
+your connections, so keep it private. The box is off by default.
+
+When you import text with connections, Tefteri adds each connection that you do not have yet and
+syncs it. It skips a connection that has the same app and name as one you have. It chooses the
+calendar for new events again when that calendar is there after the sync, and tells you what it
+did.

@@ -120,17 +120,20 @@ class PlanningApi {
   }
 
   /// `GET /me/settings/export`: the settings as a file body that [importSettings]
-  /// reads.
-  Future<Map<String, dynamic>> exportSettings() async {
-    final r = await _dio.get<Object?>('/me/settings/export');
+  /// reads. With [includeConnections] the file also holds the connections with
+  /// their passwords and tokens, and the calendar for new events.
+  Future<Map<String, dynamic>> exportSettings(
+      {bool includeConnections = false}) async {
+    final r = await _dio.get<Object?>('/me/settings/export',
+        queryParameters: {if (includeConnections) 'include_connections': true});
     return Map<String, dynamic>.from(r.data! as Map);
   }
 
   /// `POST /me/settings/import`: applies an export. The server refuses a file
   /// that is not a Tefteri settings export and changes nothing then.
-  Future<UserSettings> importSettings(Map<String, dynamic> file) async {
+  Future<SettingsImportResult> importSettings(Map<String, dynamic> file) async {
     final r = await _dio.post<Object?>('/me/settings/import', data: file);
-    return UserSettings.fromJson(r.data! as Map<String, dynamic>);
+    return SettingsImportResult.fromJson(r.data! as Map<String, dynamic>);
   }
 
   /// `GET /checklists/{kind}/{day}`: the checklist of the week, month or
@@ -275,3 +278,59 @@ class PlanningApi {
 /// Provides the planning API; override [dioProvider] in tests.
 final planningApiProvider =
     Provider<PlanningApi>((ref) => PlanningApi(ref.watch(dioProvider)));
+
+/// What an import did with the connections of the file.
+class SettingsImportResult {
+  /// Creates a result.
+  const SettingsImportResult({
+    this.hadConnections = false,
+    this.added = 0,
+    this.skipped = const [],
+    this.failed = const {},
+    this.calendarRestored = false,
+  });
+
+  /// Parses the answer of `POST /me/settings/import`.
+  factory SettingsImportResult.fromJson(Map<String, dynamic> j) {
+    final c = j['connections'] as Map?;
+    if (c == null) return const SettingsImportResult();
+    return SettingsImportResult(
+      hadConnections: true,
+      added: (c['added'] as num?)?.toInt() ?? 0,
+      skipped: [for (final n in (c['skipped'] as List? ?? const [])) '$n'],
+      failed: {
+        for (final e in ((c['failed'] as Map?) ?? const {}).entries)
+          '${e.key}': '${e.value}',
+      },
+      calendarRestored: c['default_event_calendar_restored'] == true,
+    );
+  }
+
+  /// True when the file held connections.
+  final bool hadConnections;
+
+  /// Connections that were added.
+  final int added;
+
+  /// Names of connections that the user already had.
+  final List<String> skipped;
+
+  /// Reason by name for each connection that could not be added.
+  final Map<String, String> failed;
+
+  /// True when the calendar for new events was chosen again.
+  final bool calendarRestored;
+
+  /// One sentence for the user.
+  String get message {
+    if (!hadConnections) return 'Settings imported.';
+    final parts = <String>['Settings imported', '$added connections added'];
+    if (skipped.isNotEmpty) parts.add('${skipped.length} already there');
+    if (failed.isNotEmpty) {
+      parts.add(
+          'could not add ${failed.entries.map((e) => '${e.key} (${e.value})').join(', ')}');
+    }
+    if (calendarRestored) parts.add('calendar for new events set');
+    return '${parts.join('; ')}.';
+  }
+}

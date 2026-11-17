@@ -1,13 +1,18 @@
 """Per-user settings endpoints."""
 
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from tefteri.api.deps import CurrentUser, Db
 from tefteri.services.checklists import MAX_ITEM_LENGTH, MAX_ITEMS
+from tefteri.services.connection_transfer import (
+    CalendarRef,
+    ConnectionTransfer,
+    ExportedConnection,
+)
 from tefteri.services.settings import (
     MAX_REMINDER_MINUTES,
     MAX_SOURCE_PATH_LENGTH,
@@ -137,8 +142,8 @@ EXPORT_VERSION: Literal[1] = 1
 class ExportedSettings(BaseModel):
     """The settings that move between installations.
 
-    The calendar for new events is left out: it is an id of this installation. Connections are
-    left out too, because they hold the credentials of other services.
+    Connections hold the credentials of other services, and the calendar for new events is an id
+    of this installation, so they are in the file only when the user asks for them.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -149,21 +154,72 @@ class ExportedSettings(BaseModel):
     checklist_sources: ChecklistSourcesPatch | None = None
 
 
+class ExportedConnectionModel(BaseModel):
+    """A connection with its credentials in the clear."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    display_name: str = Field(min_length=1, max_length=150)
+    settings: dict[str, Any] = Field(default_factory=dict)
+    credentials: dict[str, Any] = Field(default_factory=dict)
+
+
+class CalendarRefModel(BaseModel):
+    """A calendar, named by its connection and its id in the calendar app."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    connection: str
+    remote_id: str
+
+
 class SettingsExport(BaseModel):
-    """A file with the user's settings, to keep or to import into another account."""
+    """A file with the user's settings, to keep or to import into another account.
+
+    ``connections`` and ``default_event_calendar`` are there only when the user ticked the box.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     format: Literal["tefteri-settings"] = EXPORT_FORMAT
     version: Literal[1] = EXPORT_VERSION
     settings: ExportedSettings
+    connections: list[ExportedConnectionModel] | None = None
+    """The user's connections with their credentials. A secret: keep the file safe."""
+    default_event_calendar: CalendarRefModel | None = None
+
+
+class ConnectionsImportOut(BaseModel):
+    """What an import did with the connections of the file."""
+
+    added: int
+    skipped: list[str]
+    """Connections that the user already has."""
+    failed: dict[str, str]
+    """The reason by name for each connection that could not be added."""
+    default_event_calendar_restored: bool
+
+
+class ImportOut(BaseModel):
+    """The settings after an import, and what happened to the connections."""
+
+    settings: SettingsOut
+    connections: ConnectionsImportOut | None
+    """Null when the file had no connections."""
 
 
 @router.get("/export")
-async def export_settings(db: Db, user: CurrentUser) -> SettingsExport:
-    """Return the current user's settings as a file that ``POST /me/settings/import`` reads."""
+async def export_settings(
+    request: Request, db: Db, user: CurrentUser, include_connections: bool = False
+) -> SettingsExport:
+    """Return the current user's settings as a file that ``POST /me/settings/import`` reads.
+
+    With ``include_connections`` the file also holds the connections with their credentials and
+    the calendar for new events.
+    """
     s = await _service.get(db, user.id)
-    return SettingsExport(
+    out = SettingsExport(
         settings=ExportedSettings(
             random_time_on_date_drop=s.random_time_on_date_drop,
             default_reminder_minutes=s.default_reminder_minutes,
@@ -171,14 +227,58 @@ async def export_settings(db: Db, user: CurrentUser) -> SettingsExport:
             checklist_sources=ChecklistSourcesPatch(**s.checklist_sources),
         )
     )
+    if include_connections:
+        connections, calendar = await _transfer(request).export(db, user.id)
+        out.connections = [
+            ExportedConnectionModel(
+                provider=c.provider,
+                display_name=c.display_name,
+                settings=c.settings,
+                credentials=c.credentials,
+            )
+            for c in connections
+        ]
+        if calendar is not None:
+            out.default_event_calendar = CalendarRefModel(
+                connection=calendar.connection, remote_id=calendar.remote_id
+            )
+    return out
 
 
 @router.post("/import")
-async def import_settings(body: SettingsExport, db: Db, user: CurrentUser) -> SettingsOut:
-    """Apply an export to the current user. Settings that the file leaves out stay as they are."""
+async def import_settings(
+    request: Request, body: SettingsExport, db: Db, user: CurrentUser
+) -> ImportOut:
+    """Apply an export to the current user. Settings that the file leaves out stay as they are.
+
+    Connections of the file are added unless the user has one with the same provider and name.
+    """
     patch = SettingsPatch(**body.settings.model_dump(exclude_none=True))
-    return await update_settings(
-        patch,
+    settings = await update_settings(patch, db, user)
+    if body.connections is None and body.default_event_calendar is None:
+        return ImportOut(settings=settings, connections=None)
+    calendar = body.default_event_calendar
+    done = await _transfer(request).import_(
         db,
-        user,
+        user.id,
+        [
+            ExportedConnection(c.provider, c.display_name, c.settings, c.credentials)
+            for c in body.connections or []
+        ],
+        CalendarRef(calendar.connection, calendar.remote_id) if calendar else None,
+    )
+    return ImportOut(
+        settings=SettingsOut.of(await _service.get(db, user.id)),
+        connections=ConnectionsImportOut(
+            added=done.added,
+            skipped=done.skipped,
+            failed=done.failed,
+            default_event_calendar_restored=done.default_calendar_restored,
+        ),
+    )
+
+
+def _transfer(request: Request) -> ConnectionTransfer:
+    return ConnectionTransfer(
+        request.app.state.connection_service, request.app.state.sync_service, _service
     )

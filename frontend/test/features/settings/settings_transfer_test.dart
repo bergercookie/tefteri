@@ -42,12 +42,95 @@ void main() {
 
     await tester.tap(find.byKey(const Key('export-settings-button')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('export-run-button')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('export-settings-text')), findsOneWidget);
+    expect(find.byKey(const Key('export-secret-warning')), findsNothing);
 
     await tester.tap(find.byKey(const Key('export-copy-button')));
     await tester.pumpAndSettle();
     expect(jsonDecode(copied!), _file);
     expect(find.text('Settings copied.'), findsOneWidget);
+  });
+
+  testWidgets('connections are left out unless the box is ticked',
+      (tester) async {
+    final withConnections = {
+      ..._file,
+      'connections': [
+        {
+          'provider': 'vikunja',
+          'display_name': 'V',
+          'settings': <String, Object?>{},
+          'credentials': {'token': 'secret'},
+        }
+      ],
+    };
+    final api = FakeApi({
+      'GET /me/settings/export': (o) =>
+          o.queryParameters['include_connections'] == true
+              ? withConnections
+              : _file,
+    });
+    await pumpWithApi(
+        tester, api, const Scaffold(body: SettingsTransferCard()));
+
+    // Unticked by default.
+    await tester.tap(find.byKey(const Key('export-settings-button')));
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<CheckboxListTile>(
+                find.byKey(const Key('export-include-connections')))
+            .value,
+        isFalse);
+    await tester.tap(find.byKey(const Key('export-run-button')));
+    await tester.pumpAndSettle();
+    expect(api.where('GET /me/settings/export').single.query,
+        isNot(contains('include_connections')));
+    expect(find.textContaining('secret'), findsNothing);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    // Ticked: the file has the connections and a warning is shown.
+    await tester.tap(find.byKey(const Key('export-settings-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('export-include-connections')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('export-run-button')));
+    await tester.pumpAndSettle();
+    expect(
+        api.where('GET /me/settings/export').last.query['include_connections'],
+        true);
+    expect(find.byKey(const Key('export-secret-warning')), findsOneWidget);
+    expect(find.textContaining('secret'), findsOneWidget);
+  });
+
+  testWidgets('import tells what happened to the connections', (tester) async {
+    final api = FakeApi({
+      'POST /me/settings/import': {
+        'settings': {'random_time_on_date_drop': true},
+        'connections': {
+          'added': 2,
+          'skipped': ['Old'],
+          'failed': {'Bad': 'Unknown provider: nope'},
+          'default_event_calendar_restored': true,
+        },
+      },
+    });
+    await pumpWithApi(
+        tester, api, const Scaffold(body: SettingsTransferCard()));
+    await tester.tap(find.byKey(const Key('import-settings-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('import-settings-field')), jsonEncode(_file));
+    await tester.tap(find.byKey(const Key('import-submit-button')));
+    await tester.pumpAndSettle();
+    expect(
+        find.text('Settings imported; 2 connections added; 1 already there; '
+            'could not add Bad (Unknown provider: nope); calendar for new '
+            'events set.'),
+        findsOneWidget);
   });
 
   testWidgets('a failed export shows the message', (tester) async {
@@ -58,6 +141,8 @@ void main() {
     await pumpWithApi(
         tester, api, const Scaffold(body: SettingsTransferCard()));
     await tester.tap(find.byKey(const Key('export-settings-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('export-run-button')));
     await tester.pumpAndSettle();
     expect(find.text('Could not export.'), findsOneWidget);
   });

@@ -1,5 +1,7 @@
 """Per-user settings: the random time for date-only drops and the default reminder."""
 
+from collections.abc import Awaitable, Callable
+
 from httpx import AsyncClient
 
 from tefteri.domain.entities import Container
@@ -147,6 +149,9 @@ async def test_export_then_import_restores_the_settings(api: AsyncClient) -> Non
     assert exported["format"] == "tefteri-settings"
     assert exported["version"] == 1
     assert "default_event_container_id" not in exported["settings"]
+    # Connections and their credentials are in the file only when the user asks for them.
+    assert exported["connections"] is None
+    assert exported["default_event_calendar"] is None
     assert exported["settings"]["checklists"] == {
         "week": ["Review inbox", "Plan focus"],
         "month": [],
@@ -165,7 +170,7 @@ async def test_export_then_import_restores_the_settings(api: AsyncClient) -> Non
     imported = await api.post(f"{V1}/me/settings/import", json=exported)
     assert imported.status_code == 200
     restored = (await api.get(f"{V1}/me/settings")).json()
-    assert imported.json() == restored
+    assert imported.json() == {"settings": restored, "connections": None}
     assert restored["random_time_on_date_drop"] is True
     assert restored["default_reminder_minutes"] == 45
     assert restored["checklists"]["week"] == ["Review inbox", "Plan focus"]
@@ -182,7 +187,7 @@ async def test_import_into_another_account(api: AsyncClient) -> None:
     ).json()["token"]
     sam = {"Authorization": f"Bearer {token}"}
     done = await api.post(f"{V1}/me/settings/import", json=exported, headers=sam)
-    assert done.json()["default_reminder_minutes"] == 60
+    assert done.json()["settings"]["default_reminder_minutes"] == 60
 
 
 async def test_import_keeps_what_the_file_leaves_out(api: AsyncClient) -> None:
@@ -195,7 +200,7 @@ async def test_import_keeps_what_the_file_leaves_out(api: AsyncClient) -> None:
         "version": 1,
         "settings": {"default_reminder_minutes": 30},
     }
-    got = (await api.post(f"{V1}/me/settings/import", json=file)).json()
+    got = (await api.post(f"{V1}/me/settings/import", json=file)).json()["settings"]
     assert got["default_reminder_minutes"] == 30
     assert got["random_time_on_date_drop"] is True
     assert got["checklists"]["week"] == ["Keep me"]
@@ -230,3 +235,98 @@ async def test_export_and_import_need_a_session(api: AsyncClient) -> None:
     api.cookies.clear()
     assert (await api.get(f"{V1}/me/settings/export")).status_code == 401
     assert (await api.post(f"{V1}/me/settings/import", json=file)).status_code == 401
+
+
+async def _google(api: AsyncClient, name: str = "G") -> dict[str, str]:
+    r = await api.post(
+        f"{V1}/connections",
+        json={
+            "provider": "google_calendar",
+            "display_name": name,
+            "settings": {"k": "v"},
+            "credentials": {"refresh_token": "secret-token"},
+        },
+    )
+    assert r.status_code == 201, r.text
+    return r.json()  # type: ignore[no-any-return]
+
+
+async def test_export_holds_connections_only_when_asked(api: AsyncClient, world: FakeWorld) -> None:
+    world.calendars["default"].containers = [Container("work", "Work")]
+    connection = await _google(api)
+    calendar = (await api.get(f"{V1}/connections/{connection['id']}/containers")).json()[0]
+    await api.patch(f"{V1}/me/settings", json={"default_event_container_id": calendar["id"]})
+
+    plain = (await api.get(f"{V1}/me/settings/export")).json()
+    assert plain["connections"] is None
+    assert "secret-token" not in str(plain)
+
+    full = (await api.get(f"{V1}/me/settings/export", params={"include_connections": True})).json()
+    assert full["connections"] == [
+        {
+            "provider": "google_calendar",
+            "display_name": "G",
+            "settings": {"k": "v"},
+            "credentials": {"refresh_token": "secret-token"},
+        }
+    ]
+    assert full["default_event_calendar"] == {"connection": "G", "remote_id": "work"}
+
+
+async def test_import_adds_connections_and_restores_the_calendar(
+    api: AsyncClient, world: FakeWorld, make_user: Callable[..., Awaitable[AsyncClient]]
+) -> None:
+    world.calendars["default"].containers = [Container("work", "Work")]
+    connection = await _google(api)
+    calendar = (await api.get(f"{V1}/connections/{connection['id']}/containers")).json()[0]
+    await api.patch(f"{V1}/me/settings", json={"default_event_container_id": calendar["id"]})
+    full = (await api.get(f"{V1}/me/settings/export", params={"include_connections": True})).json()
+
+    sam = await make_user("sam")
+    done = await sam.post(f"{V1}/me/settings/import", json=full)
+    assert done.status_code == 200, done.text
+    assert done.json()["connections"] == {
+        "added": 1,
+        "skipped": [],
+        "failed": {},
+        "default_event_calendar_restored": True,
+    }
+    mine = (await sam.get(f"{V1}/connections")).json()
+    assert [(c["provider"], c["display_name"]) for c in mine] == [("google_calendar", "G")]
+    sams = (await sam.get(f"{V1}/connections/{mine[0]['id']}/containers")).json()
+    chosen = (await sam.get(f"{V1}/me/settings")).json()["default_event_container_id"]
+    assert chosen == sams[0]["id"]
+    assert chosen != calendar["id"]  # a calendar of Sam's own, not of the exporting account
+
+    # A second import adds nothing: the connection is there already.
+    again = (await sam.post(f"{V1}/me/settings/import", json=full)).json()["connections"]
+    assert again["added"] == 0
+    assert again["skipped"] == ["G"]
+    assert len((await sam.get(f"{V1}/connections")).json()) == 1
+
+
+async def test_import_reports_a_connection_that_cannot_be_added(api: AsyncClient) -> None:
+    file = {
+        "format": "tefteri-settings",
+        "version": 1,
+        "settings": {},
+        "connections": [
+            {"provider": "nope", "display_name": "Bad", "settings": {}, "credentials": {}},
+            {"provider": "trilium", "display_name": "Notes", "settings": {}, "credentials": {}},
+        ],
+        "default_event_calendar": {"connection": "Notes", "remote_id": "gone"},
+    }
+    out = (await api.post(f"{V1}/me/settings/import", json=file)).json()["connections"]
+    assert out["added"] == 1
+    assert out["failed"] == {"Bad": "Unknown provider: nope"}
+    assert out["default_event_calendar_restored"] is False
+    names = [c["display_name"] for c in (await api.get(f"{V1}/connections")).json()]
+    assert names == ["Notes"]
+    assert (await api.get(f"{V1}/me/settings")).json()["default_event_container_id"] is None
+
+
+async def test_import_without_connections_leaves_connections_alone(api: AsyncClient) -> None:
+    await _google(api)
+    file = {"format": "tefteri-settings", "version": 1, "settings": {"default_reminder_minutes": 5}}
+    await api.post(f"{V1}/me/settings/import", json=file)
+    assert len((await api.get(f"{V1}/connections")).json()) == 1

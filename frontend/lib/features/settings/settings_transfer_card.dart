@@ -46,8 +46,8 @@ class SettingsTransferCard extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: Space.xs),
             const Text('Copy your planner settings and checklists, or paste '
-                'them into this account. Connections are not included, '
-                'because they hold your passwords and tokens.'),
+                'them into this account. You can include your connections '
+                'and the calendar for new events when you export.'),
             const SizedBox(height: Space.sm),
             Wrap(spacing: Space.sm, children: [
               OutlinedButton.icon(
@@ -70,58 +70,21 @@ class SettingsTransferCard extends ConsumerWidget {
   }
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final String text;
-    try {
-      final file = await ref.read(planningApiProvider).exportSettings();
-      text = const JsonEncoder.withIndent('  ').convert(file);
-    } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
-      return;
-    }
-    if (!context.mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Export settings'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: SelectableText(text,
-                key: const Key('export-settings-text'),
-                style: Theme.of(ctx).textTheme.bodySmall),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-          FilledButton(
-            key: const Key('export-copy-button'),
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: text));
-              messenger.showSnackBar(
-                  const SnackBar(content: Text('Settings copied.')));
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Copy'),
-          ),
-        ],
-      ),
+      builder: (ctx) => _ExportDialog(api: ref.read(planningApiProvider)),
     );
   }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final imported = await showDialog<bool>(
+    final message = await showDialog<String>(
       context: context,
       builder: (ctx) => _ImportDialog(api: ref.read(planningApiProvider)),
     );
-    if (imported == true) {
+    if (message != null) {
       ref.invalidate(userSettingsProvider);
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Settings imported.')));
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 }
@@ -159,8 +122,8 @@ class _ImportDialogState extends State<_ImportDialog> {
       _error = null;
     });
     try {
-      await widget.api.importSettings(file);
-      if (mounted) Navigator.pop(context, true);
+      final result = await widget.api.importSettings(file);
+      if (mounted) Navigator.pop(context, result.message);
     } on Object catch (e) {
       if (mounted) {
         setState(() {
@@ -190,7 +153,7 @@ class _ImportDialogState extends State<_ImportDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _busy ? null : () => Navigator.pop(context, false),
+          onPressed: _busy ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         FilledButton(
@@ -198,6 +161,120 @@ class _ImportDialogState extends State<_ImportDialog> {
           onPressed: _busy ? null : _submit,
           child: const Text('Import'),
         ),
+      ],
+    );
+  }
+}
+
+class _ExportDialog extends StatefulWidget {
+  const _ExportDialog({required this.api});
+
+  final PlanningApi api;
+
+  @override
+  State<_ExportDialog> createState() => _ExportDialogState();
+}
+
+class _ExportDialogState extends State<_ExportDialog> {
+  bool _includeConnections = false;
+  bool _busy = false;
+  String? _error;
+  String? _text;
+
+  Future<void> _run() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final file = await widget.api
+          .exportSettings(includeConnections: _includeConnections);
+      if (mounted) {
+        setState(
+            () => _text = const JsonEncoder.withIndent('  ').convert(file));
+      }
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = apiErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = _text;
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: const Text('Export settings'),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: text != null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_includeConnections)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: Space.sm),
+                        child: Text(
+                          'This text holds your passwords and tokens. Keep it '
+                          'private.',
+                          key: const Key('export-secret-warning'),
+                          style: TextStyle(color: scheme.error),
+                        ),
+                      ),
+                    SelectableText(text,
+                        key: const Key('export-settings-text'),
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckboxListTile(
+                      key: const Key('export-include-connections'),
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Include connections'),
+                      subtitle: const Text(
+                          'Adds your connections with their passwords and '
+                          'tokens, and the calendar for new events. Anyone '
+                          'who has the text can use them.'),
+                      value: _includeConnections,
+                      onChanged: _busy
+                          ? null
+                          : (v) => setState(() => _includeConnections = v!),
+                    ),
+                    if (_error != null)
+                      Text(_error!, style: TextStyle(color: scheme.error)),
+                  ],
+                ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+        if (text == null)
+          FilledButton(
+            key: const Key('export-run-button'),
+            onPressed: _busy ? null : _run,
+            child: const Text('Export'),
+          )
+        else
+          FilledButton(
+            key: const Key('export-copy-button'),
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              await Clipboard.setData(ClipboardData(text: text));
+              messenger.showSnackBar(
+                  const SnackBar(content: Text('Settings copied.')));
+              navigator.pop();
+            },
+            child: const Text('Copy'),
+          ),
       ],
     );
   }
