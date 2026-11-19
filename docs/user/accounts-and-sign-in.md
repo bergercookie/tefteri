@@ -23,8 +23,10 @@ Tefteri shows your planning screens after you sign in.
 
 ## Session length
 
-Your session ends after 8 hours. Then tefteri shows the sign-in screen again. Sign in again to continue.
-Your administrator can change this time.
+The sign-in screen has a box, Stay signed in for 30 days. It is on by default. With the box on,
+your session lasts 30 days. With the box off, your session ends after 8 hours. Turn the box off on a
+shared computer. When the session ends, tefteri shows the sign-in screen again. Sign in again to
+continue. Your administrator can change these times.
 
 In the web browser, you stay signed in when you reload the page or open tefteri again,
 until the session ends. Choose Sign out to end the session before that time.

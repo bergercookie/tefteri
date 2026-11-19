@@ -67,6 +67,18 @@ async def test_session_expires_after_lifetime(make_settings: Callable[..., Setti
         assert (await c.get("/api/v1/auth/me", headers=h)).status_code == 401
 
 
+async def test_stay_signed_in_lasts_30_days(client: AsyncClient) -> None:
+    short = await client.post(LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD})
+    long = await client.post(
+        LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD, "remember": True}
+    )
+    now = datetime.now(UTC)
+    short_left = datetime.fromisoformat(short.json()["expires_at"]) - now
+    long_left = datetime.fromisoformat(long.json()["expires_at"]) - now
+    assert timedelta(hours=7) < short_left <= timedelta(hours=8)
+    assert timedelta(days=29) < long_left <= timedelta(days=30)
+
+
 async def test_methods_health_version(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/auth/methods")).json() == {"password": True}
     assert (await client.get("/health")).json() == {"status": "ok"}

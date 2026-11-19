@@ -3323,6 +3323,11 @@
             "title": "Password",
             "type": "string"
           },
+          "remember": {
+            "default": false,
+            "title": "Remember",
+            "type": "boolean"
+          },
           "username": {
             "title": "Username",
             "type": "string"

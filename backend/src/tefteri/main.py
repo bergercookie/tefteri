@@ -124,6 +124,7 @@ def create_app(
     auth_service = AuthService(
         LoginThrottle(cfg.login_max_failures, cfg.login_window_seconds, cfg.login_block_seconds),
         cfg.session_lifetime_seconds,
+        remember_lifetime_seconds=cfg.remember_lifetime_seconds,
     )
 
     connection_service = ConnectionService(

@@ -22,6 +22,8 @@ class LoginRequest(BaseModel):
 
     username: str
     password: str
+    remember: bool = False
+    """Stay signed in: the session lasts 30 days (by default) instead of 8 hours."""
 
 
 class LoginResponse(BaseModel):
@@ -72,7 +74,7 @@ async def login(
     signed in across reloads without page scripts ever being able to read the token.
     """
     try:
-        token, expires = await auth.login(db, body.username, body.password)
+        token, expires = await auth.login(db, body.username, body.password, body.remember)
     except Throttled as exc:
         raise ApiError(
             429,
