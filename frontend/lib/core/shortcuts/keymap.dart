@@ -87,6 +87,15 @@ class LeaveTextFieldIntent extends Intent {
   const LeaveTextFieldIntent();
 }
 
+/// Scrolls the view that is on screen by one page.
+class PageScrollIntent extends Intent {
+  /// Creates the intent; [forward] is Page Down.
+  const PageScrollIntent({required this.forward});
+
+  /// True to scroll down, false to scroll up.
+  final bool forward;
+}
+
 /// One keyboard shortcut.
 @immutable
 class AppShortcut {
@@ -154,6 +163,18 @@ final List<AppShortcut> appShortcuts = [
     description: 'Sync all connections, also while typing',
     activator: SingleActivator(LogicalKeyboardKey.f5),
     intent: SyncIntent(),
+  ),
+  const AppShortcut(
+    keys: 'Page Down',
+    description: 'Scroll the page down',
+    activator: SingleActivator(LogicalKeyboardKey.pageDown),
+    intent: PageScrollIntent(forward: true),
+  ),
+  const AppShortcut(
+    keys: 'Page Up',
+    description: 'Scroll the page up',
+    activator: SingleActivator(LogicalKeyboardKey.pageUp),
+    intent: PageScrollIntent(forward: false),
   ),
   const AppShortcut(
     keys: '?',

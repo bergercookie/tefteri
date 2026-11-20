@@ -13,6 +13,7 @@ import '../auth_controller.dart';
 import '../event_input.dart';
 import '../find.dart';
 import 'keymap.dart';
+import 'page_scroll.dart';
 
 /// True while a text field has the keyboard focus.
 bool textFieldHasFocus() {
@@ -117,6 +118,15 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
               if (context != null) showShortcutHelp(context);
             },
             (_) => _plainAllowed(),
+          ),
+          // Not while a dialog is open (its own list takes the key) or while the
+          // user types, where the keys belong to the text field.
+          PageScrollIntent: _KeyAction<PageScrollIntent>(
+            (i) {
+              final context = _navigator?.context;
+              if (context != null) pageScroll(context, forward: i.forward);
+            },
+            (_) => _signedIn && _onView && !textFieldHasFocus(),
           ),
           LeaveTextFieldIntent: _KeyAction<LeaveTextFieldIntent>(
             (_) => FocusManager.instance.primaryFocus?.unfocus(),
