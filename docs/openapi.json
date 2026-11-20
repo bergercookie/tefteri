@@ -426,6 +426,26 @@
         "title": "CalendarItemOut",
         "type": "object"
       },
+      "CalendarRefModel": {
+        "additionalProperties": false,
+        "description": "A calendar, named by its connection and its id in the calendar app.",
+        "properties": {
+          "connection": {
+            "title": "Connection",
+            "type": "string"
+          },
+          "remote_id": {
+            "title": "Remote Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
+          "remote_id"
+        ],
+        "title": "CalendarRefModel",
+        "type": "object"
+      },
       "CanCloseOut": {
         "description": "Whether the open tasks can go back to the theme.",
         "properties": {
@@ -1505,6 +1525,41 @@
         "title": "ConnectionPatch",
         "type": "object"
       },
+      "ConnectionsImportOut": {
+        "description": "What an import did with the connections of the file.",
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "default_event_calendar_restored": {
+            "title": "Default Event Calendar Restored",
+            "type": "boolean"
+          },
+          "failed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Failed",
+            "type": "object"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "added",
+          "skipped",
+          "failed",
+          "default_event_calendar_restored"
+        ],
+        "title": "ConnectionsImportOut",
+        "type": "object"
+      },
       "ContainerOut": {
         "description": "A project, calendar or note subtree.",
         "properties": {
@@ -2052,9 +2107,41 @@
         "title": "EntryPatch",
         "type": "object"
       },
+      "ExportedConnectionModel": {
+        "additionalProperties": false,
+        "description": "A connection with its credentials in the clear.",
+        "properties": {
+          "credentials": {
+            "additionalProperties": true,
+            "title": "Credentials",
+            "type": "object"
+          },
+          "display_name": {
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "provider",
+          "display_name"
+        ],
+        "title": "ExportedConnectionModel",
+        "type": "object"
+      },
       "ExportedSettings": {
         "additionalProperties": false,
-        "description": "The settings that move between installations.\n\nThe calendar for new events is left out: it is an id of this installation. Connections are\nleft out too, because they hold the credentials of other services.",
+        "description": "The settings that move between installations.\n\nConnections hold the credentials of other services, and the calendar for new events is an id\nof this installation, so they are in the file only when the user asks for them.",
         "properties": {
           "checklist_sources": {
             "anyOf": [
@@ -2850,6 +2937,30 @@
         "title": "HistoryTotalsOut",
         "type": "object"
       },
+      "ImportOut": {
+        "description": "The settings after an import, and what happened to the connections.",
+        "properties": {
+          "connections": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionsImportOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SettingsOut"
+          }
+        },
+        "required": [
+          "settings",
+          "connections"
+        ],
+        "title": "ImportOut",
+        "type": "object"
+      },
       "KeyResultCreateIn": {
         "description": "Data to create a key result.",
         "properties": {
@@ -3211,6 +3322,11 @@
           "password": {
             "title": "Password",
             "type": "string"
+          },
+          "remember": {
+            "default": false,
+            "title": "Remember",
+            "type": "boolean"
           },
           "username": {
             "title": "Username",
@@ -5967,8 +6083,32 @@
       },
       "SettingsExport": {
         "additionalProperties": false,
-        "description": "A file with the user's settings, to keep or to import into another account.",
+        "description": "A file with the user's settings, to keep or to import into another account.\n\n``connections`` and ``default_event_calendar`` are there only when the user ticked the box.",
         "properties": {
+          "connections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ExportedConnectionModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connections"
+          },
+          "default_event_calendar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarRefModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "format": {
             "const": "tefteri-settings",
             "default": "tefteri-settings",
@@ -11368,8 +11508,20 @@
     },
     "/api/v1/me/settings/export": {
       "get": {
-        "description": "Return the current user's settings as a file that ``POST /me/settings/import`` reads.",
+        "description": "Return the current user's settings as a file that ``POST /me/settings/import`` reads.\n\nWith ``include_connections`` the file also holds the connections with their credentials and\nthe calendar for new events.",
         "operationId": "export_settings_api_v1_me_settings_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_connections",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Connections",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -11380,6 +11532,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Export Settings",
@@ -11390,7 +11552,7 @@
     },
     "/api/v1/me/settings/import": {
       "post": {
-        "description": "Apply an export to the current user. Settings that the file leaves out stay as they are.",
+        "description": "Apply an export to the current user. Settings that the file leaves out stay as they are.\n\nConnections of the file are added unless the user has one with the same provider and name.",
         "operationId": "import_settings_api_v1_me_settings_import_post",
         "requestBody": {
           "content": {
@@ -11407,7 +11569,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SettingsOut"
+                  "$ref": "#/components/schemas/ImportOut"
                 }
               }
             },

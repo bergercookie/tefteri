@@ -39,6 +39,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
   String? _serverError;
+  // "Stay signed in" is on by default, the usual choice on a personal device.
+  bool _remember = true;
   Timer? _typing;
   // The address whose version is shown; it follows the server field.
   String? _probe;
@@ -108,7 +110,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             style:
                                 text.bodyMedium?.copyWith(color: scheme.error)),
                       ),
-                    const SizedBox(height: Space.lg),
+                    const SizedBox(height: Space.sm),
+                    CheckboxListTile(
+                      key: const Key('stay-signed-in'),
+                      value: _remember,
+                      onChanged: (v) => setState(() => _remember = v ?? true),
+                      title: Text('Stay signed in for 30 days',
+                          style: text.bodyMedium),
+                      subtitle: Text('Turn off on a shared computer.',
+                          style: text.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant)),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+                    const SizedBox(height: Space.md),
                     FilledButton(
                         key: const Key('login-button'),
                         onPressed: _submit,
@@ -202,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     await ref
         .read(authControllerProvider.notifier)
-        .login(_user.text, _pass.text);
+        .login(_user.text, _pass.text, remember: _remember);
     // Tells the platform the login succeeded so it can offer to save the
     // credentials; with a failed login the context is cancelled instead.
     // The screen is usually gone by now when login succeeded.

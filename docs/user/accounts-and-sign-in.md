@@ -23,8 +23,13 @@ Tefteri shows your planning screens after you sign in.
 
 ## Session length
 
-Your session ends after 8 hours. Then tefteri shows the sign-in screen again. Sign in again to continue.
-Your administrator can change this time.
+The sign-in screen has a box, Stay signed in for 30 days. It is on by default. With the box on,
+your session lasts 30 days. With the box off, your session ends after 8 hours. Turn the box off on a
+shared computer. When the session ends, tefteri shows the sign-in screen again. Sign in again to
+continue. Your administrator can change these times.
+
+Tefteri renews your session when you use it. If you use tefteri at least once in a session
+time, you never have to sign in again.
 
 In the web browser, you stay signed in when you reload the page or open tefteri again,
 until the session ends. Choose Sign out to end the session before that time.
@@ -130,5 +135,11 @@ Open the menu, choose Settings, and find the Export and import card.
   somewhere safe.
 - Import takes that text. Paste it and choose Import. Anything the text leaves out stays as it is.
 
-Connections are not included, because they hold your passwords and tokens. The calendar for new
-events is not included either, because it belongs to one installation.
+Before you export, you can tick Include connections. The text then also holds your connections
+with their passwords and tokens, and the calendar for new events. Anyone who has this text can use
+your connections, so keep it private. The box is off by default.
+
+When you import text with connections, Tefteri adds each connection that you do not have yet and
+syncs it. It skips a connection that has the same app and name as one you have. It chooses the
+calendar for new events again when that calendar is there after the sync, and tells you what it
+did.

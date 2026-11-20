@@ -23,6 +23,7 @@ def test_defaults(make_settings: Callable[..., Settings]) -> None:
     s = make_settings()
     assert (s.login_max_failures, s.login_window_seconds, s.login_block_seconds) == (5, 900, 900)
     assert s.session_lifetime_seconds == 8 * 3600
+    assert s.remember_lifetime_seconds == 30 * 24 * 3600
 
 
 class Clock:

@@ -29,10 +29,20 @@ class AuthService:
         throttle: LoginThrottle,
         session_lifetime_seconds: int,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        remember_lifetime_seconds: int | None = None,
     ) -> None:
-        """Configure throttling, session lifetime and the clock."""
+        """Configure throttling, session lifetimes and the clock.
+
+        ``remember_lifetime_seconds`` is the longer lifetime for "stay signed in" logins; when
+        it is ``None`` such logins get the normal lifetime.
+        """
         self._throttle = throttle
         self._lifetime = timedelta(seconds=session_lifetime_seconds)
+        self._remember_lifetime = (
+            timedelta(seconds=remember_lifetime_seconds)
+            if remember_lifetime_seconds is not None
+            else self._lifetime
+        )
         self._clock = clock
 
     async def bootstrap_admin(self, db: AsyncSession, username: str, password_hash: str) -> User:
@@ -50,8 +60,12 @@ class AuthService:
         await db.flush()
         return user
 
-    async def login(self, db: AsyncSession, username: str, password: str) -> tuple[str, datetime]:
+    async def login(
+        self, db: AsyncSession, username: str, password: str, remember: bool = False
+    ) -> tuple[str, datetime]:
         """Verify credentials and return ``(token, expires_at)``.
+
+        ``remember`` gives the session the longer "stay signed in" lifetime.
 
         Raises:
             Throttled: too many recent failures for this username.
@@ -69,13 +83,23 @@ class AuthService:
             self._throttle.record_failure(key)
             raise InvalidCredentials
         self._throttle.record_success(key)
-        return await self.issue_session(db, user)
+        return await self.issue_session(db, user, remember=remember)
 
-    async def issue_session(self, db: AsyncSession, user: User) -> tuple[str, datetime]:
+    async def issue_session(
+        self, db: AsyncSession, user: User, remember: bool = False
+    ) -> tuple[str, datetime]:
         """Create a session for ``user``."""
         token = secrets.token_urlsafe(32)
-        expires = self._clock() + self._lifetime
-        db.add(AuthSession(user_id=user.id, token_hash=_digest(token), expires_at=expires))
+        lifetime = self._remember_lifetime if remember else self._lifetime
+        expires = self._clock() + lifetime
+        db.add(
+            AuthSession(
+                user_id=user.id,
+                token_hash=_digest(token),
+                expires_at=expires,
+                lifetime_seconds=int(lifetime.total_seconds()),
+            )
+        )
         await db.flush()
         return token, expires
 
@@ -95,6 +119,28 @@ class AuthService:
         if user is None or user.disabled:
             return None
         return user
+
+    async def renew(self, db: AsyncSession, token: str) -> datetime | None:
+        """Extend a valid session that is past half of its lifetime; return the new expiry.
+
+        A session that is in use stays signed in: each use that comes after half of the
+        lifetime has passed moves the end to one full lifetime from now. Returns ``None`` when
+        nothing changed. Checking the half-way point keeps this to about two writes per
+        lifetime instead of one per request.
+        """
+        row = (
+            await db.execute(select(AuthSession).where(AuthSession.token_hash == _digest(token)))
+        ).scalar_one_or_none()
+        if row is None or row.lifetime_seconds is None:
+            return None
+        lifetime = timedelta(seconds=row.lifetime_seconds)
+        expires = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=UTC)
+        now = self._clock()
+        if expires - now >= lifetime / 2:
+            return None
+        row.expires_at = now + lifetime
+        await db.flush()
+        return row.expires_at
 
     async def logout(self, db: AsyncSession, token: str) -> None:
         """Invalidate a token."""

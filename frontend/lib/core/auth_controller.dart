@@ -38,12 +38,18 @@ class AuthController extends StateNotifier<AuthState> {
 
   final Ref _ref;
 
-  /// Signs in with [username] and [password].
-  Future<void> login(String username, String password) async {
+  /// Signs in with [username] and [password]. With [remember] the server keeps
+  /// the session for 30 days instead of 8 hours.
+  Future<void> login(String username, String password,
+      {bool remember = false}) async {
     try {
       final r = await _ref.read(dioProvider).post<Map<String, dynamic>>(
         '/auth/login',
-        data: {'username': username, 'password': password},
+        data: {
+          'username': username,
+          'password': password,
+          'remember': remember,
+        },
       );
       _ref.read(tokenStoreProvider.notifier).set(r.data!['token'] as String);
       state = AuthState(signedIn: true, isAdmin: await _loadIsAdmin());

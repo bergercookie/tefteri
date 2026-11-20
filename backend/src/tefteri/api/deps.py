@@ -1,9 +1,10 @@
 """FastAPI dependencies: database session, services and the authenticated user."""
 
 from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.api.errors import ApiError
@@ -66,11 +67,40 @@ def session_token(request: Request) -> str:
 Token = Annotated[str, Depends(session_token)]
 
 
-async def current_user(db: Db, auth: AuthDep, token: Token) -> User:
-    """Return the authenticated user or raise 401."""
+COOKIE_PATH = "/api"
+"""Only the API reads the cookie; the web client is served from the same origin."""
+
+
+def set_session_cookie(
+    response: Response, request: Request, settings: Settings, token: str, expires: datetime
+) -> None:
+    """Set the HttpOnly session cookie, so the web client stays signed in across reloads."""
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        expires=expires,
+        path=COOKIE_PATH,
+        httponly=True,
+        samesite="strict",
+        secure=request.url.scheme == "https" or (settings.public_url or "").startswith("https://"),
+    )
+
+
+async def current_user(
+    db: Db,
+    auth: AuthDep,
+    token: Token,
+    request: Request,
+    response: Response,
+    settings: SettingsDep,
+) -> User:
+    """Return the authenticated user or raise 401; a session that is in use is renewed."""
     user = await auth.authenticate(db, token)
     if user is None:
         raise ApiError(401, "not_authenticated", "Invalid or expired session")
+    expires = await auth.renew(db, token)
+    if expires is not None and request.cookies.get(SESSION_COOKIE) == token:
+        set_session_cookie(response, request, settings, token, expires)
     return user
 
 

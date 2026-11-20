@@ -81,6 +81,10 @@ This can give a wrong address behind a reverse proxy. The address in Google must
 ## Sign-in and session settings
 
 Sessions end after `TEFTERI_SESSION_LIFETIME_SECONDS` seconds. The default is 28800 seconds (8 hours).
+When a user chooses Stay signed in at sign-in (the box is on by default), the session ends after
+`TEFTERI_REMEMBER_LIFETIME_SECONDS` seconds instead. The default is 2592000 seconds (30 days).
+A session that is in use renews itself: after half of its lifetime has passed, the next request
+moves the end to a full lifetime from that time.
 
 Tefteri blocks an account when it sees `TEFTERI_LOGIN_MAX_FAILURES` wrong passwords inside
 `TEFTERI_LOGIN_WINDOW_SECONDS` seconds. The block lasts `TEFTERI_LOGIN_BLOCK_SECONDS` seconds.

@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     login_window_seconds: int = 15 * 60
     login_block_seconds: int = 15 * 60
     session_lifetime_seconds: int = 8 * 60 * 60
+    remember_lifetime_seconds: int = 30 * 24 * 60 * 60
+    """Session length when the user chooses Stay signed in at login (30 days)."""
 
     @field_validator("admin_password_hash")
     @classmethod
