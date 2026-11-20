@@ -5,7 +5,16 @@ import uuid
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 
-from tefteri.api.deps import SESSION_COOKIE, AuthDep, CurrentUser, Db, SettingsDep, Token
+from tefteri.api.deps import (
+    COOKIE_PATH,
+    SESSION_COOKIE,
+    AuthDep,
+    CurrentUser,
+    Db,
+    SettingsDep,
+    Token,
+    set_session_cookie,
+)
 from tefteri.api.errors import ApiError
 from tefteri.api.schemas import UtcDatetime
 from tefteri.auth.passwords import hash_password
@@ -55,10 +64,6 @@ class MethodsResponse(BaseModel):
     password: bool
 
 
-# Only the API reads the cookie; the web client is served from the same origin.
-_COOKIE_PATH = "/api"
-
-
 @router.post("/login")
 async def login(
     body: LoginRequest,
@@ -85,15 +90,7 @@ async def login(
     except InvalidCredentials as exc:
         await db.commit()
         raise ApiError(401, "invalid_credentials", "Invalid username or password") from exc
-    response.set_cookie(
-        SESSION_COOKIE,
-        token,
-        expires=expires,
-        path=_COOKIE_PATH,
-        httponly=True,
-        samesite="strict",
-        secure=request.url.scheme == "https" or (settings.public_url or "").startswith("https://"),
-    )
+    set_session_cookie(response, request, settings, token, expires)
     return LoginResponse(token=token, expires_at=expires)
 
 
@@ -101,7 +98,7 @@ async def login(
 async def logout(db: Db, auth: AuthDep, token: Token, response: Response) -> None:
     """Invalidate the current token and clear the session cookie."""
     await auth.logout(db, token)
-    response.delete_cookie(SESSION_COOKIE, path=_COOKIE_PATH, httponly=True, samesite="strict")
+    response.delete_cookie(SESSION_COOKIE, path=COOKIE_PATH, httponly=True, samesite="strict")
 
 
 @router.get("/me")

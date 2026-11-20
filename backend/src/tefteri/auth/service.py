@@ -90,8 +90,16 @@ class AuthService:
     ) -> tuple[str, datetime]:
         """Create a session for ``user``."""
         token = secrets.token_urlsafe(32)
-        expires = self._clock() + (self._remember_lifetime if remember else self._lifetime)
-        db.add(AuthSession(user_id=user.id, token_hash=_digest(token), expires_at=expires))
+        lifetime = self._remember_lifetime if remember else self._lifetime
+        expires = self._clock() + lifetime
+        db.add(
+            AuthSession(
+                user_id=user.id,
+                token_hash=_digest(token),
+                expires_at=expires,
+                lifetime_seconds=int(lifetime.total_seconds()),
+            )
+        )
         await db.flush()
         return token, expires
 
@@ -111,6 +119,28 @@ class AuthService:
         if user is None or user.disabled:
             return None
         return user
+
+    async def renew(self, db: AsyncSession, token: str) -> datetime | None:
+        """Extend a valid session that is past half of its lifetime; return the new expiry.
+
+        A session that is in use stays signed in: each use that comes after half of the
+        lifetime has passed moves the end to one full lifetime from now. Returns ``None`` when
+        nothing changed. Checking the half-way point keeps this to about two writes per
+        lifetime instead of one per request.
+        """
+        row = (
+            await db.execute(select(AuthSession).where(AuthSession.token_hash == _digest(token)))
+        ).scalar_one_or_none()
+        if row is None or row.lifetime_seconds is None:
+            return None
+        lifetime = timedelta(seconds=row.lifetime_seconds)
+        expires = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=UTC)
+        now = self._clock()
+        if expires - now >= lifetime / 2:
+            return None
+        row.expires_at = now + lifetime
+        await db.flush()
+        return row.expires_at
 
     async def logout(self, db: AsyncSession, token: str) -> None:
         """Invalidate a token."""

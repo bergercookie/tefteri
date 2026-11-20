@@ -28,6 +28,9 @@ your session lasts 30 days. With the box off, your session ends after 8 hours. T
 shared computer. When the session ends, tefteri shows the sign-in screen again. Sign in again to
 continue. Your administrator can change these times.
 
+Tefteri renews your session when you use it. If you use tefteri at least once in a session
+time, you never have to sign in again.
+
 In the web browser, you stay signed in when you reload the page or open tefteri again,
 until the session ends. Choose Sign out to end the session before that time.
 

@@ -79,6 +79,44 @@ async def test_stay_signed_in_lasts_30_days(client: AsyncClient) -> None:
     assert timedelta(days=29) < long_left <= timedelta(days=30)
 
 
+async def test_using_a_session_renews_it(make_settings: Callable[..., Settings]) -> None:
+    app = create_app(make_settings(session_lifetime_seconds=100, remember_lifetime_seconds=1000))
+    clock = {"now": datetime.now(UTC)}
+    app.state.auth_service._clock = lambda: clock["now"]
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c,
+    ):
+        r = await c.post(
+            LOGIN, json={"username": "admin", "password": ADMIN_PASSWORD, "remember": True}
+        )
+        token = r.json()["token"]
+        h = {"Authorization": f"Bearer {token}"}
+        clock["now"] += timedelta(seconds=400)  # before half of 1000 s: no change
+        assert (await c.get("/api/v1/auth/me", headers=h)).status_code == 200
+        assert "set-cookie" not in (await c.get("/api/v1/auth/me")).headers
+        clock["now"] += timedelta(seconds=400)  # 800 s in: renewed to 1000 s from now
+        assert (await c.get("/api/v1/auth/me", headers=h)).status_code == 200
+        clock["now"] += timedelta(seconds=900)  # past the first end, within the renewed one
+        assert (await c.get("/api/v1/auth/me", headers=h)).status_code == 200
+        clock["now"] += timedelta(seconds=1001)  # not used for a full lifetime: ends
+        assert (await c.get("/api/v1/auth/me", headers=h)).status_code == 401
+
+
+async def test_renewal_refreshes_the_cookie(make_settings: Callable[..., Settings]) -> None:
+    app = create_app(make_settings(session_lifetime_seconds=100))
+    clock = {"now": datetime.now(UTC)}
+    app.state.auth_service._clock = lambda: clock["now"]
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c,
+    ):
+        await _login(c)
+        clock["now"] += timedelta(seconds=60)
+        me = await c.get("/api/v1/auth/me")
+        assert me.status_code == 200 and "tefteri_session=" in me.headers["set-cookie"]
+
+
 async def test_methods_health_version(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/auth/methods")).json() == {"password": True}
     assert (await client.get("/health")).json() == {"status": "ok"}

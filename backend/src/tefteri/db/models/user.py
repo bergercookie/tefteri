@@ -56,3 +56,5 @@ class AuthSession(IdMixin, CreatedMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    lifetime_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    """How long the session lasts after each use; ``None`` for a session from before renewal."""

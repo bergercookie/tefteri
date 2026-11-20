@@ -1461,7 +1461,8 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0030"
+    assert script.get_current_head() == "0031"
+    assert script.get_revision("0031").down_revision == "0030"
     assert script.get_revision("0030").down_revision == "0029"
     revision = script.get_revision("0029")
     assert revision is not None
@@ -1573,7 +1574,8 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0030"
+    assert script.get_current_head() == "0031"
+    assert script.get_revision("0031").down_revision == "0030"
     assert script.get_revision("0030").down_revision == "0029"
     revision = script.get_revision("0029")
     assert revision is not None
