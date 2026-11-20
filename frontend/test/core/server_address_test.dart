@@ -124,9 +124,18 @@ void main() {
       fillPass('s3cret');
       submit();
       await tester.pumpAndSettle();
+      // Stay signed in is on by default.
       expect(posted, [
-        {'username': 'alice', 'password': 's3cret'}
+        {'username': 'alice', 'password': 's3cret', 'remember': true}
       ]);
+
+      // Turning the box off asks for the short session.
+      await tester.tap(find.byKey(const Key('stay-signed-in')));
+      await tester.pump();
+      submit();
+      await tester.pumpAndSettle();
+      expect(posted.last,
+          {'username': 'alice', 'password': 's3cret', 'remember': false});
     });
 
     test('the HTML autocomplete values are the ones password managers read',
