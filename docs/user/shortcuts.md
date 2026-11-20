@@ -47,7 +47,9 @@ Month opens the monthly theme plan and review. Read [Plan your month](monthly-pl
 ## Type in a text field
 
 The one-key shortcuts do not work while you type in a text field. The key goes into the field
-as text. Page Down and Page Up also stay with the text field. F5 and Ctrl+F work at all times.
+as text. Page Down and Page Up scroll the page, also while you type in a field of one line or
+in the find bar. In a field of several lines they stay with the field. F5 and Ctrl+F work at all
+times.
 
 To use a one-key shortcut after you type:
 

@@ -147,7 +147,7 @@ void main() {
     await _search(tester, c, 'apple');
     final texts = [
       for (final m in c.read(findProvider).matches)
-        m.paragraph.text.toPlainText(),
+        (m.paragraph as RenderParagraph).text.toPlainText(),
     ];
     expect(texts, ['visible apple', 'shown apple']);
   });
@@ -251,6 +251,25 @@ void main() {
     await tester.enterText(find.byKey(const Key('find-field')), 'Find on');
     await tester.pumpAndSettle();
     expect(container.read(findProvider).matches, isEmpty);
+  });
+
+  testWidgets('the find bar also reads what the user typed in a field',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: Column(children: [
+          TextField(key: Key('typed')),
+          TextField(key: Key('secret'), obscureText: true),
+        ]),
+      ),
+    ));
+    await tester.enterText(find.byKey(const Key('typed')), 'needle in a field');
+    await tester.enterText(find.byKey(const Key('secret')), 'needle secret');
+    await tester.pump();
+    final root = tester.renderObject(find.byType(Scaffold));
+    final matches = findInTree(root, 'needle');
+    expect(matches, hasLength(1), reason: 'a hidden field is not read');
+    expect(matches.single.screenRects(), isNotEmpty);
   });
 
   test('findInTree reads a render tree without a bar', () {

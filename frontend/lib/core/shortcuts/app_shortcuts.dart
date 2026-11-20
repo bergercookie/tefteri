@@ -23,6 +23,19 @@ bool textFieldHasFocus() {
       context.findAncestorStateOfType<EditableTextState>() != null;
 }
 
+/// True while a text field that has more than one line has the keyboard
+/// focus. In such a field Page Up and Page Down move the cursor. A field of one
+/// line has no use for them, so they scroll the view even while the user types
+/// or while the find bar has the focus.
+bool multilineTextFieldHasFocus() {
+  final context = FocusManager.instance.primaryFocus?.context;
+  if (context == null) return false;
+  final editable = context.widget is EditableText
+      ? context.widget as EditableText
+      : context.findAncestorWidgetOfExactType<EditableText>();
+  return editable != null && editable.maxLines != 1;
+}
+
 /// An action that is enabled only while [enabled] returns true. A disabled
 /// action lets the key event pass on, so a typed character reaches the
 /// text field.
@@ -120,13 +133,14 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
             (_) => _plainAllowed(),
           ),
           // Not while a dialog is open (its own list takes the key) or while the
-          // user types, where the keys belong to the text field.
+          // user types in a field of several lines, where the keys move the
+          // cursor.
           PageScrollIntent: _KeyAction<PageScrollIntent>(
             (i) {
               final context = _navigator?.context;
               if (context != null) pageScroll(context, forward: i.forward);
             },
-            (_) => _signedIn && _onView && !textFieldHasFocus(),
+            (_) => _signedIn && _onView && !multilineTextFieldHasFocus(),
           ),
           LeaveTextFieldIntent: _KeyAction<LeaveTextFieldIntent>(
             (_) => FocusManager.instance.primaryFocus?.unfocus(),

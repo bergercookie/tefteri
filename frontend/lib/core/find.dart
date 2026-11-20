@@ -29,8 +29,9 @@ class FindMatch {
   /// Creates a match of [start] to [end] in [paragraph].
   const FindMatch(this.paragraph, this.start, this.end);
 
-  /// The text that holds the match.
-  final RenderParagraph paragraph;
+  /// The text that holds the match: a [RenderParagraph] (a label) or a
+  /// [RenderEditable] (what the user typed in a text field).
+  final RenderBox paragraph;
 
   /// Offset of the first character.
   final int start;
@@ -42,8 +43,8 @@ class FindMatch {
   /// sight (scrolled away, or clipped).
   List<Rect> screenRects() {
     if (!paragraph.attached || !paragraph.hasSize) return const [];
-    final boxes = paragraph.getBoxesForSelection(
-        TextSelection(baseOffset: start, extentOffset: end));
+    final boxes = _boxesOf(
+        paragraph, TextSelection(baseOffset: start, extentOffset: end));
     if (boxes.isEmpty) return const [];
     final toScreen = paragraph.getTransformTo(null);
     final clip = _visibleArea(paragraph);
@@ -58,6 +59,25 @@ class FindMatch {
     }
     return rects;
   }
+}
+
+/// The boxes of [selection] in a text render object.
+List<TextBox> _boxesOf(RenderBox text, TextSelection selection) {
+  if (text is RenderParagraph) return text.getBoxesForSelection(selection);
+  if (text is RenderEditable) return text.getBoxesForSelection(selection);
+  return const [];
+}
+
+/// The plain text of a text render object, or null when it is not one that
+/// the find bar reads. A hidden field (a password) is never read.
+String? _plainTextOf(RenderBox text) {
+  if (text is RenderParagraph) {
+    return text.text.toPlainText(includePlaceholders: false);
+  }
+  if (text is RenderEditable && !text.obscureText) {
+    return text.text?.toPlainText(includePlaceholders: false);
+  }
+  return null;
 }
 
 /// The part of the screen in which [object] can be seen: the clips of its
@@ -81,9 +101,9 @@ Rect? _visibleArea(RenderObject object) {
 
 /// Collects the texts under [root] that are on a screen: it skips what is
 /// off stage and the pages that an indexed stack does not show.
-void collectParagraphs(RenderObject root, List<RenderParagraph> into) {
-  if (root is RenderParagraph) {
-    into.add(root);
+void collectParagraphs(RenderObject root, List<RenderBox> into) {
+  if (root is RenderParagraph || root is RenderEditable) {
+    into.add(root as RenderBox);
     return;
   }
   if (root is RenderOffstage && root.offstage) return;
@@ -103,13 +123,14 @@ void collectParagraphs(RenderObject root, List<RenderParagraph> into) {
 /// the texts under [root], from the top of the screen to the bottom.
 List<FindMatch> findInTree(RenderObject root, String query) {
   if (query.isEmpty) return const [];
-  final paragraphs = <RenderParagraph>[];
+  final paragraphs = <RenderBox>[];
   collectParagraphs(root, paragraphs);
   final needle = query.toLowerCase();
   final found = <(double, double, FindMatch)>[];
   for (final p in paragraphs) {
     if (!p.attached || !p.hasSize) continue;
-    final text = p.text.toPlainText(includePlaceholders: false).toLowerCase();
+    final text = _plainTextOf(p)?.toLowerCase();
+    if (text == null) continue;
     var from = 0;
     while (found.length < maxFindMatches) {
       final at = text.indexOf(needle, from);
@@ -239,8 +260,8 @@ class FindController extends StateNotifier<FindState> {
     if (state.matches.isEmpty) return;
     final m = state.matches[state.current];
     if (!m.paragraph.attached) return;
-    final boxes = m.paragraph.getBoxesForSelection(
-        TextSelection(baseOffset: m.start, extentOffset: m.end));
+    final boxes = _boxesOf(
+        m.paragraph, TextSelection(baseOffset: m.start, extentOffset: m.end));
     m.paragraph.showOnScreen(
       rect: boxes.isEmpty ? null : boxes.first.toRect().inflate(24),
       duration: const Duration(milliseconds: 150),

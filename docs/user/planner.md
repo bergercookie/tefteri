@@ -187,7 +187,8 @@ view, in the web client and in the Android and Linux apps.
 3. Press Esc, or choose the cross, to close the bar.
 
 The search does not care about upper and lower case. Tefteri searches the text that the screen
-shows. A long list shows only part of its items, so the bar finds the items that you can reach by
+shows, also the text that you typed in a field. A field for a password is not searched.
+Page Down and Page Up scroll the page while the find bar is open. A long list shows only part of its items, so the bar finds the items that you can reach by
 scrolling when you scroll to them.
 
 Tefteri takes the Ctrl+F key from the browser. The browser cannot mark text in the web client,

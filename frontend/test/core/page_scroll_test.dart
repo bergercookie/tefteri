@@ -17,7 +17,7 @@ final _drawer = ScrollController();
 
 /// A view like the real ones: a narrow navigation list beside a long content
 /// list. The keyboard focus stays on the root of the app, above both.
-Widget _page(bool withField) => Scaffold(
+Widget _page(bool withField, {int fieldLines = 1}) => Scaffold(
       body: Row(
         children: [
           SizedBox(
@@ -31,7 +31,8 @@ Widget _page(bool withField) => Scaffold(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (withField) const TextField(key: Key('field')),
+                if (withField)
+                  TextField(key: const Key('field'), maxLines: fieldLines),
                 Expanded(
                   child: SingleChildScrollView(
                     controller: _content,
@@ -50,9 +51,12 @@ Widget _page(bool withField) => Scaffold(
       ),
     );
 
-Future<void> _pump(WidgetTester tester, {bool withField = false}) async {
+Future<void> _pump(WidgetTester tester,
+    {bool withField = false, int fieldLines = 1}) async {
   final router = GoRouter(routes: [
-    GoRoute(path: '/', builder: (_, __) => _page(withField)),
+    GoRoute(
+        path: '/',
+        builder: (_, __) => _page(withField, fieldLines: fieldLines)),
   ]);
   final container = ProviderContainer(overrides: [
     authControllerProvider.overrideWith(_FakeAuth.new),
@@ -104,9 +108,17 @@ void main() {
     expect(_content.offset, _content.position.maxScrollExtent);
   });
 
-  testWidgets('the keys belong to a text field while the user types',
+  testWidgets('a field of one line leaves the keys to the view',
       (tester) async {
     await _pump(tester, withField: true);
+    await tester.tap(find.byKey(const Key('field')));
+    await tester.pump();
+    await _press(tester, LogicalKeyboardKey.pageDown);
+    expect(_content.offset, greaterThan(0));
+  });
+
+  testWidgets('the keys belong to a field of several lines', (tester) async {
+    await _pump(tester, withField: true, fieldLines: 4);
     await tester.tap(find.byKey(const Key('field')));
     await tester.pump();
     await _press(tester, LogicalKeyboardKey.pageDown);
