@@ -13,6 +13,7 @@ from tefteri.api.lookups import container_colors, read_only_containers
 from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.connection import SourceContainer
+from tefteri.db.models.project_label import ProjectLabel
 from tefteri.db.models.task import Task
 from tefteri.domain.periods import PeriodType, period_end, period_start
 from tefteri.domain.timeutil import day_bounds, overlaps
@@ -96,6 +97,39 @@ async def legacy_goals(
     ]
 
 
+async def _container_themes(
+    db: Db, user_id: uuid.UUID, containers: list[SourceContainer]
+) -> dict[uuid.UUID, str]:
+    """Map each project to the name of the theme project that it is, or sits under.
+
+    The nearest project with the label ``theme``, walking up the parents, wins. A project
+    outside every theme has no entry.
+    """
+    labels = {
+        (r.connection_id, r.remote_id): r
+        for r in (
+            await db.execute(select(ProjectLabel).where(ProjectLabel.user_id == user_id))
+        ).scalars()
+    }
+    by_remote = {(c.connection_id, c.remote_id): c for c in containers}
+    result: dict[uuid.UUID, str] = {}
+    for c in containers:
+        seen: set[str] = set()
+        node: SourceContainer | None = c
+        while node is not None and node.remote_id not in seen:
+            seen.add(node.remote_id)
+            row = labels.get((node.connection_id, node.remote_id))
+            if row is not None and row.label == "theme":
+                result[c.id] = node.name
+                break
+            node = (
+                by_remote.get((node.connection_id, node.parent_remote_id))
+                if node.parent_remote_id
+                else None
+            )
+    return result
+
+
 async def _period_view(
     request: Request,
     db: Db,
@@ -107,12 +141,13 @@ async def _period_view(
     end = period_end(kind, start)
     low = day_bounds(start, tz)[0]
     high = day_bounds(end, tz)[0]
-    projects = {
-        c.id: c.name
-        for c in (
+    containers = list(
+        (
             await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
         ).scalars()
-    }
+    )
+    projects = {c.id: c.name for c in containers}
+    themes = await _container_themes(db, user_id, containers)
     colors = await container_colors(db, user_id)
     locked = await read_only_containers(db, user_id)
     tasks: list[TaskOut] = []
@@ -129,6 +164,7 @@ async def _period_view(
                 t,
                 project=project,
                 project_color=colors.get(t.container_id) if t.container_id else None,
+                theme=themes.get(t.container_id) if t.container_id else None,
             )
         )
     entries: list[EntryOut] = []

@@ -99,6 +99,30 @@ Future<void> _pump(WidgetTester tester, FakeApi api) {
 }
 
 void main() {
+  testWidgets('due tasks group by theme and project, and hide done on demand',
+      (tester) async {
+    final week = periodJson('week', '2026-11-02', '2026-11-09', tasks: [
+      {...taskJson('a', 'Alpha'), 'theme': 'Health', 'project': 'Running'},
+      {
+        ...taskJson('b', 'Beta', status: 'done'),
+        'theme': 'Health',
+        'project': 'Running'
+      },
+      {...taskJson('c', 'Gamma'), 'theme': 'Health', 'project': 'Health'},
+      {...taskJson('d', 'Delta'), 'project': 'Errands'},
+    ], entries: []);
+    await _pump(tester, _api({_path: week}));
+    expect(find.byKey(const Key('theme-Health')), findsOneWidget);
+    expect(find.byKey(const Key('theme-none')), findsOneWidget);
+    expect(find.byKey(const Key('subproject-Health-Running')), findsOneWidget);
+    expect(find.byKey(const Key('subproject-Health-Health')), findsNothing);
+    expect(find.text('Beta'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('show-done-filter')));
+    await tester.pumpAndSettle();
+    expect(find.text('Beta'), findsNothing);
+    expect(find.text('Alpha'), findsOneWidget);
+  });
+
   testWidgets('shows tasks, but no goal section and no events', (tester) async {
     final api = _api();
     await _pump(tester, api);

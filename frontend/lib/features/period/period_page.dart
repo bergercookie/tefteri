@@ -69,6 +69,9 @@ class PeriodPage extends ConsumerStatefulWidget {
 class _PeriodPageState extends ConsumerState<PeriodPage> {
   String? _error;
 
+  /// Whether done tasks show in the "Due this week" list.
+  bool _showDone = true;
+
   Future<void> _run(Future<void> Function() action) async {
     try {
       await action();
@@ -184,9 +187,16 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
                 'due date in this week is not here: refer to Completed this '
                 'week.',
           ),
-          if (v.tasks.isEmpty)
-            const Text('No tasks are due this week.', key: Key('no-tasks')),
-          for (final t in v.tasks) _taskTile(t, v),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilterChip(
+              key: const Key('show-done-filter'),
+              label: const Text('Completed'),
+              selected: _showDone,
+              onSelected: (value) => setState(() => _showDone = value),
+            ),
+          ),
+          ..._groupedTasks(v),
         ],
         if (widget.footer != null) ...[
           const SizedBox(height: 16),
@@ -194,6 +204,71 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         ],
       ],
     );
+  }
+
+  /// The tasks of the week grouped by theme, then by project inside the
+  /// theme. Done tasks are left out when the filter is off.
+  List<Widget> _groupedTasks(PeriodView v) {
+    final tasks = [
+      for (final t in v.tasks)
+        if (_showDone || !t.done) t,
+    ];
+    if (tasks.isEmpty) {
+      return [
+        Text(
+            v.tasks.isEmpty
+                ? 'No tasks are due this week.'
+                : 'All tasks due this week are done. Turn on Completed to '
+                    'see them.',
+            key: const Key('no-tasks')),
+      ];
+    }
+    // Themes and projects in order of first appearance, "No theme" and
+    // "No project" last.
+    final themes = <String?, Map<String?, List<PlanTask>>>{};
+    for (final t in tasks) {
+      final project =
+          t.project != null && t.project!.isNotEmpty ? t.project : null;
+      themes
+          .putIfAbsent(t.theme, () => {})
+          .putIfAbsent(project, () => [])
+          .add(t);
+    }
+    int byName(String? a, String? b) {
+      if (a == null || b == null) return a == null ? (b == null ? 0 : 1) : -1;
+      return a.toLowerCase().compareTo(b.toLowerCase());
+    }
+
+    final out = <Widget>[];
+    for (final theme in themes.keys.toList()..sort(byName)) {
+      final projects = themes[theme]!;
+      out.add(Padding(
+        key: Key('theme-${theme ?? 'none'}'),
+        padding: const EdgeInsets.only(top: Space.md, bottom: Space.xs),
+        child: Text(theme ?? 'No theme',
+            style: Theme.of(context).textTheme.titleSmall),
+      ));
+      for (final project in projects.keys.toList()..sort(byName)) {
+        // Tasks held directly by the theme project need no subheading.
+        if (project != null && project != theme) {
+          out.add(Padding(
+            key: Key('subproject-${theme ?? 'none'}-$project'),
+            padding: const EdgeInsets.only(left: Space.sm, top: Space.xs),
+            child: Text(project, style: Theme.of(context).textTheme.labelLarge),
+          ));
+        } else if (project == null && theme != null) {
+          out.add(Padding(
+            padding: const EdgeInsets.only(left: Space.sm, top: Space.xs),
+            child: Text('No project',
+                style: Theme.of(context).textTheme.labelLarge),
+          ));
+        }
+        for (final t in projects[project]!) {
+          out.add(_taskTile(t, v));
+        }
+      }
+    }
+    return out;
   }
 
   String _when(DateTime? start, bool allDay) {

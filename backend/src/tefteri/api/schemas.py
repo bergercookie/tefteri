@@ -44,6 +44,8 @@ class TaskOut(BaseModel):
     project: str | None = None
     project_color: str | None = None
     """The color of its project in the task app, as ``#rrggbb``."""
+    theme: str | None = None
+    """Name of the theme project that holds its project, or ``None`` when there is none."""
     labels: list[str] = []
     url: str | None = None
     completed_at: UtcDatetime | None = None
@@ -56,6 +58,7 @@ class TaskOut(BaseModel):
         project: str | None = None,
         url: str | None = None,
         project_color: str | None = None,
+        theme: str | None = None,
     ) -> "TaskOut":
         """Build from the ORM row.
 
@@ -75,6 +78,7 @@ class TaskOut(BaseModel):
             goal_id=t.goal_id,
             project=project,
             project_color=project_color,
+            theme=theme,
             labels=list(t.labels or []),
             url=url,
             completed_at=t.completed_at if t.status == "done" else None,

@@ -7000,6 +7000,17 @@
             "title": "Sync State",
             "type": "string"
           },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
           "title": {
             "title": "Title",
             "type": "string"

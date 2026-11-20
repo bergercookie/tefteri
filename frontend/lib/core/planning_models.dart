@@ -34,6 +34,7 @@ class PlanTask {
     this.goalId,
     this.project,
     this.projectColor,
+    this.theme,
     this.labels = const [],
     this.url,
     this.completedAt,
@@ -53,6 +54,7 @@ class PlanTask {
         goalId: j['goal_id'] == null ? null : '${j['goal_id']}',
         project: j['project'] as String?,
         projectColor: j['project_color'] as String?,
+        theme: j['theme'] as String?,
         labels: [for (final l in (j['labels'] as List? ?? const [])) '$l'],
         url: j['url'] as String?,
         completedAt: _dt(j['completed_at']),
@@ -93,6 +95,10 @@ class PlanTask {
 
   /// The color of the project in the task app, as `#rrggbb`, or null.
   final String? projectColor;
+
+  /// Name of the theme project above the task's project (or the project
+  /// itself), or null when the task is outside every theme.
+  final String? theme;
 
   /// Names of the labels the task has in the task app.
   final List<String> labels;
