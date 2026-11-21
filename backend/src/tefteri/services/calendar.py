@@ -145,17 +145,29 @@ class CalendarService:
         start: datetime | None = None,
         end: datetime | None = None,
         location: str | None = None,
+        description: str | None = None,
     ) -> CalendarEntry:
         """Change an entry. Remote fields go to the app first."""
         await self._ensure_writable(db, entry)
-        if any(v is not None for v in (title, start, end, location)):
+        if entry.all_day and (start is not None or end is not None):
+            raise Invalid("The time of an all-day event cannot be changed here.")
+        moves = start is not None or end is not None
+        if moves and to_utc(end or entry.end) <= to_utc(start or entry.start):
+            raise Invalid("end must be after start")
+        if any(v is not None for v in (title, start, end, location, description)):
             connection = await self._connection_of(db, user_id, entry)
             try:
                 remote = await guard(
                     connection,
                     self._backend(connection).update_entry(
                         entry.remote_id,
-                        EntryPatch(title=title, start=start, end=end, location=location),
+                        EntryPatch(
+                            title=title,
+                            start=start,
+                            end=end,
+                            location=location,
+                            description=description,
+                        ),
                         entry.remote_version,
                     ),
                 )

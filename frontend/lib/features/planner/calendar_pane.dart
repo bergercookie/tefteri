@@ -3,6 +3,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/gestures.dart'
+    show DragStartBehavior, DragUpdateDetails;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1129,19 +1131,202 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
             ],
           ),
         ));
+    final content = i.isTask || i.movable
+        ? PlannerDraggable<CalendarItem>(
+            data: i,
+            label: i.title,
+            dimmed: isPending,
+            feedbackColor: i.isTask ? null : _blockColor(context, i),
+            child: body)
+        : body;
+    // An event can be made longer or shorter with the mouse, from its top or
+    // bottom edge, when all of it is on this day.
+    final dayStart = DateTime(day.year, day.month, day.day);
+    final dayEnd = DateTime(day.year, day.month, day.day + 1);
+    final resizable = i.movable &&
+        i.end != null &&
+        !isPending &&
+        !i.start!.toLocal().isBefore(dayStart) &&
+        !i.end!.toLocal().isAfter(dayEnd);
+    if (resizable) {
+      return _ResizableBlock(
+        key: Key('resizable-${i.id}'),
+        item: i,
+        day: day,
+        startMinutes: span.$1,
+        endMinutes: span.$2,
+        left: colWidth * place.column,
+        width: colWidth,
+        minHeight: _minBlockHeight,
+        onResize: (start, end) =>
+            ref.read(plannerActionsProvider).resizeEntry(i, start, end),
+        child: content,
+      );
+    }
     return Positioned(
       top: minutesToOffset(span.$1),
       left: colWidth * place.column,
       width: colWidth,
       height: height,
-      child: i.isTask || i.movable
-          ? PlannerDraggable<CalendarItem>(
-              data: i,
-              label: i.title,
-              dimmed: isPending,
-              feedbackColor: i.isTask ? null : _blockColor(context, i),
-              child: body)
-          : body,
+      child: content,
+    );
+  }
+}
+
+/// An event block with a handle on its top edge and one on its bottom edge. A
+/// drag on a handle moves that edge, in steps of a slot (15 minutes), and the
+/// block follows the pointer. When the drag ends, [onResize] gets the new
+/// start and end. The event is never shorter than one slot and stays on the
+/// day.
+class _ResizableBlock extends StatefulWidget {
+  const _ResizableBlock({
+    required this.item,
+    required this.day,
+    required this.startMinutes,
+    required this.endMinutes,
+    required this.left,
+    required this.width,
+    required this.minHeight,
+    required this.onResize,
+    required this.child,
+    super.key,
+  });
+
+  final CalendarItem item;
+
+  /// The day of the column.
+  final DateTime day;
+
+  /// Where the event starts and ends in the day, in minutes after midnight.
+  final int startMinutes;
+  final int endMinutes;
+  final double left;
+  final double width;
+  final double minHeight;
+
+  /// Called with the new local start and end after a drag that changed them.
+  final void Function(DateTime start, DateTime end) onResize;
+  final Widget child;
+
+  @override
+  State<_ResizableBlock> createState() => _ResizableBlockState();
+}
+
+enum _Edge { start, end }
+
+class _ResizableBlockState extends State<_ResizableBlock> {
+  /// How far the pointer moved since it went down on a handle, in pixels.
+  double _drag = 0;
+  _Edge? _edge;
+
+  static int _round(double minutes) =>
+      (minutes / slotMinutes).round() * slotMinutes;
+
+  /// The start and the end, in minutes of the day, while a drag is on.
+  (int, int) get _span {
+    final s = widget.startMinutes;
+    final e = widget.endMinutes;
+    final shift = _round(offsetToMinutes(_drag));
+    return switch (_edge) {
+      _Edge.start => ((s + shift).clamp(0, e - slotMinutes), e),
+      _Edge.end => (s, (e + shift).clamp(s + slotMinutes, minutesPerDay)),
+      null => (s, e),
+    };
+  }
+
+  void _begin(_Edge edge) => setState(() {
+        _edge = edge;
+        _drag = 0;
+      });
+
+  void _update(DragUpdateDetails d) => setState(() => _drag += d.delta.dy);
+
+  void _finish() {
+    final (s, e) = _span;
+    final changed = s != widget.startMinutes || e != widget.endMinutes;
+    setState(() {
+      _edge = null;
+      _drag = 0;
+    });
+    if (!changed) return;
+    final d = widget.day;
+    DateTime at(int minutes) => minutes >= minutesPerDay
+        ? DateTime(d.year, d.month, d.day + 1)
+        : DateTime(d.year, d.month, d.day, minutes ~/ 60, minutes % 60);
+    widget.onResize(at(s), at(e));
+  }
+
+  void _cancel() => setState(() {
+        _edge = null;
+        _drag = 0;
+      });
+
+  Widget _handle(_Edge edge, double size) {
+    final id = widget.item.id;
+    return Positioned(
+      top: edge == _Edge.start ? 0 : null,
+      bottom: edge == _Edge.end ? 0 : null,
+      left: 0,
+      right: 0,
+      height: size,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeUpDown,
+        child: GestureDetector(
+          key: Key('resize-${edge.name}-$id'),
+          behavior: HitTestBehavior.opaque,
+          // Count the move from the moment the pointer goes down, so that the
+          // distance that a drag needs to start is not lost.
+          dragStartBehavior: DragStartBehavior.down,
+          onVerticalDragStart: (_) => _begin(edge),
+          onVerticalDragUpdate: _update,
+          onVerticalDragEnd: (_) => _finish(),
+          onVerticalDragCancel: _cancel,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (s, e) = _span;
+    final height =
+        minutesToOffset(e - s).clamp(widget.minHeight, double.infinity);
+    // A short block keeps room to grab it: the handles take a third at most.
+    final grip = (height / 3).clamp(4.0, 8.0);
+    final scheme = Theme.of(context).colorScheme;
+    String hhmmOf(int m) => m >= minutesPerDay
+        ? '24:00'
+        : '${(m ~/ 60).toString().padLeft(2, '0')}:'
+            '${(m % 60).toString().padLeft(2, '0')}';
+    return Positioned(
+      top: minutesToOffset(s),
+      left: widget.left,
+      width: widget.width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(child: widget.child),
+          _handle(_Edge.start, grip),
+          _handle(_Edge.end, grip),
+          if (_edge != null)
+            Positioned(
+              top: 2,
+              right: 4,
+              child: IgnorePointer(
+                child: Container(
+                  key: Key('resize-label-${widget.item.id}'),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  color: scheme.inverseSurface,
+                  child: Text('${hhmmOf(s)} - ${hhmmOf(e)}',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onInverseSurface, fontSize: 10)),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

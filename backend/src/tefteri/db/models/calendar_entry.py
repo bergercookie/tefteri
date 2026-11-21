@@ -32,6 +32,8 @@ class CalendarEntry(IdMixin, Base):
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
     recurrence: Mapped[str | None] = mapped_column(Text, nullable=True)  # opaque rule
     location: Mapped[str] = mapped_column(String(500), default="")
+    description: Mapped[str] = mapped_column(Text, default="", server_default="")
+    """The description of the event, as the calendar app keeps it."""
     uid: Mapped[str] = mapped_column(String(1024), default="", server_default="")
     """The iCalendar UID: the same in each calendar that holds a copy of the event."""
     remote_version: Mapped[str] = mapped_column(String(255), default="")

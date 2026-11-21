@@ -229,6 +229,25 @@ class PlanningApi {
         'end': end.toUtc().toIso8601String(),
       });
 
+  /// `PATCH /calendar/entries/{id}` with the fields that changed. A field that
+  /// is null is left as it is. The server refuses a time for an all-day event
+  /// and an end that is not after the start.
+  Future<void> updateEntry(
+    String id, {
+    String? title,
+    DateTime? start,
+    DateTime? end,
+    String? location,
+    String? description,
+  }) =>
+      _dio.patch<Object?>('/calendar/entries/$id', data: {
+        if (title != null) 'title': title,
+        if (start != null) 'start': start.toUtc().toIso8601String(),
+        if (end != null) 'end': end.toUtc().toIso8601String(),
+        if (location != null) 'location': location,
+        if (description != null) 'description': description,
+      });
+
   /// `POST /calendar/entries`: a new event in a calendar of a connection.
   /// An all-day event covers the days from [start] to [end] (exclusive).
   Future<void> createEntry({

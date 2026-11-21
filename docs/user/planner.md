@@ -276,6 +276,48 @@ You can move an event only when you can change its calendar:
 If the calendar app does not accept the change, tefteri shows the reason and the event stays
 where it was.
 
+## Make an event longer or shorter
+
+Put the pointer on the top edge or the bottom edge of an event block. The pointer changes to a
+double arrow. Drag the edge up or down:
+
+- The bottom edge changes when the event ends.
+- The top edge changes when the event starts.
+
+The edge moves in steps of a quarter of an hour. A small label shows the new start and end while
+you drag. When you let go, tefteri writes the new times to your calendar app. A short drag of a
+few pixels does nothing. An event is never shorter than a quarter of an hour, and its end stays
+on the same day.
+
+You can drag the edges of an event only when you can move it: it has a time, it is not all day,
+it is in a calendar that you can change, and it starts and ends on the same day.
+
+## Change an event
+
+Choose an event block. A pop-up opens with the details of the event as fields that you can change:
+
+- The title.
+- The day, the start time and the length. You type them as plain text, in the same way as for a
+  new event: `20261104` for a day, `1105` for a time, and `45m` or `1h30` for a length. Times
+  always use 24 hours. A line under the fields shows when the event ends.
+- The place.
+- The description. A description with rich text, such as a link or a list, shows formatted.
+  Choose Edit the text to change its text.
+
+Press Tab to go from one field to the next. Choose Save, or press Ctrl+Enter. Tefteri writes the
+change to your calendar app, for example Google Calendar. Choose Cancel to close the pop-up without
+a change.
+
+![The pop-up of the event Team standup. It has the fields Title, Day, Starts at, Length, Place and Description, a line that shows when the event ends, and the buttons Cancel and Save.](../images/planner-event-edit.png)
+
+- The pop-up of an event in a calendar that is read-only shows the details and cannot be saved. It
+  says so.
+- An all-day event has no time fields. You can change its title, its place and its description.
+- An event that is in more than one calendar changes in the first calendar only. The pop-up says
+  which one.
+- If the calendar app does not accept the change, tefteri shows the reason and keeps the pop-up
+  open, so that you do not lose what you typed.
+
 ![The menu of a right click on an empty slot. It offers a new event and a new task at 12:15.](../images/planner-slot-menu.png)
 
 ## Add an event or a task on an empty slot

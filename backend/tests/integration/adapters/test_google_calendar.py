@@ -119,6 +119,19 @@ async def test_create_update_if_match_and_delete(backend: GoogleCalendarBackend)
 
 
 @respx.mock
+async def test_the_description_is_read_and_patched(backend: GoogleCalendarBackend) -> None:
+    import json
+
+    token_route()
+    respx.get(f"{API}/calendars/{CAL}/events/e1").respond(json=event(description="Agenda: roadmap"))
+    entry = await backend.get_entry(join_id(CAL, "e1"))
+    assert entry.description == "Agenda: roadmap"
+    patch = respx.patch(f"{API}/calendars/{CAL}/events/e1").respond(json=event())
+    await backend.update_entry(entry.remote_id, EntryPatch(description="New text"), '"1"')
+    assert json.loads(patch.calls[0].request.content) == {"description": "New text"}
+
+
+@respx.mock
 async def test_create_with_attendees_asks_google_to_send_the_invitations(
     backend: GoogleCalendarBackend,
 ) -> None:

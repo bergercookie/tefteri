@@ -2,9 +2,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/event_input.dart';
 import '../../core/html_description.dart';
 import '../../core/open_url.dart';
 import '../../core/planning_api.dart';
@@ -643,49 +645,459 @@ class _Row extends StatelessWidget {
       );
 }
 
-/// The details of one calendar event, from the data of the calendar view.
-class EventDetailsDialog extends StatelessWidget {
+/// The details of one calendar event, which the user can change.
+///
+/// The title, the day, the start time, the length, the place and the
+/// description are fields. The day, the start and the length are typed in the
+/// same plain forms as in the pop-up for a new event (`20261102`, `1105`,
+/// `1h30`), in 24 hours. An all-day event keeps its time: only its text can
+/// change. The fields of an event in a calendar that is read-only cannot be
+/// changed.
+class EventDetailsDialog extends ConsumerStatefulWidget {
   /// Creates the pop-up.
   const EventDetailsDialog({required this.event, super.key});
 
   /// The event.
   final CalendarItem event;
 
-  String get _when {
-    final start = event.start?.toLocal();
-    final end = event.end?.toLocal();
-    if (start == null) return '';
-    if (event.allDay) return '${dateKey(start)}, all day';
-    final to = end == null ? '' : ' - ${hhmm(end)}';
-    return '${dateKey(start)}, ${hhmm(start)}$to';
+  @override
+  ConsumerState<EventDetailsDialog> createState() => _EventDetailsDialogState();
+}
+
+class _EventDetailsDialogState extends ConsumerState<EventDetailsDialog> {
+  late final CalendarItem _event = widget.event;
+  late final DateTime _start = (_event.start ?? DateTime.now()).toLocal();
+  late final Duration _length = _event.end == null
+      ? const Duration(hours: 1)
+      : _event.end!.toLocal().difference(_start);
+
+  late final _title = TextEditingController(text: _event.title);
+  late final _day = TextEditingController(text: formatDay(_start));
+  late final _time =
+      TextEditingController(text: formatTime(TimeOfDay.fromDateTime(_start)));
+  late final _lengthCtl = TextEditingController(
+      text: formatEventLength(_length.inMinutes > 0 ? _length : Duration.zero));
+  late final _location = TextEditingController(text: _event.location ?? '');
+  late final _description =
+      TextEditingController(text: _event.description ?? '');
+
+  /// The user opened the text of an HTML description to change it.
+  bool _editingHtml = false;
+  bool _busy = false;
+  String? _error;
+
+  bool get _editable => !_event.readOnly;
+  bool get _timed => !_event.allDay && _event.start != null;
+
+  @override
+  void dispose() {
+    for (final c in [
+      _title,
+      _day,
+      _time,
+      _lengthCtl,
+      _location,
+      _description
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  DateTime? get _dayValue => parseDay(_day.text);
+  TimeOfDay? get _timeValue => parseTime(_time.text);
+  Duration? get _lengthValue => parseEventLength(_lengthCtl.text);
+
+  bool get _timeOk =>
+      !_timed ||
+      (_dayValue != null && _timeValue != null && _lengthValue != null);
+
+  /// The new start, or null while the day or the time is not valid.
+  DateTime? get _newStart {
+    final d = _dayValue;
+    final t = _timeValue;
+    return d == null || t == null
+        ? null
+        : DateTime(d.year, d.month, d.day, t.hour, t.minute);
+  }
+
+  bool get _timeChanged {
+    if (!_timed) return false;
+    final s = _newStart;
+    final l = _lengthValue;
+    return s != _start || (l != null && l != _length);
+  }
+
+  bool get _textChanged =>
+      _title.text.trim() != _event.title ||
+      _location.text.trim() != (_event.location ?? '') ||
+      _description.text != (_event.description ?? '');
+
+  bool get _canSave =>
+      _editable &&
+      !_busy &&
+      _title.text.trim().isNotEmpty &&
+      _timeOk &&
+      (_textChanged || _timeChanged);
+
+  bool get _showFormatted =>
+      !_editingHtml &&
+      _editable &&
+      looksLikeHtml(_event.description ?? '') &&
+      _description.text == (_event.description ?? '');
+
+  void _set(TextEditingController c, String text) => c.value = TextEditingValue(
+      text: text, selection: TextSelection.collapsed(offset: text.length));
+
+  /// A full `YYYYMMDDTHHmm` in the day or the time field sets both.
+  void _typed(String text) {
+    final p = parseDayAndTime(text);
+    if (p != null && p.time != null) {
+      _set(_day, formatDay(p.day));
+      _set(_time, formatTime(p.time!));
+    }
+    setState(() {});
+  }
+
+  void _tidy(TextEditingController c, String? Function() standard) {
+    final text = standard();
+    if (text != null && text != c.text) _set(c, text);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dayValue ?? _start,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && mounted) {
+      setState(() => _set(_day, formatDay(picked)));
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _timeValue ?? TimeOfDay.fromDateTime(_start),
+      // Times are 24 hours everywhere in tefteri: no AM or PM.
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _set(_time, formatTime(picked)));
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_canSave) return;
+    final navigator = Navigator.of(context);
+    final actions = ref.read(plannerActionsProvider);
+    final api = ref.read(planningApiProvider);
+    final start = _timeChanged ? _newStart : null;
+    final end = start?.add(_lengthValue!);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await api.updateEntry(
+        _event.id,
+        title: _title.text.trim() != _event.title ? _title.text.trim() : null,
+        start: start,
+        end: end,
+        location: _location.text.trim() != (_event.location ?? '')
+            ? _location.text.trim()
+            : null,
+        description: _description.text != (_event.description ?? '')
+            ? _description.text
+            : null,
+      );
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = apiErrorMessage(e);
+        });
+      }
+      return;
+    }
+    actions.refresh();
+    navigator.pop();
+  }
+
+  /// A text field for typed input, with a button that opens a picker that the
+  /// mouse can use. Tab skips the button.
+  Widget _typedField({
+    required String name,
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required String? Function() standard,
+    required bool valid,
+    required String problem,
+    IconData? icon,
+    String? pickTooltip,
+    VoidCallback? onPick,
+    ValueChanged<String>? onChanged,
+  }) {
+    return Focus(
+      // Only to hear when the field loses the focus: it is not a stop of its
+      // own when the user presses Tab.
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) {
+        if (!focused) _tidy(controller, standard);
+      },
+      child: TextField(
+        key: Key('event-edit-$name'),
+        controller: controller,
+        enabled: _editable && !_busy,
+        keyboardType: TextInputType.datetime,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          errorText: valid ? null : problem,
+          suffixIcon: icon == null
+              ? null
+              : ExcludeFocus(
+                  child: IconButton(
+                    key: Key('event-edit-$name-pick'),
+                    tooltip: pickTooltip,
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(icon, size: 18),
+                    onPressed: _editable && !_busy ? onPick : null,
+                  ),
+                ),
+        ),
+        onChanged: onChanged ?? (_) => setState(() {}),
+        onSubmitted: (_) => _tidy(controller, standard),
+      ),
+    );
+  }
+
+  Widget _descriptionField(TextTheme text) {
+    if (_showFormatted) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Description', style: text.labelMedium),
+          const SizedBox(height: Space.xs),
+          HtmlDescription(
+            key: const Key('event-edit-description-formatted'),
+            html: _description.text,
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('event-edit-description-edit'),
+              onPressed:
+                  _busy ? null : () => setState(() => _editingHtml = true),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Edit the text'),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          key: const Key('event-edit-description'),
+          controller: _description,
+          enabled: _editable && !_busy,
+          minLines: 3,
+          maxLines: 8,
+          decoration: const InputDecoration(
+            labelText: 'Description',
+            alignLabelWithHint: true,
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (looksLikeHtml(_description.text)) ...[
+          const SizedBox(height: Space.sm),
+          Text('Formatted', style: text.labelMedium),
+          const SizedBox(height: Space.xs),
+          HtmlDescription(
+            key: const Key('event-edit-description-formatted'),
+            html: _description.text,
+          ),
+        ],
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      key: const Key('event-details'),
-      title: Text(event.title, key: const Key('event-details-title')),
-      content: SizedBox(
-        width: _dialogWidth,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Row('When', _when, 'when'),
-            const _Row('Type', 'Calendar event', 'type'),
-            if (event.calendarNames.isNotEmpty)
-              _Row(event.isShared ? 'Calendars' : 'Calendar',
-                  calendarsLine(event)!, 'calendar'),
-          ],
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final newStart = _newStart;
+    final length = _lengthValue;
+    final end = _timed && newStart != null && length != null
+        ? newStart.add(length)
+        : null;
+    const gap = SizedBox(height: Space.md);
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): _save,
+      },
+      child: AlertDialog(
+        key: const Key('event-details'),
+        title: const Text('Event', key: Key('event-details-title')),
+        content: SizedBox(
+          width: _dialogWidth,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Space.sm),
+                    child: Text(_error!,
+                        key: const Key('event-edit-error'),
+                        style: TextStyle(color: scheme.error)),
+                  ),
+                if (!_editable)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Space.sm),
+                    child: Text(
+                      'This calendar is read-only, so the event cannot be '
+                      'changed here.',
+                      key: const Key('event-edit-readonly'),
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                TextField(
+                  key: const Key('event-edit-title'),
+                  controller: _title,
+                  autofocus: _editable,
+                  enabled: _editable && !_busy,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                gap,
+                if (_timed) ...[
+                  _typedField(
+                    name: 'day',
+                    controller: _day,
+                    label: 'Day',
+                    hint: 'YYYYMMDD',
+                    standard: () {
+                      final d = _dayValue;
+                      return d == null ? null : formatDay(d);
+                    },
+                    valid: _dayValue != null,
+                    problem: 'Type the day as YYYYMMDD',
+                    icon: Icons.calendar_today_outlined,
+                    pickTooltip: 'Pick a day',
+                    onPick: _pickDate,
+                    onChanged: _typed,
+                  ),
+                  gap,
+                  _typedField(
+                    name: 'start',
+                    controller: _time,
+                    label: 'Starts at',
+                    hint: 'HHmm',
+                    standard: () {
+                      final t = _timeValue;
+                      return t == null ? null : formatTime(t);
+                    },
+                    valid: _timeValue != null,
+                    problem: 'Type the time as HHmm',
+                    icon: Icons.schedule_outlined,
+                    pickTooltip: 'Pick a time',
+                    onPick: _pickTime,
+                    onChanged: _typed,
+                  ),
+                  gap,
+                  _typedField(
+                    name: 'length',
+                    controller: _lengthCtl,
+                    label: 'Length',
+                    hint: '1h30',
+                    standard: () {
+                      final d = _lengthValue;
+                      return d == null ? null : formatEventLength(d);
+                    },
+                    valid: _lengthValue != null,
+                    problem: 'Type minutes or hours, such as 45m or 1h30',
+                  ),
+                  if (end != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Space.xs),
+                      child: Text('Ends ${formatDay(end)} ${hhmm(end)}',
+                          key: const Key('event-edit-ends'),
+                          style: text.bodySmall),
+                    ),
+                ] else
+                  _Row(
+                      'When',
+                      _event.start == null ? '' : '${dateKey(_start)}, all day',
+                      'when'),
+                if (!_timed && _editable)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(
+                      'The time of an all-day event cannot be changed here.',
+                      key: const Key('event-edit-allday-note'),
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                gap,
+                TextField(
+                  key: const Key('event-edit-location'),
+                  controller: _location,
+                  enabled: _editable && !_busy,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Place'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                gap,
+                _descriptionField(text),
+                gap,
+                const _Row('Type', 'Calendar event', 'type'),
+                if (_event.calendarNames.isNotEmpty)
+                  _Row(_event.isShared ? 'Calendars' : 'Calendar',
+                      calendarsLine(_event)!, 'calendar'),
+                if (_event.isShared && _editable)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(
+                      'This event is in more than one calendar. A change here '
+                      'is made in ${_event.calendar ?? 'the first one'} only.',
+                      key: const Key('event-edit-shared'),
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
+        actions: [
+          TextButton(
+            key: const Key('event-details-close'),
+            onPressed: _busy ? null : () => Navigator.of(context).pop(),
+            child: Text(_editable ? 'Cancel' : 'Close'),
+          ),
+          if (_editable)
+            FilledButton(
+              key: const Key('event-edit-save'),
+              onPressed: _canSave ? _save : null,
+              child: Text(_busy ? 'Saving...' : 'Save'),
+            ),
+        ],
       ),
-      actions: [
-        TextButton(
-          key: const Key('event-details-close'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
     );
   }
 }

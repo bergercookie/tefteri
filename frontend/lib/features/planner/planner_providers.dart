@@ -169,6 +169,12 @@ class PlannerActions {
         item.id, (api) => api.moveEntry(item.id, start, start.add(length)));
   }
 
+  /// Gives the event [item] a new [start] and [end], for example after its edge
+  /// was dragged. The calendar app saves the new time; a calendar that is
+  /// read-only refuses.
+  Future<void> resizeEntry(CalendarItem item, DateTime start, DateTime end) =>
+      _run(item.id, (api) => api.moveEntry(item.id, start, end));
+
   /// Marks [taskId] as done in the task app.
   Future<void> complete(String taskId) =>
       _run(taskId, (api) => api.completeTask(taskId));

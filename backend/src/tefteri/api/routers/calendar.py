@@ -47,6 +47,7 @@ class EntryPatch(BaseModel):
     start: datetime | None = None
     end: datetime | None = None
     location: str | None = None
+    description: str | None = Field(default=None, max_length=8000)
 
 
 @router.get("/calendar")

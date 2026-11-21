@@ -102,3 +102,121 @@ async def test_an_event_can_invite_people(api: AsyncClient, world: FakeWorld) ->
     assert not world.calendars["default"].drafts[-1].attendees
     bad = await api.post(f"{V1}/calendar/entries", json=base | {"attendees": ["not an address"]})
     assert bad.status_code == 422, bad.text
+
+
+async def test_an_event_can_be_edited_in_title_time_place_and_description(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await _ready(api)
+    r = await api.post(
+        f"{V1}/calendar/entries",
+        json={
+            "connection_id": ids["google_calendar"],
+            "title": "Dentist",
+            "start": "2026-11-02T15:00:00+00:00",
+            "end": "2026-11-02T16:00:00+00:00",
+        },
+    )
+    entry = r.json()
+    edited = await api.patch(
+        f"{V1}/calendar/entries/{entry['id']}",
+        json={
+            "title": "Dentist, second visit",
+            "start": "2026-11-02T14:30:00+00:00",
+            "end": "2026-11-02T16:30:00+00:00",
+            "location": "Main street 5",
+            "description": "Bring the x-rays.\nAsk about the bill.",
+        },
+    )
+    assert edited.status_code == 200, edited.text
+    body = edited.json()
+    assert body["title"] == "Dentist, second visit"
+    assert body["description"] == "Bring the x-rays.\nAsk about the bill."
+    remote = next(iter(world.calendars["default"].entries.values()))
+    assert (remote.title, remote.location, remote.description) == (
+        "Dentist, second visit",
+        "Main street 5",
+        "Bring the x-rays.\nAsk about the bill.",
+    )
+    assert remote.start.isoformat().startswith("2026-11-02T14:30")
+    assert remote.end.isoformat().startswith("2026-11-02T16:30")
+    # The calendar view carries the place and the description, so the pop-up can show them.
+    items = (await api.get(f"{V1}/calendar")).json()
+    item = next(i for i in items if i["id"] == entry["id"])
+    assert item["location"] == "Main street 5"
+    assert item["description"] == "Bring the x-rays.\nAsk about the bill."
+    # A patch of one field leaves the others as they were.
+    only = await api.patch(f"{V1}/calendar/entries/{entry['id']}", json={"description": ""})
+    assert only.json()["description"] == "" and only.json()["location"] == "Main street 5"
+
+
+async def test_the_description_of_an_event_comes_from_the_app(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await _ready(api)
+    r = await api.post(
+        f"{V1}/calendar/entries",
+        json={
+            "connection_id": ids["google_calendar"],
+            "title": "Review",
+            "start": "2026-11-03T09:00:00+00:00",
+            "end": "2026-11-03T10:00:00+00:00",
+        },
+    )
+    from dataclasses import replace
+
+    backend = world.calendars["default"]
+    remote_id, current = next(iter(backend.entries.items()))
+    backend.entries[remote_id] = replace(
+        current, description="Agenda: roadmap", version=current.version + "+"
+    )
+    await api.post(f"{V1}/sync")
+    items = (await api.get(f"{V1}/calendar")).json()
+    assert next(i for i in items if i["id"] == r.json()["id"])["description"] == "Agenda: roadmap"
+
+
+async def test_an_event_cannot_end_before_it_starts_and_an_all_day_event_keeps_its_time(
+    api: AsyncClient, world: FakeWorld
+) -> None:
+    ids = await _ready(api)
+    timed = (
+        await api.post(
+            f"{V1}/calendar/entries",
+            json={
+                "connection_id": ids["google_calendar"],
+                "title": "Call",
+                "start": "2026-11-04T09:00:00+00:00",
+                "end": "2026-11-04T10:00:00+00:00",
+            },
+        )
+    ).json()
+    for patch in (
+        {"end": "2026-11-04T08:00:00+00:00"},  # before its start
+        {"start": "2026-11-04T10:30:00+00:00"},  # after its end
+        {"start": "2026-11-04T11:00:00+00:00", "end": "2026-11-04T11:00:00+00:00"},
+    ):
+        r = await api.patch(f"{V1}/calendar/entries/{timed['id']}", json=patch)
+        assert r.status_code == 422, (patch, r.text)
+    allday = (
+        await api.post(
+            f"{V1}/calendar/entries",
+            json={
+                "connection_id": ids["google_calendar"],
+                "title": "Holiday",
+                "start": "2026-11-05T00:00:00+00:00",
+                "end": "2026-11-06T00:00:00+00:00",
+                "all_day": True,
+            },
+        )
+    ).json()
+    moved = await api.patch(
+        f"{V1}/calendar/entries/{allday['id']}",
+        json={"start": "2026-11-05T09:00:00+00:00", "end": "2026-11-05T10:00:00+00:00"},
+    )
+    assert moved.status_code == 422 and "all-day" in moved.text
+    # Its title and description still change.
+    renamed = await api.patch(
+        f"{V1}/calendar/entries/{allday['id']}",
+        json={"title": "Public holiday", "description": "Office closed"},
+    )
+    assert renamed.status_code == 200 and renamed.json()["title"] == "Public holiday"

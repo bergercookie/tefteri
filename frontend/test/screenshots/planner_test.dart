@@ -302,4 +302,27 @@ void main() {
     await tester.pumpAndSettle();
     await saveScreenshot('planner-new-event');
   });
+
+  testWidgets('planner: changing an event', (tester) async {
+    await pumpScreen(
+        tester,
+        _api({
+          'GET /calendar': [
+            for (final item in _calendar)
+              if (item['id'] == 'e1')
+                {
+                  ...item,
+                  'location': 'Room 4',
+                  'description': 'Roadmap and hiring. Bring the numbers.',
+                  'calendar': 'Work',
+                }
+              else
+                item,
+          ],
+        }),
+        PlannerScreen(initialDate: day, clock: _now));
+    await tester.tap(find.byKey(const Key('block-entry-e1')));
+    await tester.pumpAndSettle();
+    await saveScreenshot('planner-event-edit');
+  });
 }

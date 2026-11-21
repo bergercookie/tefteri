@@ -95,6 +95,8 @@ class RemoteEntry:
     uid: str = ""
     """The id of the event that is the same in every calendar holding a copy of it (the iCalendar
     UID). An event to which another calendar was invited has one copy in each calendar."""
+    description: str = ""
+    """The text under the title of the event."""
 
 
 @dataclass(frozen=True)
@@ -119,6 +121,7 @@ class EntryPatch:
     start: datetime | None = None
     end: datetime | None = None
     location: str | None = None
+    description: str | None = None
 
 
 @dataclass(frozen=True)

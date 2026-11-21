@@ -286,6 +286,8 @@ class CalendarItem {
     this.work = false,
     this.color,
     this.readOnly = false,
+    this.location,
+    this.description,
     this.calendar,
     this.uid,
     this.alsoIn = const [],
@@ -307,6 +309,8 @@ class CalendarItem {
         work: j['work'] == true,
         color: j['color'] as String?,
         readOnly: j['read_only'] == true,
+        location: j['location'] as String?,
+        description: j['description'] as String?,
         calendar: j['calendar'] as String?,
         uid: j['uid'] as String?,
       );
@@ -327,6 +331,8 @@ class CalendarItem {
         project: project,
         color: color,
         readOnly: readOnly,
+        location: location,
+        description: description,
         calendar: calendar,
         uid: uid,
         alsoIn: [
@@ -336,6 +342,12 @@ class CalendarItem {
                 containerId: o.containerId, name: o.calendar, color: o.color),
         ],
       );
+
+  /// For an event: the place.
+  final String? location;
+
+  /// For an event: the description, as the calendar app keeps it.
+  final String? description;
 
   /// For an event: the name of its calendar, when known.
   final String? calendar;

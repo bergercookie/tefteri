@@ -107,6 +107,7 @@ class EntryOut(BaseModel):
     read_only: bool = False
     """Its calendar is read-only: the user cannot move or change it."""
     location: str
+    description: str = ""
     sync_state: str
 
     @classmethod
@@ -127,6 +128,7 @@ class EntryOut(BaseModel):
             color=(colors or {}).get(e.container_id) if e.container_id else None,
             read_only=bool(read_only and e.container_id in read_only),
             location=e.location,
+            description=e.description,
             sync_state=e.sync_state,
         )
 
@@ -178,6 +180,10 @@ class CalendarItemOut(BaseModel):
     """The color of its calendar (an entry) or of its project (a task), as ``#rrggbb``."""
     read_only: bool = False
     """For an entry: its calendar is read-only, so the user cannot move or change it."""
+    location: str | None = None
+    """For an entry: the place of the event."""
+    description: str | None = None
+    """For an entry: the description of the event."""
     calendar: str | None = None
     """For an entry: the name of its calendar."""
     uid: str | None = None
@@ -201,6 +207,8 @@ class CalendarItemOut(BaseModel):
             read_only=bool(read_only and e.container_id in read_only),
             calendar=(names or {}).get(e.container_id) if e.container_id else None,
             uid=e.uid or None,
+            location=e.location,
+            description=e.description,
             type="entry",
             id=e.id,
             connection_id=e.connection_id,

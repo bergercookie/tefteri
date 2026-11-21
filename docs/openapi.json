@@ -348,6 +348,17 @@
             ],
             "title": "Container Id"
           },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "end": {
             "format": "date-time",
             "title": "End",
@@ -357,6 +368,17 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
           },
           "project": {
             "anyOf": [
@@ -2019,6 +2041,11 @@
             "title": "Connection Id",
             "type": "string"
           },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
           "end": {
             "format": "date-time",
             "title": "End",
@@ -2068,6 +2095,18 @@
       "EntryPatch": {
         "description": "Partial entry update.",
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "end": {
             "anyOf": [
               {

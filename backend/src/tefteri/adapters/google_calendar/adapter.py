@@ -136,6 +136,7 @@ class GoogleCalendarBackend:
             location=data.get("location", ""),
             version=data.get("etag", ""),
             uid=data.get("iCalUID", ""),
+            description=data.get("description", ""),
         )
 
     async def list_containers(self) -> list[Container]:
@@ -233,6 +234,8 @@ class GoogleCalendarBackend:
             body["summary"] = patch.title
         if patch.location is not None:
             body["location"] = patch.location
+        if patch.description is not None:
+            body["description"] = patch.description
         if patch.start is not None:
             body["start"] = {"dateTime": patch.start.isoformat()}
         if patch.end is not None:

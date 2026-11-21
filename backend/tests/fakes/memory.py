@@ -350,6 +350,9 @@ class FakeCalendarBackend(_FakeBase):
             start=patch.start if patch.start is not None else current.start,
             end=patch.end if patch.end is not None else current.end,
             location=patch.location if patch.location is not None else current.location,
+            description=(
+                patch.description if patch.description is not None else current.description
+            ),
             version=self._new_version(),
         )
         self.entries[remote_id] = updated

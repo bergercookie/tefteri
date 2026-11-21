@@ -274,8 +274,13 @@ void main() {
     await pumpPlanner(tester, api);
     await tester.tap(find.byKey(const Key('block-entry-e1')));
     await settle(tester);
-    expect(_text(tester, 'event-details-title'), 'Team standup');
-    expect(_text(tester, 'task-details-when'), '2026-11-03, 09:00 - 09:30');
+    // The pop-up of an event is a form: the title, the day, the start and the
+    // length, with the end that follows from them.
+    expect(_field(tester, 'event-edit-title'), 'Team standup');
+    expect(_field(tester, 'event-edit-day'), '2026-11-03');
+    expect(_field(tester, 'event-edit-start'), '09:00');
+    expect(_field(tester, 'event-edit-length'), '30m');
+    expect(_text(tester, 'event-edit-ends'), 'Ends 2026-11-03 09:30');
     expect(_text(tester, 'task-details-type'), 'Calendar event');
     expect(api.where('GET /tasks/e1'), isEmpty); // no task to load
     await tester.tap(find.byKey(const Key('event-details-close')));

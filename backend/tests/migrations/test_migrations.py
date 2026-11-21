@@ -1461,7 +1461,8 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0035"
+    assert script.get_current_head() == "0036"
+    assert script.get_revision("0036").down_revision == "0035"
     assert script.get_revision("0035").down_revision == "0034"
     assert script.get_revision("0034").down_revision == "0033"
     assert script.get_revision("0033").down_revision == "0032"
@@ -1578,7 +1579,8 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0035"
+    assert script.get_current_head() == "0036"
+    assert script.get_revision("0036").down_revision == "0035"
     assert script.get_revision("0035").down_revision == "0034"
     assert script.get_revision("0034").down_revision == "0033"
     assert script.get_revision("0033").down_revision == "0032"
@@ -1606,6 +1608,20 @@ def test_0030_adds_the_default_event_calendar_and_keeps_users(
     alembic_runner.migrate_down_to("0029")
     columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     assert "default_event_container_id" not in columns
+
+
+def test_0036_adds_the_entry_description(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0035")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("calendar_entries")}
+    assert "description" not in columns
+    alembic_runner.migrate_up_to("0036")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("calendar_entries")}
+    assert "description" in columns
+    alembic_runner.migrate_down_to("0035")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("calendar_entries")}
+    assert "description" not in columns
 
 
 def test_0035_adds_the_weekly_metrics_table(
