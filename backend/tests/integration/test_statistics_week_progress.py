@@ -95,3 +95,50 @@ async def test_a_committed_plan_with_no_task_has_progress_with_zero_committed(
     _today(env, 6)
     p = (await s.stats("week", WEEK))["progress"]
     assert p["committed"] == 0 and p["on_track"] is True and p["needed_per_day"] is None
+
+
+async def test_done_tasks_stay_in_the_plan_when_a_sync_does_not_list_them(env: ProjectsEnv) -> None:
+    """A sync that flags a done task as deleted must not shrink the committed plan."""
+    s = await _committed(env)
+    for title, day in (("Task 1", 4), ("Task 2", 4), ("Task 3", 5), ("Task 4", 6)):
+        s.finish(title, at(day))
+    await s.sync()
+    _today(env, 6)
+    # The task app does not list the four done tasks in the next sync.
+    done = {i: t for i, t in s.backend.tasks.items() if t.done}
+    for i in done:
+        del s.backend.tasks[i]
+    await s.sync()
+    p = (await s.stats("week", WEEK))["progress"]
+    assert p["committed"] == 10 and p["done"] == 4 and p["scope"] == 10
+    s.backend.tasks.update(done)
+    await s.sync()
+    assert (await s.stats("week", WEEK))["progress"]["committed"] == 10
+
+
+async def test_an_open_task_that_is_gone_leaves_the_plan(env: ProjectsEnv) -> None:
+    s = await _committed(env)
+    _today(env, 5)
+    gone = next(i for i, t in s.backend.tasks.items() if t.title == "Task 1")
+    del s.backend.tasks[gone]
+    await s.sync()
+    p = (await s.stats("week", WEEK))["progress"]
+    assert p["committed"] == 9 and p["done"] == 0 and p["scope"] == 9
+
+
+async def test_the_look_back_keeps_done_tasks_when_a_sync_does_not_list_them(
+    env: ProjectsEnv,
+) -> None:
+    """Planning the next week shows the reviewed week with its done tasks still counted."""
+    s = await _committed(env)
+    for title, day in (("Task 1", 4), ("Task 2", 4)):
+        s.finish(title, at(day))
+    await s.sync()
+    done = {i: t for i, t in s.backend.tasks.items() if t.done}
+    for i in done:
+        del s.backend.tasks[i]
+    await s.sync()
+    (project,) = (await s.weekly.look_back(WEEK))["projects"]
+    assert (project["committed"], project["done"]) == (10, 2)
+    s.backend.tasks.update(done)
+    await s.sync()

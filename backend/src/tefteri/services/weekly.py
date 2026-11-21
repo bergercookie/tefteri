@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import cast
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.db.models.connection import Connection, SourceContainer
@@ -468,6 +468,29 @@ class WeeklyService:
                         Task.user_id == user_id,
                         Task.container_id == container_id,
                         Task.sync_state != SyncState.DELETED_REMOTELY.value,
+                    )
+                )
+            ).scalars()
+        )
+
+    async def _planned_tasks(
+        self, db: AsyncSession, user_id: uuid.UUID, container_id: uuid.UUID
+    ) -> list[Task]:
+        """Return the tasks of a container that a plan can count.
+
+        Open tasks that still exist, and every done task. A sync that flags a done task as
+        deleted must not shrink a committed plan.
+        """
+        return list(
+            (
+                await db.execute(
+                    select(Task).where(
+                        Task.user_id == user_id,
+                        Task.container_id == container_id,
+                        or_(
+                            Task.sync_state != SyncState.DELETED_REMOTELY.value,
+                            Task.status == "done",
+                        ),
                     )
                 )
             ).scalars()
@@ -1044,7 +1067,7 @@ class WeeklyService:
         out = []
         for row in rows:
             tasks = (
-                {str(t.id): t for t in await self._container_tasks(db, user_id, row.container_id)}
+                {str(t.id): t for t in await self._planned_tasks(db, user_id, row.container_id)}
                 if row.container_id
                 else {}
             )

@@ -459,7 +459,13 @@ class StatisticsService:
                             select(Task).where(
                                 Task.user_id == user_id,
                                 Task.id.in_(ids_[i : i + 500]),
-                                Task.sync_state != SyncState.DELETED_REMOTELY.value,
+                                # A done task stays in the plan even if a sync flagged it
+                                # deleted: a sync that does not list done tasks must not
+                                # shrink the committed plan. An open one that is gone drops out.
+                                or_(
+                                    Task.sync_state != SyncState.DELETED_REMOTELY.value,
+                                    Task.status == "done",
+                                ),
                             )
                         )
                     ).scalars()

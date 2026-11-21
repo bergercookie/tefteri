@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tefteri.db.models.milestone import Milestone
 from tefteri.db.models.task import Task
 from tefteri.db.models.weekly import WeeklyMetric, WeeklyPlan, WeeklyPlanProject
-from tefteri.domain.enums import MilestoneState, SyncState
+from tefteri.domain.enums import MilestoneState
 from tefteri.domain.periods import PeriodType, period_start
 from tefteri.domain.work_categories import CategoryCounts, percentages
 from tefteri.services.statistics import StatisticsService
@@ -171,7 +171,6 @@ class WeeklyMetricsService:
                         select(Task.id).where(
                             Task.id.in_(ids),
                             Task.status == "done",
-                            Task.sync_state != SyncState.DELETED_REMOTELY.value,
                         )
                     )
                 ).scalars()
