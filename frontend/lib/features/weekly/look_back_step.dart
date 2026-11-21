@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/theme.dart';
 import '../projects/term_hint.dart';
+import '../trends/recent_comparison.dart';
 import 'decision_card.dart';
 import 'history_view.dart';
 import 'rescope_nudge.dart';
@@ -175,6 +176,7 @@ class _LookBackStepState extends ConsumerState<LookBackStep> {
               'milestone that is not finished.',
         ),
         ReviewSummaryCard(summary: back.summary),
+        RecentComparison(week: back.weekStart),
         const SizedBox(height: Space.sm),
         const TermHint(
           id: 'weekly-review',

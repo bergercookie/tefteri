@@ -26,7 +26,7 @@ from tefteri.db.models.sync import Conflict, SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.task_category import TaskCategory
 from tefteri.db.models.user import AuthSession, User
-from tefteri.db.models.weekly import WeeklyPlan, WeeklyPlanProject
+from tefteri.db.models.weekly import WeeklyMetric, WeeklyPlan, WeeklyPlanProject
 
 __all__ = [
     "AuthSession",
@@ -58,5 +58,6 @@ __all__ = [
     "Task",
     "User",
     "WeeklyPlan",
+    "WeeklyMetric",
     "WeeklyPlanProject",
 ]

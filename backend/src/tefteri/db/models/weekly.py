@@ -42,6 +42,37 @@ class WeeklyPlan(IdMixin, Base):
     reflection: Mapped[str] = mapped_column(Text, default="")
 
 
+class WeeklyMetric(IdMixin, Base):
+    """The numbers of one finished week, kept so that the weeks can be compared.
+
+    Only counts: tasks, milestones and themes. Time is never measured. A row is made the first time
+    the trends are read after the week ended, and made again when the week is reviewed after that
+    (``reviewed``), because the review fixes the counts of the plan.
+    """
+
+    __tablename__ = "weekly_metrics"
+    __table_args__ = (UniqueConstraint("user_id", "week_start"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    week_start: Mapped[date] = mapped_column(Date)
+    reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
+    committed_tasks: Mapped[int] = mapped_column(Integer, default=0)
+    committed_done: Mapped[int] = mapped_column(Integer, default=0)
+    milestones_committed: Mapped[int] = mapped_column(Integer, default=0)
+    milestones_done: Mapped[int] = mapped_column(Integer, default=0)
+    milestones_finished: Mapped[int] = mapped_column(Integer, default=0)
+    """Milestones that became done in the week, committed or not."""
+    tasks_done: Mapped[int] = mapped_column(Integer, default=0)
+    """Tasks completed in the week, in the three work categories."""
+    goal_aligned: Mapped[int] = mapped_column(Integer, default=0)
+    maintenance: Mapped[int] = mapped_column(Integer, default=0)
+    off_plan: Mapped[int] = mapped_column(Integer, default=0)
+    themes_active: Mapped[int] = mapped_column(Integer, default=0)
+    """Themes that had a completed task in the week."""
+
+
 class WeeklyPlanProject(IdMixin, Base):
     """The weekly commitment of one milestone project (spec 004).
 

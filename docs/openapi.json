@@ -7700,6 +7700,23 @@
         "title": "TrendState",
         "type": "string"
       },
+      "TrendsOut": {
+        "description": "The numbers of the last weeks, the running week last.",
+        "properties": {
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/WeekMetricsOut"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weeks"
+        ],
+        "title": "TrendsOut",
+        "type": "object"
+      },
       "UndoOut": {
         "description": "How many projects got their earlier label back.",
         "properties": {
@@ -7895,6 +7912,115 @@
           "value"
         ],
         "title": "ValueIn",
+        "type": "object"
+      },
+      "WeekMetricsOut": {
+        "description": "The numbers of one week. Only counts: tasks, milestones and themes. Never time.",
+        "properties": {
+          "committed_done": {
+            "title": "Committed Done",
+            "type": "integer"
+          },
+          "committed_tasks": {
+            "title": "Committed Tasks",
+            "type": "integer"
+          },
+          "completion_percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Percent"
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "goal_aligned": {
+            "title": "Goal Aligned",
+            "type": "integer"
+          },
+          "goal_aligned_percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Aligned Percent"
+          },
+          "has_data": {
+            "title": "Has Data",
+            "type": "boolean"
+          },
+          "has_plan": {
+            "title": "Has Plan",
+            "type": "boolean"
+          },
+          "maintenance": {
+            "title": "Maintenance",
+            "type": "integer"
+          },
+          "milestones_committed": {
+            "title": "Milestones Committed",
+            "type": "integer"
+          },
+          "milestones_done": {
+            "title": "Milestones Done",
+            "type": "integer"
+          },
+          "milestones_finished": {
+            "title": "Milestones Finished",
+            "type": "integer"
+          },
+          "off_plan": {
+            "title": "Off Plan",
+            "type": "integer"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "boolean"
+          },
+          "tasks_done": {
+            "title": "Tasks Done",
+            "type": "integer"
+          },
+          "themes_active": {
+            "title": "Themes Active",
+            "type": "integer"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "finished",
+          "has_plan",
+          "reviewed",
+          "committed_tasks",
+          "committed_done",
+          "completion_percent",
+          "milestones_committed",
+          "milestones_done",
+          "milestones_finished",
+          "tasks_done",
+          "goal_aligned",
+          "maintenance",
+          "off_plan",
+          "goal_aligned_percent",
+          "themes_active",
+          "has_data"
+        ],
+        "title": "WeekMetricsOut",
         "type": "object"
       },
       "WeeklyStateOut": {
@@ -14693,6 +14819,50 @@
           }
         },
         "summary": "Review",
+        "tags": [
+          "weekly planning"
+        ]
+      }
+    },
+    "/api/v1/weekly/trends": {
+      "get": {
+        "description": "Return the numbers of the last ``weeks`` weeks, to compare a week with the earlier ones.\n\nThe tasks and milestones completed, the share of the committed tasks that were done, and the\nsplit of the completed tasks into goal-aligned, maintenance and off-plan work. Counts only:\ntime is not measured. A week that has ended is kept the first time that it is read, so this\nalso fills in the weeks before the feature existed, as far as the stored data allows.",
+        "operationId": "trends_api_v1_weekly_trends_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trends",
         "tags": [
           "weekly planning"
         ]

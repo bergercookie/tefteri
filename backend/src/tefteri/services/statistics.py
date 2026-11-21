@@ -270,6 +270,27 @@ class StatisticsService:
             out[day] = out[day] + CategoryCounts.one(WorkCategory(category), n)
         return out
 
+    async def project_ids(
+        self, db: AsyncSession, user_id: uuid.UUID, start: date, end: date
+    ) -> list[uuid.UUID | None]:
+        """Return the project (label row id) of each task completed in ``[start, end)``.
+
+        Only the three work categories count; a task in an ignored project is left out. A task
+        with no project has ``None``.
+        """
+        rows = await db.execute(
+            select(TaskCategory.project_id)
+            .join(Task, Task.id == TaskCategory.task_id)
+            .where(
+                TaskCategory.user_id == user_id,
+                TaskCategory.completed_on >= start,
+                TaskCategory.completed_on < end,
+                TaskCategory.category != WorkCategory.HIDDEN.value,
+                *_counted(),
+            )
+        )
+        return list(rows.scalars())
+
     async def counts(
         self, db: AsyncSession, user_id: uuid.UUID, start: date, end: date
     ) -> CategoryCounts:

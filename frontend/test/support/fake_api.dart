@@ -972,6 +972,46 @@ Map<String, int> fakePercentages(int g, int m, int o) {
 Map<String, Object?> categoryCountsJson(int g, int m, int o) =>
     {'goal_aligned': g, 'maintenance': m, 'off_plan': o};
 
+/// One week of `GET /weekly/trends`. [week] is the Monday as `YYYY-MM-DD`.
+Map<String, Object?> weekMetricsJson(String week,
+    {bool finished = true,
+    int committed = 0,
+    int committedDone = 0,
+    int milestonesCommitted = 0,
+    int milestonesDone = 0,
+    int milestonesFinished = 0,
+    int goalAligned = 0,
+    int maintenance = 0,
+    int offPlan = 0,
+    int themes = 0}) {
+  final done = goalAligned + maintenance + offPlan;
+  final pct = fakePercentages(goalAligned, maintenance, offPlan);
+  return {
+    'week_start': week,
+    'finished': finished,
+    'has_plan': committed > 0,
+    'reviewed': finished && committed > 0,
+    'committed_tasks': committed,
+    'committed_done': committedDone,
+    'completion_percent':
+        committed == 0 ? null : (100 * committedDone / committed).round(),
+    'milestones_committed': milestonesCommitted,
+    'milestones_done': milestonesDone,
+    'milestones_finished': milestonesFinished,
+    'tasks_done': done,
+    'goal_aligned': goalAligned,
+    'maintenance': maintenance,
+    'off_plan': offPlan,
+    'goal_aligned_percent': done == 0 ? null : pct['goal_aligned'],
+    'themes_active': themes,
+    'has_data': committed > 0 || done > 0,
+  };
+}
+
+/// `GET /weekly/trends` over [weeks], oldest first.
+Map<String, Object?> trendsJson(List<Map<String, Object?>> weeks) =>
+    {'weeks': weeks};
+
 /// `GET /statistics/open`: the unfinished tasks of a week. Each of [tasks]
 /// is made with [openTaskJson]; the counts follow from them.
 Map<String, Object?> openTasksJson(

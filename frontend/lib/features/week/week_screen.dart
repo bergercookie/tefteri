@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
@@ -63,6 +64,16 @@ class _WeekScreenState extends ConsumerState<WeekScreen> {
       banner: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // The weeks side by side, to see whether things improve.
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              key: const Key('week-trends-link'),
+              onPressed: () => GoRouter.maybeOf(context)?.go('/week/trends'),
+              icon: const Icon(Icons.show_chart, size: 18),
+              label: const Text('Trends'),
+            ),
+          ),
           WeeklyPlanningCard(week: _start, today: widget.today),
           const SizedBox(height: Space.sm),
           WeekProgressCard(week: _start, today: widget.today),

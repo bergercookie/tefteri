@@ -165,6 +165,45 @@ To mark a milestone as done yourself, choose Mark as done on its card. The windo
 tasks stay in the project. Tefteri moves and deletes nothing. The done date is the day that you save the
 review. You can take the mark back before you save.
 
+### Compare the week with the weeks before
+
+Below the numbers, the card Compared with your recent weeks puts the week against the average of
+your four earlier weeks that have numbers. It shows four measures:
+
+- Completion of the committed tasks: the share of the committed tasks that you did.
+- Tasks completed: all the tasks that you completed in the week, also the ones that were not in the
+  plan.
+- Goal-aligned share of the work: the share of the completed tasks that were goal-aligned, and not
+  maintenance or off-plan.
+- Milestones done: the milestones of the plan that you finished.
+
+Each measure says UP, STEADY or DOWN, and the words say by how much. A share is steady when it is
+less than 5 points from the average. A count is steady when it is within a fifth of the average,
+and at least one task or milestone. Tefteri needs at least two earlier weeks with numbers. With
+fewer, the card says so and does not guess.
+
+Tefteri counts tasks, milestones and themes. It does not measure time.
+
+![The page Trends. A card compares the last week with the weeks before it. A chart shows the tasks completed each week, split into goal-aligned, maintenance and off-plan. A second chart shows how much of the committed plan was done. A table lists the numbers of every week.](../images/weekly-trends.png)
+
+## See all your weeks together
+
+Open the Week view and choose Trends, or choose See all weeks in the review. The page shows the
+last 12 weeks. Choose 8 weeks or 26 weeks to see fewer or more.
+
+- The first chart shows the tasks that you completed each week. Each bar has three parts:
+  goal-aligned, maintenance and off-plan. This is how much of your work was in the plan.
+- The second chart shows how much of the committed plan you did each week.
+- The table has the exact numbers of every week: tasks done, the three categories, the
+  goal-aligned share, committed tasks done, completion, milestones done and themes with work.
+  A number in brackets after the milestones, for example `2 of 3 (+1)`, is a milestone that you
+  finished and did not commit to.
+
+The week that is running shows so far, with lighter bars, and is not compared. A week that has
+ended keeps its numbers, so a task that you delete later does not change the history. The first
+time that you open the page, tefteri fills in the weeks before from what it stored, as far as that
+allows. A week with no plan shows only the tasks that you completed.
+
 ### Decide what happens to a milestone that is not finished
 
 Each milestone that is not finished has four choices. Choose one for each milestone.

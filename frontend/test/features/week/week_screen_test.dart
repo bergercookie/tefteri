@@ -486,6 +486,12 @@ void main() {
     expect(find.text('Write plan'), findsOneWidget);
   });
 
+  testWidgets('the week page has a link to the trends', (tester) async {
+    await _pump(tester, _api());
+    expect(find.byKey(const Key('week-trends-link')), findsOneWidget);
+    expect(find.text('Trends'), findsWidgets);
+  });
+
   testWidgets('a task of the week opens to be edited, and the week reads again',
       (tester) async {
     final api = _api({

@@ -27,6 +27,7 @@ import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/statistics/drilldown_screen.dart';
 import 'features/statistics/open_drilldown_screen.dart';
+import 'features/trends/trends_screen.dart';
 import 'features/week/week_screen.dart';
 import 'features/weekly/weekly_screen.dart';
 
@@ -110,6 +111,7 @@ GoRouter buildRouter(Ref ref) {
                 initialDate:
                     DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
           ),
+          GoRoute(path: 'trends', builder: (_, __) => const TrendsScreen()),
         ],
       ),
       GoRoute(

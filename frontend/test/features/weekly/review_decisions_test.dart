@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/weekly/weekly_models.dart';
 
-import '../../support/fake_api.dart' show taskJson;
+import '../../support/fake_api.dart' show taskJson, trendsJson, weekMetricsJson;
 import 'weekly_fake.dart';
 import 'weekly_pump.dart';
 
@@ -30,6 +30,44 @@ Future<dynamic> _pump(
 }
 
 void main() {
+  testWidgets('the review compares the week with the weeks before it',
+      (tester) async {
+    List<Map<String, Object?>> weeks() => [
+          for (final d in [
+            '2030-01-28',
+            '2030-02-04',
+            '2030-02-11',
+            '2030-02-18'
+          ])
+            weekMetricsJson(d,
+                committed: 10, committedDone: 6, goalAligned: 6, offPlan: 4),
+          // The week of the review (sampleLookBack: 2030-02-25) did much better.
+          weekMetricsJson('2030-02-25',
+              committed: 10, committedDone: 9, goalAligned: 12, offPlan: 1),
+          weekMetricsJson('2030-03-04', finished: false),
+        ];
+    await _pump(tester, extra: {'GET /weekly/trends': trendsJson(weeks())});
+    expect(
+        find.byKey(const Key('recent-comparison-2030-02-25')), findsOneWidget);
+    expect(find.text('Compared with your recent weeks'), findsOneWidget);
+    expect(
+        tester
+            .widget<Text>(find.byKey(const Key('trend-direction-completion')))
+            .data,
+        'UP');
+    expect(find.byKey(const Key('see-trends')), findsOneWidget);
+  });
+
+  testWidgets(
+      'the review shows no comparison when there are no numbers to '
+      'compare', (tester) async {
+    // The call fails: the review still works, and shows nothing of it.
+    await _pump(tester);
+    expect(find.byKey(const Key('recent-comparison-2030-02-25')), findsNothing);
+    expect(find.byKey(const Key('decision-keep-op2')), findsNothing);
+    expect(find.byKey(const Key('look-count-op2')), findsOneWidget);
+  });
+
   testWidgets('a task left over from the week before opens to be edited',
       (tester) async {
     final api = await _pump(tester, extra: {

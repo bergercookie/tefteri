@@ -26,6 +26,7 @@ from tefteri.services.weekly import (
     WeeklyService,
     normalize_week,
 )
+from tefteri.services.weekly_metrics import WeeklyMetricsService, WeekMetrics
 
 router = APIRouter(prefix="/weekly", tags=["weekly planning"])
 
@@ -563,6 +564,78 @@ async def history(request: Request, db: Db, user: CurrentUser) -> HistoryOut:
     ``backlog`` as ``park``).
     """
     return await _history(request, db, user.id)
+
+
+class WeekMetricsOut(BaseModel):
+    """The numbers of one week. Only counts: tasks, milestones and themes. Never time."""
+
+    week_start: date
+    finished: bool
+    """The week has ended. The running week is not final."""
+    has_plan: bool
+    reviewed: bool
+    committed_tasks: int
+    committed_done: int
+    completion_percent: int | None
+    """Committed tasks that were done, in whole percent; ``None`` with no committed task."""
+    milestones_committed: int
+    milestones_done: int
+    milestones_finished: int
+    """Milestones that became done in the week, committed or not."""
+    tasks_done: int
+    """Tasks completed in the week, in the three work categories."""
+    goal_aligned: int
+    maintenance: int
+    off_plan: int
+    goal_aligned_percent: int | None
+    """The share of goal-aligned work among the three categories; ``None`` with no work."""
+    themes_active: int
+    has_data: bool
+
+    @classmethod
+    def of(cls, m: WeekMetrics) -> "WeekMetricsOut":
+        """Build from the service value."""
+        return cls(
+            week_start=m.week_start,
+            finished=m.finished,
+            has_plan=m.has_plan,
+            reviewed=m.reviewed,
+            committed_tasks=m.committed_tasks,
+            committed_done=m.committed_done,
+            completion_percent=m.completion_percent,
+            milestones_committed=m.milestones_committed,
+            milestones_done=m.milestones_done,
+            milestones_finished=m.milestones_finished,
+            tasks_done=m.tasks_done,
+            goal_aligned=m.goal_aligned,
+            maintenance=m.maintenance,
+            off_plan=m.off_plan,
+            goal_aligned_percent=m.goal_aligned_percent,
+            themes_active=m.themes_active,
+            has_data=m.has_data,
+        )
+
+
+class TrendsOut(BaseModel):
+    """The numbers of the last weeks, the running week last."""
+
+    weeks: list[WeekMetricsOut]
+
+
+@router.get("/trends")
+async def trends(request: Request, db: Db, user: CurrentUser, weeks: int = 12) -> TrendsOut:
+    """Return the numbers of the last ``weeks`` weeks, to compare a week with the earlier ones.
+
+    The tasks and milestones completed, the share of the committed tasks that were done, and the
+    split of the completed tasks into goal-aligned, maintenance and off-plan work. Counts only:
+    time is not measured. A week that has ended is kept the first time that it is read, so this
+    also fills in the weeks before the feature existed, as far as the stored data allows.
+    """
+    service: WeeklyMetricsService = request.app.state.weekly_metrics_service
+    today = _now(request).astimezone(ZoneInfo(user.timezone)).date()
+    return TrendsOut(
+        weeks=[WeekMetricsOut.of(m) for m in await service.trends(db, user.id, today, weeks)]
+    )
 
 
 @router.post("/reviews/{plan_id}")

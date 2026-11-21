@@ -72,6 +72,24 @@ class WorkScope:
         self._cache[key] = result
         return result
 
+    def theme_of_label(self, label_id: uuid.UUID | None) -> uuid.UUID | None:
+        """Return the label row id of the nearest theme of a project: itself, or a parent.
+
+        ``None`` when the project is under no theme.
+        """
+        row = self._by_id.get(label_id) if label_id is not None else None
+        seen: set[str] = set()
+        while row is not None and row.remote_id not in seen and len(seen) < MAX_DEPTH:
+            seen.add(row.remote_id)
+            if row.label == "theme":
+                return row.id
+            row = (
+                self._rows.get(_Key(row.connection_id, row.parent_remote_id))
+                if row.parent_remote_id
+                else None
+            )
+        return None
+
     def of_label(self, label_id: uuid.UUID | None) -> bool:
         """Is the project with this label row id work?"""
         row = self._by_id.get(label_id) if label_id is not None else None

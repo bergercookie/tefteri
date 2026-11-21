@@ -71,6 +71,7 @@ from tefteri.services.sync import SyncService
 from tefteri.services.tasks import TaskService
 from tefteri.services.users import UserService
 from tefteri.services.weekly import WeeklyService
+from tefteri.services.weekly_metrics import WeeklyMetricsService
 
 
 def default_registry(cfg: Settings, http: httpx.AsyncClient) -> AdapterRegistry:
@@ -169,6 +170,7 @@ def create_app(
     app.state.category_recorder = recorder
     statistics_service = StatisticsService(commitments)
     app.state.statistics_service = statistics_service
+    app.state.weekly_metrics_service = WeeklyMetricsService(statistics_service)
     sync_service = SyncService(connection_service, milestones=milestone_service, recorder=recorder)
     app.state.sync_service = sync_service
     task_service = TaskService(connection_service, recorder=recorder)
