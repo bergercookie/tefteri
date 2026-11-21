@@ -108,6 +108,7 @@ class MilestonePicker extends StatefulWidget {
     required this.locked,
     required this.onAdd,
     required this.onArchive,
+    required this.onReopen,
     required this.onNewMilestone,
     required this.onCreateTheme,
     super.key,
@@ -130,6 +131,9 @@ class MilestonePicker extends StatefulWidget {
 
   /// Archives the project of a candidate.
   final void Function(MilestoneCandidate c) onArchive;
+
+  /// Makes a done milestone active again, so it can be added.
+  final void Function(MilestoneCandidate c) onReopen;
 
   /// Opens the new-milestone dialog, under [theme] when given.
   final void Function(ThemeGroup? theme) onNewMilestone;
@@ -392,6 +396,11 @@ class _MilestonePickerState extends State<MilestonePicker> {
                   children: [
                     Text(plural(c.openTasks, 'open task'),
                         style: text.bodySmall),
+                    if (c.done)
+                      Text('Done',
+                          key: Key('done-${c.containerId}'),
+                          style:
+                              text.labelMedium?.copyWith(color: colors.done)),
                     if (c.parked)
                       Text('Parked',
                           key: Key('parked-${c.containerId}'),
@@ -435,27 +444,32 @@ class _MilestonePickerState extends State<MilestonePicker> {
             icon: const Icon(Icons.archive_outlined),
             onPressed: () => widget.onArchive(c),
           ),
-          chosen
-              ? Padding(
-                  padding: const EdgeInsets.only(top: Space.sm, left: Space.xs),
-                  child: Row(
-                    key: Key('chosen-mark-${c.containerId}'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle,
-                          color: colors.done,
-                          size: 20,
-                          semanticLabel: 'Chosen'),
-                      const SizedBox(width: Space.xs),
-                      Text('Already committed', style: text.labelMedium),
-                    ],
-                  ),
-                )
-              : OutlinedButton(
-                  key: Key('add-${c.containerId}'),
-                  onPressed: widget.locked ? null : () => widget.onAdd(c),
-                  child: const Text('Add'),
-                ),
+          if (c.done)
+            OutlinedButton(
+              key: Key('reopen-${c.containerId}'),
+              onPressed: widget.locked ? null : () => widget.onReopen(c),
+              child: const Text('Reopen'),
+            )
+          else if (chosen)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.sm, left: Space.xs),
+              child: Row(
+                key: Key('chosen-mark-${c.containerId}'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle,
+                      color: colors.done, size: 20, semanticLabel: 'Chosen'),
+                  const SizedBox(width: Space.xs),
+                  Text('Already committed', style: text.labelMedium),
+                ],
+              ),
+            )
+          else
+            OutlinedButton(
+              key: Key('add-${c.containerId}'),
+              onPressed: widget.locked ? null : () => widget.onAdd(c),
+              child: const Text('Add'),
+            ),
         ],
       ),
     );

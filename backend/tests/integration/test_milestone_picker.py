@@ -121,6 +121,28 @@ async def test_a_parked_milestone_is_listed_as_parked_and_a_closed_one_is_not(
     assert "Docs" not in await weekly.candidates(NEXT)
 
 
+async def test_a_done_milestone_stays_listed_and_must_be_reopened_before_it_is_added(
+    env: ProjectsEnv,
+) -> None:
+    weekly = await _setup(env)
+    await weekly.add(WEEK, "Docs")  # labels it milestone and creates the milestone row
+    async with env.db() as db:
+        milestone_id = (
+            await db.execute(
+                select(Milestone.id).where(Milestone.project_id == (await env.rows())["Docs"].id)
+            )
+        ).scalar_one()
+    done = await env.api.post(f"{V1}/milestones/{milestone_id}/done", json={})
+    assert done.status_code == 200 and done.json()["milestone"]["state"] == "done"
+    found = await weekly.candidates(NEXT)
+    assert found["Docs"]["state"] == "done"  # still offered: Vikunja still has the project
+    refused = await weekly.try_add(NEXT, "Docs")
+    assert refused.status_code == 422 and refused.json()["code"] == "is_done"
+    reopened = await env.api.post(f"{V1}/milestones/{milestone_id}/reopen", json={})
+    assert reopened.status_code == 200 and reopened.json()["milestone"]["state"] == "active"
+    await weekly.add(NEXT, "Docs")
+
+
 async def api_close(env: ProjectsEnv, weekly: Weekly, name: str) -> int:
     async with env.db() as db:
         milestone = (

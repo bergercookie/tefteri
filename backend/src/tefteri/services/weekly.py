@@ -673,7 +673,8 @@ class WeeklyService:
         ``user``). A theme, and a project with no label that has subprojects, are refused with
         ``not_a_milestone``. A project that may not be planned (maintenance, ignored, orphaned,
         inside a routine, or a milestone that is closed or done) is refused with
-        ``not_eligible``. Adding the same project twice changes nothing (FR-014).
+        ``not_eligible``. A done milestone is refused with ``is_done`` until it is reopened.
+        Adding the same project twice changes nothing (FR-014).
         """
         self._editable(plan)
         rows = await self._rows(db, plan)
@@ -699,6 +700,8 @@ class WeeklyService:
         ).scalar_one_or_none()
         state = MilestoneState(milestone.state) if milestone else MilestoneState.ACTIVE
         kind = commit_kind(tree.nodes, key, state)
+        if state is MilestoneState.DONE:
+            raise Invalid("This milestone is done. Reopen it to plan it again.", code="is_done")
         if kind is None:
             if not is_weekly_eligible(tree.nodes, key) or state not in (
                 MilestoneState.ACTIVE,

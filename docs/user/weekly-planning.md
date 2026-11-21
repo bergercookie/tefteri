@@ -165,6 +165,11 @@ To mark a milestone as done yourself, choose Mark as done on its card. The windo
 tasks stay in the project. Tefteri moves and deletes nothing. The done date is the day that you save the
 review. You can take the mark back before you save.
 
+Marking a milestone as done only records that it is finished, for the statistics and the review. It
+does not remove the milestone from the picker: it stays there, with the word Done, as long as the
+project exists in your task app. To make it active again, choose Reopen on its card in the look-back,
+or in the picker. Reopening clears the done date and the theme it had, and nothing else changes.
+
 ### Compare the week with the weeks before
 
 Below the numbers, the card Compared with your recent weeks puts the week against the average of
@@ -319,8 +324,9 @@ When you chose no themes for the month, all themes look the same.
 
 The list leaves out themes, routine projects, ignored projects and projects that are no longer in
 your task app. It also leaves out a project inside a routine or an ignored project. It leaves out
-milestones that you closed or finished. Read [Sort your projects](organizing-projects.md) to change a
-label.
+milestones that you closed. A milestone that you marked done stays in the list, with the word Done.
+To plan it again, choose Reopen first; it is then active and you can add it. Read
+[Sort your projects](organizing-projects.md) to change a label.
 
 1. Find the milestone in the list. To find it faster, type in the search field.
 2. Choose Add.

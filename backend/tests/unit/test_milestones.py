@@ -90,7 +90,7 @@ def test_a_parked_milestone_is_offered_and_a_closed_or_done_one_is_not() -> None
     assert commit_kind(tree, "m", MilestoneState.PARKED) is CommitKind.MILESTONE
     assert commit_kind(tree, "m", MilestoneState.ACTIVE) is CommitKind.MILESTONE
     assert commit_kind(tree, "m", MilestoneState.CLOSED) is None
-    assert commit_kind(tree, "m", MilestoneState.DONE) is None
+    assert commit_kind(tree, "m", MilestoneState.DONE) is CommitKind.MILESTONE
 
 
 # -- decision_of (FR-031) ----------------------------------------------------------------------

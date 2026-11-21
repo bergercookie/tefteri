@@ -107,7 +107,8 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = '${apiErrorMessage(e)} The milestone is still closed.';
+        _error =
+            '${apiErrorMessage(e)} The milestone is still ${_p.closed ? 'closed' : 'done'}.';
       });
     }
   }
@@ -197,6 +198,34 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
                 name: p.name,
                 nudgeKey: Key('look-rescope-${p.id}')),
             if (!done) ..._choices(context, left, quiet, archive),
+            if (p.milestoneState == 'done' && p.milestoneId != null) ...[
+              const SizedBox(height: Space.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Marked done, for the statistics. It stays in the '
+                      'picker. Reopen it to plan it again.',
+                      key: Key('look-done-note-${p.id}'),
+                      style: quiet,
+                    ),
+                  ),
+                  OutlinedButton(
+                    key: Key('look-reopen-${p.id}'),
+                    onPressed: _busy ? null : _reopen,
+                    child: const Text('Reopen'),
+                  ),
+                ],
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.xs),
+                  child: Text(_error!,
+                      key: Key('look-reopen-error-${p.id}'),
+                      style: text.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error)),
+                ),
+            ],
             if (!ownsArchive) ...[
               const SizedBox(height: Space.sm),
               // Any milestone can be archived, a finished one most of all.

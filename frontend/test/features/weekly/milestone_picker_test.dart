@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_api.dart';
@@ -39,6 +40,30 @@ WeeklyServer _server({bool focus = false}) {
 }
 
 void main() {
+  testWidgets(
+      'a done milestone stays in the picker, with Reopen instead of Add',
+      (tester) async {
+    final s = _server();
+    s.projects.add(WeeklyServer.project('m4', 'Shipped login',
+        tasks: 0,
+        theme: 'tA',
+        themeName: 'Open source',
+        doneState: 'Users sign in',
+        state: 'done'));
+    final api = await pumpWeekly(tester, s, extra: {
+      'POST /milestones/m-m4/reopen': (RequestOptions o) => {
+            'milestone': {'id': 'm-m4', 'state': 'active'},
+            'moved_back': 0,
+            'not_moved_back': <Object?>[],
+          },
+    });
+    expect(find.byKey(const Key('candidate-m4')), findsOneWidget);
+    expect(find.byKey(const Key('done-m4')), findsOneWidget);
+    expect(find.byKey(const Key('add-m4')), findsNothing);
+    await tapKey(tester, 'reopen-m4');
+    expect(api.where('POST /milestones/m-m4/reopen'), hasLength(1));
+  });
+
   testWidgets(
       'milestones are grouped under their theme, then no theme and '
       'unsorted', (tester) async {

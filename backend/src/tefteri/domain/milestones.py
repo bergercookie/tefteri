@@ -47,14 +47,15 @@ def commit_kind(
 
     Only a weekly-eligible project is offered (spec 003): not orphaned, not ignored, not
     maintenance, not inside a routine or an ignored project. A project with the stored label
-    ``milestone`` is offered when its ``state`` is not ``closed`` or ``done``. A project with no
-    stored label is offered when it has no live subproject: choosing it labels it milestone. A
-    theme, and a project with no label that has subprojects, are never offered. A caller that
-    asks about many projects can pass ``has_children`` to save a scan of the tree.
+    ``milestone`` is offered unless its ``state`` is ``closed``. A done milestone is still
+    offered, so the user can reopen it. A project with no stored label is offered when it has no
+    live subproject: choosing it labels it milestone. A theme, and a project with no label that
+    has subprojects, are never offered. A caller that asks about many projects can pass
+    ``has_children`` to save a scan of the tree.
     """
     if not is_weekly_eligible(nodes, key):
         return None
-    if state in (MilestoneState.CLOSED, MilestoneState.DONE):
+    if state is MilestoneState.CLOSED:
         return None
     label = nodes[key].label
     if label is ProjectLabel.MILESTONE:

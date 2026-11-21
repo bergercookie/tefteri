@@ -254,7 +254,7 @@ class CandidateOut(BaseModel):
     milestone_id: uuid.UUID | None
     done_state: str | None
     state: str
-    """``active`` or ``parked``."""
+    """``active``, ``parked`` or ``done``. A done milestone must be reopened before it is added."""
     theme: ThemeOut | None
     """``None`` is the group "No theme"."""
     in_focus: bool | None

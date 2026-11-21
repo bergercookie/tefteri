@@ -760,6 +760,9 @@ class MilestoneCandidate {
 
   /// The milestone was parked by a review.
   bool get parked => state == 'parked';
+
+  /// The milestone was marked done (it stays in the picker until it is reopened).
+  bool get done => state == 'done';
 }
 
 /// A theme that the picker shows as a group.

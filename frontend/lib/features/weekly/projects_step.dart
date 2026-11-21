@@ -1,6 +1,7 @@
 /// Step 2: choose the milestones of the week, or create a milestone.
 library;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -57,6 +58,20 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
   Future<void> _add(MilestoneCandidate c) async {
     await widget.actions
         .run((api) => api.addProject(widget.actions.week, c.containerId));
+    _refreshPicker();
+  }
+
+  Future<void> _reopen(MilestoneCandidate c) async {
+    final id = c.milestoneId;
+    if (id == null) return;
+    try {
+      await ref.read(weeklyApiProvider).reopenMilestone(id);
+      await widget.actions.run((api) => api.state(widget.actions.week));
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${apiErrorMessage(e)} ${c.name} is still done.')));
+    }
     _refreshPicker();
   }
 
@@ -177,6 +192,7 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
               locked: _locked,
               onAdd: _add,
               onArchive: _archive,
+              onReopen: _reopen,
               onNewMilestone: (under) =>
                   _newMilestone(t?.themes ?? const [], under),
               onCreateTheme: () async {
