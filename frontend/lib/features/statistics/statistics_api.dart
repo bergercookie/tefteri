@@ -23,6 +23,14 @@ class StatisticsApi {
     return StatisticsSummary.fromJson(r.data! as Map<String, dynamic>);
   }
 
+  /// `GET /statistics/open`: the tasks of the week that holds [day] that are
+  /// not done yet, in the three work categories.
+  Future<OpenTasksSummary> openTasks(String day) async {
+    final r = await _dio
+        .get<Object?>('/statistics/open', queryParameters: {'day': day});
+    return OpenTasksSummary.fromJson(r.data! as Map<String, dynamic>);
+  }
+
   /// `GET /statistics/tasks`: one page of the completed tasks behind a count.
   /// Without [category] the page holds the three work categories.
   Future<StatTasksPage> tasks({

@@ -57,6 +57,13 @@ final _done = [
     statTaskJson('o$i', 'Errand $i', category: 'off_plan', project: 'Home'),
 ];
 
+final _open = [
+  openTaskJson('o1', 'Book the venue',
+      category: 'goal_aligned', project: 'Website'),
+  openTaskJson('o2', 'Pay the rent',
+      category: 'maintenance', project: 'Chores'),
+];
+
 FakeApi _api([Map<String, Object?> extra = const {}]) => FakeApi({
       _path: _week(),
       'GET /statistics': statisticsJson(
@@ -66,6 +73,7 @@ FakeApi _api([Map<String, Object?> extra = const {}]) => FakeApi({
         progress: weekProgressJson(),
       ),
       'GET /statistics/tasks': fakeStatisticsTasks(_done),
+      'GET /statistics/open': openTasksJson(tasks: _open),
       'GET /weekly/2026-11-02': _weekly(),
       ...extra,
     });
@@ -98,6 +106,9 @@ Future<void> _pump(WidgetTester tester, FakeApi api) {
   return pumpWithApi(tester, api, WeekScreen(initialDate: _day));
 }
 
+double topOf(WidgetTester tester, String key) =>
+    tester.getTopLeft(find.byKey(Key(key))).dy;
+
 void main() {
   testWidgets('due tasks group by theme and project, and hide done on demand',
       (tester) async {
@@ -121,6 +132,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Beta'), findsNothing);
     expect(find.text('Alpha'), findsOneWidget);
+  });
+
+  testWidgets('a project and a theme of the due list fold away',
+      (tester) async {
+    final week = periodJson('week', '2026-11-02', '2026-11-09', tasks: [
+      {...taskJson('a', 'Alpha'), 'theme': 'Health', 'project': 'Running'},
+      {...taskJson('b', 'Beta'), 'theme': 'Health', 'project': 'Cycling'},
+      {...taskJson('d', 'Delta'), 'project': 'Errands'},
+    ], entries: []);
+    await _pump(tester, _api({_path: week}));
+    // Fold one project: only its tasks go.
+    await tester.tap(find.byKey(const Key('subproject-Health-Running')));
+    await tester.pumpAndSettle();
+    expect(find.text('Alpha'), findsNothing);
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Delta'), findsOneWidget);
+    // Fold the theme: its projects and tasks go, the other theme stays.
+    await tester.tap(find.byKey(const Key('theme-Health')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('subproject-Health-Cycling')), findsNothing);
+    expect(find.text('Beta'), findsNothing);
+    expect(find.text('Delta'), findsOneWidget);
+    // Unfold it again: the project that was folded stays folded.
+    await tester.tap(find.byKey(const Key('theme-Health')));
+    await tester.pumpAndSettle();
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Alpha'), findsNothing);
   });
 
   testWidgets('shows tasks, but no goal section and no events', (tester) async {
@@ -149,15 +187,12 @@ void main() {
 
   testWidgets('each task section explains itself in a tip', (tester) async {
     await _pump(tester, _api());
-    expect(find.text('Due this week'), findsOneWidget);
+    expect(find.text('All due this week'), findsOneWidget);
     final due = tester.widget<Tooltip>(find.ancestor(
-        of: find.byKey(const Key('info-Due this week')),
+        of: find.byKey(const Key('info-All due this week')),
         matching: find.byType(Tooltip)));
     expect(due.message, contains('done or not'));
-    final done = tester.widget<Tooltip>(find.ancestor(
-        of: find.byKey(const Key('info-Completed this week')),
-        matching: find.byType(Tooltip)));
-    expect(done.message, contains('whatever its due date'));
+    expect(find.text('Completed this week'), findsNothing);
   });
 
   testWidgets('a task shows its annual goal, and an old goal as history',
@@ -185,19 +220,41 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('shows the categories card and the completed list',
+  testWidgets('shows the completed card and, below it, the open card',
       (tester) async {
     final api = _api();
     await _pump(tester, api);
     expect(find.byKey(const Key('categories-card')), findsOneWidget);
-    expect(find.byKey(const Key('proportion-bar')), findsOneWidget);
+    expect(find.text('Completed work'), findsOneWidget);
+    expect(find.byKey(const Key('open-work-card')), findsOneWidget);
+    expect(find.text('Still to do'), findsOneWidget);
+    // The open card sits right below the completed one.
+    expect(topOf(tester, 'open-work-card'),
+        greaterThan(topOf(tester, 'categories-card')));
+    // There is no list of completed tasks any more.
+    expect(find.text('Completed this week'), findsNothing);
+    expect(find.byKey(const Key('completed-by-category')), findsNothing);
+    expect(find.text('Write the spec'), findsNothing);
+    // The open card has the same three groups, with their tasks.
     for (final c in ['goal_aligned', 'maintenance', 'off_plan']) {
-      expect(find.byKey(Key('completed-group-$c')), findsOneWidget);
+      expect(find.byKey(Key('open-group-$c')), findsOneWidget);
     }
-    expect(find.text('Write the spec'), findsOneWidget);
-    expect(find.text('Take out the bins'), findsOneWidget);
-    expect(api.where('GET /statistics').first.query,
-        {'period': 'week', 'day': '2026-11-02'});
+    expect(find.text('Book the venue'), findsOneWidget);
+    expect(find.text('Pay the rent'), findsOneWidget);
+    expect(find.text('2 tasks still to do'), findsOneWidget);
+    expect(
+        api.where('GET /statistics/open').single.query, {'day': '2026-11-02'});
+  });
+
+  testWidgets('a group of the open card folds away', (tester) async {
+    await _pump(tester, _api());
+    await tester.tap(find.byKey(const Key('open-group-toggle-maintenance')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pay the rent'), findsNothing);
+    expect(find.text('Book the venue'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('open-group-toggle-maintenance')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pay the rent'), findsOneWidget);
   });
 
   testWidgets('the progress card draws the numbers of the server',
@@ -219,13 +276,18 @@ void main() {
     expect(find.text('Total 7'), findsOneWidget);
   });
 
-  testWidgets('there is no "outside the plan" list with a limit of five',
+  testWidgets('the open card lists every task, with no limit of five',
       (tester) async {
-    await _pump(tester, _api());
+    await _pump(
+        tester,
+        _api({
+          'GET /statistics/open': openTasksJson(tasks: [
+            for (var i = 0; i < 7; i++)
+              openTaskJson('x$i', 'Errand $i', project: 'Home'),
+          ]),
+        }));
     expect(find.byKey(const Key('done-outside-plan')), findsNothing);
-    expect(find.text('Done outside the plan'), findsNothing);
     expect(find.byKey(const Key('extra-toggle')), findsNothing);
-    // All 7 off-plan tasks show, not the first five.
     for (var i = 0; i < 7; i++) {
       expect(find.text('Errand $i'), findsOneWidget);
     }

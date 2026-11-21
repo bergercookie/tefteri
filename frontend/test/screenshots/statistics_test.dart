@@ -159,6 +159,18 @@ FakeApi _api(
         String period = 'week'}) =>
     FakeApi({
       'GET /statistics': (RequestOptions o) => _statistics(o, empty: empty),
+      'GET /statistics/open': openTasksJson(tasks: [
+        openTaskJson('u1', 'Write the launch post',
+            category: 'goal_aligned', project: 'Website'),
+        openTaskJson('u2', 'Review the pricing page',
+            category: 'goal_aligned', project: 'Website'),
+        openTaskJson('u3', 'Renew the domain',
+            category: 'maintenance',
+            project: 'Chores',
+            dueAt: '2026-11-06T00:00:00Z'),
+        openTaskJson('u4', 'Call the accountant',
+            project: 'Home', dueAt: '2026-11-07T00:00:00Z'),
+      ]),
       'GET /statistics/tasks': fakeStatisticsTasks(tasks ?? _weekDone,
           period: period,
           start: period == 'month' ? '2026-11-01' : '2026-11-02',
@@ -222,7 +234,7 @@ FakeApi _api(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('week with the list of completed tasks', (tester) async {
+  testWidgets('week with the completed and the open work', (tester) async {
     await pumpScreen(tester, _api(),
         WeekScreen(initialDate: day, today: DateTime(2026, 11, 4)),
         size: const Size(1100, 2350));

@@ -14,7 +14,7 @@ from tefteri.api.task_links import task_base_url, task_url
 from tefteri.db.models.connection import Connection
 from tefteri.domain.enums import CategoryReason, WorkCategory
 from tefteri.domain.week_progress import WeekProgress
-from tefteri.domain.work_categories import CategoryCounts
+from tefteri.domain.work_categories import CategoryCounts, percentages
 from tefteri.services.errors import Invalid
 from tefteri.services.statistics import (
     DEFAULT_LIMIT,
@@ -233,6 +233,83 @@ def _item(t: StatTask, bases: dict[uuid.UUID, str | None]) -> StatTaskOut:
             id=t.project_id, name=t.project_name, color=t.project_color, orphaned=t.orphaned
         ),
         url=task_url(bases.get(t.connection_id), t.remote_id),
+    )
+
+
+class OpenTaskOut(BaseModel):
+    """A task of the week that is not done yet."""
+
+    id: uuid.UUID
+    title: str
+    due_at: UtcDatetime | None
+    category: WorkCategory
+    unsorted: bool
+    project: ProjectOut
+    url: str | None
+
+
+class OpenTasksOut(BaseModel):
+    """The unfinished tasks of one week in the three work categories."""
+
+    start: date
+    end: date
+    available: bool
+    counts: CountsOut
+    total: int
+    percentages: CountsOut
+    hidden: int
+    items: list[OpenTaskOut]
+
+
+@router.get("/open")
+async def statistics_open(
+    request: Request,
+    db: Db,
+    user: CurrentUser,
+    day: date | None = None,
+) -> OpenTasksOut:
+    """Return the tasks of a week that are still open, sorted into the work categories.
+
+    The week is the one that holds ``day`` (today when omitted). A task is in the week when its due
+    date or its planned start is. The categories use today's labels and the weekly commitment.
+    """
+    found = await _service(request).open_tasks(
+        db, user.id, user.timezone, day or _today(request, user.timezone)
+    )
+    ids = {t.connection_id for t in found.items}
+    bases: dict[uuid.UUID, str | None] = {}
+    if ids:
+        for connection in (
+            await db.execute(select(Connection).where(Connection.id.in_(ids)))
+        ).scalars():
+            bases[connection.id] = task_base_url(connection)
+    shares = percentages(found.counts)
+    return OpenTasksOut(
+        start=found.start,
+        end=found.end,
+        available=found.available,
+        counts=CountsOut.of(found.counts),
+        total=found.counts.total,
+        percentages=CountsOut(
+            goal_aligned=shares.goal_aligned,
+            maintenance=shares.maintenance,
+            off_plan=shares.off_plan,
+        ),
+        hidden=found.counts.hidden,
+        items=[
+            OpenTaskOut(
+                id=t.id,
+                title=t.title,
+                due_at=t.due_at,
+                category=t.category,
+                unsorted=t.unsorted,
+                project=ProjectOut(
+                    id=t.project_id, name=t.project_name, color=t.project_color, orphaned=False
+                ),
+                url=task_url(bases.get(t.connection_id), t.remote_id),
+            )
+            for t in found.items
+        ],
     )
 
 

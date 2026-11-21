@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/statistics/category_task_list.dart';
-import 'package:tefteri/features/statistics/completed_by_category.dart';
 import 'package:tefteri/features/statistics/statistics_models.dart';
 import 'package:tefteri/features/statistics/statistics_providers.dart';
 
@@ -173,83 +172,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('task-row-t99')), findsOneWidget);
     expect(find.textContaining('The server is busy.'), findsNothing);
-  });
-
-  group('the completed list of the week', () {
-    testWidgets('shows three groups with count, style and project',
-        (tester) async {
-      final tasks = [
-        statTaskJson('g1', 'Write the spec',
-            category: 'goal_aligned', project: 'Website'),
-        statTaskJson('m1', 'Take out the bins',
-            category: 'maintenance', project: 'Chores'),
-        statTaskJson('m2', 'Do the dishes',
-            category: 'maintenance', project: 'Chores'),
-      ];
-      final api = await pumpStats(
-        tester,
-        weekRoutes(
-            summary: statisticsJson(goalAligned: 1, maintenance: 2),
-            tasks: tasks),
-        CompletedByCategory(day: DateTime(2026, 11, 4)),
-        prefs: hintsClosed,
-      );
-      for (final c in ['goal_aligned', 'maintenance', 'off_plan']) {
-        expect(find.byKey(Key('completed-group-$c')), findsOneWidget);
-      }
-      expect(
-          find.descendant(
-              of: find.byKey(const Key('completed-group-maintenance')),
-              matching: find.text('Maintenance')),
-          findsOneWidget);
-      expect(
-          find.descendant(
-              of: find.byKey(const Key('completed-group-maintenance')),
-              matching: find.text('2')),
-          findsOneWidget);
-      expect(
-          find.descendant(
-              of: find.byKey(const Key('completed-group-goal_aligned')),
-              matching: find.text('Website')),
-          findsOneWidget);
-      expect(
-          find.descendant(
-              of: find.byKey(const Key('completed-group-maintenance')),
-              matching: find.text('Chores')),
-          findsNWidgets(2));
-      // The empty group is shown with a zero and asks for nothing.
-      expect(
-          find.descendant(
-              of: find.byKey(const Key('completed-group-off_plan')),
-              matching: find.text('0')),
-          findsOneWidget);
-      expect(find.text('Nothing completed here.'), findsOneWidget);
-      // One list per category that has tasks; the empty one asks for none.
-      final asked = [
-        for (final r in api.where('GET /statistics/tasks')) r.query['category'],
-      ];
-      expect(asked..sort(), ['goal_aligned', 'maintenance']);
-    });
-
-    testWidgets('there is no cap: 250 off-plan tasks all can be reached',
-        (tester) async {
-      final api = await pumpStats(
-        tester,
-        weekRoutes(summary: statisticsJson(offPlan: 250), tasks: _many(250)),
-        CompletedByCategory(day: DateTime(2026, 11, 4)),
-        prefs: hintsClosed,
-      );
-      expect(find.text('250'), findsOneWidget);
-      for (var i = 0;
-          i < 6 && find.byKey(const Key('show-more')).evaluate().isNotEmpty;
-          i++) {
-        await tester.ensureVisible(find.byKey(const Key('show-more')));
-        await tester.tap(find.byKey(const Key('show-more')));
-        await tester.pumpAndSettle();
-      }
-      expect(find.byKey(const Key('task-row-t249')), findsOneWidget);
-      expect(find.byKey(const Key('task-row-t0')), findsOneWidget);
-      expect(api.where('GET /statistics/tasks'), hasLength(5));
-    });
   });
 }

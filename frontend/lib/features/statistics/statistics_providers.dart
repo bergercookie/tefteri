@@ -44,6 +44,12 @@ final statisticsProvider = FutureProvider.autoDispose
     .family<StatisticsSummary, StatsQuery>(
         (ref, q) => ref.watch(statisticsApiProvider).summary(q.period, q.day));
 
+/// The unfinished tasks of the week of a `YYYY-MM-DD` key. It is read again
+/// whenever the page is built anew and when a sync ends.
+final openTasksProvider = FutureProvider.autoDispose
+    .family<OpenTasksSummary, String>(
+        (ref, day) => ref.watch(statisticsApiProvider).openTasks(day));
+
 /// Which list to load.
 @immutable
 class TaskListQuery {

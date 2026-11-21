@@ -368,3 +368,105 @@ class StatTasksPage {
   /// Where the next page starts, or null on the last page.
   final String? nextCursor;
 }
+
+/// A task of the week that is not done yet, with its category today.
+@immutable
+class OpenTask {
+  /// Creates a task.
+  const OpenTask({
+    required this.id,
+    required this.title,
+    required this.category,
+    this.dueAt,
+    this.project,
+    this.projectColor,
+    this.unsorted = false,
+  });
+
+  /// Reads a task of `GET /statistics/open`.
+  factory OpenTask.fromJson(Map<String, dynamic> j) {
+    final project = (j['project'] as Map?) ?? const {};
+    final due = j['due_at'];
+    return OpenTask(
+      id: '${j['id']}',
+      title: '${j['title'] ?? ''}',
+      category: Category.parse(j['category']),
+      dueAt: due == null ? null : DateTime.parse('$due'),
+      project: project['name'] as String?,
+      projectColor: project['color'] as String?,
+      unsorted: j['unsorted'] as bool? ?? false,
+    );
+  }
+
+  /// Task id.
+  final String id;
+
+  /// Task title.
+  final String title;
+
+  /// The work category the task has now.
+  final Category category;
+
+  /// Due time, if any.
+  final DateTime? dueAt;
+
+  /// Name of its project.
+  final String? project;
+
+  /// The color of its project (`#rrggbb`), or null.
+  final String? projectColor;
+
+  /// Its project has no label.
+  final bool unsorted;
+}
+
+/// `GET /statistics/open`: the unfinished tasks of one week.
+@immutable
+class OpenTasksSummary {
+  /// Creates a summary.
+  const OpenTasksSummary({
+    required this.available,
+    required this.counts,
+    required this.percentages,
+    required this.total,
+    required this.hidden,
+    required this.items,
+  });
+
+  /// Reads the answer.
+  factory OpenTasksSummary.fromJson(Map<String, dynamic> j) => OpenTasksSummary(
+        available: j['available'] as bool? ?? true,
+        counts: CategoryCounts.fromJson(j['counts']),
+        percentages: CategoryCounts.fromJson(j['percentages']),
+        total: (j['total'] as num? ?? 0).toInt(),
+        hidden: (j['hidden'] as num? ?? 0).toInt(),
+        items: [
+          for (final t in (j['items'] as List? ?? const []))
+            OpenTask.fromJson(t as Map<String, dynamic>),
+        ],
+      );
+
+  /// False when the weekly commitment cannot be read. Then there is no number.
+  final bool available;
+
+  /// Open tasks per category.
+  final CategoryCounts counts;
+
+  /// The shares, from the server.
+  final CategoryCounts percentages;
+
+  /// The sum of the three counts.
+  final int total;
+
+  /// Open tasks in ignored projects, which are not listed.
+  final int hidden;
+
+  /// The tasks, due date first.
+  final List<OpenTask> items;
+
+  /// The tasks of one category.
+  List<OpenTask> of(Category c) => [
+        for (final t in items)
+          if (t.category == c) t,
+      ];
+}

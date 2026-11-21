@@ -89,12 +89,15 @@ of the statistics of the week. They are not a separate list.
 - Under the card, the card Completed work shows the three work categories: goal-aligned,
   maintenance and off-plan. A task that you completed in a goal project that you did not commit to
   is off-plan.
-- Under the planning cards, the list Completed this week shows every completed task, in three
-  groups. Each task shows its day and its project. The list has no limit. Choose Show more to
-  load more tasks.
-- The list Due this week is different. It shows every task with a due date in this week, done or
-  not. A tick marks a done task. A task that you finished without a due date in this week is not
-  in this list. Put the pointer on the info icon next to the name of a list to read what it shows.
+- Below it, the card Still to do shows the tasks of this week that are not done. A task is in the
+  week when its due date or its planned start is in the week. The card has the same three groups,
+  with the tasks in each group. Choose the name of a group to fold it. Choose a count to open its
+  group.
+- The list All due this week shows every task with a due date in this week, done or not. A tick
+  marks a done task. The tasks are in groups: first a theme, then the project inside the theme.
+  Choose the name of a theme or of a project to fold the tasks under it. Use the chip Completed to
+  show or hide the done tasks. A task that you finished without a due date in this week is not in
+  this list. Put the pointer on the info icon next to the name of a list to read what it shows.
 - In the card Committed plan, the large number of a day is the tasks from your plan. The small
   numbers are all the tasks that you completed that day, by category.
 - The done and left counts, the cadence and the burndown chart count only the tasks that you

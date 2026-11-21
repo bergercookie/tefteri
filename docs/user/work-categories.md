@@ -126,9 +126,10 @@ The card has these parts:
 - The line about hidden tasks, for example "1 task in an ignored project is not counted".
 - The time of the last sync.
 
-Under the planning cards, the list Completed this week shows the tasks in three groups. Each group
-has its category and its count. Each task shows its day and its project. A group with no task says
-"Nothing completed here". A long list has no limit. Choose Show more to load more tasks.
+Below the card Completed work, the card Still to do shows the tasks of the week that are not done.
+It has the same three counts, the same bar and the same three groups. Each group has its
+category, its count and its tasks. Tefteri uses the labels and the weekly plan as they are now.
+A group with no task says "Nothing left here". Choose the name of a group to fold it.
 
 The card Committed plan above it shows each day of the week. The large number is the tasks from your
 plan. The three small numbers are all the tasks that you completed that day, by category.

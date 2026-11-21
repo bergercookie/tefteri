@@ -30,10 +30,23 @@ from tefteri.db.models.sync import SyncRun
 from tefteri.db.models.task import Task
 from tefteri.db.models.task_category import TaskCategory
 from tefteri.db.models.weekly import WeeklyPlan, WeeklyPlanProject
-from tefteri.domain.enums import CategoryReason, ConnectionKind, SyncState, WorkCategory
+from tefteri.domain.enums import (
+    CategoryReason,
+    ConnectionKind,
+    ProjectLabel,
+    SyncState,
+    WorkCategory,
+)
 from tefteri.domain.periods import PeriodType, period_end, period_start
+from tefteri.domain.timeutil import day_bounds
 from tefteri.domain.week_progress import CommittedTask, WeekProgress, week_progress
-from tefteri.domain.work_categories import CategoryCounts, Percentages, percentages
+from tefteri.domain.work_categories import (
+    CategoryCounts,
+    Percentages,
+    ProjectContext,
+    categorize,
+    percentages,
+)
 from tefteri.services.commitments import CommitmentProvider
 from tefteri.services.errors import Invalid
 
@@ -104,6 +117,33 @@ class StatTask:
     orphaned: bool
     connection_id: uuid.UUID
     remote_id: str
+
+
+@dataclass(frozen=True)
+class OpenTask:
+    """A task of the week that is not done yet, with the category it would have today."""
+
+    id: uuid.UUID
+    title: str
+    due_at: datetime | None
+    category: WorkCategory
+    unsorted: bool
+    project_id: uuid.UUID | None
+    project_name: str | None
+    project_color: str | None
+    connection_id: uuid.UUID
+    remote_id: str
+
+
+@dataclass(frozen=True)
+class OpenTasks:
+    """The unfinished tasks of one week, or the reason that they cannot be told."""
+
+    start: date
+    end: date
+    available: bool
+    items: list[OpenTask]
+    counts: CategoryCounts
 
 
 @dataclass(frozen=True)
@@ -369,6 +409,97 @@ class StatisticsService:
                 done_day = at.astimezone(zone).date()
             committed.append(CommittedTask(t.status == "done", done_day))
         return week_progress(committed, week, today)
+
+    # -- unfinished tasks --------------------------------------------------------------------
+
+    async def open_tasks(
+        self, db: AsyncSession, user_id: uuid.UUID, tz: str, day: date
+    ) -> OpenTasks:
+        """Return the tasks of the week of ``day`` that are not done, sorted into the categories.
+
+        A task belongs to the week when its due date or its planned start is in the week. The
+        rules are those of the completed tasks (``categorize``), read with the labels and the
+        weekly commitment as they are now, because nothing is decided for a task that is open.
+        A task of an ignored project is counted as hidden and not listed.
+        """
+        start = period_start(PeriodType.WEEK, day)
+        end = period_end(PeriodType.WEEK, start)
+        committed = await self._commitments.committed_projects(db, user_id, start)
+        if committed is None:
+            return OpenTasks(start, end, False, [], CategoryCounts())
+        low, high = day_bounds(start, tz)[0], day_bounds(end, tz)[0]
+        containers = {
+            c.id: c
+            for c in (
+                await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
+            ).scalars()
+        }
+        rows = {
+            (r.connection_id, r.remote_id): r
+            for r in (
+                await db.execute(select(ProjectLabelRow).where(ProjectLabelRow.user_id == user_id))
+            ).scalars()
+        }
+
+        def label(row: ProjectLabelRow) -> ProjectLabel | None:
+            return ProjectLabel(row.label) if row.label else None
+
+        items: list[OpenTask] = []
+        counts = CategoryCounts()
+        for t in (
+            await db.execute(
+                select(Task).where(
+                    Task.user_id == user_id,
+                    Task.status != "done",
+                    Task.sync_state != SyncState.DELETED_REMOTELY.value,
+                )
+            )
+        ).scalars():
+            when = [w for w in (t.due_at, t.scheduled_start) if w is not None]
+            if not any(low <= (w if w.tzinfo else w.replace(tzinfo=UTC)) < high for w in when):
+                continue
+            container = containers.get(t.container_id) if t.container_id else None
+            project = (
+                rows.get((container.connection_id, container.remote_id)) if container else None
+            )
+            if project is None:
+                decision = categorize(ProjectContext(False), False)
+            else:
+                ancestors: list[ProjectLabel | None] = []
+                seen = {project.remote_id}
+                parent = project.parent_remote_id
+                while parent is not None and parent not in seen and len(ancestors) < 64:
+                    seen.add(parent)
+                    row = rows.get((project.connection_id, parent))
+                    if row is None:
+                        break
+                    ancestors.append(label(row))
+                    parent = row.parent_remote_id
+                decision = categorize(
+                    ProjectContext(True, label(project), ancestors), project.id in committed
+                )
+            if decision.category is WorkCategory.HIDDEN:
+                counts += CategoryCounts(hidden=1)
+                continue
+            counts += CategoryCounts.one(decision.category)
+            items.append(
+                OpenTask(
+                    id=t.id,
+                    title=t.title,
+                    due_at=t.due_at,
+                    category=decision.category,
+                    unsorted=decision.unsorted,
+                    project_id=project.id if project else None,
+                    project_name=container.name if container else None,
+                    project_color=container.color if container else None,
+                    connection_id=t.connection_id,
+                    remote_id=t.remote_id,
+                )
+            )
+        items.sort(
+            key=lambda i: (i.due_at is None, i.due_at or datetime.max.replace(tzinfo=UTC), i.title)
+        )
+        return OpenTasks(start, end, True, items, counts)
 
     # -- lists -------------------------------------------------------------------------------
 

@@ -4641,6 +4641,116 @@
         "title": "NudgeOut",
         "type": "object"
       },
+      "OpenTaskOut": {
+        "description": "A task of the week that is not done yet.",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/WorkCategory"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/tefteri__api__routers__statistics__ProjectOut"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unsorted": {
+            "title": "Unsorted",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "due_at",
+          "category",
+          "unsorted",
+          "project",
+          "url"
+        ],
+        "title": "OpenTaskOut",
+        "type": "object"
+      },
+      "OpenTasksOut": {
+        "description": "The unfinished tasks of one week in the three work categories.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CountsOut"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OpenTaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "percentages": {
+            "$ref": "#/components/schemas/CountsOut"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "available",
+          "counts",
+          "total",
+          "percentages",
+          "hidden",
+          "items"
+        ],
+        "title": "OpenTasksOut",
+        "type": "object"
+      },
       "OrphanOut": {
         "description": "Why a stored focus entry is no longer a live project.",
         "properties": {
@@ -13010,6 +13120,57 @@
           }
         },
         "summary": "Statistics",
+        "tags": [
+          "statistics"
+        ]
+      }
+    },
+    "/api/v1/statistics/open": {
+      "get": {
+        "description": "Return the tasks of a week that are still open, sorted into the work categories.\n\nThe week is the one that holds ``day`` (today when omitted). A task is in the week when its due\ndate or its planned start is. The categories use today's labels and the weekly commitment.",
+        "operationId": "statistics_open_api_v1_statistics_open_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "day",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenTasksOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Statistics Open",
         "tags": [
           "statistics"
         ]

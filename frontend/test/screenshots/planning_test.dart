@@ -172,6 +172,18 @@ Object? _statistics(RequestOptions o) {
 
 FakeApi _api() => FakeApi({
       'GET /statistics': _statistics,
+      'GET /statistics/open': openTasksJson(tasks: [
+        openTaskJson('u1', 'Write the launch post',
+            category: 'goal_aligned', project: 'Website'),
+        openTaskJson('u2', 'Review the pricing page',
+            category: 'goal_aligned', project: 'Website'),
+        openTaskJson('u3', 'Renew the domain',
+            category: 'maintenance',
+            project: 'Chores',
+            dueAt: '2026-11-06T00:00:00Z'),
+        openTaskJson('u4', 'Call the accountant',
+            project: 'Home', dueAt: '2026-11-07T00:00:00Z'),
+      ]),
       'GET /statistics/tasks': fakeStatisticsTasks(_weekDone),
       'GET /checklists/year/2026-01-01': {
         'period_type': 'year',

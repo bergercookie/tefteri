@@ -968,6 +968,46 @@ Map<String, int> fakePercentages(int g, int m, int o) {
 Map<String, Object?> categoryCountsJson(int g, int m, int o) =>
     {'goal_aligned': g, 'maintenance': m, 'off_plan': o};
 
+/// `GET /statistics/open`: the unfinished tasks of a week. Each of [tasks]
+/// is made with [openTaskJson]; the counts follow from them.
+Map<String, Object?> openTasksJson(
+    {List<Map<String, Object?>> tasks = const [],
+    int hidden = 0,
+    bool available = true}) {
+  int n(String c) => tasks.where((t) => t['category'] == c).length;
+  final g = n('goal_aligned'), m = n('maintenance'), o = n('off_plan');
+  return {
+    'start': '2026-11-02',
+    'end': '2026-11-09',
+    'available': available,
+    'counts': categoryCountsJson(g, m, o),
+    'total': g + m + o,
+    'percentages': fakePercentages(g, m, o),
+    'hidden': hidden,
+    'items': tasks,
+  };
+}
+
+/// One task of `GET /statistics/open`.
+Map<String, Object?> openTaskJson(String id, String title,
+        {String category = 'off_plan',
+        String? project,
+        String? dueAt = '2026-11-04T00:00:00Z'}) =>
+    {
+      'id': id,
+      'title': title,
+      'due_at': dueAt,
+      'category': category,
+      'unsorted': false,
+      'project': {
+        'id': project == null ? null : 'prj-$project',
+        'name': project,
+        'color': null,
+        'orphaned': false,
+      },
+      'url': null,
+    };
+
 /// `GET /statistics`. [parts] default to one part that holds every count.
 Map<String, Object?> statisticsJson({
   String period = 'week',

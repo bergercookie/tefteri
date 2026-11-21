@@ -69,8 +69,15 @@ class PeriodPage extends ConsumerStatefulWidget {
 class _PeriodPageState extends ConsumerState<PeriodPage> {
   String? _error;
 
-  /// Whether done tasks show in the "Due this week" list.
+  /// Whether done tasks show in the "All due this week" list.
   bool _showDone = true;
+
+  /// The themes and projects of that list that the user folded away. A theme
+  /// is `theme:<name>`; a project is `project:<theme>/<name>`.
+  final Set<String> _folded = {};
+
+  void _fold(String id) => setState(
+      () => _folded.contains(id) ? _folded.remove(id) : _folded.add(id));
 
   Future<void> _run(Future<void> Function() action) async {
     try {
@@ -181,11 +188,12 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         // events. Only the week lists single tasks.
         if (v.periodType == 'week') ...[
           const SectionHeading(
-            title: 'Due this week',
+            title: 'All due this week',
             info: 'Every task with a due date in this week, done or not. '
-                'A tick marks a done task. A task that you finished without a '
-                'due date in this week is not here: refer to Completed this '
-                'week.',
+                'A tick marks a done task. Use the Completed chip to show or '
+                'hide the done tasks. Tasks sit under their theme and their '
+                'project: choose a name to fold or unfold it. A task that you '
+                'finished without a due date in this week is not here.',
           ),
           Align(
             alignment: Alignment.centerLeft,
@@ -242,27 +250,37 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     final out = <Widget>[];
     for (final theme in themes.keys.toList()..sort(byName)) {
       final projects = themes[theme]!;
-      out.add(Padding(
+      final themeId = 'theme:${theme ?? ''}';
+      final themeFolded = _folded.contains(themeId);
+      final themeCount =
+          projects.values.fold<int>(0, (sum, list) => sum + list.length);
+      out.add(_GroupHeader(
         key: Key('theme-${theme ?? 'none'}'),
-        padding: const EdgeInsets.only(top: Space.md, bottom: Space.xs),
-        child: Text(theme ?? 'No theme',
-            style: Theme.of(context).textTheme.titleSmall),
+        label: theme ?? 'No theme',
+        count: themeCount,
+        folded: themeFolded,
+        level: 0,
+        onTap: () => _fold(themeId),
       ));
+      if (themeFolded) continue;
       for (final project in projects.keys.toList()..sort(byName)) {
         // Tasks held directly by the theme project need no subheading.
-        if (project != null && project != theme) {
-          out.add(Padding(
-            key: Key('subproject-${theme ?? 'none'}-$project'),
-            padding: const EdgeInsets.only(left: Space.sm, top: Space.xs),
-            child: Text(project, style: Theme.of(context).textTheme.labelLarge),
-          ));
-        } else if (project == null && theme != null) {
-          out.add(Padding(
-            padding: const EdgeInsets.only(left: Space.sm, top: Space.xs),
-            child: Text('No project',
-                style: Theme.of(context).textTheme.labelLarge),
+        final heading = project != null && project != theme
+            ? project
+            : (project == null && theme != null ? 'No project' : null);
+        final projectId = 'project:${theme ?? ''}/${project ?? ''}';
+        final projectFolded = heading != null && _folded.contains(projectId);
+        if (heading != null) {
+          out.add(_GroupHeader(
+            key: Key('subproject-${theme ?? 'none'}-${project ?? 'none'}'),
+            label: heading,
+            count: projects[project]!.length,
+            folded: projectFolded,
+            level: 1,
+            onTap: () => _fold(projectId),
           ));
         }
+        if (projectFolded) continue;
         for (final t in projects[project]!) {
           out.add(_taskTile(t, v));
         }
@@ -352,6 +370,67 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           ],
         ),
       ]),
+    );
+  }
+}
+
+/// The name of a theme or a project in the list of tasks due this week. A tap
+/// folds or unfolds the tasks under it.
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({
+    required this.label,
+    required this.count,
+    required this.folded,
+    required this.level,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final int count;
+  final bool folded;
+
+  /// 0 for a theme, 1 for a project inside it.
+  final int level;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      expanded: !folded,
+      label: '$label, $count ${count == 1 ? 'task' : 'tasks'}',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
+        onTap: onTap,
+        excludeFromSemantics: true,
+        borderRadius: BorderRadius.circular(Corner.sm),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: level * Space.sm,
+            top: level == 0 ? Space.md : Space.xs,
+            bottom: Space.xs,
+          ),
+          child: Row(
+            children: [
+              Icon(folded ? Icons.chevron_right : Icons.expand_more,
+                  size: 20, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Space.xs),
+              Flexible(
+                child: Text(label,
+                    style: level == 0 ? text.titleSmall : text.labelLarge),
+              ),
+              const SizedBox(width: Space.sm),
+              Text('$count',
+                  style:
+                      text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
