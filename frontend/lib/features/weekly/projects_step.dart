@@ -304,10 +304,17 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
                 show: p.needsRescope,
                 name: p.name,
                 nudgeKey: Key('rescope-${p.id}')),
+            // The field stays while there are tasks, so more can be added.
+            // With no task yet, the notice carries the field itself.
             if (p.openTasks == 0 && !_locked)
               Padding(
                 padding: const EdgeInsets.only(top: Space.sm, right: Space.sm),
                 child: NoTasksNotice(project: p, actions: widget.actions),
+              )
+            else if (!_locked)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.sm, right: Space.sm),
+                child: InlineAddTask(project: p, actions: widget.actions),
               ),
           ],
         ),

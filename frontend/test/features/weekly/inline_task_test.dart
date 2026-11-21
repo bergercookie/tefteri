@@ -98,6 +98,24 @@ void main() {
     expect(find.byKey(const Key('no-tasks-pp-m1')), findsNothing);
   });
 
+  testWidgets('the project step keeps the field after the first task, for more',
+      (tester) async {
+    final api = await pumpWeekly(tester, _server());
+    await openStep(tester, 'projects');
+    await tester.enterText(
+        find.byKey(const Key('add-task-field-pp-m1')), 'Draw the screens');
+    await tapKey(tester, 'add-task-pp-m1');
+    expect(find.byKey(const Key('no-tasks-pp-m1')), findsNothing);
+    // The field does not go away with the first task: more can be added.
+    expect(find.byKey(const Key('add-task-field-pp-m1')), findsOneWidget);
+    await tester.enterText(
+        find.byKey(const Key('add-task-field-pp-m1')), 'Write the copy');
+    await tapKey(tester, 'add-task-pp-m1');
+    expect(
+        api.where('POST /weekly/$weekKey/projects/pp-m1/tasks'), hasLength(2));
+    expect(find.byKey(const Key('add-task-field-pp-m1')), findsOneWidget);
+  });
+
   testWidgets('tasks that were not picked show under "Not this week"',
       (tester) async {
     final s = _server(tasks: 2);
