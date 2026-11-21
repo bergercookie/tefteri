@@ -123,6 +123,21 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('a completed task opens to be edited', (tester) async {
+    final api = await pumpStats(
+      tester,
+      weekRoutes(
+        tasks: [statTaskJson('a1', 'Fix the gutter', project: 'Home')],
+      )..addAll({'GET /tasks/a1': taskJson('a1', 'Fix the gutter')}),
+      CategoryTaskList(query: _query()),
+      prefs: hintsClosed,
+    );
+    await tester.tap(find.byKey(const Key('task-open-a1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+    expect(api.where('GET /tasks/a1'), isNotEmpty);
+  });
+
   testWidgets('a project that left the task app says so', (tester) async {
     await pumpStats(
       tester,

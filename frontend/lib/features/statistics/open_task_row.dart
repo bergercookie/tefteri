@@ -12,13 +12,18 @@ import 'task_status_button.dart';
 /// One task that is not done: its TODO button, title, project and due day.
 class OpenTaskRow extends StatelessWidget {
   /// Creates the row; [onComplete] runs when the user taps TODO.
-  const OpenTaskRow({required this.task, required this.onComplete, super.key});
+  const OpenTaskRow(
+      {required this.task, required this.onComplete, this.onOpen, super.key});
 
   /// The task.
   final OpenTask task;
 
   /// Called when the user taps the TODO button.
   final VoidCallback onComplete;
+
+  /// Called when the user taps the title: it opens the task to edit it. When
+  /// null the title is plain text.
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +47,12 @@ class OpenTaskRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(task.title, style: text.bodyMedium),
+                InkWell(
+                  key: Key('open-edit-${task.id}'),
+                  onTap: onOpen,
+                  borderRadius: BorderRadius.circular(Corner.sm),
+                  child: Text(task.title, style: text.bodyMedium),
+                ),
                 if (task.project != null && task.project!.isNotEmpty)
                   ProjectChip(
                       name: task.project!,

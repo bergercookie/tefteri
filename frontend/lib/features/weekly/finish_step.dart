@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import 'cap_notice.dart';
 import 'rescope_nudge.dart';
 import 'weekly_models.dart';
@@ -233,11 +234,20 @@ class FinishStep extends StatelessWidget {
                               text.labelMedium?.copyWith(color: colors.task)),
                     ),
                     Expanded(
-                      child: Text(
-                        t.title,
-                        style: text.bodyMedium?.copyWith(
-                            decoration:
-                                t.done ? TextDecoration.lineThrough : null),
+                      child: InkWell(
+                        key: Key('finish-edit-${t.id}'),
+                        borderRadius: BorderRadius.circular(Corner.sm),
+                        onTap: () async {
+                          await showTaskDetails(context,
+                              taskId: t.id, title: t.title);
+                          await actions.run((api) => api.state(actions.week));
+                        },
+                        child: Text(
+                          t.title,
+                          style: text.bodyMedium?.copyWith(
+                              decoration:
+                                  t.done ? TextDecoration.lineThrough : null),
+                        ),
                       ),
                     ),
                     if (t.done)

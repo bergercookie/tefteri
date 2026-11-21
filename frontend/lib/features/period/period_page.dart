@@ -15,6 +15,7 @@ import '../../core/periods.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import '../planner/schedule_dialog.dart';
 import '../statistics/statistics_models.dart' show Category;
 import '../statistics/task_status_button.dart';
@@ -112,6 +113,11 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     if (picked == null) return;
     await _run(
         () => ref.read(planningApiProvider).scheduleTaskAt(task.id, picked));
+  }
+
+  Future<void> _open(PlanTask task) async {
+    await showTaskDetails(context, taskId: task.id, initial: task);
+    if (mounted) widget.onReload();
   }
 
   Future<void> _complete(PlanTask task) =>
@@ -331,6 +337,9 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     return ListTile(
       key: Key('task-${t.id}'),
       dense: true,
+      // A tap opens the task: its title, description, day and time can be
+      // changed there. The week is read again after the pop-up closes.
+      onTap: () => _open(t),
       leading: TaskStatusButton(
         key: Key(t.done ? 'task-done-${t.id}' : 'task-complete-${t.id}'),
         done: t.done,

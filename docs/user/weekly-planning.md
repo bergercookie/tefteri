@@ -98,6 +98,14 @@ of the statistics of the week. They are not a separate list.
   Choose the name of a theme or of a project to fold the tasks under it. Use the chip Completed to
   show or hide the done tasks. A task that you finished without a due date in this week is not in
   this list. Put the pointer on the info icon next to the name of a list to read what it shows.
+- Choose the title of a task to open it and change it. This works on every task of the weekly
+  pages: in the list All due this week, in the card Still to do and its pages, in the lists of
+  completed tasks, and in weekly planning (the tasks of a milestone, the tasks that you put aside,
+  the tasks left over in the look-back, and the tasks of the plan that you commit). The window shows
+  the title, the description, the day and the time of the task. Change what you need and choose
+  Save. Tefteri writes the change to your task app, and the page reads the week again. If your
+  task app has reminders, the window has a button to add a reminder. To take the day away, clear
+  the day with the clear button next to it.
 - Each task has a button that says if it is done. A done task has the button DONE, with a solid
   fill. A task that is not done has the button TODO, with an empty frame. The color of the button
   is the color of the work category of the task: blue for goal-aligned, gray for maintenance and

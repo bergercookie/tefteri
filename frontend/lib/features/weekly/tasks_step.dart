@@ -447,7 +447,17 @@ class _ParkedSectionState extends State<_ParkedSection> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t.title, style: text.bodyMedium),
+                          InkWell(
+                            key: Key('parked-edit-${t.id}'),
+                            borderRadius: BorderRadius.circular(Corner.sm),
+                            onTap: () async {
+                              await showTaskDetails(context,
+                                  taskId: t.id, title: t.title);
+                              await widget.actions
+                                  .run((api) => api.state(widget.actions.week));
+                            },
+                            child: Text(t.title, style: text.bodyMedium),
+                          ),
                           Wrap(
                             spacing: Space.xs,
                             crossAxisAlignment: WrapCrossAlignment.center,

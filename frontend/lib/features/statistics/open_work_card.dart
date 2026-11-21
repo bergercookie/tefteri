@@ -13,6 +13,7 @@ import '../../theme/theme.dart';
 import '../settings/sync_controller.dart';
 import '../weekly/weekly_widgets.dart';
 import 'category_counts_row.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import 'category_style.dart';
 import 'open_drilldown_screen.dart' show openDrilldownLocation;
 import 'open_task_row.dart';
@@ -58,6 +59,15 @@ class _OpenWorkCardState extends ConsumerState<OpenWorkCard> {
     }
     if (!mounted) return;
     setState(() => _error = null);
+    ref.invalidate(openTasksProvider);
+    ref.invalidate(statisticsProvider);
+    widget.onChanged?.call();
+  }
+
+  /// Opens the task to edit it, then reads the lists again.
+  Future<void> _edit(OpenTask task) async {
+    await showTaskDetails(context, taskId: task.id, title: task.title);
+    if (!mounted) return;
     ref.invalidate(openTasksProvider);
     ref.invalidate(statisticsProvider);
     widget.onChanged?.call();
@@ -192,6 +202,7 @@ class _OpenWorkCardState extends ConsumerState<OpenWorkCard> {
             folded: _folded.contains(c),
             onToggle: () => _toggle(c),
             onComplete: _complete,
+            onOpen: _edit,
           ),
       ],
     );
@@ -205,6 +216,7 @@ class _Group extends StatelessWidget {
     required this.folded,
     required this.onToggle,
     required this.onComplete,
+    required this.onOpen,
   });
 
   final Category category;
@@ -212,6 +224,7 @@ class _Group extends StatelessWidget {
   final bool folded;
   final VoidCallback onToggle;
   final void Function(OpenTask) onComplete;
+  final void Function(OpenTask) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +257,10 @@ class _Group extends StatelessWidget {
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant))
           else if (!folded)
             for (final t in tasks)
-              OpenTaskRow(task: t, onComplete: () => onComplete(t)),
+              OpenTaskRow(
+                  task: t,
+                  onComplete: () => onComplete(t),
+                  onOpen: () => onOpen(t)),
           const Divider(height: Space.lg),
         ],
       ),

@@ -9,6 +9,7 @@ import '../../core/project_chip.dart';
 import '../../theme/theme.dart';
 import '../projects/term_hint.dart';
 import '../weekly/weekly_widgets.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import 'category_style.dart';
 import 'statistics_models.dart';
 import 'statistics_providers.dart';
@@ -207,7 +208,17 @@ class _TaskRow extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(task.title, style: text.bodyMedium),
+                InkWell(
+                  key: Key('task-open-${task.id}'),
+                  borderRadius: BorderRadius.circular(Corner.sm),
+                  onTap: () async {
+                    await showTaskDetails(context,
+                        taskId: task.id, title: task.title);
+                    ref.invalidate(taskListProvider);
+                    ref.invalidate(statisticsProvider);
+                  },
+                  child: Text(task.title, style: text.bodyMedium),
+                ),
                 const SizedBox(height: 2),
                 Wrap(
                   spacing: Space.sm,

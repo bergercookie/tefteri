@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/weekly/weekly_models.dart';
 
+import '../../support/fake_api.dart' show taskJson;
 import 'weekly_fake.dart';
 import 'weekly_pump.dart';
 
@@ -29,6 +30,18 @@ Future<dynamic> _pump(
 }
 
 void main() {
+  testWidgets('a task left over from the week before opens to be edited',
+      (tester) async {
+    final api = await _pump(tester, extra: {
+      'GET /tasks/g1': taskJson('g1', 'Prune roses'),
+    });
+    await tester.ensureVisible(find.byKey(const Key('leftover-edit-g1')));
+    await tester.tap(find.byKey(const Key('leftover-edit-g1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('task-edit-title')), findsOneWidget);
+    expect(api.where('GET /tasks/g1'), isNotEmpty);
+  });
+
   testWidgets(
       'each unfinished milestone offers four chips and explains only the '
       'selected one', (tester) async {

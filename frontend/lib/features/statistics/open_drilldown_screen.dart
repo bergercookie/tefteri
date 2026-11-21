@@ -13,6 +13,7 @@ import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import '../weekly/weekly_widgets.dart';
 import 'category_style.dart';
 import 'open_task_row.dart';
@@ -66,6 +67,14 @@ class _OpenDrilldownScreenState extends ConsumerState<OpenDrilldownScreen> {
     }
     if (!mounted) return;
     setState(() => _error = null);
+    ref.invalidate(openTasksProvider);
+    ref.invalidate(statisticsProvider);
+    ref.invalidate(taskListProvider);
+  }
+
+  Future<void> _edit(OpenTask task) async {
+    await showTaskDetails(context, taskId: task.id, title: task.title);
+    if (!mounted) return;
     ref.invalidate(openTasksProvider);
     ref.invalidate(statisticsProvider);
     ref.invalidate(taskListProvider);
@@ -144,7 +153,10 @@ class _OpenDrilldownScreenState extends ConsumerState<OpenDrilldownScreen> {
                     key: const Key('open-drilldown-empty'), style: quiet)
               else
                 for (final t in tasks)
-                  OpenTaskRow(task: t, onComplete: () => _complete(t)),
+                  OpenTaskRow(
+                      task: t,
+                      onComplete: () => _complete(t),
+                      onOpen: () => _edit(t)),
             ],
           );
         },

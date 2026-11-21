@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_error.dart';
 import '../../core/project_chip.dart';
 import '../../theme/theme.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import '../projects/work_tag.dart';
 import '../projects/unsorted_card.dart';
 import 'cap_notice.dart';
@@ -261,7 +262,19 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
               children: [
                 const Icon(Icons.radio_button_unchecked, size: 14),
                 const SizedBox(width: Space.sm),
-                Expanded(child: Text(t.title, style: text.bodyMedium)),
+                Expanded(
+                  child: InkWell(
+                    key: Key('leftover-edit-${t.id}'),
+                    borderRadius: BorderRadius.circular(Corner.sm),
+                    onTap: () async {
+                      await showTaskDetails(context,
+                          taskId: t.id, title: t.title);
+                      await widget.actions
+                          .run((api) => api.state(widget.actions.week));
+                    },
+                    child: Text(t.title, style: text.bodyMedium),
+                  ),
+                ),
               ],
             ),
           ),

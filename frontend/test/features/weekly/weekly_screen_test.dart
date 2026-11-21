@@ -299,6 +299,33 @@ void main() {
     expect(find.byKey(const Key('task-p1-t1')), findsOneWidget);
   });
 
+  testWidgets('a task of the committed plan opens to be edited',
+      (tester) async {
+    final s = WeeklyServer()
+      ..chosen.add('p1')
+      ..status = 'committed'
+      ..days.addAll({'p1-t1': '2030-03-05', 'p1-t2': '2030-03-06'});
+    final (api, _) = await _pump(tester, server: s);
+    await _tap(tester, 'check-finish');
+    await _tap(tester, 'finish-edit-p1-t1');
+    expect(find.byKey(const Key('task-edit-title')), findsOneWidget);
+    expect(api.where('GET /tasks/p1-t1'), isNotEmpty);
+  });
+
+  testWidgets('a parked task opens to be edited', (tester) async {
+    final s = WeeklyServer()..chosen.add('p1');
+    final (api, _) = await _pump(tester, server: s);
+    await _tap(tester, 'check-tasks');
+    await _tap(tester, 'task-park-p1-t1');
+    await _tap(tester, 'parked-toggle');
+    await _tap(tester, 'parked-edit-p1-t1');
+    expect(find.byKey(const Key('task-edit-title')), findsOneWidget);
+    final before = api.where('GET /weekly/$weekKey').length;
+    await tester.tap(find.byKey(const Key('task-details-close')));
+    await tester.pumpAndSettle();
+    expect(api.where('GET /weekly/$weekKey').length, greaterThan(before));
+  });
+
   testWidgets('a task with a stale day says when it was due', (tester) async {
     final s = WeeklyServer()..chosen.add('p2');
     s.projects[1]['tasks'] = [

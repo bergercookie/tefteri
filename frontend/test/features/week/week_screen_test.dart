@@ -486,6 +486,53 @@ void main() {
     expect(find.text('Write plan'), findsOneWidget);
   });
 
+  testWidgets('a task of the week opens to be edited, and the week reads again',
+      (tester) async {
+    final api = _api({
+      'GET /tasks/t1': taskJson('t1', 'Write plan'),
+      'PATCH /tasks/t1': taskJson('t1', 'x'),
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await tester.pumpAndSettle();
+    // The pop-up of the task: its title, description, day and time.
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+    for (final f in [
+      'task-edit-title',
+      'task-edit-description',
+      'task-edit-date',
+      'task-edit-time'
+    ]) {
+      expect(find.byKey(Key(f)), findsOneWidget, reason: f);
+    }
+    final before = api.where('GET /views/week/2026-11-02').length;
+    await tester.enterText(
+        find.byKey(const Key('task-edit-title')), 'Write the plan');
+    await tester.enterText(
+        find.byKey(const Key('task-edit-description')), 'In two pages.');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-save')));
+    await tester.pumpAndSettle();
+    expect(api.where('PATCH /tasks/t1').single.data,
+        {'title': 'Write the plan', 'description': 'In two pages.'});
+    expect(find.byKey(const Key('task-details')), findsNothing);
+    // The list reads the week again after the pop-up.
+    expect(api.where('GET /views/week/2026-11-02').length, greaterThan(before));
+  });
+
+  testWidgets('a task of the card Still to do opens to be edited',
+      (tester) async {
+    final api = _api({'GET /tasks/o1': taskJson('o1', 'Book the venue')});
+    await _pump(tester, api);
+    final before = api.where('GET /statistics/open').length;
+    await tester.tap(find.byKey(const Key('open-edit-o1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-details-close')));
+    await tester.pumpAndSettle();
+    expect(api.where('GET /statistics/open').length, greaterThan(before));
+  });
+
   testWidgets('a task can be linked to a goal of the annual plan',
       (tester) async {
     final year = DateTime.now().year;
