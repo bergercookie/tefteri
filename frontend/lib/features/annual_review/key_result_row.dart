@@ -94,9 +94,11 @@ class KeyResultRow extends StatelessWidget {
                     : 'Current value ${_number(k.movedAfterSnapshot!)} '
                         '(not from a snapshot).',
                 style: quiet),
-          if (k.changes.isNotEmpty) ...[
+          // Only a field change says what moved. Edits, retirements and
+          // restores have no field and are left out.
+          if (k.changes.any((c) => c.field != null)) ...[
             const SizedBox(height: Space.xs),
-            for (final c in k.changes)
+            for (final c in k.changes.where((c) => c.field != null))
               Text(
                   '${c.field ?? c.kind} changed from ${c.oldValue ?? 'none'} '
                   'to ${c.newValue ?? 'none'} on ${_day(c.at)}.',

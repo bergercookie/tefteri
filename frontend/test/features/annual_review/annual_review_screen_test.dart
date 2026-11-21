@@ -62,6 +62,42 @@ void main() {
     expect(find.text('A year of learning.'), findsOneWidget);
   });
 
+  testWidgets('a restore or retire is not shown as a field change',
+      (tester) async {
+    final api = FakeApi({
+      'GET /annual-review/2030': annualReviewJson(
+        year: 2030,
+        goals: [
+          reviewGoalJson('g1', 'Run a marathon', keyResults: [
+            reviewKeyResultJson('kr1', 'Kilometres in one run', changes: [
+              {
+                'kind': 'key_result_restored',
+                'field': null,
+                'old_value': null,
+                'new_value': null,
+                'at': '2030-05-01T00:00:00Z',
+              },
+              {
+                'kind': 'key_result_edited',
+                'field': 'target',
+                'old_value': '10',
+                'new_value': '12',
+                'at': '2030-06-01T00:00:00Z',
+              },
+            ]),
+          ]),
+        ],
+      ),
+      'GET /checklists/year/2030-01-01': {
+        'items': const [],
+      },
+    });
+    await pumpWithApi(tester, api, const AnnualReviewScreen(initialYear: 2030));
+    expect(find.textContaining('changed from 10 to 12'), findsOneWidget);
+    expect(find.textContaining('key_result_restored'), findsNothing);
+    expect(find.textContaining('changed from none'), findsNothing);
+  });
+
   testWidgets('shows the empty states and keeps the checklist', (tester) async {
     final api = FakeApi({
       'GET /annual-review/2030': annualReviewJson(
