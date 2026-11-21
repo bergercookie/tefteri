@@ -101,8 +101,10 @@ class PlanningApi {
     ({String? id})? defaultEventCalendar,
     Map<ChecklistKind, List<String>>? checklists,
     Map<ChecklistKind, String>? checklistSources,
+    List<String>? eventInvitees,
   }) async {
     final r = await _dio.patch<Object?>('/me/settings', data: {
+      if (eventInvitees != null) 'event_invitees': eventInvitees,
       if (checklists != null)
         'checklists': {for (final e in checklists.entries) e.key.name: e.value},
       if (checklistSources != null)
@@ -229,6 +231,7 @@ class PlanningApi {
     required DateTime end,
     bool allDay = false,
     String location = '',
+    List<String> attendees = const [],
   }) =>
       _dio.post<Object?>('/calendar/entries', data: {
         'connection_id': connectionId,
@@ -238,6 +241,7 @@ class PlanningApi {
         'end': end.toUtc().toIso8601String(),
         'all_day': allDay,
         if (location.isNotEmpty) 'location': location,
+        if (attendees.isNotEmpty) 'attendees': attendees,
       });
 
   /// `PUT /tasks/{id}/schedule` with a block [start]. The server stores the

@@ -81,3 +81,24 @@ async def test_calendar_window_and_overlap_reporting(api: AsyncClient, world: Fa
         )
     ).json()
     assert [(i["type"], i["title"]) for i in window] == [("entry", "Standup")]
+
+
+async def test_an_event_can_invite_people(api: AsyncClient, world: FakeWorld) -> None:
+    ids = await _ready(api)
+    base = {
+        "connection_id": ids["google_calendar"],
+        "title": "Planning",
+        "start": "2026-11-02T15:00:00+00:00",
+        "end": "2026-11-02T16:00:00+00:00",
+    }
+    r = await api.post(
+        f"{V1}/calendar/entries",
+        json=base | {"attendees": ["sam@example.com", "Sam@example.com", "kim@example.org"]},
+    )
+    assert r.status_code == 201, r.text
+    assert world.calendars["default"].drafts[-1].attendees == ("sam@example.com", "kim@example.org")
+    # Without attendees nobody is invited; a text that is not an address is refused.
+    assert (await api.post(f"{V1}/calendar/entries", json=base)).status_code == 201
+    assert not world.calendars["default"].drafts[-1].attendees
+    bad = await api.post(f"{V1}/calendar/entries", json=base | {"attendees": ["not an address"]})
+    assert bad.status_code == 422, bad.text

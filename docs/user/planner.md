@@ -274,25 +274,67 @@ where it was.
 
 ## Add an event or a task on an empty slot
 
-Click an empty slot of the calendar with the right mouse button. A menu opens, with the time of
-the slot (a quarter of an hour):
+You can add an event in three ways:
+
+- Choose the button New event in the row above the calendar. On a narrow screen, the button is a
+  small icon.
+- Press Shift+N on any page.
+- Click an empty slot of the calendar with the right mouse button. A menu opens, with the time
+  of the slot (a quarter of an hour).
+
+In the menu of a right click:
 
 - Choose New event to add an event to one of your calendars.
 - Choose New task to add a task to one of your projects. The task starts with that day and time.
 
 Click the row all day with the right button to add an all-day event or a task for that day.
 
-![The pop-up New event. It shows the title, the calendar with its color, the day, the times, the switch All day and the place.](../images/planner-new-event.png)
+![The pop-up New event. It shows the title, the calendar with its color, the day, the times, the switch All day, the place and the people to invite.](../images/planner-new-event.png)
 
 In the pop-up New event:
 
 1. Type the title.
 2. Choose the calendar. The list shows only the calendars that are on and that you can change.
-   Tefteri starts with the calendar of your last new event.
-3. Change the day, the start time and the end time if you need to. To add an event for the whole
+   Tefteri starts with the calendar that you chose in the settings. Without a choice, it starts
+   with the calendar of your last new event.
+3. Change the day, the start time and the length if you need to. To add an event for the whole
    day, turn on All day.
 4. Optional: type a place.
-5. Choose Add event, or press Ctrl+Enter.
+5. Optional: tick the people to invite.
+6. Choose Add event, or press Ctrl+Enter.
+
+### Use only the keyboard
+
+Press Tab to go to the next field. Press Shift+Tab to go back. The order is: title, calendar,
+day, All day, start time, length, place, the people, and then the buttons. The small buttons for
+the pickers are only for the mouse, so Tab skips them.
+
+You type the day and the time as plain text:
+
+| Field | You type | Result |
+| --- | --- | --- |
+| Day | 20261102 | 2 November 2026 |
+| Starts at | 1105 | 11:05 |
+| Day or Starts at | 20261102T1105 | Sets the day and the time |
+| Length | 45m, 1h or 1h30 | The length of the event |
+
+Times always use 24 hours, for example 14:30. Tefteri never shows AM or PM, also not in the
+time picker. When you leave a field, tefteri writes the value in the standard form.
+
+### Invite people
+
+Below the place, the list Invite shows the people that you usually invite. Tick a person with the
+mouse, or press Tab to go to the person and press Space. Nobody is ticked at first. When you add
+the event, the calendar app sends an invitation to each ticked person.
+
+To change the list, open Settings and look for People you invite to events. Type an e-mail
+address and press Enter to add a person. Choose the cross on a person to remove them.
+
+### Choose the calendar for new events
+
+Open Settings. In the card with the planner settings, choose a calendar in Calendar for new
+events. The pop-up New event then starts with this calendar. Choose Last used to start with the
+calendar of your last new event again.
 
 If you have no calendar that you can change, the pop-up tells you to connect a Google calendar
 and to choose a calendar in Settings. Read [Connect your apps](connect-apps.md).

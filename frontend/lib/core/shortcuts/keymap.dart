@@ -189,3 +189,65 @@ final List<AppShortcut> appShortcuts = [
     intent: LeaveTextFieldIntent(),
   ),
 ];
+
+/// The Greek letter that the standard Greek keyboard layout puts on each
+/// Latin letter key. Q has no letter on that layout.
+///
+/// A shortcut is bound to the character that the key makes. On a Greek layout
+/// the key P makes π, not p, so a shortcut for "p" would do nothing there. Every
+/// letter shortcut therefore has a Greek twin on the same key.
+const Map<String, String> greekLayoutLetters = {
+  'a': 'α',
+  'b': 'β',
+  'c': 'ψ',
+  'd': 'δ',
+  'e': 'ε',
+  'f': 'φ',
+  'g': 'γ',
+  'h': 'η',
+  'i': 'ι',
+  'j': 'ξ',
+  'k': 'κ',
+  'l': 'λ',
+  'm': 'μ',
+  'n': 'ν',
+  'o': 'ο',
+  'p': 'π',
+  'r': 'ρ',
+  's': 'σ',
+  't': 'τ',
+  'u': 'θ',
+  'v': 'ω',
+  'w': 'ς',
+  'x': 'χ',
+  'y': 'υ',
+  'z': 'ζ',
+};
+
+/// The activators that do the same as [activator] on a Greek layout: the same
+/// key, which makes a Greek letter there. A key that is not a letter (F5, Page
+/// Down, Esc, `?`) makes the same on every layout and has no twin.
+List<ShortcutActivator> greekTwins(ShortcutActivator activator) {
+  if (activator is CharacterActivator) {
+    final lower = activator.character.toLowerCase();
+    final greek = greekLayoutLetters[lower];
+    if (greek == null) return const [];
+    final capital = activator.character != lower;
+    return [CharacterActivator(capital ? greek.toUpperCase() : greek)];
+  }
+  if (activator is SingleActivator) {
+    final label = activator.trigger.keyLabel.toLowerCase();
+    final greek = label.length == 1 ? greekLayoutLetters[label] : null;
+    if (greek == null) return const [];
+    return [
+      SingleActivator(
+        LogicalKeyboardKey(greek.codeUnitAt(0)),
+        control: activator.control,
+        shift: activator.shift,
+        alt: activator.alt,
+        meta: activator.meta,
+      ),
+    ];
+  }
+  return const [];
+}

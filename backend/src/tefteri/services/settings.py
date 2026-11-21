@@ -1,7 +1,8 @@
 """Per-user settings."""
 
+import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,8 @@ class UserSettings:
     """The note path of each read-only checklist, by period type. Empty when it is local."""
     default_event_container_id: uuid.UUID | None = None
     """The calendar that a new event starts in, or ``None`` when the user has not chosen one."""
+    event_invitees: list[str] = field(default_factory=list)
+    """The e-mail addresses of the people that the user usually invites to an event."""
 
 
 class _Unset:
@@ -47,7 +50,32 @@ def _of(user: User) -> UserSettings:
         lists,
         sources,
         user.default_event_container_id,
+        list(user.event_invitees or []),
     )
+
+
+MAX_INVITEES = 100
+"""The most people in a list of invitees. Google takes more, but nobody needs a list this long."""
+
+_EMAIL = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$")
+
+
+def clean_invitees(addresses: list[str]) -> list[str]:
+    """Trim the e-mail addresses, drop the repeats (case does not count) and check each one.
+
+    Raises ``Invalid`` for a text that is not an address, and for more than ``MAX_INVITEES``.
+    """
+    seen: dict[str, str] = {}
+    for address in addresses:
+        text = address.strip()
+        if not text:
+            continue
+        if not _EMAIL.match(text):
+            raise Invalid(f"{text} is not an e-mail address.", "bad_invitee")
+        seen.setdefault(text.casefold(), text)
+    if len(seen) > MAX_INVITEES:
+        raise Invalid(f"You can have at most {MAX_INVITEES} people.", "too_many_invitees")
+    return list(seen.values())
 
 
 def clean_path(path: str) -> str:
@@ -75,6 +103,7 @@ class SettingsService:
         checklists: dict[str, list[str]] | None = None,
         checklist_sources: dict[str, str] | None = None,
         default_event_container_id: uuid.UUID | None | _Unset = UNSET,
+        event_invitees: list[str] | None = None,
     ) -> UserSettings:
         """Change the fields that are not ``None`` and return the new settings."""
         user = await db.get(User, user_id)
@@ -104,6 +133,8 @@ class SettingsService:
             if default_event_container_id is not None:
                 await _check_calendar(db, user_id, default_event_container_id)
             user.default_event_container_id = default_event_container_id
+        if event_invitees is not None:
+            user.event_invitees = clean_invitees(event_invitees)
         await db.flush()
         return _of(user)
 

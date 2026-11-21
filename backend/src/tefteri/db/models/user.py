@@ -46,6 +46,10 @@ class User(IdMixin, CreatedMixin, Base):
         default=None,
     )
     """The calendar that a new event starts in, or ``None`` to start in the last one used."""
+    event_invitees: Mapped[list[str]] = mapped_column(
+        JSON, default=list, server_default=text("'[]'")
+    )
+    """The e-mail addresses of the people that the user usually invites to an event."""
 
 
 class AuthSession(IdMixin, CreatedMixin, Base):

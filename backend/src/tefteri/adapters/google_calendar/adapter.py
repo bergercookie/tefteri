@@ -214,8 +214,13 @@ class GoogleCalendarBackend:
                 "start": {"dateTime": draft.start.isoformat()},
                 "end": {"dateTime": draft.end.isoformat()},
             }
-        body = {"summary": draft.title, "location": draft.location, **when}
-        data = await self._call("POST", _path(draft.container_id), json=body)
+        body: dict[str, Any] = {"summary": draft.title, "location": draft.location, **when}
+        params: dict[str, str] = {}
+        if draft.attendees:
+            body["attendees"] = [{"email": address} for address in draft.attendees]
+            # Google sends the invitations only when it is told to.
+            params["sendUpdates"] = "all"
+        data = await self._call("POST", _path(draft.container_id), json=body, params=params)
         return self._entry(draft.container_id, data)
 
     async def update_entry(

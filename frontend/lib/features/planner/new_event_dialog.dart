@@ -123,6 +123,10 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
       text: formatTime(TimeOfDay.fromDateTime(widget.start)));
   final _length = TextEditingController(text: '1h');
   EventCalendar? _calendar;
+
+  /// The standard invitees that the user ticked. Nobody is ticked at first: an
+  /// invitation is sent to a person, so the user picks each one.
+  final Set<String> _invited = {};
   late bool _allDay = widget.allDay;
   bool _busy = false;
   String? _error;
@@ -194,7 +198,13 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
         context: context,
-        initialTime: _timeValue ?? TimeOfDay.fromDateTime(widget.start));
+        initialTime: _timeValue ?? TimeOfDay.fromDateTime(widget.start),
+        // Times are 24 hours everywhere in tefteri: no AM or PM.
+        builder: (context, child) => MediaQuery(
+              data:
+                  MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+              child: child!,
+            ));
     if (picked != null && mounted) {
       setState(() => _set(_time, formatTime(picked)));
     }
@@ -219,14 +229,20 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
     });
     try {
       await ref.read(planningApiProvider).createEntry(
-            connectionId: calendar.connectionId,
-            containerId: calendar.containerId,
-            title: _title.text.trim(),
-            start: start,
-            end: end,
-            allDay: _allDay,
-            location: _location.text.trim(),
-          );
+        connectionId: calendar.connectionId,
+        containerId: calendar.containerId,
+        title: _title.text.trim(),
+        start: start,
+        end: end,
+        allDay: _allDay,
+        location: _location.text.trim(),
+        attendees: [
+          for (final a
+              in ref.read(userSettingsProvider).valueOrNull?.eventInvitees ??
+                  const <String>[])
+            if (_invited.contains(a)) a,
+        ],
+      );
     } on Object catch (e) {
       if (mounted) {
         setState(() {
@@ -260,6 +276,10 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
     ValueChanged<String>? onChanged,
   }) {
     return Focus(
+      // Only to hear when the field loses the focus: it is not a stop of its own
+      // when the user presses Tab.
+      canRequestFocus: false,
+      skipTraversal: true,
       onFocusChange: (focused) {
         if (!focused) _tidy(controller, standard);
       },
@@ -273,12 +293,16 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
           labelText: label,
           hintText: hint,
           errorText: valid ? null : problem,
-          suffixIcon: IconButton(
-            key: Key('new-event-$name-pick'),
-            tooltip: pickTooltip,
-            visualDensity: VisualDensity.compact,
-            icon: Icon(icon, size: 18),
-            onPressed: _busy ? null : onPick,
+          // The picker is for the mouse. Tab goes from field to field, so the
+          // button is out of the tab order.
+          suffixIcon: ExcludeFocus(
+            child: IconButton(
+              key: Key('new-event-$name-pick'),
+              tooltip: pickTooltip,
+              visualDensity: VisualDensity.compact,
+              icon: Icon(icon, size: 18),
+              onPressed: _busy ? null : onPick,
+            ),
           ),
         ),
         onChanged: onChanged ?? (_) => setState(() {}),
@@ -414,8 +438,10 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
                   key: const Key('new-event-location'),
                   controller: _location,
                   enabled: !_busy,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Place'),
                 ),
+                _invitees(),
               ],
             ),
           ),
@@ -431,6 +457,61 @@ class _NewEventDialogState extends ConsumerState<NewEventDialog> {
             onPressed: _canCreate ? _create : null,
             child: Text(_busy ? 'Adding...' : 'Add event'),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// The people that the user usually invites, one tick box for each. Tab
+  /// moves to a box and Space ticks it.
+  Widget _invitees() {
+    final text = Theme.of(context).textTheme;
+    final people = ref.watch(userSettingsProvider).valueOrNull?.eventInvitees ??
+        const <String>[];
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.md),
+      child: Column(
+        key: const Key('new-event-invitees'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Invite', style: text.labelLarge),
+          if (people.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Text(
+                'No standard invitees yet. Add the people that you often '
+                'invite in Settings.',
+                key: const Key('new-event-no-invitees'),
+                style: text.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            )
+          else
+            for (final a in people)
+              CheckboxListTile(
+                key: Key('new-event-invitee-$a'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(a),
+                value: _invited.contains(a),
+                onChanged: _busy
+                    ? null
+                    : (v) => setState(
+                        () => v == true ? _invited.add(a) : _invited.remove(a)),
+              ),
+          if (_invited.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Text(
+                _invited.length == 1
+                    ? 'The calendar app sends an invitation to 1 person.'
+                    : 'The calendar app sends an invitation to '
+                        '${_invited.length} people.',
+                key: const Key('new-event-invite-note'),
+                style: text.bodySmall,
+              ),
+            ),
         ],
       ),
     );

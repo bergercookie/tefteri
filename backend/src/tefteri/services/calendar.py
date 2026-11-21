@@ -19,6 +19,7 @@ from tefteri.services import conflicts
 from tefteri.services.connections import ConnectionService
 from tefteri.services.errors import BackendProblem, Invalid, NotFound, guard
 from tefteri.services.mirror import anchor_all_day, entry_values, to_utc
+from tefteri.services.settings import clean_invitees
 
 
 class CalendarService:
@@ -79,8 +80,9 @@ class CalendarService:
         all_day: bool = False,
         location: str = "",
         container_id: uuid.UUID | None = None,
+        attendees: list[str] | None = None,
     ) -> CalendarEntry:
-        """Create an event in the calendar app, then cache it."""
+        """Create an event in the calendar app, then cache it. ``attendees`` are invited."""
         connection = await self._connections.get(db, user_id, connection_id)
         if connection is None or connection.kind != ConnectionKind.CALENDAR.value:
             raise Invalid("connection must be a calendar connection")
@@ -111,7 +113,15 @@ class CalendarService:
         remote = await guard(
             connection,
             self._backend(connection).create_entry(
-                EntryDraft(container.remote_id, title, start, end, all_day, location)
+                EntryDraft(
+                    container.remote_id,
+                    title,
+                    start,
+                    end,
+                    all_day,
+                    location,
+                    tuple(clean_invitees(attendees or [])),
+                )
             ),
         )
         entry = CalendarEntry(

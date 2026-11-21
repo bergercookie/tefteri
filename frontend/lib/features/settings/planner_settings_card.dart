@@ -164,8 +164,124 @@ class PlannerSettingsCard extends ConsumerWidget {
               ),
             ),
             _eventCalendar(context, ref, s),
+            _Invitees(
+                settings: s,
+                save: (list) => _save(
+                    context,
+                    ref,
+                    () => ref
+                        .read(planningApiProvider)
+                        .updateSettings(eventInvitees: list))),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The people that the user usually invites to an event: a list with a field
+/// to add one. Enter adds the address that is typed.
+class _Invitees extends StatefulWidget {
+  const _Invitees({required this.settings, required this.save});
+
+  final UserSettings settings;
+
+  /// Saves the whole new list.
+  final Future<void> Function(List<String> list) save;
+
+  @override
+  State<_Invitees> createState() => _InviteesState();
+}
+
+class _InviteesState extends State<_Invitees> {
+  final _field = TextEditingController();
+  String? _problem;
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  static final _address = RegExp(r'^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$');
+
+  Future<void> _add() async {
+    final text = _field.text.trim();
+    if (text.isEmpty) return;
+    if (!_address.hasMatch(text)) {
+      setState(
+          () => _problem = 'Type an e-mail address, such as sam@example.com');
+      return;
+    }
+    final list = widget.settings.eventInvitees;
+    setState(() => _problem = null);
+    _field.clear();
+    if (list.any((a) => a.toLowerCase() == text.toLowerCase())) return;
+    await widget.save([...list, text]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final people = widget.settings.eventInvitees;
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      key: const Key('invitees-setting'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('People you invite to events', style: text.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'The new event pop-up lists these people, so you can invite them '
+            'with a tick. The calendar app sends the invitation.',
+            style: text.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          if (people.isEmpty)
+            Text('Nobody yet.',
+                key: const Key('invitees-empty'), style: text.bodyMedium)
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final a in people)
+                  InputChip(
+                    key: Key('invitee-$a'),
+                    label: Text(a),
+                    deleteButtonTooltipMessage: 'Remove $a',
+                    onDeleted: () => widget.save([
+                      for (final b in people)
+                        if (b != a) b
+                    ]),
+                  ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('invitee-field'),
+            controller: _field,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: 'Add a person',
+              hintText: 'sam@example.com',
+              errorText: _problem,
+              suffixIcon: IconButton(
+                key: const Key('invitee-add'),
+                tooltip: 'Add',
+                icon: const Icon(Icons.add),
+                onPressed: _add,
+              ),
+            ),
+            onChanged: (_) {
+              if (_problem != null) setState(() => _problem = null);
+            },
+            onSubmitted: (_) => _add(),
+          ),
+        ],
       ),
     );
   }

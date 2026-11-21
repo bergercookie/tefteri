@@ -91,8 +91,8 @@ of the statistics of the week. They are not a separate list.
   is off-plan.
 - Below it, the card Still to do shows the tasks of this week that are not done. A task is in the
   week when its due date or its planned start is in the week. The card has the same three groups,
-  with the tasks in each group. Choose the name of a group to fold it. Choose a count to open its
-  group.
+  with the tasks in each group. Choose the name of a group to fold it. Choose a count, or a part of
+  the bar, to open a page with only the tasks of that category. Use the back arrow to return.
 - The list All due this week shows every task with a due date in this week, done or not. A tick
   marks a done task. The tasks are in groups: first a theme, then the project inside the theme.
   Choose the name of a theme or of a project to fold the tasks under it. Use the chip Completed to

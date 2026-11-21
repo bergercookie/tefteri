@@ -14,6 +14,7 @@ OFF = {
     "checklists": {"week": [], "month": [], "year": []},
     "checklist_sources": {"week": "", "month": "", "year": ""},
     "default_event_container_id": None,
+    "event_invitees": [],
 }
 
 
@@ -330,3 +331,28 @@ async def test_import_without_connections_leaves_connections_alone(api: AsyncCli
     file = {"format": "tefteri-settings", "version": 1, "settings": {"default_reminder_minutes": 5}}
     await api.post(f"{V1}/me/settings/import", json=file)
     assert len((await api.get(f"{V1}/connections")).json()) == 1
+
+
+async def test_standard_invitees_are_cleaned_and_replace_the_old_list(api: AsyncClient) -> None:
+    r = await api.patch(
+        f"{V1}/me/settings",
+        json={"event_invitees": [" Sam@Example.com ", "sam@example.com", "", "kim@example.org"]},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["event_invitees"] == ["Sam@Example.com", "kim@example.org"]
+    assert (await api.get(f"{V1}/me/settings")).json()["event_invitees"] == [
+        "Sam@Example.com",
+        "kim@example.org",
+    ]
+    # A patch without the field keeps the list; an empty list clears it.
+    kept = await api.patch(f"{V1}/me/settings", json={"random_time_on_date_drop": True})
+    assert kept.json()["event_invitees"] == ["Sam@Example.com", "kim@example.org"]
+    cleared = await api.patch(f"{V1}/me/settings", json={"event_invitees": []})
+    assert cleared.json()["event_invitees"] == []
+
+
+async def test_an_invitee_that_is_not_an_address_is_refused(api: AsyncClient) -> None:
+    r = await api.patch(f"{V1}/me/settings", json={"event_invitees": ["sam@example.com", "sam"]})
+    assert r.status_code == 422, r.text
+    assert "sam is not an e-mail address" in r.text
+    assert (await api.get(f"{V1}/me/settings")).json()["event_invitees"] == []

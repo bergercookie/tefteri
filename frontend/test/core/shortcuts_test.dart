@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tefteri/app.dart';
 import 'package:tefteri/core/auth_controller.dart';
+import 'package:tefteri/core/find.dart';
 import 'package:tefteri/core/shortcuts/app_shortcuts.dart';
 import 'package:tefteri/core/shortcuts/keymap.dart';
 import 'package:tefteri/features/settings/sync_controller.dart';
@@ -76,7 +77,114 @@ Future<void> _press(WidgetTester tester, String character) async {
   await tester.pumpAndSettle();
 }
 
+/// Presses the key that makes [greek] on a Greek layout. The key is the Latin
+/// key of the same place, and the character it makes is the Greek letter.
+Future<void> _pressGreek(
+    WidgetTester tester, String latin, String greek) async {
+  await tester.sendKeyEvent(
+      LogicalKeyboardKey(LogicalKeyboardKey.keyA.keyId +
+          latin.codeUnitAt(0) -
+          'a'.codeUnitAt(0)),
+      character: greek);
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  group('Greek layout', () {
+    test('every letter shortcut has a twin on the Greek letter of its key', () {
+      expect(greekLayoutLetters['p'], 'π');
+      for (final s in appShortcuts) {
+        final a = s.activator;
+        final isLetter = (a is CharacterActivator &&
+                RegExp(r'^[A-Za-z]$').hasMatch(a.character)) ||
+            (a is SingleActivator &&
+                a.trigger.keyLabel.length == 1 &&
+                RegExp(r'^[A-Za-z]$').hasMatch(a.trigger.keyLabel));
+        expect(greekTwins(a), isLetter ? hasLength(1) : isEmpty,
+            reason: s.keys);
+      }
+      // A capital letter has a capital twin; Ctrl+F keeps its modifier.
+      final shiftN = greekTwins(const CharacterActivator('N')).single
+          as CharacterActivator;
+      expect(shiftN.character, 'Ν');
+      final ctrlF = greekTwins(
+              const SingleActivator(LogicalKeyboardKey.keyF, control: true))
+          .single as SingleActivator;
+      expect(ctrlF.trigger, const LogicalKeyboardKey(0x3c6));
+      expect(ctrlF.control, isTrue);
+      // Keys that are not letters make the same on every layout.
+      expect(greekTwins(const CharacterActivator('?')), isEmpty);
+      expect(greekTwins(const SingleActivator(LogicalKeyboardKey.f5)), isEmpty);
+    });
+
+    testWidgets('π opens the Planner, as p does', (tester) async {
+      final (router, _) = await _pump(tester);
+      router.go('/daily');
+      await tester.pumpAndSettle();
+      await _pressGreek(tester, 'p', 'π');
+      expect(find.text('page:/'), findsOneWidget);
+    });
+
+    testWidgets('each view opens from its Greek letter, from every other view',
+        (tester) async {
+      final (router, _) = await _pump(tester);
+      for (final from in _viewsWithKeys) {
+        for (final to in _viewsWithKeys) {
+          if (from == to) continue;
+          router.go(from.path);
+          await tester.pumpAndSettle();
+          await _pressGreek(tester, to.key!, greekLayoutLetters[to.key!]!);
+          expect(find.text('page:${to.path}'), findsOneWidget,
+              reason: '${greekLayoutLetters[to.key!]} from ${from.path}');
+        }
+      }
+    });
+
+    testWidgets('σ syncs, as s does', (tester) async {
+      await _pump(tester);
+      await _pressGreek(tester, 's', 'σ');
+      expect(_sync.calls, 1);
+      await _press(tester, 's');
+      expect(_sync.calls, 2);
+    });
+
+    testWidgets('a Greek letter goes into a focused text field',
+        (tester) async {
+      final (router, _) = await _pump(tester);
+      router.go('/week');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('field-/week')));
+      await tester.pump();
+      await _pressGreek(tester, 'p', 'π');
+      expect(find.text('page:/week'), findsOneWidget);
+      expect(find.text('page:/'), findsNothing);
+    });
+
+    testWidgets('Ctrl+φ is accepted as Ctrl+F', (tester) async {
+      final (_, container) = await _pump(tester);
+      // The Greek letter makes its own logical key: φ, not f.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      final twin = greekTwins(
+              appShortcuts.firstWhere((s) => s.keys == 'Ctrl+F').activator)
+          .single;
+      const event = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.keyF,
+        logicalKey: LogicalKeyboardKey(0x3c6),
+        character: 'φ',
+        timeStamp: Duration.zero,
+      );
+      expect(twin.accepts(event, HardwareKeyboard.instance), isTrue);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      expect(container.read(findProvider).open, isFalse);
+    });
+
+    testWidgets('the help names the Greek keys', (tester) async {
+      await _pump(tester);
+      await _press(tester, '?');
+      expect(find.byKey(const Key('shortcut-help-greek')), findsOneWidget);
+    });
+  });
+
   test('the keymap has one unique key for each view', () {
     final keys = [for (final s in appShortcuts) s.keys];
     expect(keys.toSet(), hasLength(keys.length));

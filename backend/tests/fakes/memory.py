@@ -286,6 +286,8 @@ class FakeCalendarBackend(_FakeBase):
         """Start empty."""
         super().__init__(containers)
         self.entries: dict[str, RemoteEntry] = {}
+        self.drafts: list[EntryDraft] = []
+        """Every event that was created, as it was asked for (with its attendees)."""
         self.refused: set[str] = set()
         """Remote ids of calendars that the app answers with an error (like a 404)."""
 
@@ -321,6 +323,7 @@ class FakeCalendarBackend(_FakeBase):
     async def create_entry(self, draft: EntryDraft) -> RemoteEntry:
         """Create an event."""
         self._guard()
+        self.drafts.append(draft)
         entry = RemoteEntry(
             remote_id=self._new_id(),
             container_id=draft.container_id,

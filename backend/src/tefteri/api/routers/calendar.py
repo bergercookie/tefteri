@@ -35,6 +35,8 @@ class EntryIn(BaseModel):
     end: datetime
     all_day: bool = False
     location: str = ""
+    attendees: list[str] = Field(default_factory=list, max_length=200)
+    """E-mail addresses of the people to invite. The calendar app sends the invitations."""
 
 
 class EntryPatch(BaseModel):

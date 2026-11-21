@@ -258,6 +258,10 @@ void main() {
     await pumpScreen(
         tester,
         _api({
+          'GET /me/settings': {
+            'random_time_on_date_drop': false,
+            'event_invitees': ['sam@example.com', 'kim@example.org'],
+          },
           'GET /connections': [
             connectionJson('c2', 'calendar', 'Google (work)'),
           ],
@@ -290,6 +294,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(
         find.byKey(const Key('new-event-title')), 'Lunch with Sam');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+        find.byKey(const Key('new-event-invitee-sam@example.com')));
+    await tester
+        .tap(find.byKey(const Key('new-event-invitee-sam@example.com')));
     await tester.pumpAndSettle();
     await saveScreenshot('planner-new-event');
   });

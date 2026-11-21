@@ -67,6 +67,8 @@ class SettingsOut(BaseModel):
     """A path means that the checklist is read from the notes app and cannot be ticked."""
     default_event_container_id: uuid.UUID | None
     """The calendar that a new event starts in, or null when the user has not chosen one."""
+    event_invitees: list[str]
+    """The e-mail addresses of the people that the user usually invites to an event."""
 
     @classmethod
     def of(cls, s: UserSettings) -> "SettingsOut":
@@ -77,6 +79,7 @@ class SettingsOut(BaseModel):
             checklists=ChecklistsOut(**s.checklists),
             checklist_sources=ChecklistSourcesOut(**s.checklist_sources),
             default_event_container_id=s.default_event_container_id,
+            event_invitees=s.event_invitees,
         )
 
 
@@ -101,6 +104,8 @@ class SettingsPatch(BaseModel):
     checklist_sources: ChecklistSourcesPatch | None = None
     default_event_container_id: uuid.UUID | None = None
     """The calendar for new events; an explicit null clears the choice."""
+    event_invitees: list[str] | None = Field(default=None, max_length=200)
+    """The whole list of standard invitees (e-mail addresses). It replaces the old list."""
 
 
 @router.get("")
@@ -129,6 +134,7 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
                 if "default_event_container_id" in body.model_fields_set
                 else UNSET
             ),
+            event_invitees=body.event_invitees,
         )
     )
 

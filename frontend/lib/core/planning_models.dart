@@ -546,6 +546,7 @@ class UserSettings {
     this.checklists = const {},
     this.checklistSources = const {},
     this.defaultEventContainerId,
+    this.eventInvitees = const [],
   });
 
   /// Parses the settings JSON object.
@@ -567,6 +568,9 @@ class UserSettings {
             kind: '${((j['checklist_sources'] as Map?)?[kind.name]) ?? ''}',
         },
         defaultEventContainerId: j['default_event_container_id'] as String?,
+        eventInvitees: [
+          for (final a in (j['event_invitees'] as List? ?? const [])) '$a',
+        ],
       );
 
   /// When true, a date-only drop gets a random time of day on that date.
@@ -578,6 +582,10 @@ class UserSettings {
   /// Id of the calendar that a new event starts in, or null to start in the
   /// calendar of the last event.
   final String? defaultEventContainerId;
+
+  /// E-mail addresses of the people that the user usually invites to an
+  /// event. The new event pop-up lists them.
+  final List<String> eventInvitees;
 
   /// The planning checklists: the items to go through at each kind of
   /// planning. A kind without items has no checklist.

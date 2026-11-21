@@ -189,4 +189,103 @@ void main() {
       expect(tester.widget<DropdownButton<String?>>(select).value, isNull);
     });
   });
+
+  invitees();
+}
+
+/// Lets a save and the reload that follows it finish.
+Future<void> _saved(WidgetTester tester) async {
+  for (var i = 0; i < 5; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  await tester.pumpAndSettle();
+}
+
+void invitees() {
+  group('standard invitees', () {
+    FakeApi api(List<String> stored, {void Function(Object?)? onPatch}) =>
+        FakeApi({
+          'GET /me/settings': (_) => {
+                'random_time_on_date_drop': false,
+                'event_invitees': stored,
+              },
+          'PATCH /me/settings': (o) {
+            final list =
+                ((o.data as Map)['event_invitees'] as List).cast<String>();
+            stored
+              ..clear()
+              ..addAll(list);
+            onPatch?.call(list);
+            return {
+              'random_time_on_date_drop': false,
+              'event_invitees': stored,
+            };
+          },
+          'GET /connections': <Object?>[],
+        });
+
+    testWidgets('adds a person with Enter and saves the whole list',
+        (tester) async {
+      final fake = api(['sam@example.com']);
+      await pumpWithApi(
+          tester,
+          fake,
+          const Scaffold(
+              body: SingleChildScrollView(child: PlannerSettingsCard())));
+      expect(find.byKey(const Key('invitee-sam@example.com')), findsOneWidget);
+      await tester.enterText(
+          find.byKey(const Key('invitee-field')), ' kim@example.org ');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await _saved(tester);
+      expect(fake.where('PATCH /me/settings').single.data, {
+        'event_invitees': ['sam@example.com', 'kim@example.org']
+      });
+      expect(find.byKey(const Key('invitee-kim@example.org')), findsOneWidget);
+    });
+
+    testWidgets('refuses a text that is not an address', (tester) async {
+      final fake = api([]);
+      await pumpWithApi(
+          tester,
+          fake,
+          const Scaffold(
+              body: SingleChildScrollView(child: PlannerSettingsCard())));
+      expect(find.byKey(const Key('invitees-empty')), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('invitee-field')), 'sam');
+      await tester.tap(find.byKey(const Key('invitee-add')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Type an e-mail address'), findsOneWidget);
+      expect(fake.where('PATCH /me/settings'), isEmpty);
+    });
+
+    testWidgets('removes a person with the cross of the chip', (tester) async {
+      final fake = api(['sam@example.com', 'kim@example.org']);
+      await pumpWithApi(
+          tester,
+          fake,
+          const Scaffold(
+              body: SingleChildScrollView(child: PlannerSettingsCard())));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('invitee-sam@example.com')),
+          matching: find.byIcon(Icons.clear)));
+      await _saved(tester);
+      expect(fake.where('PATCH /me/settings').single.data, {
+        'event_invitees': ['kim@example.org']
+      });
+    });
+
+    testWidgets('a repeat of an address is not added twice', (tester) async {
+      final fake = api(['sam@example.com']);
+      await pumpWithApi(
+          tester,
+          fake,
+          const Scaffold(
+              body: SingleChildScrollView(child: PlannerSettingsCard())));
+      await tester.enterText(
+          find.byKey(const Key('invitee-field')), 'Sam@Example.com');
+      await tester.tap(find.byKey(const Key('invitee-add')));
+      await tester.pumpAndSettle();
+      expect(fake.where('PATCH /me/settings'), isEmpty);
+    });
+  });
 }

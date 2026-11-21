@@ -26,6 +26,7 @@ import 'features/settings/checklists_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/statistics/drilldown_screen.dart';
+import 'features/statistics/open_drilldown_screen.dart';
 import 'features/week/week_screen.dart';
 import 'features/weekly/weekly_screen.dart';
 
@@ -143,6 +144,7 @@ GoRouter buildRouter(Ref ref) {
           ),
         ],
       ),
+      openStatisticsRoute(),
       statisticsRoute(),
       GoRoute(
         path: '/annual',

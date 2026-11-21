@@ -86,10 +86,17 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
   Widget build(BuildContext context) {
     return Shortcuts(
       shortcuts: {
-        for (final s in appShortcuts) s.activator: s.intent,
+        for (final s in appShortcuts) ...{
+          s.activator: s.intent,
+          // The same key on a Greek layout, where it makes a Greek letter.
+          for (final twin in greekTwins(s.activator)) twin: s.intent,
+        },
         // The same key on a Mac.
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
             const FindIntent(),
+        for (final twin in greekTwins(
+            const SingleActivator(LogicalKeyboardKey.keyF, meta: true)))
+          twin: const FindIntent(),
       },
       child: Actions(
         actions: {
@@ -201,6 +208,13 @@ class ShortcutHelp extends StatelessWidget {
               Text(
                 'One-key shortcuts do not work while you type in a text '
                 'field. Press Esc to leave the field first.',
+                style: text.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'On a Greek keyboard, the same keys work: the key for P '
+                'makes π, and it opens the Planner.',
+                key: const Key('shortcut-help-greek'),
                 style: text.bodySmall,
               ),
             ],

@@ -36,6 +36,7 @@ Month opens the monthly theme plan and review. Read [Plan your month](monthly-pl
 | Left arrow | In the planner: show the week before |
 | Right arrow | In the planner: show the week after |
 | N | Create a new task (opens the New task dialog) |
+| Shift+N | Create a new calendar event (opens the New event dialog) |
 | S | Sync all connections |
 | Ctrl+F | Find text on the page, also while you type |
 | F5 | Sync all connections, also while you type |
@@ -43,6 +44,29 @@ Month opens the monthly theme plan and review. Read [Plan your month](monthly-pl
 | Page Up | Scroll the page up by one page |
 | ? | Show the list of shortcuts |
 | Esc | Leave the text field |
+
+## Use a Greek keyboard
+
+The keys work in the same way on a Greek keyboard layout. Press the key in the same place. For
+example, the key for P makes π, and it opens the Planner. The table shows each letter and its
+Greek letter.
+
+| Latin | Greek | Action |
+| --- | --- | --- |
+| P | π | Planner |
+| T | τ | Today |
+| W | ς | Week |
+| M | μ | Month |
+| Y | υ | Year review |
+| G | γ | Annual plan |
+| O | ο | Projects |
+| X | χ | Conflicts |
+| N | ν | New task |
+| Shift+N | Shift+ν | New event |
+| S | σ | Sync |
+| Ctrl+F | Ctrl+φ | Find |
+
+The keys that are not letters, such as F5, Page Down, Esc and ?, are the same on every layout.
 
 ## Type in a text field
 

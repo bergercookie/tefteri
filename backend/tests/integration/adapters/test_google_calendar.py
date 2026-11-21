@@ -119,6 +119,35 @@ async def test_create_update_if_match_and_delete(backend: GoogleCalendarBackend)
 
 
 @respx.mock
+async def test_create_with_attendees_asks_google_to_send_the_invitations(
+    backend: GoogleCalendarBackend,
+) -> None:
+    import json
+
+    token_route()
+    route = respx.post(f"{API}/calendars/{CAL}/events").respond(json=event())
+    draft = EntryDraft(
+        CAL,
+        "Planning",
+        NOW,
+        NOW.replace(minute=15),
+        attendees=("sam@example.com", "kim@example.org"),
+    )
+    await backend.create_entry(draft)
+    request = route.calls[0].request
+    assert json.loads(request.content)["attendees"] == [
+        {"email": "sam@example.com"},
+        {"email": "kim@example.org"},
+    ]
+    assert request.url.params["sendUpdates"] == "all"
+    # Without attendees Google gets none, and is not asked to send anything.
+    await backend.create_entry(EntryDraft(CAL, "Solo", NOW, NOW.replace(minute=15)))
+    solo = route.calls[1].request
+    assert "attendees" not in json.loads(solo.content)
+    assert "sendUpdates" not in solo.url.params
+
+
+@respx.mock
 async def test_revoked_refresh_token_and_outage(backend: GoogleCalendarBackend) -> None:
     # Google answers 400 ``invalid_grant`` (not 401) for an expired or revoked refresh token.
     respx.post(TOKEN_URL).respond(400, json={"error": "invalid_grant"})

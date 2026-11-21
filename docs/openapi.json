@@ -1935,6 +1935,14 @@
             "title": "All Day",
             "type": "boolean"
           },
+          "attendees": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Attendees",
+            "type": "array"
+          },
           "connection_id": {
             "format": "uuid",
             "title": "Connection Id",
@@ -6266,6 +6274,13 @@
             "title": "Default Reminder Minutes",
             "type": "integer"
           },
+          "event_invitees": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Event Invitees",
+            "type": "array"
+          },
           "random_time_on_date_drop": {
             "title": "Random Time On Date Drop",
             "type": "boolean"
@@ -6276,7 +6291,8 @@
           "default_reminder_minutes",
           "checklists",
           "checklist_sources",
-          "default_event_container_id"
+          "default_event_container_id",
+          "event_invitees"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -6329,6 +6345,21 @@
               }
             ],
             "title": "Default Reminder Minutes"
+          },
+          "event_invitees": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Invitees"
           },
           "random_time_on_date_drop": {
             "anyOf": [

@@ -5,20 +5,20 @@ library;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api_error.dart';
 import '../../core/planning_api.dart';
-import '../../core/planning_models.dart';
-import '../../core/project_chip.dart';
 import '../../theme/theme.dart';
 import '../settings/sync_controller.dart';
 import '../weekly/weekly_widgets.dart';
 import 'category_counts_row.dart';
 import 'category_style.dart';
+import 'open_drilldown_screen.dart' show openDrilldownLocation;
+import 'open_task_row.dart';
 import 'proportion_bar.dart';
 import 'statistics_models.dart';
 import 'statistics_providers.dart';
-import 'task_status_button.dart';
 
 /// The twin of the completed work card, for the tasks of the week of [day]
 /// that are not done yet: three counts, one bar, and under them the tasks of
@@ -63,7 +63,17 @@ class _OpenWorkCardState extends ConsumerState<OpenWorkCard> {
     widget.onChanged?.call();
   }
 
-  void _open(Category c) => setState(() => _folded.remove(c));
+  /// A tap on a count or on a segment of the bar opens the list of the tasks of
+  /// that category, as on the card of completed work. Without a router (a test
+  /// of the card alone) it opens the group in the card instead.
+  void _open(Category c) {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) {
+      setState(() => _folded.remove(c));
+      return;
+    }
+    router.push(openDrilldownLocation(periodDayKey('week', widget.day), c));
+  }
 
   void _toggle(Category c) =>
       setState(() => _folded.contains(c) ? _folded.remove(c) : _folded.add(c));
@@ -234,54 +244,8 @@ class _Group extends StatelessWidget {
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant))
           else if (!folded)
             for (final t in tasks)
-              _TaskRow(task: t, onComplete: () => onComplete(t)),
+              OpenTaskRow(task: t, onComplete: () => onComplete(t)),
           const Divider(height: Space.lg),
-        ],
-      ),
-    );
-  }
-}
-
-class _TaskRow extends StatelessWidget {
-  const _TaskRow({required this.task, required this.onComplete});
-
-  final OpenTask task;
-  final VoidCallback onComplete;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final due = task.dueAt?.toLocal();
-    return Padding(
-      key: Key('open-task-${task.id}'),
-      padding: const EdgeInsets.symmetric(vertical: Space.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TaskStatusButton(
-            key: Key('open-complete-${task.id}'),
-            done: false,
-            category: task.category,
-            onPressed: onComplete,
-          ),
-          const SizedBox(width: Space.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(task.title, style: text.bodyMedium),
-                if (task.project != null && task.project!.isNotEmpty)
-                  ProjectChip(name: task.project!, color: task.projectColor),
-              ],
-            ),
-          ),
-          if (due != null) ...[
-            const SizedBox(width: Space.sm),
-            Text(dateKey(due),
-                style:
-                    text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-          ],
         ],
       ),
     );

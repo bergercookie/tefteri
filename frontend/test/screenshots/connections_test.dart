@@ -61,7 +61,10 @@ void main() {
         'last_sync_at': '2026-11-02T08:15:00Z',
         'results': []
       },
-      'GET /me/settings': {'random_time_on_date_drop': true},
+      'GET /me/settings': {
+        'random_time_on_date_drop': true,
+        'event_invitees': ['sam@example.com', 'kim@example.org'],
+      },
     });
     await pumpScreen(tester, api, const ConnectionsScreen());
     await saveScreenshot('planner-setting-random-time');

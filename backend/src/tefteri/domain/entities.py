@@ -107,6 +107,8 @@ class EntryDraft:
     end: datetime
     all_day: bool = False
     location: str = ""
+    attendees: tuple[str, ...] = ()
+    """E-mail addresses to invite. The calendar app sends them the invitation."""
 
 
 @dataclass(frozen=True)
