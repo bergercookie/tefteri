@@ -91,6 +91,14 @@ class PlanningApi {
     return UserSettings.fromJson(r.data! as Map<String, dynamic>);
   }
 
+  /// `POST /me/settings/hints/{id}/seen`: the user has seen the hint, so it
+  /// does not show again, on any device.
+  Future<void> markHintSeen(String id) =>
+      _dio.post<Object?>('/me/settings/hints/$id/seen');
+
+  /// `DELETE /me/settings/hints`: every hint shows once again.
+  Future<void> resetHints() => _dio.delete<Object?>('/me/settings/hints');
+
   /// `PATCH /me/settings`.
   ///
   /// Sends only the settings that are given. [defaultEventCalendar] is a

@@ -1,5 +1,5 @@
 /// One-line hints that explain the words of annual planning once, at their
-/// first use (FR-035). A closed hint stays closed on this device.
+/// first use (FR-035). A hint shows one time, and a closed hint stays closed.
 library;
 
 import 'package:flutter/material.dart';
@@ -44,7 +44,7 @@ enum AnnualTerm {
 
 /// A quiet, closable line that explains [term]. It hides itself once the
 /// user has closed it on this device.
-class AnnualTermHint extends ConsumerWidget {
+class AnnualTermHint extends ConsumerStatefulWidget {
   /// Creates the hint.
   const AnnualTermHint(this.term, {super.key});
 
@@ -52,10 +52,26 @@ class AnnualTermHint extends ConsumerWidget {
   final AnnualTerm term;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AnnualTermHint> createState() => _AnnualTermHintState();
+}
+
+class _AnnualTermHintState extends ConsumerState<AnnualTermHint> {
+  /// This hint was shown, and the store knows it.
+  bool _marked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final term = widget.term;
     final closed = ref.watch(closedHintsProvider).valueOrNull;
     if (closed == null || closed.contains(term.hintId)) {
       return const SizedBox.shrink();
+    }
+    if (!_marked) {
+      // It shows now, and it shows only this once.
+      _marked = true;
+      final store = ref.read(closedHintsProvider.notifier);
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => store.markSeen(term.hintId));
     }
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;

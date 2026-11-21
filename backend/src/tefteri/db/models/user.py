@@ -50,6 +50,9 @@ class User(IdMixin, CreatedMixin, Base):
         JSON, default=list, server_default=text("'[]'")
     )
     """The e-mail addresses of the people that the user usually invites to an event."""
+    seen_hints: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    """The ids of the hints that the user has seen. A hint shows only once; this list is how
+    every device of the user knows it."""
 
 
 class AuthSession(IdMixin, CreatedMixin, Base):

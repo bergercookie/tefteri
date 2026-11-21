@@ -1,53 +1,159 @@
-/// A hint that explains terms once, at their first use, and stays away after
-/// the user has closed it on this device.
+/// A hint that explains terms once, at their first use. It shows one time:
+/// when the user has seen it, on any device, it stays away. The settings can
+/// bring every hint back.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/planning_api.dart';
 import '../../theme/theme.dart';
 
 const _prefix = 'term_hint_closed_';
 
-/// Ids of the hints the user has closed on this device. A device without
-/// storage simply shows the hints again.
+/// How long a seen hint waits before it is sent to the server. Hints that are
+/// seen together (a page with several) go in one run, and a quick visit does not
+/// start a call for each.
+const _syncDelay = Duration(seconds: 1);
+
+/// How long the start waits for the server's list of seen hints. A slow
+/// server must not keep every hint away.
+const _serverWait = Duration(seconds: 3);
+
+/// The ids of the hints that stay away.
+///
+/// A hint is seen the first time that it is shown, and it is also seen when
+/// the user closes it. The ids are kept in the settings of the user on the
+/// server, so that a hint shows once for the user and not once for each
+/// browser, and in this device's storage, which answers at once and also when
+/// the server cannot. The state is what was stored when the app started, plus
+/// the hints closed since: a hint that is shown for the first time does not
+/// vanish from under the reader when its page builds again.
 class ClosedHints extends StateNotifier<AsyncValue<Set<String>>> {
-  /// Creates the store and reads the closed hints.
-  ClosedHints() : super(const AsyncLoading()) {
-    _read();
+  /// Creates the store and reads the seen hints.
+  ClosedHints(this._read) : super(const AsyncLoading()) {
+    _load();
   }
 
-  Future<void> _read() async {
+  final PlanningApi Function() _read;
+
+  /// Ends the wait for the server when the store goes away first.
+  Timer? _wait;
+
+  /// Starts the next run that tells the server about the seen hints.
+  Timer? _sync;
+
+  /// The hints that this device knows and the server may not.
+  final Set<String> _unsent = {};
+
+  Future<void> _load() async {
+    final ids = <String>{};
     try {
       final prefs = await SharedPreferences.getInstance();
-      final ids = {
-        for (final k in prefs.getKeys())
-          if (k.startsWith(_prefix) && (prefs.getBool(k) ?? false))
-            k.substring(_prefix.length),
-      };
-      if (mounted) state = AsyncData(ids);
+      for (final k in prefs.getKeys()) {
+        if (k.startsWith(_prefix) && (prefs.getBool(k) ?? false)) {
+          ids.add(k.substring(_prefix.length));
+        }
+      }
     } catch (_) {
-      if (mounted) state = const AsyncData({});
+      // No storage on this device: the server's list is all there is.
     }
+    // The store may be gone while this device's storage answered.
+    if (!mounted) return;
+    // Ask the server, but not for longer than _serverWait. When it does not
+    // answer, this device's list is used.
+    final answered = Completer<void>();
+    _wait = Timer(_serverWait, () {
+      if (!answered.isCompleted) answered.complete();
+    });
+    try {
+      _read().settings().then((settings) {
+        if (!answered.isCompleted) ids.addAll(settings.seenHints);
+      }).catchError((Object _) {
+        // The server did not answer.
+      }).whenComplete(() {
+        if (!answered.isCompleted) answered.complete();
+      });
+    } catch (_) {
+      // The server cannot even be asked.
+      if (!answered.isCompleted) answered.complete();
+    }
+    await answered.future;
+    _wait?.cancel();
+    if (mounted) state = AsyncData({...ids});
   }
 
-  /// Remembers that hint [id] is closed.
-  Future<void> close(String id) async {
-    state = AsyncData({...?state.valueOrNull, id});
+  @override
+  void dispose() {
+    _wait?.cancel();
+    _sync?.cancel();
+    super.dispose();
+  }
+
+  /// Remembers that hint [id] was shown, without hiding it now. It stays away
+  /// the next time that the app starts, on every device. This device knows at
+  /// once; the server is told a moment later.
+  Future<void> markSeen(String id) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('$_prefix$id', true);
     } catch (_) {
-      // The hint stays closed for this visit.
+      // The server still keeps it.
+    }
+    if (!mounted) return;
+    _unsent.add(id);
+    _sync ??= Timer(_syncDelay, _send);
+  }
+
+  /// Tells the server about the hints that it has not heard of yet.
+  Future<void> _send() async {
+    _sync = null;
+    final ids = _unsent.toList();
+    _unsent.clear();
+    for (final id in ids) {
+      try {
+        await _read().markHintSeen(id);
+      } catch (_) {
+        // This device keeps it, and it tells the server again next time.
+      }
+    }
+  }
+
+  /// The user closed hint [id]: it goes away now, and stays away.
+  Future<void> close(String id) async {
+    state = AsyncData({...?state.valueOrNull, id});
+    await markSeen(id);
+  }
+
+  /// Brings every hint back: they show once again, here and on every device.
+  Future<void> reset() async {
+    _sync?.cancel();
+    _sync = null;
+    _unsent.clear();
+    state = const AsyncData({});
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final k in prefs.getKeys().toList()) {
+        if (k.startsWith(_prefix)) await prefs.remove(k);
+      }
+    } catch (_) {
+      // The server's list is cleared below.
+    }
+    try {
+      await _read().resetHints();
+    } catch (_) {
+      // Nothing more to do: this device's list is empty.
     }
   }
 }
 
-/// The closed hints of this device.
+/// The hints that stay away.
 final closedHintsProvider =
     StateNotifierProvider<ClosedHints, AsyncValue<Set<String>>>(
-        (_) => ClosedHints());
+        (ref) => ClosedHints(() => ref.read(planningApiProvider)));
 
 /// One term and its plain sentence.
 @immutable
@@ -174,12 +280,22 @@ class _TermHintState extends ConsumerState<TermHint> {
   /// What the user chose by tapping; null follows [TermHint.compact].
   bool? _open;
 
+  /// This hint was shown, and the store knows it.
+  bool _marked = false;
+
   @override
   Widget build(BuildContext context) {
     final closed = ref.watch(closedHintsProvider).valueOrNull;
     // Wait for the stored state, so a closed hint does not flash.
     if (closed == null || closed.contains(widget.id)) {
       return const SizedBox.shrink();
+    }
+    if (!_marked) {
+      // It shows now, and it shows only this once: the next start keeps it away.
+      _marked = true;
+      final store = ref.read(closedHintsProvider.notifier);
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => store.markSeen(widget.id));
     }
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;

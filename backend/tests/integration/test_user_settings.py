@@ -15,6 +15,7 @@ OFF = {
     "checklist_sources": {"week": "", "month": "", "year": ""},
     "default_event_container_id": None,
     "event_invitees": [],
+    "seen_hints": [],
 }
 
 
@@ -356,3 +357,33 @@ async def test_an_invitee_that_is_not_an_address_is_refused(api: AsyncClient) ->
     assert r.status_code == 422, r.text
     assert "sam is not an e-mail address" in r.text
     assert (await api.get(f"{V1}/me/settings")).json()["event_invitees"] == []
+
+
+async def test_a_seen_hint_is_remembered_once_and_can_be_reset(api: AsyncClient) -> None:
+    first = await api.post(f"{V1}/me/settings/hints/monthly-planning-terms/seen")
+    assert first.status_code == 200, first.text
+    assert first.json()["seen_hints"] == ["monthly-planning-terms"]
+    # Again: nothing is added twice. Another hint is added after it.
+    again = await api.post(f"{V1}/me/settings/hints/monthly-planning-terms/seen")
+    assert again.json()["seen_hints"] == ["monthly-planning-terms"]
+    other = await api.post(f"{V1}/me/settings/hints/annual-keyResult/seen")
+    assert other.json()["seen_hints"] == ["monthly-planning-terms", "annual-keyResult"]
+    assert (await api.get(f"{V1}/me/settings")).json()["seen_hints"] == [
+        "monthly-planning-terms",
+        "annual-keyResult",
+    ]
+    # An ordinary save of another setting keeps the seen hints.
+    kept = await api.patch(f"{V1}/me/settings", json={"random_time_on_date_drop": True})
+    assert kept.json()["seen_hints"] == ["monthly-planning-terms", "annual-keyResult"]
+    # Reset: every hint shows again.
+    reset = await api.delete(f"{V1}/me/settings/hints")
+    assert reset.status_code == 200 and reset.json()["seen_hints"] == []
+    assert (await api.get(f"{V1}/me/settings")).json()["seen_hints"] == []
+
+
+async def test_a_hint_id_must_be_a_plain_id(api: AsyncClient) -> None:
+    too_long = await api.post(f"{V1}/me/settings/hints/{'a' * 65}/seen")
+    assert too_long.status_code == 422 and too_long.json()["code"] == "bad_hint_id"
+    spaces = await api.post(f"{V1}/me/settings/hints/not%20an%20id/seen")
+    assert spaces.status_code == 422
+    assert (await api.get(f"{V1}/me/settings")).json()["seen_hints"] == []

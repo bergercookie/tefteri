@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/settings_list.dart';
 import '../../core/shell.dart';
+import 'hints_card.dart';
 import 'settings_transfer_card.dart';
 import 'versions_card.dart';
 
@@ -22,6 +23,7 @@ class SettingsScreen extends StatelessWidget {
           footer: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const HintsCard(),
               const SettingsTransferCard(),
               if (isInstalledClient) const VersionsCard(),
             ],

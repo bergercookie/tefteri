@@ -127,6 +127,25 @@ Delete a user only when you do not need the data of the user again.
 
 Tefteri removes the account and the data of the user. You cannot undo this action.
 
+## Hints show only once
+
+Tefteri explains new words in a box the first time that you see them. For example, the Monthly
+planning page explains Theme project, Milestone project, Monthly focus and Key result.
+
+- Each box shows only once. When you see it for the first time, tefteri remembers it. The box
+  does not come back the next time that you open tefteri.
+- You can also choose the cross in the box to hide it at once.
+- Tefteri keeps this with your account. When you have seen a box on one device, you do not see it
+  again on another device.
+
+To read the boxes again:
+
+1. Open the menu and choose Settings.
+2. Find the card Hints.
+3. Choose Show the hints again.
+
+Every box shows once more, on all your devices.
+
 ## Export and import your settings
 
 Open the menu, choose Settings, and find the Export and import card.

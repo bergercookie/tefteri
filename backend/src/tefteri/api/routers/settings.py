@@ -69,6 +69,8 @@ class SettingsOut(BaseModel):
     """The calendar that a new event starts in, or null when the user has not chosen one."""
     event_invitees: list[str]
     """The e-mail addresses of the people that the user usually invites to an event."""
+    seen_hints: list[str]
+    """The ids of the hints that the user has seen. A hint shows only once."""
 
     @classmethod
     def of(cls, s: UserSettings) -> "SettingsOut":
@@ -80,6 +82,7 @@ class SettingsOut(BaseModel):
             checklist_sources=ChecklistSourcesOut(**s.checklist_sources),
             default_event_container_id=s.default_event_container_id,
             event_invitees=s.event_invitees,
+            seen_hints=s.seen_hints,
         )
 
 
@@ -137,6 +140,21 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
             event_invitees=body.event_invitees,
         )
     )
+
+
+@router.post("/hints/{hint_id}/seen")
+async def mark_hint_seen(hint_id: str, db: Db, user: CurrentUser) -> SettingsOut:
+    """Remember that the user has seen a hint, so that it does not show again.
+
+    It is safe to repeat. 422 ``bad_hint_id`` when the id is not a plain id.
+    """
+    return SettingsOut.of(await _service.mark_hint_seen(db, user.id, hint_id))
+
+
+@router.delete("/hints")
+async def reset_hints(db: Db, user: CurrentUser) -> SettingsOut:
+    """Forget every seen hint, so that each hint shows once again."""
+    return SettingsOut.of(await _service.reset_hints(db, user.id))
 
 
 EXPORT_FORMAT: Literal["tefteri-settings"] = "tefteri-settings"

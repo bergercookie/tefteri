@@ -6289,6 +6289,13 @@
           "random_time_on_date_drop": {
             "title": "Random Time On Date Drop",
             "type": "boolean"
+          },
+          "seen_hints": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Seen Hints",
+            "type": "array"
           }
         },
         "required": [
@@ -6297,7 +6304,8 @@
           "checklists",
           "checklist_sources",
           "default_event_container_id",
-          "event_invitees"
+          "event_invitees",
+          "seen_hints"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -11764,6 +11772,71 @@
           }
         },
         "summary": "Export Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/settings/hints": {
+      "delete": {
+        "description": "Forget every seen hint, so that each hint shows once again.",
+        "operationId": "reset_hints_api_v1_me_settings_hints_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reset Hints",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/me/settings/hints/{hint_id}/seen": {
+      "post": {
+        "description": "Remember that the user has seen a hint, so that it does not show again.\n\nIt is safe to repeat. 422 ``bad_hint_id`` when the id is not a plain id.",
+        "operationId": "mark_hint_seen_api_v1_me_settings_hints__hint_id__seen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hint_id",
+            "required": true,
+            "schema": {
+              "title": "Hint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Hint Seen",
         "tags": [
           "settings"
         ]

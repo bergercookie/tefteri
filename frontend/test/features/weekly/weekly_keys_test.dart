@@ -23,6 +23,18 @@ class _SignedIn extends AuthController {
   }
 }
 
+final _open = <ProviderContainer>{};
+
+/// Takes the page down and ends the container, so that nothing is pending when
+/// the test ends (a hint on the page sends what it saw after a short delay).
+Future<void> _finish(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox());
+  for (final c in _open.toList()) {
+    c.dispose();
+  }
+  _open.clear();
+}
+
 Future<ProviderContainer> _pump(WidgetTester tester, Size size) async {
   SharedPreferences.setMockInitialValues({});
   final server = WeeklyServer(projects: [
@@ -50,7 +62,10 @@ Future<ProviderContainer> _pump(WidgetTester tester, Size size) async {
     weeklyPollIntervalProvider.overrideWithValue(null),
     authControllerProvider.overrideWith(_SignedIn.new),
   ]);
-  addTearDown(container.dispose);
+  // The container belongs to this test. A tear-down would dispose it only
+  // after the check for pending timers, so the test ends it itself.
+  addTearDown(() => _open.remove(container));
+  _open.add(container);
   await tester.pumpWidget(UncontrolledProviderScope(
     container: container,
     child: MaterialApp.router(
@@ -85,6 +100,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
       await tester.pumpAndSettle();
       expect(_offset(tester), greaterThan(before));
+      await _finish(tester);
     });
 
     testWidgets('weekly plan $size: Ctrl+F finds text', (tester) async {
@@ -97,6 +113,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('find-field')), 'Project 1');
       await tester.pumpAndSettle();
       expect(c.read(findProvider).matches, isNotEmpty);
+      await _finish(tester);
     });
 
     testWidgets(
@@ -115,6 +132,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
       await tester.pumpAndSettle();
       expect(_offset(tester), greaterThan(before));
+      await _finish(tester);
     });
   }
 }

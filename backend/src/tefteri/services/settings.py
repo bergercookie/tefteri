@@ -32,6 +32,8 @@ class UserSettings:
     """The calendar that a new event starts in, or ``None`` when the user has not chosen one."""
     event_invitees: list[str] = field(default_factory=list)
     """The e-mail addresses of the people that the user usually invites to an event."""
+    seen_hints: list[str] = field(default_factory=list)
+    """The ids of the hints that the user has seen, so that each shows only once."""
 
 
 class _Unset:
@@ -51,6 +53,7 @@ def _of(user: User) -> UserSettings:
         sources,
         user.default_event_container_id,
         list(user.event_invitees or []),
+        list(user.seen_hints or []),
     )
 
 
@@ -78,6 +81,20 @@ def clean_invitees(addresses: list[str]) -> list[str]:
     return list(seen.values())
 
 
+MAX_SEEN_HINTS = 500
+"""The most hint ids kept. The app has a few dozen hints; this stops a client from filling the
+row."""
+
+_HINT_ID = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+
+
+def check_hint_id(hint_id: str) -> str:
+    """Return the hint id, or raise ``Invalid`` when it is not a plain id."""
+    if not _HINT_ID.match(hint_id):
+        raise Invalid("That is not a hint id.", "bad_hint_id")
+    return hint_id
+
+
 def clean_path(path: str) -> str:
     """Trim a note path; an empty result means no source. Spaces inside a title stay."""
     return path.strip()
@@ -91,6 +108,31 @@ class SettingsService:
         user = await db.get(User, user_id)
         if user is None:
             raise NotFound
+        return _of(user)
+
+    async def mark_hint_seen(
+        self, db: AsyncSession, user_id: uuid.UUID, hint_id: str
+    ) -> UserSettings:
+        """Remember that the user has seen the hint. Doing it again changes nothing."""
+        check_hint_id(hint_id)
+        user = await db.get(User, user_id)
+        if user is None:
+            raise NotFound
+        seen = list(user.seen_hints or [])
+        if hint_id not in seen:
+            if len(seen) >= MAX_SEEN_HINTS:
+                raise Invalid("Too many hints are stored.", "too_many_hints")
+            user.seen_hints = [*seen, hint_id]
+            await db.flush()
+        return _of(user)
+
+    async def reset_hints(self, db: AsyncSession, user_id: uuid.UUID) -> UserSettings:
+        """Forget every seen hint, so that each shows once again."""
+        user = await db.get(User, user_id)
+        if user is None:
+            raise NotFound
+        user.seen_hints = []
+        await db.flush()
         return _of(user)
 
     async def update(

@@ -557,6 +557,7 @@ class UserSettings {
     this.checklistSources = const {},
     this.defaultEventContainerId,
     this.eventInvitees = const [],
+    this.seenHints = const [],
   });
 
   /// Parses the settings JSON object.
@@ -581,6 +582,9 @@ class UserSettings {
         eventInvitees: [
           for (final a in (j['event_invitees'] as List? ?? const [])) '$a',
         ],
+        seenHints: [
+          for (final h in (j['seen_hints'] as List? ?? const [])) '$h',
+        ],
       );
 
   /// When true, a date-only drop gets a random time of day on that date.
@@ -596,6 +600,9 @@ class UserSettings {
   /// E-mail addresses of the people that the user usually invites to an
   /// event. The new event pop-up lists them.
   final List<String> eventInvitees;
+
+  /// The ids of the hints that the user has seen. Each hint shows only once.
+  final List<String> seenHints;
 
   /// The planning checklists: the items to go through at each kind of
   /// planning. A kind without items has no checklist.
