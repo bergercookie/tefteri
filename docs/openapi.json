@@ -6998,6 +6998,17 @@
       "TaskOut": {
         "description": "A cached task.",
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "completed_at": {
             "anyOf": [
               {

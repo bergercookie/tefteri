@@ -223,7 +223,44 @@ FakeApi _api(
         },
       },
       'GET /views/week/2026-11-02':
-          periodJson('week', '2026-11-02', '2026-11-09'),
+          periodJson('week', '2026-11-02', '2026-11-09', tasks: [
+        {
+          ...taskJson('w1', 'Write the launch post'),
+          'due_at': '2026-11-04T00:00:00Z',
+          'category': 'goal_aligned',
+          'theme': 'Work',
+          'project': 'Website',
+        },
+        {
+          ...taskJson('w2', 'Publish the changelog', status: 'done'),
+          'due_at': '2026-11-03T00:00:00Z',
+          'completed_at': '2026-11-03T15:00:00Z',
+          'category': 'goal_aligned',
+          'theme': 'Work',
+          'project': 'Website',
+        },
+        {
+          ...taskJson('w3', 'Renew the domain'),
+          'due_at': '2026-11-06T00:00:00Z',
+          'category': 'maintenance',
+          'theme': 'Home',
+          'project': 'Chores',
+        },
+        {
+          ...taskJson('w4', 'Take out the bins', status: 'done'),
+          'due_at': '2026-11-02T00:00:00Z',
+          'completed_at': '2026-11-02T18:00:00Z',
+          'category': 'maintenance',
+          'theme': 'Home',
+          'project': 'Chores',
+        },
+        {
+          ...taskJson('w5', 'Call the accountant'),
+          'due_at': '2026-11-07T00:00:00Z',
+          'category': 'off_plan',
+          'project': 'Errands',
+        },
+      ]),
       'GET /views/month/2026-11-01':
           periodJson('month', '2026-11-01', '2026-12-01'),
       'GET /views/year/2026': periodJson('year', '2026-01-01', '2027-01-01'),

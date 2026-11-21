@@ -98,6 +98,14 @@ of the statistics of the week. They are not a separate list.
   Choose the name of a theme or of a project to fold the tasks under it. Use the chip Completed to
   show or hide the done tasks. A task that you finished without a due date in this week is not in
   this list. Put the pointer on the info icon next to the name of a list to read what it shows.
+- Each task has a button that says if it is done. A done task has the button DONE, with a solid
+  fill. A task that is not done has the button TODO, with an empty frame. The color of the button
+  is the color of the work category of the task: blue for goal-aligned, gray for maintenance and
+  orange for off-plan. A task with no known category has a quiet gray button.
+- To mark a task as done, choose its TODO button. You can do this in the list All due this week
+  and in the card Still to do. You can also open the menu of a task and choose Mark done. Tefteri
+  marks the task as done in your task app. The numbers and the lists change at once. If the task
+  app does not answer, tefteri shows the message and the task stays open.
 - In the card Committed plan, the large number of a day is the tasks from your plan. The small
   numbers are all the tasks that you completed that day, by category.
 - The done and left counts, the cadence and the burndown chart count only the tasks that you

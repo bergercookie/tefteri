@@ -3,9 +3,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
+import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/project_chip.dart';
 import '../../theme/theme.dart';
@@ -16,6 +18,7 @@ import 'category_style.dart';
 import 'proportion_bar.dart';
 import 'statistics_models.dart';
 import 'statistics_providers.dart';
+import 'task_status_button.dart';
 
 /// The twin of the completed work card, for the tasks of the week of [day]
 /// that are not done yet: three counts, one bar, and under them the tasks of
@@ -27,10 +30,14 @@ import 'statistics_providers.dart';
 /// bar opens that group.
 class OpenWorkCard extends ConsumerStatefulWidget {
   /// Creates the card for the week that holds [day].
-  const OpenWorkCard({required this.day, super.key});
+  const OpenWorkCard({required this.day, this.onChanged, super.key});
 
   /// Any day inside the week.
   final DateTime day;
+
+  /// Called after a task was marked done, so that the page reads the week
+  /// again.
+  final VoidCallback? onChanged;
 
   @override
   ConsumerState<OpenWorkCard> createState() => _OpenWorkCardState();
@@ -38,6 +45,23 @@ class OpenWorkCard extends ConsumerStatefulWidget {
 
 class _OpenWorkCardState extends ConsumerState<OpenWorkCard> {
   final Set<Category> _folded = {};
+  String? _error;
+
+  /// Marks the task done in the task app. A failed write shows the message of
+  /// the server and changes nothing.
+  Future<void> _complete(OpenTask task) async {
+    try {
+      await ref.read(planningApiProvider).completeTask(task.id);
+    } on DioException catch (e) {
+      if (mounted) setState(() => _error = apiErrorMessage(e));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _error = null);
+    ref.invalidate(openTasksProvider);
+    ref.invalidate(statisticsProvider);
+    widget.onChanged?.call();
+  }
 
   void _open(Category c) => setState(() => _folded.remove(c));
 
@@ -125,6 +149,14 @@ class _OpenWorkCardState extends ConsumerState<OpenWorkCard> {
           legend: false,
           onSelect: _open,
         ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.sm),
+            child: Text(_error!,
+                key: const Key('open-work-action-error'),
+                style: text.bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.error)),
+          ),
         const SizedBox(height: Space.sm),
         Text(
           s.total == 0
@@ -149,6 +181,7 @@ class _OpenWorkCardState extends ConsumerState<OpenWorkCard> {
             tasks: s.of(c),
             folded: _folded.contains(c),
             onToggle: () => _toggle(c),
+            onComplete: _complete,
           ),
       ],
     );
@@ -161,12 +194,14 @@ class _Group extends StatelessWidget {
     required this.tasks,
     required this.folded,
     required this.onToggle,
+    required this.onComplete,
   });
 
   final Category category;
   final List<OpenTask> tasks;
   final bool folded;
   final VoidCallback onToggle;
+  final void Function(OpenTask) onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +233,8 @@ class _Group extends StatelessWidget {
             Text('Nothing left here.',
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant))
           else if (!folded)
-            for (final t in tasks) _TaskRow(task: t),
+            for (final t in tasks)
+              _TaskRow(task: t, onComplete: () => onComplete(t)),
           const Divider(height: Space.lg),
         ],
       ),
@@ -207,9 +243,10 @@ class _Group extends StatelessWidget {
 }
 
 class _TaskRow extends StatelessWidget {
-  const _TaskRow({required this.task});
+  const _TaskRow({required this.task, required this.onComplete});
 
   final OpenTask task;
+  final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +259,13 @@ class _TaskRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          TaskStatusButton(
+            key: Key('open-complete-${task.id}'),
+            done: false,
+            category: task.category,
+            onPressed: onComplete,
+          ),
+          const SizedBox(width: Space.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

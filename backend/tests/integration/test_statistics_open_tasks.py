@@ -49,3 +49,22 @@ async def test_without_a_committed_plan_a_milestone_task_is_off_plan(env) -> Non
     await s.sync()
     body = await _open(s)
     assert body["counts"]["goal_aligned"] == 0 and body["counts"]["off_plan"] == 1
+
+
+async def test_week_view_gives_each_task_its_category(env) -> None:  # type: ignore[no-untyped-def]
+    s = Stats(env)
+    await s.standard()
+    await _due(s, "p3", "Fix login", 6)
+    await _due(s, "p6", "Wash up", 7)
+    await _due(s, "p9", "Odd job", 8)
+    await s.sync()
+    await s.weekly.commit(WEEK, "Login flow")
+    s.finish("Wash up", at(7))
+    await s.sync()
+    r = await s.api.get(f"{V1}/views/week/{WEEK}")
+    assert r.status_code == 200, r.text
+    by_title = {t["title"]: t for t in r.json()["tasks"]}
+    assert by_title["Fix login"]["category"] == "goal_aligned"
+    assert by_title["Wash up"]["category"] == "maintenance"  # done: the stored category
+    assert by_title["Wash up"]["status"] == "done"
+    assert by_title["Odd job"]["category"] == "off_plan"

@@ -151,12 +151,14 @@ async def _period_view(
     colors = await container_colors(db, user_id)
     locked = await read_only_containers(db, user_id)
     tasks: list[TaskOut] = []
+    task_rows: list[Task] = []
     goal_ids: list[uuid.UUID] = []
     for t in (await db.execute(select(Task).where(Task.user_id == user_id))).scalars():
         when = t.due_at
         if t.sync_state == "deleted_remotely" or when is None or not low <= aware(when) < high:
             continue
         project = projects.get(t.container_id) if t.container_id else None
+        task_rows.append(t)
         if t.goal_id is not None:
             goal_ids.append(t.goal_id)
         tasks.append(
@@ -167,6 +169,14 @@ async def _period_view(
                 theme=themes.get(t.container_id) if t.container_id else None,
             )
         )
+    if kind is PeriodType.WEEK:
+        categories = await request.app.state.statistics_service.week_categories(
+            db, user_id, start, task_rows
+        )
+        tasks = [
+            t.model_copy(update={"category": categories[t.id].value}) if t.id in categories else t
+            for t in tasks
+        ]
     entries: list[EntryOut] = []
     if kind is not PeriodType.YEAR:
         for e in (

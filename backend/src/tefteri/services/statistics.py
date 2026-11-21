@@ -16,6 +16,7 @@ import base64
 import binascii
 import json
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -42,6 +43,7 @@ from tefteri.domain.timeutil import day_bounds
 from tefteri.domain.week_progress import CommittedTask, WeekProgress, week_progress
 from tefteri.domain.work_categories import (
     CategoryCounts,
+    Decision,
     Percentages,
     ProjectContext,
     categorize,
@@ -190,6 +192,47 @@ def _months(start: date, end: date) -> list[tuple[date, date]]:
         out.append((cursor, nxt))
         cursor = nxt
     return out
+
+
+class _Classifier:
+    """Put a task into a work category with the labels and the commitment as they are now."""
+
+    def __init__(
+        self,
+        containers: dict[uuid.UUID, SourceContainer],
+        rows: dict[tuple[uuid.UUID, str], ProjectLabelRow],
+        committed: set[uuid.UUID],
+    ) -> None:
+        self._containers = containers
+        self._rows = rows
+        self._committed = committed
+
+    @staticmethod
+    def _label(row: ProjectLabelRow) -> ProjectLabel | None:
+        return ProjectLabel(row.label) if row.label else None
+
+    def decide(self, task: Task) -> tuple[SourceContainer | None, ProjectLabelRow | None, Decision]:
+        """Return the container and the label row of the project of ``task``, and the decision."""
+        container = self._containers.get(task.container_id) if task.container_id else None
+        project = (
+            self._rows.get((container.connection_id, container.remote_id)) if container else None
+        )
+        if project is None:
+            return container, None, categorize(ProjectContext(False), False)
+        ancestors: list[ProjectLabel | None] = []
+        seen = {project.remote_id}
+        parent = project.parent_remote_id
+        while parent is not None and parent not in seen and len(ancestors) < 64:
+            seen.add(parent)
+            row = self._rows.get((project.connection_id, parent))
+            if row is None:
+                break
+            ancestors.append(self._label(row))
+            parent = row.parent_remote_id
+        decision = categorize(
+            ProjectContext(True, self._label(project), ancestors), project.id in self._committed
+        )
+        return container, project, decision
 
 
 class StatisticsService:
@@ -428,22 +471,7 @@ class StatisticsService:
         if committed is None:
             return OpenTasks(start, end, False, [], CategoryCounts())
         low, high = day_bounds(start, tz)[0], day_bounds(end, tz)[0]
-        containers = {
-            c.id: c
-            for c in (
-                await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
-            ).scalars()
-        }
-        rows = {
-            (r.connection_id, r.remote_id): r
-            for r in (
-                await db.execute(select(ProjectLabelRow).where(ProjectLabelRow.user_id == user_id))
-            ).scalars()
-        }
-
-        def label(row: ProjectLabelRow) -> ProjectLabel | None:
-            return ProjectLabel(row.label) if row.label else None
-
+        classifier = await self._classifier(db, user_id, committed)
         items: list[OpenTask] = []
         counts = CategoryCounts()
         for t in (
@@ -458,26 +486,7 @@ class StatisticsService:
             when = [w for w in (t.due_at, t.scheduled_start) if w is not None]
             if not any(low <= (w if w.tzinfo else w.replace(tzinfo=UTC)) < high for w in when):
                 continue
-            container = containers.get(t.container_id) if t.container_id else None
-            project = (
-                rows.get((container.connection_id, container.remote_id)) if container else None
-            )
-            if project is None:
-                decision = categorize(ProjectContext(False), False)
-            else:
-                ancestors: list[ProjectLabel | None] = []
-                seen = {project.remote_id}
-                parent = project.parent_remote_id
-                while parent is not None and parent not in seen and len(ancestors) < 64:
-                    seen.add(parent)
-                    row = rows.get((project.connection_id, parent))
-                    if row is None:
-                        break
-                    ancestors.append(label(row))
-                    parent = row.parent_remote_id
-                decision = categorize(
-                    ProjectContext(True, label(project), ancestors), project.id in committed
-                )
+            container, project, decision = classifier.decide(t)
             if decision.category is WorkCategory.HIDDEN:
                 counts += CategoryCounts(hidden=1)
                 continue
@@ -500,6 +509,52 @@ class StatisticsService:
             key=lambda i: (i.due_at is None, i.due_at or datetime.max.replace(tzinfo=UTC), i.title)
         )
         return OpenTasks(start, end, True, items, counts)
+
+    async def week_categories(
+        self, db: AsyncSession, user_id: uuid.UUID, week_start: date, tasks: Sequence[Task]
+    ) -> dict[uuid.UUID, WorkCategory]:
+        """Return the work category of each of ``tasks``, for the week view.
+
+        A task that is done keeps the category stored when it was completed. The others get the
+        category they have now (see ``open_tasks``). Nothing is returned when the weekly
+        commitment cannot be read: no category is guessed (FR-026).
+        """
+        committed = await self._commitments.committed_projects(db, user_id, week_start)
+        if committed is None or not tasks:
+            return {}
+        classifier = await self._classifier(db, user_id, committed)
+        stored = {
+            task_id: WorkCategory(category)
+            for task_id, category in (
+                await db.execute(
+                    select(TaskCategory.task_id, TaskCategory.category)
+                    .join(Task, Task.id == TaskCategory.task_id)
+                    .where(
+                        Task.id.in_([t.id for t in tasks if t.status == "done"]),
+                        *_counted(),
+                    )
+                )
+            ).all()
+        }
+        return {t.id: stored.get(t.id) or classifier.decide(t)[2].category for t in tasks}
+
+    @staticmethod
+    async def _classifier(
+        db: AsyncSession, user_id: uuid.UUID, committed: set[uuid.UUID]
+    ) -> "_Classifier":
+        containers = {
+            c.id: c
+            for c in (
+                await db.execute(select(SourceContainer).where(SourceContainer.user_id == user_id))
+            ).scalars()
+        }
+        rows = {
+            (r.connection_id, r.remote_id): r
+            for r in (
+                await db.execute(select(ProjectLabelRow).where(ProjectLabelRow.user_id == user_id))
+            ).scalars()
+        }
+        return _Classifier(containers, rows, committed)
 
     # -- lists -------------------------------------------------------------------------------
 

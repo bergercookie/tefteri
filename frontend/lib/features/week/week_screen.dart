@@ -11,6 +11,7 @@ import '../period/period_page.dart';
 import '../../core/periods.dart';
 import '../statistics/categories_card.dart';
 import '../statistics/open_work_card.dart';
+import '../statistics/statistics_providers.dart';
 import '../weekly/week_progress_card.dart';
 import '../weekly/weekly_card.dart';
 
@@ -43,6 +44,15 @@ class _WeekScreenState extends ConsumerState<WeekScreen> {
     _start = weekStartOf(widget.initialDate ?? DateTime.now());
   }
 
+  /// Reads the week again, with the numbers and the lists that depend on it:
+  /// a task that changed moves between the cards.
+  void _reload() {
+    ref.invalidate(weekViewProvider(dateKey(_start)));
+    ref.invalidate(statisticsProvider);
+    ref.invalidate(openTasksProvider);
+    ref.invalidate(taskListProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final key = dateKey(_start);
@@ -59,10 +69,10 @@ class _WeekScreenState extends ConsumerState<WeekScreen> {
           const SizedBox(height: Space.sm),
           CategoriesCard(period: 'week', day: _start),
           const SizedBox(height: Space.sm),
-          OpenWorkCard(day: _start),
+          OpenWorkCard(day: _start, onChanged: _reload),
         ],
       ),
-      onReload: () => ref.invalidate(weekViewProvider(key)),
+      onReload: _reload,
       onShift: (d) => setState(() =>
           _start = DateTime(_start.year, _start.month, _start.day + 7 * d)),
       onToday: () => setState(() => _start = weekStartOf(DateTime.now())),

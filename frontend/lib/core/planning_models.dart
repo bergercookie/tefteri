@@ -35,6 +35,7 @@ class PlanTask {
     this.project,
     this.projectColor,
     this.theme,
+    this.category,
     this.labels = const [],
     this.url,
     this.completedAt,
@@ -55,6 +56,7 @@ class PlanTask {
         project: j['project'] as String?,
         projectColor: j['project_color'] as String?,
         theme: j['theme'] as String?,
+        category: j['category'] as String?,
         labels: [for (final l in (j['labels'] as List? ?? const [])) '$l'],
         url: j['url'] as String?,
         completedAt: _dt(j['completed_at']),
@@ -99,6 +101,10 @@ class PlanTask {
   /// Name of the theme project above the task's project (or the project
   /// itself), or null when the task is outside every theme.
   final String? theme;
+
+  /// The work category of the task (`goal_aligned`, `maintenance`,
+  /// `off_plan` or `hidden`), or null when the server does not know it.
+  final String? category;
 
   /// Names of the labels the task has in the task app.
   final List<String> labels;

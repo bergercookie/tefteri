@@ -18,14 +18,22 @@ Map<String, Object?> _week() => periodJson(
         'a1': {'title': 'Get better at open source', 'annual': true},
       },
       tasks: [
-        {...taskJson('t1', 'Write plan'), 'goal_id': 'g1'},
+        {
+          ...taskJson('t1', 'Write plan'),
+          'goal_id': 'g1',
+          'category': 'goal_aligned'
+        },
         {
           ...taskJson('t5', 'Send the invoice', status: 'done'),
           'completed_at':
               DateTime(2026, 11, 3, 16, 45).toUtc().toIso8601String(),
         },
         taskJson('t6', 'Fix the old bug', status: 'done'),
-        {...taskJson('t4', 'Review a pull request'), 'goal_id': 'a1'},
+        {
+          ...taskJson('t4', 'Review a pull request'),
+          'goal_id': 'a1',
+          'category': 'off_plan'
+        },
         {
           ...taskJson('t2', 'Call Sam'),
           'scheduled_start': '2026-11-03T09:00:00Z',
@@ -345,6 +353,94 @@ void main() {
     await tester.tap(find.text('Unschedule'));
     await tester.pumpAndSettle();
     expect(api.where('DELETE /tasks/t2/schedule'), hasLength(1));
+  });
+
+  testWidgets('every task says DONE or TODO, in the color of its category',
+      (tester) async {
+    await _pump(tester, _api());
+    Finder label(String id, String text) =>
+        find.descendant(of: find.byKey(Key(id)), matching: find.text(text));
+    // t5 and t6 are done; t1 and t4 are still to do.
+    expect(label('task-done-t5', 'DONE'), findsOneWidget);
+    expect(label('task-done-t6', 'DONE'), findsOneWidget);
+    expect(label('task-complete-t1', 'TODO'), findsOneWidget);
+    expect(label('task-complete-t4', 'TODO'), findsOneWidget);
+    expect(find.text('DONE'), findsNWidgets(2));
+    // A pending task of the open card says TODO too.
+    expect(label('open-complete-o1', 'TODO'), findsOneWidget);
+    Color border(String id) {
+      final material = tester.widget<Material>(find
+          .descendant(of: find.byKey(Key(id)), matching: find.byType(Material))
+          .first);
+      return ((material.shape! as RoundedRectangleBorder).side).color;
+    }
+
+    final scheme = Theme.of(tester.element(find.byType(Scaffold).first));
+    // Goal-aligned is blue, off-plan is orange: the borders differ.
+    expect(border('task-complete-t1'), scheme.colorScheme.primary);
+    expect(border('task-complete-t4'), isNot(border('task-complete-t1')));
+    expect(border('open-complete-o1'), border('task-complete-t1'));
+    expect(border('open-complete-o2'), isNot(border('open-complete-o1')));
+    // DONE is filled; TODO is an empty frame.
+    Color? fill(String id) => tester
+        .widget<Material>(find
+            .descendant(
+                of: find.byKey(Key(id)), matching: find.byType(Material))
+            .first)
+        .color;
+    expect(fill('task-done-t5'), isNot(Colors.transparent));
+    expect(fill('task-complete-t1'), Colors.transparent);
+  });
+
+  testWidgets('a due task is marked done from its button and from its menu',
+      (tester) async {
+    final api = _api({
+      'POST /tasks/t1/complete': taskJson('t1', 'x', status: 'done'),
+      'POST /tasks/t2/complete': taskJson('t2', 'x', status: 'done'),
+    });
+    await _pump(tester, api);
+    // A done task has no button.
+    expect(find.byKey(const Key('task-complete-t5')), findsNothing);
+    await tester.tap(find.byKey(const Key('task-complete-t1')));
+    await tester.pumpAndSettle();
+    expect(api.where('POST /tasks/t1/complete'), hasLength(1));
+    // The week and the numbers are read again.
+    expect(api.where('GET /views/week/2026-11-02').length, greaterThan(1));
+    expect(api.where('GET /statistics/open').length, greaterThan(1));
+    await tester.tap(find.byKey(const Key('task-menu-t2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mark done'));
+    await tester.pumpAndSettle();
+    expect(api.where('POST /tasks/t2/complete'), hasLength(1));
+  });
+
+  testWidgets('a task of the open card is marked done', (tester) async {
+    final api = _api({
+      'POST /tasks/o1/complete': taskJson('o1', 'x', status: 'done'),
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('open-complete-o1')));
+    await tester.pumpAndSettle();
+    expect(api.where('POST /tasks/o1/complete'), hasLength(1));
+    expect(api.where('GET /statistics/open').length, greaterThan(1));
+  });
+
+  testWidgets('a failed completion shows the server message', (tester) async {
+    final api = _api({
+      'POST /tasks/o1/complete':
+          const ApiFailure(502, 'The task app did not answer.', 'unavailable'),
+      'POST /tasks/t1/complete':
+          const ApiFailure(502, 'The task app did not answer.', 'unavailable'),
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('open-complete-o1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('open-work-action-error')), findsOneWidget);
+    expect(find.text('The task app did not answer.'), findsWidgets);
+    expect(find.text('Book the venue'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-complete-t1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Write plan'), findsOneWidget);
   });
 
   testWidgets('a task can be linked to a goal of the annual plan',

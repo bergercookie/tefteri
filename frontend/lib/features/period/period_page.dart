@@ -15,6 +15,8 @@ import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
 import '../planner/schedule_dialog.dart';
+import '../statistics/statistics_models.dart' show Category;
+import '../statistics/task_status_button.dart';
 import 'task_goal_picker.dart';
 
 /// Page with, for a week, the tasks of one period. Goals belong to the annual
@@ -110,6 +112,9 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     await _run(
         () => ref.read(planningApiProvider).scheduleTaskAt(task.id, picked));
   }
+
+  Future<void> _complete(PlanTask task) =>
+      _run(() => ref.read(planningApiProvider).completeTask(task.id));
 
   Future<void> _link(PlanTask task) async {
     final picked = await showTaskGoalPicker(context, year: DateTime.now().year);
@@ -323,7 +328,12 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
     return ListTile(
       key: Key('task-${t.id}'),
       dense: true,
-      leading: Icon(t.done ? Icons.check_circle : Icons.task_alt),
+      leading: TaskStatusButton(
+        key: Key(t.done ? 'task-done-${t.id}' : 'task-complete-${t.id}'),
+        done: t.done,
+        category: Category.tryParse(t.category),
+        onPressed: () => _complete(t),
+      ),
       title: Text(t.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,6 +355,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
           key: Key('task-menu-${t.id}'),
           onSelected: (value) {
             switch (value) {
+              case 'complete':
+                _complete(t);
               case 'schedule':
                 _schedule(t, v);
               case 'unschedule':
@@ -357,6 +369,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
             }
           },
           itemBuilder: (_) => [
+            if (!t.done)
+              const PopupMenuItem(value: 'complete', child: Text('Mark done')),
             if (!t.done)
               PopupMenuItem(
                   value: 'schedule',
