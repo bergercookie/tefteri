@@ -48,6 +48,10 @@ class ProjectsApi {
   Future<void> rename(String id, String name) =>
       _dio.patch<Object?>('/projects/$id', data: {'name': name});
 
+  /// `PUT /projects/{id}/work`: marks a theme as work, or takes the mark away.
+  Future<void> setWork(String id, bool work) =>
+      _dio.put<Object?>('/projects/$id/work', data: {'work': work});
+
   /// `POST /projects`: creates the project in the task app, then labels it.
   Future<void> create(
           {required String connectionId,
@@ -111,3 +115,21 @@ String projectsError(Object error, String what) {
   return 'Tefteri could not $what. Nothing was changed. Try again in a '
       'moment, and sync if it keeps failing.';
 }
+
+/// The ids of the projects that are work: the themes that the user marked and
+/// the projects under them. The weekly planning pages name a theme by its id,
+/// so they look the mark up here. A failed call gives an empty set: a page
+/// never shows a problem of its own because of the mark.
+final workProjectIdsProvider =
+    FutureProvider.autoDispose<Set<String>>((ref) async {
+  try {
+    final c = await ref.watch(projectsApiProvider).classification();
+    return {
+      for (final conn in c.connections)
+        for (final p in conn.projects)
+          if (p.inWork) p.id,
+    };
+  } on Object {
+    return const {};
+  }
+});

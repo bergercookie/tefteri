@@ -16,6 +16,7 @@ from tefteri.db.models.connection import SourceContainer
 from tefteri.db.models.task import Task
 from tefteri.domain.timeutil import overlaps
 from tefteri.services.calendar import CalendarService
+from tefteri.services.work_scope import WorkScope
 
 router = APIRouter(tags=["calendar"])
 
@@ -63,6 +64,7 @@ async def list_calendar(
     """
     items: list[CalendarItemOut] = []
     colors = await container_colors(db, user.id)
+    scope = await WorkScope.load(db, user.id)
     locked = await read_only_containers(db, user.id)
     # Names of the calendars of entries and of the projects of tasks.
     projects = {
@@ -86,7 +88,11 @@ async def list_calendar(
             continue
         project = projects.get(t.container_id) if t.container_id else None
         color = colors.get(t.container_id) if t.container_id else None
-        items.append(CalendarItemOut.of_task(t, user.timezone, project, color))
+        items.append(
+            CalendarItemOut.of_task(
+                t, user.timezone, project, color, work=scope.of_container(t.container_id)
+            )
+        )
     if from_ or to:
         low = aware(from_) if from_ else datetime.min.replace(tzinfo=UTC)
         high = aware(to) if to else datetime.max.replace(tzinfo=UTC)

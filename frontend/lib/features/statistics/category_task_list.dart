@@ -219,7 +219,9 @@ class _TaskRow extends ConsumerWidget {
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 180),
                         child: ProjectChip(
-                            name: task.project.name, color: task.project.color),
+                            name: task.project.name,
+                            color: task.project.color,
+                            work: task.project.work),
                       ),
                     if (showProject && task.project.orphaned)
                       const _Note('no longer in your task app'),

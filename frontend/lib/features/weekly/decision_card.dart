@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_error.dart';
 import '../../core/project_chip.dart';
 import '../../theme/theme.dart';
+import '../projects/work_tag.dart';
 import '../projects/unsorted_card.dart';
 import 'cap_notice.dart';
 import 'close_dialog.dart';
@@ -172,6 +173,7 @@ class _DecisionCardState extends ConsumerState<DecisionCard> {
                 ),
                 Text(p.theme?.name ?? 'No theme',
                     key: Key('look-theme-${p.id}'), style: text.bodySmall),
+                if (p.theme != null) WorkTag(projectId: p.theme!.id),
                 if (p.rolloverCount > 0)
                   Text(
                       p.rolloverCount == 1

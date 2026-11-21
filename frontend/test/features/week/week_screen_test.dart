@@ -142,6 +142,49 @@ void main() {
     expect(find.text('Alpha'), findsOneWidget);
   });
 
+  testWidgets('a work theme has the Work pill, and its tasks a briefcase',
+      (tester) async {
+    final week = periodJson('week', '2026-11-02', '2026-11-09', tasks: [
+      {
+        ...taskJson('a', 'Alpha'),
+        'theme': 'Job',
+        'project': 'Launch',
+        'work': true
+      },
+      {...taskJson('b', 'Beta'), 'theme': 'Home', 'project': 'Garden'},
+    ], entries: []);
+    await _pump(
+        tester,
+        _api({
+          _path: week,
+          'GET /statistics/open': openTasksJson(tasks: [
+            openTaskJson('o1', 'Book the venue',
+                category: 'goal_aligned', project: 'Website', work: true),
+            openTaskJson('o2', 'Pay the rent',
+                category: 'maintenance', project: 'Chores'),
+          ]),
+        }));
+    // The theme header says Work for the work theme only.
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('theme-Job')),
+            matching: find.text('Work')),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('theme-Home')),
+            matching: find.text('Work')),
+        findsNothing);
+    // The tasks: the project chip of a work task has the briefcase.
+    Finder icon(String key) => find.descendant(
+        of: find.byKey(Key(key)), matching: find.byIcon(Icons.work_outline));
+    expect(icon('task-a'), findsOneWidget);
+    expect(icon('task-b'), findsNothing);
+    // The same on the card Still to do.
+    expect(icon('open-task-o1'), findsOneWidget);
+    expect(icon('open-task-o2'), findsNothing);
+  });
+
   testWidgets('a project and a theme of the due list fold away',
       (tester) async {
     final week = periodJson('week', '2026-11-02', '2026-11-09', tasks: [

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tefteri.db.base import Base, CreatedMixin, IdMixin
@@ -38,6 +38,9 @@ class ProjectLabel(IdMixin, CreatedMixin, Base):
     label_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    is_work: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    """The user marked this project as work. It counts only while the label is ``theme``: every
+    project and task under such a theme is work."""
     orphaned_reason: Mapped[str | None] = mapped_column(String(16), nullable=True)
     """``missing`` or ``archived``; ``None`` means that the project is live."""
     orphaned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

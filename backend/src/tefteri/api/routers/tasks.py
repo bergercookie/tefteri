@@ -20,6 +20,7 @@ from tefteri.services.errors import Invalid
 from tefteri.services.settings import MAX_REMINDER_MINUTES
 from tefteri.services.task_filters import DueFilter
 from tefteri.services.tasks import UNSET, TaskService
+from tefteri.services.work_scope import WorkScope
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -44,7 +45,14 @@ async def _out(db: Db, user_id: uuid.UUID, task: Task) -> TaskOut:
     connection = await db.get(Connection, task.connection_id)
     url = task_url(task_base_url(connection), task.remote_id)
     color = container.color if task.container_id is not None and container else None
-    return TaskOut.of(task, project=project, url=url, project_color=color)
+    scope = await WorkScope.load(db, user_id)
+    return TaskOut.of(
+        task,
+        project=project,
+        url=url,
+        project_color=color,
+        work=scope.of_container(task.container_id),
+    )
 
 
 class TaskIn(BaseModel):
@@ -152,6 +160,7 @@ async def list_tasks(
         query = query.where(task_filters.sql_condition(due, now, user.timezone))
     needle = (q or "").strip().casefold()
     colors = await container_colors(db, user.id)
+    scope = await WorkScope.load(db, user.id)
     out = []
     for t in (await db.execute(query)).scalars():
         if unscheduled and t.due_at is not None:
@@ -164,7 +173,11 @@ async def list_tasks(
         if to and (when is None or aware(when) >= aware(to)):
             continue
         out.append(
-            TaskOut.of(t, project_color=colors.get(t.container_id) if t.container_id else None)
+            TaskOut.of(
+                t,
+                project_color=colors.get(t.container_id) if t.container_id else None,
+                work=scope.of_container(t.container_id),
+            )
         )
     return out
 

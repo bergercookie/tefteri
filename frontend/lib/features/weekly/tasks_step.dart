@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/planning_models.dart';
 import '../planner/details_dialogs.dart';
 import '../../theme/theme.dart';
+import '../projects/work_tag.dart';
 import '../week/week_screen.dart';
 import 'inline_add_task.dart';
 import 'weekly_models.dart';
@@ -447,7 +448,16 @@ class _ParkedSectionState extends State<_ParkedSection> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(t.title, style: text.bodyMedium),
-                          ProjectChip(name: project.name, color: project.color),
+                          Wrap(
+                            spacing: Space.xs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              ProjectChip(
+                                  name: project.name, color: project.color),
+                              if (project.theme != null)
+                                WorkTag(projectId: project.theme!.id),
+                            ],
+                          ),
                         ],
                       ),
                       TextButton(

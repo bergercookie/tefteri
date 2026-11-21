@@ -44,7 +44,10 @@ class OpenTaskRow extends StatelessWidget {
               children: [
                 Text(task.title, style: text.bodyMedium),
                 if (task.project != null && task.project!.isNotEmpty)
-                  ProjectChip(name: task.project!, color: task.projectColor),
+                  ProjectChip(
+                      name: task.project!,
+                      color: task.projectColor,
+                      work: task.work),
               ],
             ),
           ),

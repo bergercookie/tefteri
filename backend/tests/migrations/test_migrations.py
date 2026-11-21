@@ -1461,7 +1461,8 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0032"
+    assert script.get_current_head() == "0033"
+    assert script.get_revision("0033").down_revision == "0032"
     assert script.get_revision("0032").down_revision == "0031"
     assert script.get_revision("0031").down_revision == "0030"
     assert script.get_revision("0030").down_revision == "0029"
@@ -1575,7 +1576,8 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0032"
+    assert script.get_current_head() == "0033"
+    assert script.get_revision("0033").down_revision == "0032"
     assert script.get_revision("0032").down_revision == "0031"
     assert script.get_revision("0031").down_revision == "0030"
     assert script.get_revision("0030").down_revision == "0029"
@@ -1600,6 +1602,22 @@ def test_0030_adds_the_default_event_calendar_and_keeps_users(
     alembic_runner.migrate_down_to("0029")
     columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     assert "default_event_container_id" not in columns
+
+
+def test_0033_adds_the_work_flag_and_keeps_labels(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0032")
+    user = "11111111-1111-1111-1111-111111111111"
+    alembic_runner.insert_into("users", {"id": user} | _USER)
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("project_labels")}
+    assert "is_work" not in columns
+    alembic_runner.migrate_up_to("0033")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("project_labels")}
+    assert "is_work" in columns
+    alembic_runner.migrate_down_to("0032")
+    columns = {c["name"] for c in inspect(alembic_engine).get_columns("project_labels")}
+    assert "is_work" not in columns
 
 
 def test_0032_adds_the_event_invitees_and_keeps_users(

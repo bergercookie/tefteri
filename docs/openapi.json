@@ -412,6 +412,11 @@
               }
             ],
             "title": "Uid"
+          },
+          "work": {
+            "default": false,
+            "title": "Work",
+            "type": "boolean"
           }
         },
         "required": [
@@ -7177,6 +7182,11 @@
               }
             ],
             "title": "Url"
+          },
+          "work": {
+            "default": false,
+            "title": "Work",
+            "type": "boolean"
           }
         },
         "required": [
@@ -8012,6 +8022,20 @@
         "title": "WorkCategory",
         "type": "string"
       },
+      "WorkIn": {
+        "description": "Whether the theme is work.",
+        "properties": {
+          "work": {
+            "title": "Work",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "work"
+        ],
+        "title": "WorkIn",
+        "type": "object"
+      },
       "YearState": {
         "description": "Where a planning year stands relative to today (spec 006, FR-033).",
         "enum": [
@@ -8628,6 +8652,16 @@
             "title": "In Committed Plan",
             "type": "boolean"
           },
+          "in_work": {
+            "default": false,
+            "title": "In Work",
+            "type": "boolean"
+          },
+          "is_work": {
+            "default": false,
+            "title": "Is Work",
+            "type": "boolean"
+          },
           "label": {
             "anyOf": [
               {
@@ -8784,6 +8818,11 @@
           },
           "orphaned": {
             "title": "Orphaned",
+            "type": "boolean"
+          },
+          "work": {
+            "default": false,
+            "title": "Work",
             "type": "boolean"
           }
         },
@@ -13118,6 +13157,60 @@
           }
         },
         "summary": "Restore Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/work": {
+      "put": {
+        "description": "Mark a theme as work, or take the mark away.\n\nEverything under a work theme is work: its projects and their tasks. 422 ``not_a_theme``\nwhen the project is not a theme; 404 when it is not the user's.",
+        "operationId": "set_work_api_v1_projects__project_id__work_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tefteri__api__routers__projects__ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Work",
         "tags": [
           "projects"
         ]

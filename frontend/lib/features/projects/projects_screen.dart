@@ -162,6 +162,19 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     }
   }
 
+  Future<void> _setWork(ClassifiedProject p, bool work) async {
+    try {
+      await _ctrl.setWork(p.id, work);
+      if (mounted) {
+        _note(work
+            ? '${p.name} and everything in it is work now.'
+            : '${p.name} is not work any more.');
+      }
+    } on DioException catch (e) {
+      if (mounted) _note(projectsError(e, 'change "${p.name}"'));
+    }
+  }
+
   Future<void> _rename(ProjectItem it) async {
     final ctrl = _ctrl;
     final p = it.project;
@@ -722,6 +735,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                 _collapsed.add(item.project.id);
               }
             }),
+            onWork: (v) => _setWork(item.project, v),
             onRename: () => _rename(item),
             onArchive: () => _archive(item),
             onRestore: () => _restore(item),

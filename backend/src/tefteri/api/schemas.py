@@ -44,6 +44,8 @@ class TaskOut(BaseModel):
     project: str | None = None
     project_color: str | None = None
     """The color of its project in the task app, as ``#rrggbb``."""
+    work: bool = False
+    """The task sits under a theme that the user marked as work."""
     category: str | None = None
     """``goal_aligned``, ``maintenance``, ``off_plan`` or ``hidden``; ``None`` when not known."""
     theme: str | None = None
@@ -62,6 +64,7 @@ class TaskOut(BaseModel):
         project_color: str | None = None,
         theme: str | None = None,
         category: str | None = None,
+        work: bool = False,
     ) -> "TaskOut":
         """Build from the ORM row.
 
@@ -83,6 +86,7 @@ class TaskOut(BaseModel):
             project_color=project_color,
             theme=theme,
             category=category,
+            work=work,
             labels=list(t.labels or []),
             url=url,
             completed_at=t.completed_at if t.status == "done" else None,
@@ -168,6 +172,8 @@ class CalendarItemOut(BaseModel):
     clipped_start: bool = False
     project: str | None = None
     """For a task: the name of its project in the task app."""
+    work: bool = False
+    """For a task: its project sits under a theme that the user marked as work."""
     color: str | None = None
     """The color of its calendar (an entry) or of its project (a task), as ``#rrggbb``."""
     read_only: bool = False
@@ -207,7 +213,12 @@ class CalendarItemOut(BaseModel):
 
     @classmethod
     def of_task(
-        cls, t: Task, tz_name: str, project: str | None = None, color: str | None = None
+        cls,
+        t: Task,
+        tz_name: str,
+        project: str | None = None,
+        color: str | None = None,
+        work: bool = False,
     ) -> "CalendarItemOut":
         """Build from a task with a due date (``due_at`` must be set).
 
@@ -234,6 +245,7 @@ class CalendarItemOut(BaseModel):
             status=t.status,
             clipped_start=clipped,
             project=project,
+            work=work,
             color=color,
         )
 

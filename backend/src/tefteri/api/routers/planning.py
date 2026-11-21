@@ -18,6 +18,7 @@ from tefteri.db.models.task import Task
 from tefteri.domain.periods import PeriodType, period_end, period_start
 from tefteri.domain.timeutil import day_bounds, overlaps
 from tefteri.services.goals import GoalService
+from tefteri.services.work_scope import WorkScope
 
 router = APIRouter(tags=["planning"])
 
@@ -148,6 +149,7 @@ async def _period_view(
     )
     projects = {c.id: c.name for c in containers}
     themes = await _container_themes(db, user_id, containers)
+    scope = await WorkScope.load(db, user_id)
     colors = await container_colors(db, user_id)
     locked = await read_only_containers(db, user_id)
     tasks: list[TaskOut] = []
@@ -167,6 +169,7 @@ async def _period_view(
                 project=project,
                 project_color=colors.get(t.container_id) if t.container_id else None,
                 theme=themes.get(t.container_id) if t.container_id else None,
+                work=scope.of_container(t.container_id),
             )
         )
     if kind is PeriodType.WEEK:

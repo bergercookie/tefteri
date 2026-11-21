@@ -99,7 +99,31 @@ row of the milestone shows the name of its theme. If a milestone is not inside a
 shows it in the group Milestones without a theme. Move it under a theme in your task app, or
 change its label.
 
-![The sorted tree. Two themes hold two milestones each. The project Groceries is a routine. The group Ignored holds the project Old ideas. You can open the group No longer in your task app.](../images/projects-sorted.png)
+![The sorted tree. Two themes hold two milestones each. The theme Open source has the pill Work, and its milestones have a small briefcase. The project Groceries is a routine. The group Ignored holds the project Old ideas. You can open the group No longer in your task app.](../images/projects-sorted.png)
+
+## Mark a theme as work
+
+You can tell tefteri which of your themes are work. For example, mark "Job" as work and leave
+"Home" as it is. You can mark more than one theme.
+
+1. Open Projects.
+2. Find the theme. A theme has the chip Work next to the four labels.
+3. Choose Work. Choose it again to take the mark away.
+
+The project is work now, and so is everything inside it: its milestones, its other projects and all
+their tasks. You mark the theme only. Only a theme has the chip. If you change the label of a
+theme, the mark waits. It counts again when the project is a theme again. If a theme is inside a
+work theme and you did not mark it, it is not work.
+
+Tefteri shows work in the same way on every page:
+
+- A work theme has the pill Work with a small briefcase. You see it in the list of projects, in the
+  list All due this week, and in the list of milestones in weekly planning.
+- A project or a task inside a work theme has the small briefcase next to the name of its
+  project. You see it on the tasks of the Week view and of the card Still to do, in the lists of
+  completed tasks, on the task blocks of the planner, and in weekly planning.
+
+Tefteri does not use a color for work, because the colors show the work categories.
 
 ## What Routine and Ignored do
 

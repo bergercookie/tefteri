@@ -141,4 +141,26 @@ void main() {
     expect(find.byKey(const Key('project-tag-c5')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a task of a work project has a briefcase in its tag',
+      (tester) async {
+    final api = plannerApi(calendar: [
+      calItem('task', 't1', 'Fix the form',
+          start: DateTime(2026, 11, 4, 14), project: 'Website', work: true),
+      calItem('task', 't2', 'Water the plants',
+          start: DateTime(2026, 11, 4, 16), project: 'Garden'),
+    ]);
+    await pumpPlanner(tester, api);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('project-tag-t1')),
+            matching: find.byIcon(Icons.work_outline)),
+        findsOneWidget);
+    expect(_tag(tester, 't1'), 'Website');
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('project-tag-t2')),
+            matching: find.byIcon(Icons.work_outline)),
+        findsNothing);
+  });
 }

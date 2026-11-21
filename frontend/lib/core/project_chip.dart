@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../theme/palette.dart';
 import 'calendar_color.dart';
 import '../theme/tokens.dart';
+import 'work_mark.dart';
 
 /// The color of a project: the one that the user chose in the task app
 /// ([hex], as `#rrggbb`), or else an accent of the palette that the same name
@@ -43,13 +44,18 @@ class ProjectDot extends StatelessWidget {
 class ProjectChip extends StatelessWidget {
   /// Creates a chip for the project [name]; [color] is its color in the task
   /// app, as `#rrggbb`, when it has one.
-  const ProjectChip({required this.name, this.color, super.key});
+  const ProjectChip(
+      {required this.name, this.color, this.work = false, super.key});
 
   /// Name of the project.
   final String name;
 
   /// The color of the project in the task app (`#rrggbb`), or null.
   final String? color;
+
+  /// The project is work: it sits under a theme that the user marked as work.
+  /// A small briefcase follows the name.
+  final bool work;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -66,6 +72,10 @@ class ProjectChip extends StatelessWidget {
                   ),
             ),
           ),
+          if (work) ...[
+            const SizedBox(width: Space.xs),
+            const WorkIcon(size: 12),
+          ],
         ],
       );
 }

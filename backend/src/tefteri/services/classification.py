@@ -43,6 +43,7 @@ from tefteri.services.project_labels import (
 )
 from tefteri.services.projects import ProjectService
 from tefteri.services.sync import SyncService
+from tefteri.services.work_scope import WorkScope
 
 SOURCES = ("user", "suggestion")
 """Where a save comes from: the user's own choice, or an accepted proposal."""
@@ -61,6 +62,8 @@ class ProjectView:
     open_tasks: int
     subprojects: int
     in_committed_plan: bool
+    in_work: bool = False
+    """The project is a work theme, or sits under one."""
 
     @property
     def unsorted(self) -> bool:
@@ -219,6 +222,7 @@ class ClassificationService:
                         count += 1
             return count
 
+        scope = WorkScope(list(tree.rows), [])
         views = {}
         for row in tree.rows:
             key = str(row.id)
@@ -234,6 +238,7 @@ class ClassificationService:
                 open_tasks=open_by_remote[row.remote_id],
                 subprojects=descendants(key),
                 in_committed_plan=key in tree.in_committed_plan,
+                in_work=scope.of_row(row),
             )
         ordered: list[ProjectView] = []
         seen: set[str] = set()
@@ -260,6 +265,21 @@ class ClassificationService:
         if row is None or row.user_id != user_id:
             raise NotFound
         return row
+
+    async def set_work(
+        self, db: AsyncSession, user_id: uuid.UUID, project_id: uuid.UUID, work: bool
+    ) -> ProjectView:
+        """Mark a theme as work, or take the mark away. Only a theme can be work.
+
+        The mark stays on the project when its label changes, but it counts only while the
+        label is ``theme``. Everything under a work theme is work.
+        """
+        row = await self._own(db, user_id, project_id)
+        if row.label != "theme":
+            raise Invalid("Only a theme can be marked as work.", "not_a_theme")
+        row.is_work = work
+        await db.flush()
+        return await self.project(db, user_id, project_id)
 
     # -- labels -------------------------------------------------------------------------------
 

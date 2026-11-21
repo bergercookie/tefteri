@@ -16,6 +16,7 @@ from tefteri.services.classification import (
     Effect,
     ProjectView,
 )
+from tefteri.services.work_scope import WorkScope
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -59,6 +60,10 @@ class ProjectOut(BaseModel):
     open_tasks: int
     subprojects: int
     in_committed_plan: bool
+    is_work: bool = False
+    """The user marked this theme as work. False for a project that is not a theme."""
+    in_work: bool = False
+    """The project is a work theme, or sits under one."""
 
     @classmethod
     def of(cls, p: ProjectView) -> "ProjectOut":
@@ -83,6 +88,8 @@ class ProjectOut(BaseModel):
             open_tasks=p.open_tasks,
             subprojects=p.subprojects,
             in_committed_plan=p.in_committed_plan,
+            is_work=WorkScope.own(row),
+            in_work=p.in_work,
         )
 
 
@@ -232,6 +239,24 @@ async def undo_labels(body: UndoIn, request: Request, db: Db, user: CurrentUser)
     """
     restored = await _service(request).undo(db, user.id, body.batch_id)
     return UndoOut(restored=restored)
+
+
+class WorkIn(BaseModel):
+    """Whether the theme is work."""
+
+    work: bool
+
+
+@router.put("/{project_id}/work")
+async def set_work(
+    project_id: uuid.UUID, body: WorkIn, request: Request, db: Db, user: CurrentUser
+) -> ProjectOut:
+    """Mark a theme as work, or take the mark away.
+
+    Everything under a work theme is work: its projects and their tasks. 422 ``not_a_theme``
+    when the project is not a theme; 404 when it is not the user's.
+    """
+    return ProjectOut.of(await _service(request).set_work(db, user.id, project_id, body.work))
 
 
 class RenameIn(BaseModel):

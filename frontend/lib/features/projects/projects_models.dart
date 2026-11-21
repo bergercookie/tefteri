@@ -164,6 +164,8 @@ class ClassifiedProject {
     this.openTasks = 0,
     this.subprojects = 0,
     this.inCommittedPlan = false,
+    this.isWork = false,
+    this.inWork = false,
   });
 
   /// Parses a project JSON object.
@@ -185,6 +187,8 @@ class ClassifiedProject {
       openTasks: (j['open_tasks'] as num? ?? 0).toInt(),
       subprojects: (j['subprojects'] as num? ?? 0).toInt(),
       inCommittedPlan: j['in_committed_plan'] == true,
+      isWork: j['is_work'] == true,
+      inWork: j['in_work'] == true,
     );
   }
 
@@ -227,6 +231,13 @@ class ClassifiedProject {
   /// Whether a committed weekly plan holds it.
   final bool inCommittedPlan;
 
+  /// The user marked this theme as work. False for a project that is not a
+  /// theme.
+  final bool isWork;
+
+  /// The project is a work theme, or sits under one.
+  final bool inWork;
+
   /// Copy with a new saved [label] (null: unsorted).
   ClassifiedProject withLabel(ProjectLabel? label) => ClassifiedProject(
         id: id,
@@ -242,6 +253,8 @@ class ClassifiedProject {
         openTasks: openTasks,
         subprojects: subprojects,
         inCommittedPlan: inCommittedPlan,
+        isWork: label == ProjectLabel.theme && isWork,
+        inWork: inWork,
       );
 }
 

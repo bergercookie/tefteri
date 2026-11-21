@@ -112,6 +112,12 @@ class ClassificationController
     await load();
   }
 
+  /// Marks theme [id] as work, or takes the mark away.
+  Future<void> setWork(String id, bool work) async {
+    await _api.setWork(id, work);
+    await load();
+  }
+
   /// Creates a project in the task app and labels it.
   Future<void> create(
       {required String connectionId,

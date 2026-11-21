@@ -605,9 +605,16 @@ class _SharedMark extends StatelessWidget {
 /// A small label with a solid background and square corners that names the
 /// project of a task, so that it can be read without opening the task.
 class _ProjectTag extends StatelessWidget {
-  const _ProjectTag({required this.name, required this.maxWidth, super.key});
+  const _ProjectTag(
+      {required this.name,
+      required this.maxWidth,
+      this.work = false,
+      super.key});
 
   final String name;
+
+  /// The project is work: a small briefcase goes before the name.
+  final bool work;
 
   /// The widest the tag may be; a longer name is cut with dots.
   final double maxWidth;
@@ -616,7 +623,7 @@ class _ProjectTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
-      message: 'Project: $name',
+      message: work ? 'Project: $name (work)' : 'Project: $name',
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth < 24 ? 24 : maxWidth),
         child: Container(
@@ -624,15 +631,26 @@ class _ProjectTag extends StatelessWidget {
           // Square corners and a solid fill: dark ink on light paper, and
           // the reverse in the dark theme.
           color: scheme.onSurfaceVariant,
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  height: 1.2,
-                  color: scheme.surface,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (work) ...[
+                Icon(Icons.work_outline, size: 10, color: scheme.surface),
+                const SizedBox(width: 2),
+              ],
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        height: 1.2,
+                        color: scheme.surface,
+                      ),
                 ),
+              ),
+            ],
           ),
         ),
       ),
@@ -700,6 +718,7 @@ class _AllDayChip extends StatelessWidget {
                   child: _ProjectTag(
                       key: Key('project-tag-${item.id}'),
                       name: item.project!,
+                      work: item.work,
                       maxWidth: double.infinity),
                 ),
               ]),
@@ -1072,6 +1091,7 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
                             _ProjectTag(
                                 key: Key('project-tag-${i.id}'),
                                 name: project,
+                                work: i.work,
                                 maxWidth: colWidth * 0.45),
                           ],
                           if (i.isShared) _SharedMark(item: i),
@@ -1089,6 +1109,7 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
                           child: _ProjectTag(
                               key: Key('project-tag-${i.id}'),
                               name: project,
+                              work: i.work,
                               maxWidth: colWidth - 14),
                         ),
                       if (showTime)

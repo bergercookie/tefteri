@@ -918,6 +918,8 @@ Map<String, Object?> classifiedJson(String id, String name,
     int subprojects = 0,
     bool eligible = true,
     bool inPlan = false,
+    bool isWork = false,
+    bool inWork = false,
     String? proposalLabel,
     String? proposalReason}) {
   final proposal = proposalLabel ?? (parent == null ? 'theme' : 'milestone');
@@ -938,6 +940,8 @@ Map<String, Object?> classifiedJson(String id, String name,
     'open_tasks': tasks,
     'subprojects': subprojects,
     'in_committed_plan': inPlan,
+    'is_work': isWork,
+    'in_work': inWork || isWork,
   };
 }
 
@@ -992,6 +996,7 @@ Map<String, Object?> openTasksJson(
 Map<String, Object?> openTaskJson(String id, String title,
         {String category = 'off_plan',
         String? project,
+        bool work = false,
         String? dueAt = '2026-11-04T00:00:00Z'}) =>
     {
       'id': id,
@@ -1004,6 +1009,7 @@ Map<String, Object?> openTaskJson(String id, String title,
         'name': project,
         'color': null,
         'orphaned': false,
+        'work': work,
       },
       'url': null,
     };

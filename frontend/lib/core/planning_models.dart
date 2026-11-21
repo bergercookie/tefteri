@@ -36,6 +36,7 @@ class PlanTask {
     this.projectColor,
     this.theme,
     this.category,
+    this.work = false,
     this.labels = const [],
     this.url,
     this.completedAt,
@@ -54,6 +55,7 @@ class PlanTask {
         syncState: '${j['sync_state'] ?? 'synced'}',
         goalId: j['goal_id'] == null ? null : '${j['goal_id']}',
         project: j['project'] as String?,
+        work: j['work'] == true,
         projectColor: j['project_color'] as String?,
         theme: j['theme'] as String?,
         category: j['category'] as String?,
@@ -105,6 +107,9 @@ class PlanTask {
   /// The work category of the task (`goal_aligned`, `maintenance`,
   /// `off_plan` or `hidden`), or null when the server does not know it.
   final String? category;
+
+  /// The task sits under a theme that the user marked as work.
+  final bool work;
 
   /// Names of the labels the task has in the task app.
   final List<String> labels;
@@ -278,6 +283,7 @@ class CalendarItem {
     this.status,
     this.clippedStart = false,
     this.project,
+    this.work = false,
     this.color,
     this.readOnly = false,
     this.calendar,
@@ -298,6 +304,7 @@ class CalendarItem {
         status: j['status'] as String?,
         clippedStart: j['clipped_start'] == true,
         project: j['project'] as String?,
+        work: j['work'] == true,
         color: j['color'] as String?,
         readOnly: j['read_only'] == true,
         calendar: j['calendar'] as String?,
@@ -396,6 +403,9 @@ class CalendarItem {
 
   /// For a task: the name of its project in the task app.
   final String? project;
+
+  /// For a task: its project sits under a theme that the user marked as work.
+  final bool work;
 
   /// True when this item is a scheduled task.
   bool get isTask => type == 'task';

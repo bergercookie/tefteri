@@ -23,6 +23,7 @@ from tefteri.services.statistics import (
     parse_category,
     parse_period,
 )
+from tefteri.services.work_scope import WorkScope
 
 router = APIRouter(prefix="/statistics", tags=["statistics"])
 
@@ -143,6 +144,8 @@ class ProjectOut(BaseModel):
     name: str | None
     color: str | None
     orphaned: bool
+    work: bool = False
+    """The project sits under a theme that the user marked as work."""
 
 
 class StatTaskOut(BaseModel):
@@ -220,7 +223,7 @@ async def statistics(
     )
 
 
-def _item(t: StatTask, bases: dict[uuid.UUID, str | None]) -> StatTaskOut:
+def _item(t: StatTask, bases: dict[uuid.UUID, str | None], scope: WorkScope) -> StatTaskOut:
     return StatTaskOut(
         id=t.id,
         title=t.title,
@@ -230,7 +233,11 @@ def _item(t: StatTask, bases: dict[uuid.UUID, str | None]) -> StatTaskOut:
         reason=t.reason,
         unsorted=t.unsorted,
         project=ProjectOut(
-            id=t.project_id, name=t.project_name, color=t.project_color, orphaned=t.orphaned
+            id=t.project_id,
+            name=t.project_name,
+            color=t.project_color,
+            orphaned=t.orphaned,
+            work=scope.of_label(t.project_id),
         ),
         url=task_url(bases.get(t.connection_id), t.remote_id),
     )
@@ -283,6 +290,7 @@ async def statistics_open(
             await db.execute(select(Connection).where(Connection.id.in_(ids)))
         ).scalars():
             bases[connection.id] = task_base_url(connection)
+    scope = await WorkScope.load(db, user.id)
     shares = percentages(found.counts)
     return OpenTasksOut(
         start=found.start,
@@ -304,7 +312,11 @@ async def statistics_open(
                 category=t.category,
                 unsorted=t.unsorted,
                 project=ProjectOut(
-                    id=t.project_id, name=t.project_name, color=t.project_color, orphaned=False
+                    id=t.project_id,
+                    name=t.project_name,
+                    color=t.project_color,
+                    orphaned=False,
+                    work=scope.of_label(t.project_id),
                 ),
                 url=task_url(bases.get(t.connection_id), t.remote_id),
             )
@@ -346,6 +358,7 @@ async def statistics_tasks(
         limit=limit,
         cursor=cursor,
     )
+    scope = await WorkScope.load(db, user.id)
     ids = {t.connection_id for t in page.items}
     bases: dict[uuid.UUID, str | None] = {}
     if ids:
@@ -360,6 +373,6 @@ async def statistics_tasks(
         category=cat,
         order=order,
         total=page.total,
-        items=[_item(t, bases) for t in page.items],
+        items=[_item(t, bases, scope) for t in page.items],
         next_cursor=page.next_cursor,
     )

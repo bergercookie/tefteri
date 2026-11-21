@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../core/work_mark.dart';
 import '../../theme/theme.dart';
 import 'label_chips.dart';
 import 'project_tree.dart';
@@ -22,6 +23,7 @@ class ProjectRow extends StatelessWidget {
     required this.onRename,
     required this.onArchive,
     required this.onRestore,
+    this.onWork,
     this.selecting = false,
     this.selected = false,
     this.onSelect,
@@ -45,6 +47,10 @@ class ProjectRow extends StatelessWidget {
 
   /// Restore was tapped.
   final VoidCallback onRestore;
+
+  /// The Work chip of a theme was tapped; the value is the new state. Null when
+  /// the row offers no such chip.
+  final ValueChanged<bool>? onWork;
 
   /// True while the user selects several projects.
   final bool selecting;
@@ -115,6 +121,12 @@ class ProjectRow extends StatelessWidget {
                         key: Key('name-${p.id}'),
                         style: text.bodyLarge
                             ?.copyWith(fontWeight: FontWeight.w500)),
+                    // A work theme shows the pill; what sits under it shows the
+                    // briefcase.
+                    if (p.isWork)
+                      WorkPill(key: Key('work-pill-${p.id}'))
+                    else if (p.inWork)
+                      WorkIcon(key: Key('work-icon-${p.id}')),
                     if (isSuggestion)
                       Container(
                         key: Key('suggested-${p.id}'),
@@ -170,8 +182,29 @@ class ProjectRow extends StatelessWidget {
     );
 
     final menu = _menu(context);
+    // Only a theme can be work: its chip sits next to the four labels.
+    final canMarkWork =
+        orphan == null && p.label == ProjectLabel.theme && onWork != null;
     final chips = orphan == null
-        ? LabelChips(project: p, onPick: onPick, enabled: !selecting)
+        ? Wrap(
+            spacing: Space.sm,
+            runSpacing: Space.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              LabelChips(project: p, onPick: onPick, enabled: !selecting),
+              if (canMarkWork)
+                FilterChip(
+                  key: Key('work-${p.id}'),
+                  avatar: const Icon(Icons.work_outline, size: 16),
+                  label: const Text('Work'),
+                  tooltip: p.isWork
+                      ? 'Stop treating ${p.name} as work'
+                      : 'Treat ${p.name} and everything in it as work',
+                  selected: p.isWork,
+                  onSelected: selecting ? null : onWork,
+                ),
+            ],
+          )
         : (orphan.reason == OrphanReason.archived && item.connection.canRestore)
             ? OutlinedButton.icon(
                 key: Key('restore-${p.id}'),

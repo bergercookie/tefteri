@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../theme/theme.dart';
+import '../projects/work_tag.dart';
 import '../projects/term_hint.dart';
 import '../projects/unsorted_card.dart';
 import 'rescope_nudge.dart';
@@ -289,6 +290,10 @@ class _MilestonePickerState extends State<MilestonePicker> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Flexible(child: Text(title, style: text.titleMedium)),
+                    if (theme != null) ...[
+                      const SizedBox(width: Space.sm),
+                      WorkTag(projectId: theme.id, pill: true),
+                    ],
                     if (focus) ...[
                       const SizedBox(width: Space.sm),
                       Text('In focus this month',

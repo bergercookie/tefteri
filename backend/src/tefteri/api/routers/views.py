@@ -13,6 +13,7 @@ from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.note import Note
 from tefteri.db.models.task import Task
 from tefteri.domain.timeutil import day_bounds, overlaps
+from tefteri.services.work_scope import WorkScope
 
 router = APIRouter(prefix="/views", tags=["views"])
 
@@ -31,6 +32,7 @@ async def day_view(
     start, end = day_bounds(day, user.timezone)
     ZoneInfo(user.timezone)
     colors = await container_colors(db, user.id)
+    scope = await WorkScope.load(db, user.id)
     locked = await read_only_containers(db, user.id)
     entries = [
         EntryOut.of(e, colors, locked)
@@ -47,7 +49,11 @@ async def day_view(
         if when is None or not (start <= aware(when) < end):
             continue
         tasks.append(
-            TaskOut.of(t, project_color=colors.get(t.container_id) if t.container_id else None)
+            TaskOut.of(
+                t,
+                project_color=colors.get(t.container_id) if t.container_id else None,
+                work=scope.of_container(t.container_id),
+            )
         )
     note_row = (
         (

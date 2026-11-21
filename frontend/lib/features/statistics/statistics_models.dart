@@ -264,7 +264,11 @@ class StatisticsSummary {
 class StatProject {
   /// Creates a project.
   const StatProject(
-      {this.id, required this.name, this.color, this.orphaned = false});
+      {this.id,
+      required this.name,
+      this.color,
+      this.orphaned = false,
+      this.work = false});
 
   /// Reads the `project` object.
   factory StatProject.fromJson(Object? json) {
@@ -274,6 +278,7 @@ class StatProject {
       name: '${j['name'] ?? ''}',
       color: j['color'] as String?,
       orphaned: j['orphaned'] as bool? ?? false,
+      work: j['work'] == true,
     );
   }
 
@@ -288,6 +293,9 @@ class StatProject {
 
   /// The project is gone from the task app.
   final bool orphaned;
+
+  /// The project sits under a theme that the user marked as work.
+  final bool work;
 }
 
 /// A completed task in a list.
@@ -380,6 +388,7 @@ class OpenTask {
     this.dueAt,
     this.project,
     this.projectColor,
+    this.work = false,
     this.unsorted = false,
   });
 
@@ -394,6 +403,7 @@ class OpenTask {
       dueAt: due == null ? null : DateTime.parse('$due'),
       project: project['name'] as String?,
       projectColor: project['color'] as String?,
+      work: project['work'] == true,
       unsorted: j['unsorted'] as bool? ?? false,
     );
   }
@@ -415,6 +425,9 @@ class OpenTask {
 
   /// The color of its project (`#rrggbb`), or null.
   final String? projectColor;
+
+  /// Its project sits under a theme that the user marked as work.
+  final bool work;
 
   /// Its project has no label.
   final bool unsorted;

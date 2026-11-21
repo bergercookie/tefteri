@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/project_chip.dart';
 import '../../core/section_heading.dart';
+import '../../core/work_mark.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
@@ -265,6 +266,8 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         count: themeCount,
         folded: themeFolded,
         level: 0,
+        // Work is a property of the theme, so every task under it agrees.
+        work: projects.values.any((tasks) => tasks.any((t) => t.work)),
         onTap: () => _fold(themeId),
       ));
       if (themeFolded) continue;
@@ -339,7 +342,7 @@ class _PeriodPageState extends ConsumerState<PeriodPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (t.project != null && t.project!.isNotEmpty)
-            ProjectChip(name: t.project!, color: t.projectColor),
+            ProjectChip(name: t.project!, color: t.projectColor, work: t.work),
           Text(goal == null ? time : '$time - $goal'),
           Text(
             _status(t),
@@ -397,10 +400,14 @@ class _GroupHeader extends StatelessWidget {
     required this.folded,
     required this.level,
     required this.onTap,
+    this.work = false,
     super.key,
   });
 
   final String label;
+
+  /// The theme is work: the pill "Work" follows its name.
+  final bool work;
   final int count;
   final bool folded;
 
@@ -437,6 +444,10 @@ class _GroupHeader extends StatelessWidget {
                 child: Text(label,
                     style: level == 0 ? text.titleSmall : text.labelLarge),
               ),
+              if (work) ...[
+                const SizedBox(width: Space.sm),
+                const WorkPill(),
+              ],
               const SizedBox(width: Space.sm),
               Text('$count',
                   style:

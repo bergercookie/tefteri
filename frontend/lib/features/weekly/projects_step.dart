@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../theme/theme.dart';
+import '../projects/work_tag.dart';
 import '../projects/rename_dialog.dart';
 import '../projects/term_hint.dart';
 import 'cap_notice.dart';
@@ -231,6 +232,7 @@ class _ProjectsStepState extends ConsumerState<ProjectsStep> {
                           Text(p.theme?.name ?? 'No theme',
                               key: Key('chosen-theme-${p.id}'),
                               style: text.bodySmall),
+                          if (p.theme != null) WorkTag(projectId: p.theme!.id),
                           Text(
                             p.openTasks == 0
                                 ? 'No open tasks yet'
