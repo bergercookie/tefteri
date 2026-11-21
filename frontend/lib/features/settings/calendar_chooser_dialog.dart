@@ -44,25 +44,19 @@ class CalendarChooserDialog extends ConsumerStatefulWidget {
 class _State extends ConsumerState<CalendarChooserDialog> {
   static const _filterFrom = 8;
 
-  Set<String>? _initial;
-  Set<String> _chosen = {};
+  /// The calendars that are ticked. They start as the ones that are on now:
+  /// for a new connection, the ones that the user shows in Google Calendar.
+  Set<String>? _chosen;
   String _filter = '';
   bool _saving = false;
   String? _error;
 
   void _init(List<CalendarInfo> list) {
-    if (_initial != null) return;
-    _initial = {
+    _chosen ??= {
       for (final c in list)
         if (c.enabled) c.id
     };
-    _chosen = {..._initial!};
   }
-
-  bool get _changed => _initial != null && !setEquals(_initial!, _chosen);
-
-  bool setEquals(Set<String> a, Set<String> b) =>
-      a.length == b.length && a.containsAll(b);
 
   Future<void> _save(List<CalendarInfo> list) async {
     setState(() {
@@ -74,7 +68,7 @@ class _State extends ConsumerState<CalendarChooserDialog> {
     try {
       final ids = [
         for (final c in list)
-          if (_chosen.contains(c.id)) c.id
+          if (_chosen!.contains(c.id)) c.id
       ];
       final r = await ref
           .read(calendarChoiceApiProvider)
@@ -134,16 +128,14 @@ class _State extends ConsumerState<CalendarChooserDialog> {
               : _body(context, list),
         ),
       ),
+      // One button, always on once the list is there: Save keeps the calendars
+      // that are ticked, also when the user did not change the choice that was
+      // made for them. There is no Cancel; Esc or a click outside closes the
+      // dialog and leaves the choice as it was.
       actions: [
-        TextButton(
-          key: const Key('calendar-chooser-cancel'),
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
         FilledButton(
           key: const Key('calendar-chooser-save'),
-          onPressed:
-              (_changed && !_saving && list != null) ? () => _save(list) : null,
+          onPressed: (!_saving && list != null) ? () => _save(list) : null,
           child: Text(_saving ? 'Saving...' : 'Save'),
         ),
       ],
@@ -192,13 +184,14 @@ class _State extends ConsumerState<CalendarChooserDialog> {
               for (final c in shown)
                 CheckboxListTile(
                   key: Key('calendar-option-${c.id}'),
-                  value: _chosen.contains(c.id),
+                  value: _chosen!.contains(c.id),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   onChanged: _saving
                       ? null
-                      : (v) => setState(() =>
-                          v == true ? _chosen.add(c.id) : _chosen.remove(c.id)),
+                      : (v) => setState(() => v == true
+                          ? _chosen!.add(c.id)
+                          : _chosen!.remove(c.id)),
                   title: Row(children: [
                     Container(
                       key: Key('calendar-dot-${c.id}'),

@@ -11061,7 +11061,7 @@
     },
     "/api/v1/connections/google/authorize": {
       "get": {
-        "description": "Return the Google consent URL for adding one more Google account.",
+        "description": "Return the Google consent URL.\n\nWithout ``connection_id`` it adds one more Google account. With the id of a Google\nconnection of the user, it signs that connection in again: the callback puts the new token\nin that connection and does not add another one.",
         "operationId": "google_authorize_api_v1_connections_google_authorize_get",
         "parameters": [
           {
@@ -11072,6 +11072,23 @@
               "default": "Google Calendar",
               "title": "Display Name",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "connection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
             }
           }
         ],

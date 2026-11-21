@@ -207,15 +207,31 @@ async def create_connection(
 async def google_authorize(
     request: Request,
     user: CurrentUser,
+    db: Db,
     settings: SettingsDep,
     display_name: str = "Google Calendar",
+    connection_id: uuid.UUID | None = None,
+    service: ConnectionService = Service,
 ) -> dict[str, str]:
-    """Return the Google consent URL for adding one more Google account."""
+    """Return the Google consent URL.
+
+    Without ``connection_id`` it adds one more Google account. With the id of a Google
+    connection of the user, it signs that connection in again: the callback puts the new token
+    in that connection and does not add another one.
+    """
     oauth: GoogleOAuth | None = request.app.state.google_oauth
     if oauth is None:
         raise ApiError(503, "google_not_configured", "Google sign-in is not configured")
+    extra: dict[str, str] = {"name": display_name}
+    if connection_id is not None:
+        existing = await _own(service, db, user, connection_id)
+        if existing.provider != "google_calendar":
+            raise ApiError(
+                422, "not_google", "Only a Google Calendar connection can sign in to Google again"
+            )
+        extra = {"name": existing.display_name, "connection_id": str(existing.id)}
     redirect = _callback_url(request, settings.public_url)
-    url = oauth.authorize_url(user.id, redirect, {"name": display_name})
+    url = oauth.authorize_url(user.id, redirect, extra)
     return {"url": url}
 
 
@@ -246,24 +262,42 @@ async def google_callback(
     except InvalidState as exc:
         raise ApiError(400, "invalid_state", "Invalid or expired sign-in request") from exc
     refresh_token = await oauth.exchange_code(code, _callback_url(request, settings.public_url))
-    connection, _ = await _create_and_sync(
-        request,
-        db,
-        service,
-        uuid.UUID(data["user_id"]),
-        provider="google_calendar",
-        display_name=data["name"],
-        settings={},
-        credentials={"refresh_token": refresh_token},
+    user_id = uuid.UUID(data["user_id"])
+    credentials = {"refresh_token": refresh_token}
+    # A sign-in that started from Reconnect fixes that connection in place. Its calendars, its
+    # choice of calendars and its cached events stay. If the user removed the connection
+    # meanwhile, there is nothing to fix and the sign-in adds a new one.
+    existing = (
+        await service.get(db, user_id, uuid.UUID(data["connection_id"]))
+        if "connection_id" in data
+        else None
     )
+    reconnected = existing is not None and existing.provider == "google_calendar"
+    if existing is not None and reconnected:
+        connection = await service.update(db, existing, credentials=credentials)
+        sync: SyncService = request.app.state.sync_service
+        await sync.sync_connection(db, connection)
+    else:
+        connection, _ = await _create_and_sync(
+            request,
+            db,
+            service,
+            user_id,
+            provider="google_calendar",
+            display_name=data["name"],
+            settings={},
+            credentials=credentials,
+        )
     if settings.web_dir is not None:
         base = (settings.public_url or "").rstrip("/")
-        return RedirectResponse(
-            f"{base}/#/settings/connections?choose={connection.id}", status_code=303
-        )
+        # A new connection goes on to the choice of calendars. A connection that was signed in
+        # again has its choice already.
+        target = "" if reconnected else f"?choose={connection.id}"
+        return RedirectResponse(f"{base}/#/settings/connections{target}", status_code=303)
     name = html.escape(connection.display_name)
+    done = "is signed in again" if reconnected else "is connected"
     return HTMLResponse(
-        f"<!doctype html><title>tefteri</title><p>{name} is connected. "
+        f"<!doctype html><title>tefteri</title><p>{name} {done}. "
         "You can close this tab and go back to tefteri.</p>"
     )
 

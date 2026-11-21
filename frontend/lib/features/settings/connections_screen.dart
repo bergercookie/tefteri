@@ -402,8 +402,10 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
   Future<void> _reconnect(Connection? c) async {
     if (c == null) return;
     if (c.provider == ConnectionProvider.googleCalendar.id) {
+      // The id makes the server fix this connection in place, not add another
+      // one for the same account.
       await _signInWithGoogle('Reconnect ${c.displayName}', {
-        'display_name': c.displayName,
+        'connection_id': c.id,
       });
       return;
     }

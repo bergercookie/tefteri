@@ -1,5 +1,6 @@
 """Connections and sync endpoints with fake backends."""
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -320,3 +321,135 @@ async def test_the_first_sync_after_the_upgrade_records_every_done_task_in_batch
         event.remove(engine, "before_cursor_execute", record)
     assert not [q for q in statements if "task_categories" in q and not q.startswith("SELECT")]
     assert await s.snapshot() == before
+
+
+async def _google_app(make_settings, world: FakeWorld):  # type: ignore[no-untyped-def]
+    settings = make_settings(google_client_id="gid", google_client_secret="gsecret")
+    return create_app(settings, registry=world.registry())
+
+
+async def _sign_in(c: AsyncClient, **params: str) -> httpx.Response:
+    """Walk through the Google consent page and its callback; return the callback answer."""
+    url = (await c.get(f"{V1}/connections/google/authorize", params=params)).json()["url"]
+    state = parse_qs(urlparse(url).query)["state"][0]
+    with respx.mock:
+        respx.post("https://oauth2.googleapis.com/token").respond(
+            json={"access_token": "a", "refresh_token": "second-token"}
+        )
+        return await c.get(
+            f"{V1}/connections/google/callback", params={"code": "c", "state": state}
+        )
+
+
+async def test_reconnect_fixes_the_connection_instead_of_adding_one(  # type: ignore[no-untyped-def]
+    make_settings, world: FakeWorld
+) -> None:
+    app = await _google_app(make_settings, world)
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        login = await c.post(
+            f"{V1}/auth/login", json={"username": "admin", "password": "correct horse battery"}
+        )
+        c.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        assert (await _sign_in(c, display_name="Work")).status_code == 200
+        first = (await c.get(f"{V1}/connections")).json()
+        assert len(first) == 1
+        old_id = first[0]["id"]
+        # The credentials expired: the connection needs attention.
+        async with app.state.session_factory() as db:
+            from tefteri.db.models.connection import Connection
+
+            row = await db.get(Connection, uuid.UUID(old_id))
+            assert row is not None
+            row.status = "needs_attention"
+            await db.commit()
+        assert (await c.get(f"{V1}/connections")).json()[0]["status"] == "needs_attention"
+
+        # Reconnect: the same connection is fixed, no second one appears.
+        cb = await _sign_in(c, connection_id=old_id)
+        assert cb.status_code == 200 and "Work is signed in again" in cb.text
+        after = (await c.get(f"{V1}/connections")).json()
+        assert [(x["id"], x["display_name"], x["status"]) for x in after] == [
+            (old_id, "Work", "ok")
+        ]
+
+
+async def test_reconnect_goes_back_to_the_connections_screen_without_the_choice(  # type: ignore[no-untyped-def]
+    make_settings, world: FakeWorld, tmp_path: Path
+) -> None:
+    (tmp_path / "index.html").write_text("<html></html>")
+    settings = make_settings(google_client_id="gid", google_client_secret="gs", web_dir=tmp_path)
+    app = create_app(settings, registry=world.registry())
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        login = await c.post(
+            f"{V1}/auth/login", json={"username": "admin", "password": "correct horse battery"}
+        )
+        c.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        added = await _sign_in(c)
+        assert added.headers["location"].startswith("/#/settings/connections?choose=")
+        old_id = (await c.get(f"{V1}/connections")).json()[0]["id"]
+        again = await _sign_in(c, connection_id=old_id)
+        # The calendars were chosen already, so the screen opens without the chooser.
+        assert again.status_code == 303
+        assert again.headers["location"] == "/#/settings/connections"
+        assert len((await c.get(f"{V1}/connections")).json()) == 1
+
+
+async def test_reconnect_of_a_removed_connection_adds_a_new_one(  # type: ignore[no-untyped-def]
+    make_settings, world: FakeWorld
+) -> None:
+    app = await _google_app(make_settings, world)
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        login = await c.post(
+            f"{V1}/auth/login", json={"username": "admin", "password": "correct horse battery"}
+        )
+        c.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        await _sign_in(c, display_name="Work")
+        old_id = (await c.get(f"{V1}/connections")).json()[0]["id"]
+        url = (
+            await c.get(f"{V1}/connections/google/authorize", params={"connection_id": old_id})
+        ).json()["url"]
+        await c.delete(f"{V1}/connections/{old_id}")  # removed while the user signs in
+        state = parse_qs(urlparse(url).query)["state"][0]
+        with respx.mock:
+            respx.post("https://oauth2.googleapis.com/token").respond(
+                json={"refresh_token": "second-token"}
+            )
+            cb = await c.get(
+                f"{V1}/connections/google/callback", params={"code": "c", "state": state}
+            )
+        assert cb.status_code == 200 and "Work is connected" in cb.text
+        assert [x["display_name"] for x in (await c.get(f"{V1}/connections")).json()] == ["Work"]
+
+
+async def test_reconnect_needs_a_google_connection_of_the_user(  # type: ignore[no-untyped-def]
+    make_settings, world: FakeWorld
+) -> None:
+    app = await _google_app(make_settings, world)
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        login = await c.post(
+            f"{V1}/auth/login", json={"username": "admin", "password": "correct horse battery"}
+        )
+        c.headers["Authorization"] = f"Bearer {login.json()['token']}"
+        await world.seed()
+        tasks = (await c.post(f"{V1}/connections", json={**NEW, "display_name": "Tasks"})).json()
+        wrong = await c.get(
+            f"{V1}/connections/google/authorize", params={"connection_id": tasks["id"]}
+        )
+        assert wrong.status_code == 422 and wrong.json()["code"] == "not_google"
+        missing = await c.get(
+            f"{V1}/connections/google/authorize",
+            params={"connection_id": "00000000-0000-0000-0000-000000000001"},
+        )
+        assert missing.status_code == 404

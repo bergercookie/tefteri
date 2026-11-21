@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/api_client.dart';
@@ -70,7 +71,7 @@ void main() {
     expect(find.byKey(const Key('calendar-chooser-filter')), findsNothing);
   });
 
-  testWidgets('Save is off until a change and sends the chosen ids',
+  testWidgets('Save is always on and keeps the pre-selection as it is',
       (tester) async {
     final api = FakeApi({
       'GET /connections/c1/containers': _calendars,
@@ -80,12 +81,46 @@ void main() {
       },
     });
     await _open(tester, api);
-    FilledButton save() => tester
+    // Nothing was changed: only the pre-selected calendar is ticked.
+    final save = tester
         .widget<FilledButton>(find.byKey(const Key('calendar-chooser-save')));
-    expect(save().onPressed, isNull);
+    expect(save.onPressed, isNotNull);
+    await tester.tap(find.byKey(const Key('calendar-chooser-save')));
+    await tester.pumpAndSettle();
+    expect(api.where('PUT /connections/c1/containers/enabled').single.data, {
+      'container_ids': ['k1']
+    });
+    expect(find.byKey(const Key('calendar-chooser')), findsNothing);
+  });
+
+  testWidgets('there is no Cancel button, only Save', (tester) async {
+    await _open(
+        tester, FakeApi({'GET /connections/c1/containers': _calendars}));
+    expect(find.byKey(const Key('calendar-chooser-cancel')), findsNothing);
+    expect(find.text('Cancel'), findsNothing);
+    expect(find.byKey(const Key('calendar-chooser-save')), findsOneWidget);
+  });
+
+  testWidgets('Esc closes the chooser and saves nothing', (tester) async {
+    final api = FakeApi({'GET /connections/c1/containers': _calendars});
+    await _open(tester, api);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('calendar-chooser')), findsNothing);
+    expect(api.where('PUT /connections/c1/containers/enabled'), isEmpty);
+  });
+
+  testWidgets('Save sends the chosen ids after a change', (tester) async {
+    final api = FakeApi({
+      'GET /connections/c1/containers': _calendars,
+      'PUT /connections/c1/containers/enabled': {
+        'containers': _calendars,
+        'sync': {'outcome': 'ok'},
+      },
+    });
+    await _open(tester, api);
     await tester.tap(find.byKey(const Key('calendar-option-k2')));
     await tester.pump();
-    expect(save().onPressed, isNotNull);
     await tester.tap(find.byKey(const Key('calendar-chooser-save')));
     await tester.pumpAndSettle();
     expect(api.where('PUT /connections/c1/containers/enabled').single.data, {
@@ -115,7 +150,7 @@ void main() {
   testWidgets('shows an error and an empty state', (tester) async {
     await _open(tester, FakeApi({}));
     expect(find.text('Cannot load the calendars.'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('calendar-chooser-cancel')));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open')));
     await tester.pumpAndSettle();
@@ -187,7 +222,7 @@ void main() {
       await pumpWithApi(
           tester, FakeApi(routes), const ConnectionsScreen(choose: 'c1'));
       expect(find.byKey(const Key('calendar-chooser')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('calendar-chooser-cancel')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('calendar-chooser')), findsNothing);
     });

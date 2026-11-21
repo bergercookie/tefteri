@@ -67,7 +67,9 @@ next sync. A calendar with no color keeps the standard color of tefteri.
 
 Tefteri syncs only the calendars that you switch on. The first sync of a new Google connection uses
 the calendars that you show in Google Calendar. After you sign in, tefteri opens the list of
-calendars so that you can check the choice.
+calendars so that you can check the choice. The calendars that you show in Google Calendar are
+already ticked. Choose Save to keep them as they are, or change the ticks first. Save is always
+available, and the list has no Cancel button. To leave the list without saving, press Esc.
 
 You can change the choice at any time:
 

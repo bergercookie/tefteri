@@ -114,7 +114,9 @@ To fix the problem:
 
 1. Choose Reconnect in the message.
 2. For Vikunja or Trilium Next, create a new token in the app. Paste it into tefteri.
-3. For Google Calendar, sign in again on the Google page and choose Allow.
+3. For Google Calendar, sign in again on the Google page and choose Allow. Use the same Google
+   account. Tefteri fixes the connection that you reconnect. It does not add a new connection. The
+   calendars that you chose and your events stay.
 4. Press Sync.
 
 ## What each message means
@@ -129,7 +131,8 @@ To fix the problem:
 ## What the buttons do
 
 - **Retry** sends the same request again. Use it after you fix the network or after the server starts.
-- **Reconnect** starts the connection steps again. Use it when the token is not valid.
+- **Reconnect** signs in again, or asks for a new token, for the same connection. It does not add
+  a connection. Use it when the token is not valid.
 - **Open settings** opens the settings of the connection. Use it to correct the base URL or the token.
 
 ## If the problem stays

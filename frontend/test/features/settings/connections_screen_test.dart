@@ -429,6 +429,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(adapter.calls, contains('GET /connections/google/authorize'));
     expect(find.textContaining('https://example.com/auth'), findsOneWidget);
+    // It names the connection to fix, so the server does not add a second one.
+    final request = adapter.requests['GET /connections/google/authorize']!;
+    expect(request.queryParameters, {'connection_id': 'c1'});
+    expect(adapter.calls, isNot(contains('POST /connections')));
   });
 
   testWidgets('server failure is shown and no result is hidden',
