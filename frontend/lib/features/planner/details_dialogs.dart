@@ -75,6 +75,9 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
   PlanTask? _base;
   DateTime? _date;
   TimeOfDay? _time;
+
+  /// The user opened the text of an HTML description to change it.
+  bool _editingHtml = false;
   bool _busy = false;
   String? _error;
 
@@ -116,6 +119,13 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
     _date = date;
     _time = time;
   }
+
+  /// An HTML description (Vikunja keeps rich text as HTML) shows formatted,
+  /// with the raw text behind a button, as long as the user does not edit it.
+  /// It follows the description as the server sent it, not what is typed, so
+  /// the view does not change while the user types.
+  bool get _showFormatted =>
+      !_editingHtml && _base != null && looksLikeHtml(_base!.description ?? '');
 
   bool get _textChanged =>
       _base != null &&
@@ -506,25 +516,54 @@ class _TaskDetailsDialogState extends ConsumerState<TaskDetailsDialog> {
           ),
           _reminder(task),
           const SizedBox(height: Space.md),
-          TextField(
-            key: const Key('task-edit-description'),
-            controller: _descriptionCtl,
-            minLines: 3,
-            maxLines: 8,
-            decoration: const InputDecoration(
-              labelText: 'Description',
-              alignLabelWithHint: true,
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (looksLikeHtml(_descriptionCtl.text)) ...[
-            const SizedBox(height: Space.sm),
-            Text('Formatted', style: text.labelMedium),
+          if (_showFormatted) ...[
+            Text('Description', style: text.labelMedium),
             const SizedBox(height: Space.xs),
             HtmlDescription(
               key: const Key('task-edit-description-formatted'),
               html: _descriptionCtl.text,
             ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('task-edit-description-edit'),
+                onPressed:
+                    _busy ? null : () => setState(() => _editingHtml = true),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit the text'),
+              ),
+            ),
+          ] else ...[
+            TextField(
+              key: const Key('task-edit-description'),
+              controller: _descriptionCtl,
+              minLines: 3,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                alignLabelWithHint: true,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            if (looksLikeHtml(_descriptionCtl.text)) ...[
+              const SizedBox(height: Space.sm),
+              Text('Formatted', style: text.labelMedium),
+              const SizedBox(height: Space.xs),
+              HtmlDescription(
+                key: const Key('task-edit-description-formatted'),
+                html: _descriptionCtl.text,
+              ),
+            ],
+            if (_editingHtml)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const Key('task-edit-description-view'),
+                  onPressed: () => setState(() => _editingHtml = false),
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text('Show it formatted'),
+                ),
+              ),
           ],
           const SizedBox(height: Space.md),
           _Row('Status', task.done ? 'Done' : 'Open', 'status'),

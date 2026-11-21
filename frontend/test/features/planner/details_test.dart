@@ -64,7 +64,9 @@ void main() {
     expect(find.byKey(const Key('task-details')), findsNothing);
   });
 
-  testWidgets('an HTML description also shows formatted', (tester) async {
+  testWidgets(
+      'an HTML description shows formatted, and its text is behind '
+      'a button', (tester) async {
     final api = plannerApi(
       tasksFor: (_) => [
         _full('t1', 'Write report',
@@ -76,13 +78,90 @@ void main() {
     await tester.tap(find.byKey(const Key('task-t1')));
     await settle(tester);
 
-    expect(_field(tester, 'task-edit-description'),
-        '<p><a href="https://example.com/x">link</a></p>');
+    // The formatted text comes first: no raw tags on the screen.
     final formatted = find.byKey(const Key('task-edit-description-formatted'));
     expect(formatted, findsOneWidget);
     expect(
         find.descendant(of: formatted, matching: find.textContaining('link')),
         findsOneWidget);
+    expect(find.textContaining('<p>'), findsNothing);
+    expect(find.byKey(const Key('task-edit-description')), findsNothing);
+    // The text can be opened to change it, and closed again.
+    await tester.tap(find.byKey(const Key('task-edit-description-edit')));
+    await tester.pump();
+    expect(_field(tester, 'task-edit-description'),
+        '<p><a href="https://example.com/x">link</a></p>');
+    expect(find.byKey(const Key('task-edit-description-formatted')),
+        findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-edit-description-view')));
+    await tester.pump();
+    expect(find.byKey(const Key('task-edit-description')), findsNothing);
+    expect(find.byKey(const Key('task-edit-description-edit')), findsOneWidget);
+  });
+
+  testWidgets(
+      'a link with a target and a rel, as Vikunja writes it, shows as '
+      'a link', (tester) async {
+    const html = '<p><a target="_blank" rel="noopener noreferrer nofollow" '
+        'href="https://trilium.example.org/share/H58m1NVwOhKB">'
+        'https://trilium.example.org/share/H58m1NVwOhKB</a></p>';
+    final api = plannerApi(
+      tasksFor: (_) => [_full('t1', 'Read the note', description: html)],
+    );
+    await pumpPlanner(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await settle(tester);
+    final formatted = find.byKey(const Key('task-edit-description-formatted'));
+    expect(
+        find.descendant(
+            of: formatted,
+            matching: find.textContaining(
+                'https://trilium.example.org/share/H58m1NVwOhKB',
+                findRichText: true)),
+        findsOneWidget);
+    // No markup is shown as text.
+    expect(find.textContaining('target='), findsNothing);
+    expect(find.textContaining('<a '), findsNothing);
+  });
+
+  testWidgets(
+      'a description with HTML that is edited and saved keeps the '
+      'text that the user typed', (tester) async {
+    const html = '<p>Call <strong>Sam</strong></p>';
+    final api = plannerApi(
+      tasksFor: (_) => [_full('t1', 'Phone', description: html)],
+      extra: {
+        'GET /tasks/t1': _full('t1', 'Phone', description: html),
+        'PATCH /tasks/t1': _full('t1', 'x'),
+      },
+    );
+    await pumpPlanner(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('task-edit-description-edit')));
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('task-edit-description')),
+        '<p>Call <strong>Kim</strong></p>');
+    await tester.pump();
+    // The raw field stays while the user types, also when the text is plain.
+    expect(find.byKey(const Key('task-edit-description')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-save')));
+    await settle(tester);
+    expect(api.where('PATCH /tasks/t1').single.data,
+        {'title': 'Phone', 'description': '<p>Call <strong>Kim</strong></p>'});
+  });
+
+  testWidgets('a plain description is a text field at once', (tester) async {
+    final api = plannerApi(
+      tasksFor: (_) => [_full('t1', 'Phone', description: 'Call Sam at 5')],
+    );
+    await pumpPlanner(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await settle(tester);
+    expect(_field(tester, 'task-edit-description'), 'Call Sam at 5');
+    expect(find.byKey(const Key('task-edit-description-edit')), findsNothing);
+    expect(
+        find.byKey(const Key('task-edit-description-formatted')), findsNothing);
   });
 
   testWidgets('a task without a date or description says so', (tester) async {

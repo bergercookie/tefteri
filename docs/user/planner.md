@@ -137,6 +137,12 @@ change these fields:
 - The start time. Without a start time, the task is all day. With a start time, the task is a
   block of one hour. The due date in your task app is the end of that hour.
 
+A description that has rich text, such as a link, a list or bold words, shows formatted. Vikunja
+keeps this kind of description as HTML. Tefteri does not show the tags. A link opens in your web
+browser. To change the text, choose Edit the text. The field then shows the text with its tags,
+and the formatted view stays below it. Choose Show it formatted to go back. A description without
+tags is a plain field from the start.
+
 The pop-up also shows the status, the time on the calendar and the project.
 
 1. Change the fields.
