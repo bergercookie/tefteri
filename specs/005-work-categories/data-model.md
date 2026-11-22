@@ -29,7 +29,7 @@ Reason codes (`CategoryReason`):
 
 | Code | Category | Meaning |
 |---|---|---|
-| `committed_milestone` | goal_aligned | Milestone project in the committed plan of the completion week. |
+| `committed_milestone` | goal_aligned | Milestone project in the committed plan of the completion week, or a task that the committed plan of that week named at the start (also after it moved to the theme). |
 | `maintenance_label` | maintenance | The project is labelled maintenance on the completion day. |
 | `inside_routine` | maintenance | An ancestor is labelled maintenance (decision 10, FR-029). |
 | `milestone_not_committed` | off_plan | Milestone project, not in the commitment of that week. |

@@ -49,7 +49,7 @@ from tefteri.domain.work_categories import (
     categorize,
     percentages,
 )
-from tefteri.services.commitments import CommitmentProvider
+from tefteri.services.commitments import CommitmentProvider, committed_task_ids
 from tefteri.services.errors import Invalid
 
 MAX_LIMIT = 200
@@ -202,10 +202,12 @@ class _Classifier:
         containers: dict[uuid.UUID, SourceContainer],
         rows: dict[tuple[uuid.UUID, str], ProjectLabelRow],
         committed: set[uuid.UUID],
+        committed_tasks: set[uuid.UUID] | None = None,
     ) -> None:
         self._containers = containers
         self._rows = rows
         self._committed = committed
+        self._committed_tasks = committed_tasks or set()
 
     @staticmethod
     def _label(row: ProjectLabelRow) -> ProjectLabel | None:
@@ -230,7 +232,9 @@ class _Classifier:
             ancestors.append(self._label(row))
             parent = row.parent_remote_id
         decision = categorize(
-            ProjectContext(True, self._label(project), ancestors), project.id in self._committed
+            ProjectContext(True, self._label(project), ancestors),
+            project.id in self._committed,
+            task.id in self._committed_tasks,
         )
         return container, project, decision
 
@@ -498,7 +502,9 @@ class StatisticsService:
         if committed is None:
             return OpenTasks(start, end, False, [], CategoryCounts())
         low, high = day_bounds(start, tz)[0], day_bounds(end, tz)[0]
-        classifier = await self._classifier(db, user_id, committed)
+        classifier = await self._classifier(
+            db, user_id, committed, await committed_task_ids(self._commitments, db, user_id, start)
+        )
         items: list[OpenTask] = []
         counts = CategoryCounts()
         for t in (
@@ -549,7 +555,12 @@ class StatisticsService:
         committed = await self._commitments.committed_projects(db, user_id, week_start)
         if committed is None or not tasks:
             return {}
-        classifier = await self._classifier(db, user_id, committed)
+        classifier = await self._classifier(
+            db,
+            user_id,
+            committed,
+            await committed_task_ids(self._commitments, db, user_id, week_start),
+        )
         stored = {
             task_id: WorkCategory(category)
             for task_id, category in (
@@ -567,7 +578,10 @@ class StatisticsService:
 
     @staticmethod
     async def _classifier(
-        db: AsyncSession, user_id: uuid.UUID, committed: set[uuid.UUID]
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        committed: set[uuid.UUID],
+        committed_tasks: set[uuid.UUID] | None = None,
     ) -> "_Classifier":
         containers = {
             c.id: c
@@ -581,7 +595,7 @@ class StatisticsService:
                 await db.execute(select(ProjectLabelRow).where(ProjectLabelRow.user_id == user_id))
             ).scalars()
         }
-        return _Classifier(containers, rows, committed)
+        return _Classifier(containers, rows, committed, committed_tasks)
 
     # -- lists -------------------------------------------------------------------------------
 

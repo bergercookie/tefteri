@@ -10,7 +10,9 @@ The first rule that fits wins (research R-06):
 2. The project, or an ancestor, is ignored: hidden.
 3. The project, or an ancestor, is maintenance: maintenance (decision 10: work inside a routine
    project is maintenance).
-4. The project is a milestone in the commitment of the completion week: goal-aligned.
+4. The project is a milestone in the commitment of the completion week, or the task itself was
+   committed at the start of that week: goal-aligned. The task stays committed when its milestone
+   is closed and it moves to the theme, so a review never changes what the week planned.
 5. The project is a milestone that is not committed: off-plan.
 6. The project is a theme: off-plan.
 7. The project has no label: off-plan, unsorted.
@@ -118,8 +120,12 @@ def label_on(entries: Sequence[LabelEntry], day_end: datetime) -> ProjectLabel |
     return best.label
 
 
-def categorize(context: ProjectContext, committed: bool) -> Decision:
-    """Decide the category of a completed task. ``committed``: its project is in the commitment."""
+def categorize(context: ProjectContext, committed: bool, task_committed: bool = False) -> Decision:
+    """Decide the category of a completed task.
+
+    ``committed``: its project is in the commitment. ``task_committed``: the task is one of the
+    tasks that the plan of the week named when it was committed, wherever the task is now.
+    """
     if not context.has_project:
         return Decision(WorkCategory.OFF_PLAN, CategoryReason.NO_PROJECT, True)
     own = context.label_on_day
@@ -132,8 +138,10 @@ def categorize(context: ProjectContext, committed: bool) -> Decision:
         return Decision(WorkCategory.MAINTENANCE, CategoryReason.MAINTENANCE_LABEL)
     if ProjectLabel.MAINTENANCE in ancestors:
         return Decision(WorkCategory.MAINTENANCE, CategoryReason.INSIDE_ROUTINE)
+    if task_committed and context.label_on_day is not ProjectLabel.MILESTONE:
+        return Decision(WorkCategory.GOAL_ALIGNED, CategoryReason.COMMITTED_MILESTONE)
     if own is ProjectLabel.MILESTONE:
-        if committed:
+        if committed or task_committed:
             return Decision(WorkCategory.GOAL_ALIGNED, CategoryReason.COMMITTED_MILESTONE)
         return Decision(WorkCategory.OFF_PLAN, CategoryReason.MILESTONE_NOT_COMMITTED)
     if own is ProjectLabel.THEME:

@@ -1,5 +1,6 @@
 """Migration tests: pytest-alembic's built-in checks plus per-revision data checks."""
 
+import uuid
 from datetime import date, datetime
 from pathlib import Path
 
@@ -1461,7 +1462,8 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0036"
+    assert script.get_current_head() == "0037"
+    assert script.get_revision("0037").down_revision == "0036"
     assert script.get_revision("0036").down_revision == "0035"
     assert script.get_revision("0035").down_revision == "0034"
     assert script.get_revision("0034").down_revision == "0033"
@@ -1579,7 +1581,7 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0036"
+    assert script.get_current_head() == "0037"
     assert script.get_revision("0036").down_revision == "0035"
     assert script.get_revision("0035").down_revision == "0034"
     assert script.get_revision("0034").down_revision == "0033"
@@ -1608,6 +1610,128 @@ def test_0030_adds_the_default_event_calendar_and_keeps_users(
     alembic_runner.migrate_down_to("0029")
     columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     assert "default_event_container_id" not in columns
+
+
+def _fill(engine: Engine, table: str, **given: object) -> dict[str, object]:
+    """A row of ``table``: the given columns, and a plain value for every other required one."""
+    row: dict[str, object] = {}
+    for column in inspect(engine).get_columns(table):
+        name = column["name"]
+        if name in given:
+            row[name] = given[name]
+            continue
+        if column["nullable"] or column["default"] is not None:
+            continue
+        kind = str(column["type"]).upper()
+        if "BOOL" in kind:
+            row[name] = False
+        elif "INT" in kind:
+            row[name] = 0
+        elif "DATETIME" in kind or "TIMESTAMP" in kind:
+            row[name] = datetime(2030, 3, 5, 10)
+        elif "DATE" in kind:
+            row[name] = date(2030, 3, 5)
+        elif "JSON" in kind:
+            row[name] = "[]"
+        elif kind == "CHAR(32)":
+            row[name] = uuid.uuid4().hex
+        else:
+            row[name] = "x"
+    return row
+
+
+def test_0037_repairs_the_numbers_of_a_week_reviewed_after_a_milestone_closed(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0036")
+    user = uuid.uuid4().hex
+    plan = uuid.uuid4().hex
+    tasks = [uuid.uuid4().hex for _ in range(5)]
+    # Task 0..2 are done and 3..4 are open. The review stored 2 committed and 2 done, because
+    # the closed milestone had returned the others to the theme.
+    for i, task in enumerate(tasks):
+        alembic_runner.insert_into(
+            "tasks",
+            _fill(
+                alembic_engine,
+                "tasks",
+                id=task,
+                status="done" if i < 3 else "open",
+                sync_state="synced",
+            ),
+        )
+    alembic_runner.insert_into(
+        "weekly_plans",
+        _fill(
+            alembic_engine,
+            "weekly_plans",
+            id=plan,
+            user_id=user,
+            week_start=date(2030, 3, 4),
+            status="committed",
+            reviewed_at=datetime(2030, 3, 12, 9),
+        ),
+    )
+    alembic_runner.insert_into(
+        "weekly_plan_projects",
+        _fill(
+            alembic_engine,
+            "weekly_plan_projects",
+            id=uuid.uuid4().hex,
+            plan_id=plan,
+            committed_task_ids=[str(uuid.UUID(t)) for t in tasks],
+            reviewed_committed=2,
+            reviewed_done=2,
+        ),
+    )
+
+    def category(task: str, reason: str, name: str = "off_plan") -> None:
+        alembic_runner.insert_into(
+            "task_categories",
+            _fill(
+                alembic_engine,
+                "task_categories",
+                id=uuid.uuid4().hex,
+                user_id=user,
+                task_id=task,
+                completed_on=date(2030, 3, 6),
+                category=name,
+                reason=reason,
+                unsorted=False,
+            ),
+        )
+
+    category(tasks[0], "committed_milestone", "goal_aligned")
+    category(tasks[2], "theme")  # committed, but done in the theme after the close
+    stranger = uuid.uuid4().hex
+    category(stranger, "theme")  # never planned: stays off-plan
+    alembic_runner.insert_into(
+        "weekly_metrics",
+        _fill(
+            alembic_engine,
+            "weekly_metrics",
+            id=uuid.uuid4().hex,
+            user_id=user,
+            week_start=date(2030, 3, 4),
+        ),
+    )
+    alembic_runner.migrate_up_to("0037")
+    with alembic_engine.connect() as conn:
+        counts = conn.execute(
+            text("SELECT reviewed_committed, reviewed_done FROM weekly_plan_projects")
+        ).one()
+        kept: dict[str, str] = {
+            str(task_id): str(value)
+            for task_id, value in conn.execute(
+                text("SELECT task_id, category || ':' || reason FROM task_categories")
+            )
+        }
+        metrics = conn.execute(text("SELECT count(*) FROM weekly_metrics")).scalar_one()
+    assert tuple(counts) == (5, 3)
+    assert kept[tasks[2]] == "goal_aligned:committed_milestone"
+    assert kept[stranger] == "off_plan:theme"
+    assert metrics == 0  # the trends make the week again
+    alembic_runner.migrate_down_to("0036")  # nothing to undo
 
 
 def test_0036_adds_the_entry_description(

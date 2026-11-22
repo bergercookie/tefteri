@@ -38,6 +38,11 @@ work is still maintenance. A plan that you did not commit counts as no plan.
 You can park, close or finish a milestone during the week. The tasks that you completed in it
 that week stay goal-aligned.
 
+When you close a milestone, its open tasks go back to the theme. A task that you planned at the
+start of the week stays goal-aligned when you complete it in the theme. The week keeps the tasks
+and the milestones that you committed. A review or a move later in the week does not change
+them. The look-back, the card Completed work and the trends all use the plan as you committed it.
+
 ## Work inside a routine project
 
 A task in a project inside a routine project is maintenance. This is true at any depth. It does

@@ -36,7 +36,7 @@ from tefteri.domain.work_categories import (
     categorize,
     label_on,
 )
-from tefteri.services.commitments import CommitmentProvider
+from tefteri.services.commitments import CommitmentProvider, committed_tasks_by_week
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,8 @@ class _World:
     rows: dict[tuple[uuid.UUID, str], ProjectLabelRow]
     history: dict[uuid.UUID, list[LabelEntry]]
     committed: dict[date, set[uuid.UUID] | None] = field(default_factory=dict)
+    committed_tasks: dict[date, set[uuid.UUID]] | None = None
+    """The tasks that each committed plan named, read once for the run."""
     plans: dict[date, uuid.UUID | None] = field(default_factory=dict)
 
 
@@ -244,6 +246,9 @@ class CategoryRecorder:
         committed = world.committed[monday]
         if committed is None:
             return 0  # the weekly commitment cannot be read: record nothing, guess nothing
+        if world.committed_tasks is None:
+            world.committed_tasks = await committed_tasks_by_week(self._commitments, db, user_id)
+        task_committed = task.id in world.committed_tasks.get(monday, set())
         project = self._project_of(world, task, previously_open)
         if project is None:
             decision = categorize(ProjectContext(False), False)
@@ -252,7 +257,7 @@ class CategoryRecorder:
         else:
             day_end = day_bounds(day, world.tz)[1] - timedelta(microseconds=1)
             context = self._context(world, project, day_end)
-            decision = categorize(context, project.id in committed)
+            decision = categorize(context, project.id in committed, task_committed)
             name, label, project_id = project.name, context.label_on_day, project.id
         plan_id = await self._plan_of(db, user_id, world, monday, decision)
         values = {

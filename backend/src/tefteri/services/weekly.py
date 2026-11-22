@@ -7,7 +7,7 @@ read under the new names and never rewritten.
 """
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import cast
@@ -438,7 +438,12 @@ class WeeklyService:
             if container is not None:
                 promised = set(row.committed_task_ids) if plan.status == "committed" else set()
                 parked = set(row.parked_task_ids)
-                for t in await self._container_tasks(db, user_id, container.id):
+                in_container = await self._container_tasks(db, user_id, container.id)
+                here = {str(t.id) for t in in_container}
+                # A committed task that left the project (a closed milestone returns its open
+                # tasks to the theme) stays in the plan of the week.
+                moved = await self._planned_tasks(db, user_id, sorted(promised - here))
+                for t in [*in_container, *moved.values()]:
                     day = due_day(t, tz)
                     in_week = day is not None and plan.week_start <= day < end
                     done_day = (
@@ -449,6 +454,8 @@ class WeeklyService:
                     tv = TaskView(t, day, day if in_week else None, str(t.id) in parked, done_day)
                     if str(t.id) in promised:
                         view.committed.append(tv)
+                    if str(t.id) not in here:
+                        continue
                     if t.status == "done":
                         view.done_tasks += 1
                         continue
@@ -474,27 +481,38 @@ class WeeklyService:
         )
 
     async def _planned_tasks(
-        self, db: AsyncSession, user_id: uuid.UUID, container_id: uuid.UUID
-    ) -> list[Task]:
-        """Return the tasks of a container that a plan can count.
+        self, db: AsyncSession, user_id: uuid.UUID, task_ids: Sequence[str]
+    ) -> dict[str, Task]:
+        """Return the tasks that were committed, by id, wherever they are now.
 
-        Open tasks that still exist, and every done task. A sync that flags a done task as
+        The plan keeps the ids of the tasks that were planned at the start of the week. A task
+        is found by its id and not by its project: closing a milestone moves its open tasks to
+        the theme, and a task can be moved by hand, and the plan of the week must not change
+        then. Open tasks that still exist, and every done task: a sync that flags a done task as
         deleted must not shrink a committed plan.
         """
-        return list(
-            (
+        ids = []
+        for raw in task_ids:
+            try:
+                ids.append(uuid.UUID(raw))
+            except ValueError:
+                continue
+        found: dict[str, Task] = {}
+        for i in range(0, len(ids), 500):
+            for t in (
                 await db.execute(
                     select(Task).where(
                         Task.user_id == user_id,
-                        Task.container_id == container_id,
+                        Task.id.in_(ids[i : i + 500]),
                         or_(
                             Task.sync_state != SyncState.DELETED_REMOTELY.value,
                             Task.status == "done",
                         ),
                     )
                 )
-            ).scalars()
-        )
+            ).scalars():
+                found[str(t.id)] = t
+        return found
 
     # -- choosing milestones -----------------------------------------------------------------
 
@@ -1066,11 +1084,7 @@ class WeeklyService:
         done_by_theme: dict[uuid.UUID | None, int] = {}
         out = []
         for row in rows:
-            tasks = (
-                {str(t.id): t for t in await self._planned_tasks(db, user_id, row.container_id)}
-                if row.container_id
-                else {}
-            )
+            tasks = await self._planned_tasks(db, user_id, row.committed_task_ids)
             planned = [tasks[i] for i in row.committed_task_ids if i in tasks]
             done = sum(1 for t in planned if t.status == "done")
             leftover = []

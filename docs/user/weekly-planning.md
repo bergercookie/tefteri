@@ -147,6 +147,11 @@ The top of the step shows:
 
 If you committed no task that week, tefteri shows a short note instead of these numbers.
 
+The numbers use the tasks that you committed at the start of the week, where they are now. If you
+close a milestone, its open tasks go back to the theme. They still count as committed tasks of
+that week. The numbers of the look-back, the card Completed work and the trends do not change
+when you move or close a milestone.
+
 Each milestone has a card. The card shows the done-state, the theme, the number of tasks that you
 finished, and the tasks that remain. A milestone that you finished shows Done. It needs no
 decision.
