@@ -29,4 +29,6 @@
     <string name="agenda_empty">Nothing planned for this day</string>
     <string name="agenda_sign_in">Sign in to Tefteri to see your agenda</string>
     <string name="agenda_failed">Could not load the agenda. Tap refresh to try again</string>
+    <string name="reminders_channel">Reminders</string>
+    <string name="reminders_channel_description">Tasks that are due, calendar events and the weekly, monthly and annual reviews</string>
 </resources>

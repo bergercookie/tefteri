@@ -24,6 +24,7 @@ class UserSettings:
 
     random_time_on_date_drop: bool
     default_reminder_minutes: int
+    """Minutes before its due time that the app reminds the user of a task."""
     checklists: dict[str, list[str]]
     """The planning checklists by period type: ``week``, ``month`` and ``year``."""
     checklist_sources: dict[str, str]
@@ -34,6 +35,8 @@ class UserSettings:
     """The e-mail addresses of the people that the user usually invites to an event."""
     seen_hints: list[str] = field(default_factory=list)
     """The ids of the hints that the user has seen, so that each shows only once."""
+    event_reminder_minutes: int = 15
+    """Minutes before a calendar event starts that the app reminds the user."""
 
 
 class _Unset:
@@ -54,6 +57,7 @@ def _of(user: User) -> UserSettings:
         user.default_event_container_id,
         list(user.event_invitees or []),
         list(user.seen_hints or []),
+        user.event_reminder_minutes,
     )
 
 
@@ -146,6 +150,7 @@ class SettingsService:
         checklist_sources: dict[str, str] | None = None,
         default_event_container_id: uuid.UUID | None | _Unset = UNSET,
         event_invitees: list[str] | None = None,
+        event_reminder_minutes: int | None = None,
     ) -> UserSettings:
         """Change the fields that are not ``None`` and return the new settings."""
         user = await db.get(User, user_id)
@@ -155,6 +160,8 @@ class SettingsService:
             user.random_time_on_date_drop = random_time_on_date_drop
         if default_reminder_minutes is not None:
             user.default_reminder_minutes = default_reminder_minutes
+        if event_reminder_minutes is not None:
+            user.event_reminder_minutes = event_reminder_minutes
         if checklists:
             # Only the lists that are given change; the others stay as they are.
             merged = {k.value: list(user.checklists.get(k.value, [])) for k in KINDS}

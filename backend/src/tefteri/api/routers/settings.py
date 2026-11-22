@@ -61,7 +61,10 @@ class SettingsOut(BaseModel):
 
     random_time_on_date_drop: bool
     default_reminder_minutes: int
-    """Minutes before its due time that a new task reminder fires."""
+    """Minutes before its due time that the app reminds the user of a task. The same time sets
+    a reminder that the user adds to a task in the task app."""
+    event_reminder_minutes: int
+    """Minutes before a calendar event starts that the app reminds the user."""
     checklists: ChecklistsOut
     checklist_sources: ChecklistSourcesOut
     """A path means that the checklist is read from the notes app and cannot be ticked."""
@@ -78,6 +81,7 @@ class SettingsOut(BaseModel):
         return cls(
             random_time_on_date_drop=s.random_time_on_date_drop,
             default_reminder_minutes=s.default_reminder_minutes,
+            event_reminder_minutes=s.event_reminder_minutes,
             checklists=ChecklistsOut(**s.checklists),
             checklist_sources=ChecklistSourcesOut(**s.checklist_sources),
             default_event_container_id=s.default_event_container_id,
@@ -103,6 +107,7 @@ class SettingsPatch(BaseModel):
 
     random_time_on_date_drop: bool | None = None
     default_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
+    event_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
     checklists: ChecklistsPatch | None = None
     checklist_sources: ChecklistSourcesPatch | None = None
     default_event_container_id: uuid.UUID | None = None
@@ -126,6 +131,7 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
             user.id,
             random_time_on_date_drop=body.random_time_on_date_drop,
             default_reminder_minutes=body.default_reminder_minutes,
+            event_reminder_minutes=body.event_reminder_minutes,
             checklists=body.checklists.model_dump(exclude_none=True) if body.checklists else None,
             checklist_sources=(
                 body.checklist_sources.model_dump(exclude_none=True)
@@ -174,6 +180,7 @@ class ExportedSettings(BaseModel):
 
     random_time_on_date_drop: bool | None = None
     default_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
+    event_reminder_minutes: int | None = Field(default=None, ge=0, le=MAX_REMINDER_MINUTES)
     checklists: ChecklistsPatch | None = None
     checklist_sources: ChecklistSourcesPatch | None = None
 
@@ -247,6 +254,7 @@ async def export_settings(
         settings=ExportedSettings(
             random_time_on_date_drop=s.random_time_on_date_drop,
             default_reminder_minutes=s.default_reminder_minutes,
+            event_reminder_minutes=s.event_reminder_minutes,
             checklists=ChecklistsPatch(**s.checklists),
             checklist_sources=ChecklistSourcesPatch(**s.checklist_sources),
         )

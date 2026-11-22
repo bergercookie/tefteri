@@ -29,6 +29,7 @@ from tefteri.api.routers import monthly as monthly_router
 from tefteri.api.routers import notes as notes_router
 from tefteri.api.routers import planning as planning_router
 from tefteri.api.routers import projects as projects_router
+from tefteri.api.routers import reminders as reminders_router
 from tefteri.api.routers import settings as settings_router
 from tefteri.api.routers import statistics as statistics_router
 from tefteri.api.routers import sync as sync_router
@@ -267,6 +268,7 @@ def create_app(
         projects_router,
         users_router,
         settings_router,
+        reminders_router,
         checklists_router,
     ):
         app.include_router(r.router, prefix="/api/v1")

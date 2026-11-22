@@ -1,6 +1,6 @@
 /// Planner settings: what happens when a task is dropped on a day without a
-/// time, how long before its due time a task reminder fires, and the calendar
-/// that a new event starts in.
+/// time, how long before a task or an event a reminder is sent, and the
+/// calendar that a new event starts in.
 library;
 
 import 'package:flutter/material.dart';
@@ -54,6 +54,37 @@ class PlannerSettingsCard extends ConsumerWidget {
     }
     ref.invalidate(userSettingsProvider);
   }
+
+  /// A choice of how long before the time of something a reminder is sent.
+  Widget _reminderSelect(
+    BuildContext context,
+    WidgetRef ref, {
+    required Key selectKey,
+    required String title,
+    required String subtitle,
+    required int value,
+    required Future<Object?> Function(int minutes) save,
+  }) =>
+      ListTile(
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: DropdownButton<int>(
+          key: selectKey,
+          value: value,
+          style: Theme.of(context).textTheme.bodyMedium,
+          items: [
+            for (final m in {...reminderOffsets, value}.toList()..sort())
+              DropdownMenuItem(
+                value: m,
+                child: Text(m == 0 ? 'At the time' : reminderOffsetText(m)),
+              ),
+          ],
+          onChanged: (m) {
+            if (m == null || m == value) return;
+            _save(context, ref, () => save(m));
+          },
+        ),
+      );
 
   /// The choice of the calendar that Shift+N and the new event pop-up start in.
   Widget _eventCalendar(BuildContext context, WidgetRef ref, UserSettings s) {
@@ -133,35 +164,32 @@ class PlannerSettingsCard extends ConsumerWidget {
                       .read(planningApiProvider)
                       .updateSettings(randomTimeOnDateDrop: v)),
             ),
-            ListTile(
-              title: const Text('Default reminder'),
-              subtitle: const Text(
-                  'How long before its due time a reminder fires when you '
-                  'add one to a task. Reminders are kept in Vikunja.'),
-              trailing: DropdownButton<int>(
-                key: const Key('default-reminder-select'),
-                value: s.defaultReminderMinutes,
-                style: Theme.of(context).textTheme.bodyMedium,
-                items: [
-                  for (final m
-                      in {...reminderOffsets, s.defaultReminderMinutes}.toList()
-                        ..sort())
-                    DropdownMenuItem(
-                      value: m,
-                      child: Text(
-                          m == 0 ? 'At the due time' : reminderOffsetText(m)),
-                    ),
-                ],
-                onChanged: (m) {
-                  if (m == null || m == s.defaultReminderMinutes) return;
-                  _save(
-                      context,
-                      ref,
-                      () => ref
-                          .read(planningApiProvider)
-                          .updateSettings(defaultReminderMinutes: m));
-                },
-              ),
+            _reminderSelect(
+              context,
+              ref,
+              selectKey: const Key('default-reminder-select'),
+              title: 'Remind me of a task',
+              subtitle: 'How long before a task is due that the app sends '
+                  'a notification. It does not matter whether the task has '
+                  'a reminder in Vikunja. This time is also used when you '
+                  'add a reminder to a task.',
+              value: s.defaultReminderMinutes,
+              save: (m) => ref
+                  .read(planningApiProvider)
+                  .updateSettings(defaultReminderMinutes: m),
+            ),
+            _reminderSelect(
+              context,
+              ref,
+              selectKey: const Key('event-reminder-select'),
+              title: 'Remind me of an event',
+              subtitle: 'How long before a calendar event starts that the '
+                  'app sends a notification. An event that is in more than '
+                  'one calendar gets one notification.',
+              value: s.eventReminderMinutes,
+              save: (m) => ref
+                  .read(planningApiProvider)
+                  .updateSettings(eventReminderMinutes: m),
             ),
             _eventCalendar(context, ref, s),
             _Invitees(

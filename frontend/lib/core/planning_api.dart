@@ -106,6 +106,7 @@ class PlanningApi {
   Future<UserSettings> updateSettings({
     bool? randomTimeOnDateDrop,
     int? defaultReminderMinutes,
+    int? eventReminderMinutes,
     ({String? id})? defaultEventCalendar,
     Map<ChecklistKind, List<String>>? checklists,
     Map<ChecklistKind, String>? checklistSources,
@@ -123,6 +124,8 @@ class PlanningApi {
         'random_time_on_date_drop': randomTimeOnDateDrop,
       if (defaultReminderMinutes != null)
         'default_reminder_minutes': defaultReminderMinutes,
+      if (eventReminderMinutes != null)
+        'event_reminder_minutes': eventReminderMinutes,
       if (defaultEventCalendar != null)
         'default_event_container_id': defaultEventCalendar.id,
     });

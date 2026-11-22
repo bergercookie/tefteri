@@ -22,6 +22,7 @@ import 'features/daily/daily_screen.dart';
 import 'features/month/month_screen.dart';
 import 'features/month/review_screen.dart';
 import 'features/projects/projects_screen.dart';
+import 'features/settings/reminder_sync_host.dart';
 import 'features/settings/checklists_screen.dart';
 import 'features/settings/connections_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -196,7 +197,9 @@ class TefteriApp extends ConsumerWidget {
               // One selection area for the whole app, so the user can select
               // and copy text on every screen, also in dialogs and messages.
               child: FindHost(
-                child: AppSelection(child: child ?? const SizedBox()),
+                child: AppSelection(
+                  child: ReminderSyncHost(child: child ?? const SizedBox()),
+                ),
               ),
             ),
     );

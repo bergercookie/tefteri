@@ -59,7 +59,7 @@ void main() {
     });
     // pumpWithApi uses a 1000 wide surface; make it wider than a laptop screen
     await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
-    tester.view.physicalSize = const Size(1800, 1000);
+    tester.view.physicalSize = const Size(1800, 1400);
     await tester.pumpAndSettle();
     final card = tester.getRect(find.byType(Card));
     expect(card.width, lessThanOrEqualTo(plannerSettingsCardWidth));
@@ -96,6 +96,45 @@ void main() {
     expect(api.where('PATCH /me/settings').single.data,
         {'default_reminder_minutes': 60});
     expect(select().value, 60); // reloaded from the server
+  });
+
+  testWidgets('the event reminder is 15 minutes and saves a change by itself',
+      (tester) async {
+    var stored = 15;
+    final api = FakeApi({
+      'GET /me/settings': (_) => {
+            'random_time_on_date_drop': false,
+            'default_reminder_minutes': 15,
+            'event_reminder_minutes': stored,
+          },
+      'PATCH /me/settings': (o) {
+        stored = (o.data as Map)['event_reminder_minutes'] as int;
+        return {
+          'random_time_on_date_drop': false,
+          'default_reminder_minutes': 15,
+          'event_reminder_minutes': stored,
+        };
+      },
+    });
+    await pumpWithApi(tester, api, const Scaffold(body: PlannerSettingsCard()));
+    DropdownButton<int> select(String key) =>
+        tester.widget<DropdownButton<int>>(find.byKey(Key(key)));
+    // The task and the event each have their own time, both 15 minutes.
+    expect(select('default-reminder-select').value, 15);
+    expect(select('event-reminder-select').value, 15);
+    expect(find.text('Remind me of a task'), findsOneWidget);
+    expect(find.text('Remind me of an event'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('event-reminder-select')));
+    await tester.tap(find.byKey(const Key('event-reminder-select')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('30 minutes before').last);
+    await tester.pumpAndSettle();
+
+    expect(api.where('PATCH /me/settings').single.data,
+        {'event_reminder_minutes': 30});
+    expect(select('event-reminder-select').value, 30);
+    expect(select('default-reminder-select').value, 15); // not changed
   });
 
   testWidgets('an offset that is not in the list is still shown',

@@ -570,6 +570,7 @@ class UserSettings {
   const UserSettings({
     required this.randomTimeOnDateDrop,
     this.defaultReminderMinutes = defaultReminderOffset,
+    this.eventReminderMinutes = defaultReminderOffset,
     this.checklists = const {},
     this.checklistSources = const {},
     this.defaultEventContainerId,
@@ -583,6 +584,8 @@ class UserSettings {
         defaultReminderMinutes:
             (j['default_reminder_minutes'] as num?)?.toInt() ??
                 defaultReminderOffset,
+        eventReminderMinutes: (j['event_reminder_minutes'] as num?)?.toInt() ??
+            defaultReminderOffset,
         checklists: {
           for (final kind in ChecklistKind.values)
             kind: [
@@ -607,8 +610,12 @@ class UserSettings {
   /// When true, a date-only drop gets a random time of day on that date.
   final bool randomTimeOnDateDrop;
 
-  /// Minutes before its due time that a new task reminder fires.
+  /// Minutes before its due time that the app reminds the user of a task.
+  /// A reminder that the user adds to a task in the task app uses it too.
   final int defaultReminderMinutes;
+
+  /// Minutes before a calendar event starts that the app reminds the user.
+  final int eventReminderMinutes;
 
   /// Id of the calendar that a new event starts in, or null to start in the
   /// calendar of the last event.

@@ -2228,6 +2228,19 @@
             ],
             "title": "Default Reminder Minutes"
           },
+          "event_reminder_minutes": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Reminder Minutes"
+          },
           "random_time_on_date_drop": {
             "anyOf": [
               {
@@ -5269,30 +5282,21 @@
         "title": "ReminderIn",
         "type": "object"
       },
-      "ReminderOut": {
-        "description": "The reminder of a task in its app.",
+      "RemindersOut": {
+        "description": "The reminders of a stretch of time.",
         "properties": {
-          "minutes_before": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minutes Before"
-          },
-          "supported": {
-            "title": "Supported",
-            "type": "boolean"
+          "reminders": {
+            "items": {
+              "$ref": "#/components/schemas/tefteri__api__routers__reminders__ReminderOut"
+            },
+            "title": "Reminders",
+            "type": "array"
           }
         },
         "required": [
-          "supported",
-          "minutes_before"
+          "reminders"
         ],
-        "title": "ReminderOut",
+        "title": "RemindersOut",
         "type": "object"
       },
       "RenameIn": {
@@ -6325,6 +6329,10 @@
             "title": "Event Invitees",
             "type": "array"
           },
+          "event_reminder_minutes": {
+            "title": "Event Reminder Minutes",
+            "type": "integer"
+          },
           "random_time_on_date_drop": {
             "title": "Random Time On Date Drop",
             "type": "boolean"
@@ -6340,6 +6348,7 @@
         "required": [
           "random_time_on_date_drop",
           "default_reminder_minutes",
+          "event_reminder_minutes",
           "checklists",
           "checklist_sources",
           "default_event_container_id",
@@ -6412,6 +6421,19 @@
               }
             ],
             "title": "Event Invitees"
+          },
+          "event_reminder_minutes": {
+            "anyOf": [
+              {
+                "maximum": 10080.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Reminder Minutes"
           },
           "random_time_on_date_drop": {
             "anyOf": [
@@ -8938,6 +8960,46 @@
         "title": "UndoIn",
         "type": "object"
       },
+      "tefteri__api__routers__reminders__ReminderOut": {
+        "description": "One notification to show.",
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "fire_at": {
+            "format": "date-time",
+            "title": "Fire At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "body",
+          "fire_at",
+          "link"
+        ],
+        "title": "ReminderOut",
+        "type": "object"
+      },
       "tefteri__api__routers__statistics__EmptyOut": {
         "description": "Why a period has no number, and the action that helps.",
         "properties": {
@@ -9011,6 +9073,32 @@
           "orphaned"
         ],
         "title": "ProjectOut",
+        "type": "object"
+      },
+      "tefteri__api__routers__tasks__ReminderOut": {
+        "description": "The reminder of a task in its app.",
+        "properties": {
+          "minutes_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Before"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "supported",
+          "minutes_before"
+        ],
+        "title": "ReminderOut",
         "type": "object"
       },
       "tefteri__api__routers__tasks__TaskIn": {
@@ -13459,6 +13547,69 @@
         ]
       }
     },
+    "/api/v1/reminders": {
+      "get": {
+        "description": "Return the reminders that fire from ``from`` (default: now) for ``hours`` hours.\n\nA task or an event that is in this list is not done, not deleted and not a copy of another\nevent in a second calendar. A review that is done is not in the list.",
+        "operationId": "upcoming_reminders_api_v1_reminders_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 48,
+              "maximum": 168,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindersOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upcoming Reminders",
+        "tags": [
+          "reminders"
+        ]
+      }
+    },
     "/api/v1/statistics": {
       "get": {
         "description": "Return the counts of the week, month or year that holds ``day`` (default: today).\n\nEvery number is read from the stored categories. A week and a month are the sum of their\ndays, a year is the sum of its months, so the parts always add up to the counts. The hidden\ncount (tasks in ignored projects) is not part of ``total`` or of the percentages.",
@@ -14205,7 +14356,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReminderOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__tasks__ReminderOut"
                 }
               }
             },
@@ -14247,7 +14398,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReminderOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__tasks__ReminderOut"
                 }
               }
             },
@@ -14299,7 +14450,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReminderOut"
+                  "$ref": "#/components/schemas/tefteri__api__routers__tasks__ReminderOut"
                 }
               }
             },

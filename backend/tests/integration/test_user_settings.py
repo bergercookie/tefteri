@@ -11,6 +11,7 @@ from tests.fakes.world import FakeWorld
 OFF = {
     "random_time_on_date_drop": False,
     "default_reminder_minutes": 15,
+    "event_reminder_minutes": 15,
     "checklists": {"week": [], "month": [], "year": []},
     "checklist_sources": {"week": "", "month": "", "year": ""},
     "default_event_container_id": None,
@@ -143,6 +144,7 @@ async def test_export_then_import_restores_the_settings(api: AsyncClient) -> Non
         json={
             "random_time_on_date_drop": True,
             "default_reminder_minutes": 45,
+            "event_reminder_minutes": 20,
             "checklists": {"week": ["Review inbox", "Plan focus"], "year": ["Set goals"]},
             "checklist_sources": {"month": "Notes/Monthly"},
         },
@@ -165,6 +167,7 @@ async def test_export_then_import_restores_the_settings(api: AsyncClient) -> Non
         json={
             "random_time_on_date_drop": False,
             "default_reminder_minutes": 0,
+            "event_reminder_minutes": 0,
             "checklists": {"week": ["Other"]},
             "checklist_sources": {"month": ""},
         },
@@ -175,6 +178,7 @@ async def test_export_then_import_restores_the_settings(api: AsyncClient) -> Non
     assert imported.json() == {"settings": restored, "connections": None}
     assert restored["random_time_on_date_drop"] is True
     assert restored["default_reminder_minutes"] == 45
+    assert restored["event_reminder_minutes"] == 20
     assert restored["checklists"]["week"] == ["Review inbox", "Plan focus"]
     assert restored["checklist_sources"]["month"] == "Notes/Monthly"
     assert (await api.get(f"{V1}/me/settings/export")).json() == exported

@@ -10,6 +10,7 @@ accounts-and-sign-in
 connect-apps
 planner
 android-widget
+reminders
 daily-planning
 scheduling
 annual-planning

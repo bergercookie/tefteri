@@ -34,6 +34,10 @@ class User(IdMixin, CreatedMixin, Base):
         Integer, default=15, server_default=text("15")
     )
     """How many minutes before its due time a new task reminder fires."""
+    event_reminder_minutes: Mapped[int] = mapped_column(
+        Integer, default=15, server_default=text("15")
+    )
+    """How many minutes before a calendar event starts that the app reminds the user."""
     default_event_container_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey(

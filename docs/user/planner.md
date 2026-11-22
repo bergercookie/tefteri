@@ -174,8 +174,9 @@ Tefteri adds or removes the reminder at once. You do not need to choose Save. Ot
 you made in Vikunja stay as they are.
 
 To change the default time, open the menu, choose Settings, and then choose Connections. Use
-"Default reminder". It offers at the due time, from 5 minutes up to 2 days before. A change
-applies to the reminders that you add after it. The reminders that exist stay as they are.
+"Remind me of a task". It offers at the time, from 5 minutes up to 2 days before. A change
+applies to the reminders that you add after it. The reminders that exist stay as they are. The
+same time sets when the app sends a notification for a task. Read [Reminders](reminders.md).
 
 ![The pop-up of the task Update the road map. It shows the title, the day, the start time and the description as fields that you can change, and the Save button.](../images/planner-task-details.png)
 
@@ -259,7 +260,7 @@ You can change what happens in this case. Open the menu, choose Settings, and th
 "Give a random time to date-only drops". When the switch is on, the task gets a random time on that day.
 The time is from 08:00 to 19:45. You can move the block later.
 
-![The Connections screen. The switch Give a random time to date-only drops is on. Below it, the default reminder is 15 minutes before.](../images/planner-setting-random-time.png)
+![The Connections screen. The switch Give a random time to date-only drops is on. Below it, the reminder for a task and the reminder for an event are each 15 minutes before.](../images/planner-setting-random-time.png)
 
 ## Move an event to another time
 
