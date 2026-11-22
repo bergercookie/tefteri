@@ -67,11 +67,18 @@ widget shows.
 
 ### Add the agenda widget
 
+The agenda widget is a second widget. It does not replace the shortcuts widget, and a widget that
+is already on your home screen does not change. You must add the agenda widget from the list of
+widgets.
+
 1. Press and hold an empty place on your home screen.
 2. Choose Widgets.
 3. Find tefteri in the list and choose Tefteri agenda.
 4. Drag the widget to a place on your home screen. It is four cells wide and three cells high.
    You can make it larger.
+
+If you do not find Tefteri agenda in the list, search the list for "agenda". If it is not there,
+restart your phone. Some launchers keep an old list of widgets until they restart.
 
 ### Sign in first
 

@@ -250,6 +250,9 @@ void main() {
       final info = read('res/xml/tefteri_agenda_widget_info.xml');
       expect(info, contains('android:targetCellWidth="4"'));
       expect(info, contains('android:targetCellHeight="3"'));
+      // The picker shows this layout; without it the card is blank.
+      expect(info,
+          contains('android:previewLayout="@layout/tefteri_agenda_preview"'));
       expect(info, contains('android:widgetCategory="home_screen"'));
     });
   });

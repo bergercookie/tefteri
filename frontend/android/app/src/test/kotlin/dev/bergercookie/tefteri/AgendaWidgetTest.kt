@@ -215,6 +215,26 @@ class AgendaWidgetTest {
     }
 
     @Test
+    fun `the picker preview inflates and shows a day`() {
+        val preview = android.view.LayoutInflater.from(context)
+            .inflate(R.layout.tefteri_agenda_preview, FrameLayout(context), false)
+        val shown = texts(preview)
+        assertTrue(shown.toString(), shown.any { it.startsWith("Today") })
+        assertTrue(shown.toString(), shown.any { it.contains("Team meeting") })
+    }
+
+    @Test
+    fun `both widgets are declared as providers with a label and a preview`() {
+        val manager = context.packageManager
+        val names = manager.queryBroadcastReceivers(
+            Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setPackage(context.packageName),
+            android.content.pm.PackageManager.GET_META_DATA,
+        ).map { it.activityInfo.name }.toSet()
+        assertTrue(names.toString(), "dev.bergercookie.tefteri.AgendaWidgetProvider" in names)
+        assertTrue(names.toString(), "dev.bergercookie.tefteri.NavWidgetProvider" in names)
+    }
+
+    @Test
     fun `an empty day says that nothing is planned`() {
         val parsed = AgendaData.parse("""{"entries": [], "tasks": []}""")
         assertEquals(AgendaResult.Loaded(emptyList()), parsed)

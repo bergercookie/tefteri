@@ -19,6 +19,12 @@
     <string name="agenda_today">Today</string>
     <string name="agenda_tomorrow">Tomorrow</string>
     <string name="agenda_yesterday">Yesterday</string>
+    <string name="agenda_preview_day">Today\n22 Nov</string>
+    <string name="agenda_preview_event">Team meeting</string>
+    <string name="agenda_preview_event_time">10:00 - 10:30 \u00b7 Room 4</string>
+    <string name="agenda_preview_task_one">\u2610 Write the report</string>
+    <string name="agenda_preview_task_time">Due 14:00 \u00b7 Work</string>
+    <string name="agenda_preview_task_two">\u2713 Pay rent</string>
     <string name="agenda_task">Task</string>
     <string name="agenda_empty">Nothing planned for this day</string>
     <string name="agenda_sign_in">Sign in to Tefteri to see your agenda</string>
