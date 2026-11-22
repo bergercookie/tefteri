@@ -49,18 +49,21 @@ your day without you opening tefteri.
 
 - The events of the day come first, in time order. Each event shows its time and its place. The
   color bar at the left is the color of the calendar.
-- The tasks that are due on the day come next. Open tasks are before tasks that you did. A done
-  task has a check mark.
+- The tasks that are due on the day come next. Open tasks are before tasks that you did. An open
+  task has an empty box, and a done task has a check mark and a lighter color. A task shows its
+  due time, or "Task" when it has a day but no time. The color bar is the color of the project.
 - The arrow at the left shows the day before. The arrow at the right shows the day after. You can
   go from one day to the next as many times as you want.
-- The date between the arrows shows the day that you look at. Choose the date to go back to
-  today.
+- The name between the arrows shows the day that you look at, for example "Today" and "22 Nov".
+  For the day before and the day after, it shows "Yesterday" and "Tomorrow". For other days, it
+  shows the name of the weekday. Choose the name to go back to today.
 - The refresh button loads the day again.
 
 The widget shows the current day when you add it. It also goes back to the current day when a new
 day starts. It does not stay on a day that you chose earlier.
 
-Choose an event or a task to open tefteri.
+Choose an event or a task to open the planner in tefteri. The planner shows the day that the
+widget shows.
 
 ### Add the agenda widget
 

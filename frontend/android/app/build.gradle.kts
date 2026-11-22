@@ -44,6 +44,11 @@ android {
         }
     }
 
+    // The widget tests run on the JVM with Robolectric and need the resources of the app.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     buildTypes {
         release {
             signingConfig =
@@ -64,4 +69,17 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// The unit tests include the assets of the app, which Flutter copies in its own task.
+tasks.configureEach {
+    if (name == "packageDebugUnitTestForUnitTest") {
+        dependsOn("copyFlutterAssetsDebug")
+    }
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
 }

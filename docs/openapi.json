@@ -7081,6 +7081,11 @@
       "TaskOut": {
         "description": "A cached task.",
         "properties": {
+          "all_day": {
+            "default": false,
+            "title": "All Day",
+            "type": "boolean"
+          },
           "category": {
             "anyOf": [
               {

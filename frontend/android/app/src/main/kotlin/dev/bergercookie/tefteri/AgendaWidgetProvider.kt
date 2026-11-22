@@ -58,7 +58,7 @@ class AgendaWidgetProvider : AppWidgetProvider() {
     private fun draw(context: Context, manager: AppWidgetManager, id: Int) {
         val views = RemoteViews(context.packageName, R.layout.tefteri_agenda_widget)
         val day = shownDay(context, id)
-        views.setTextViewText(R.id.agenda_date, SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(day.time))
+        views.setTextViewText(R.id.agenda_date, dateLabel(context, currentOffset(context, id), day))
         views.setOnClickPendingIntent(R.id.agenda_previous, action(context, id, ACTION_PREVIOUS))
         views.setOnClickPendingIntent(R.id.agenda_next, action(context, id, ACTION_NEXT))
         // The date goes back to today; today is also the refresh.
@@ -71,8 +71,9 @@ class AgendaWidgetProvider : AppWidgetProvider() {
         service.data = Uri.parse(service.toUri(Intent.URI_INTENT_SCHEME))
         views.setRemoteAdapter(R.id.agenda_list, service)
 
-        // A tap on a row opens the planner of the day in the app.
-        val open = Intent(Intent.ACTION_VIEW, Uri.parse("tefteri://app/daily"))
+        // A tap on a row opens the planner at that day in the app. The row adds the link, because
+        // only the row knows the day (see AgendaWidgetService).
+        val open = Intent(Intent.ACTION_VIEW)
             .setClass(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         views.setPendingIntentTemplate(
@@ -99,7 +100,6 @@ class AgendaWidgetProvider : AppWidgetProvider() {
         const val ACTION_NEXT = "dev.bergercookie.tefteri.agenda.NEXT"
         const val ACTION_TODAY = "dev.bergercookie.tefteri.agenda.TODAY"
         const val ACTION_REFRESH = "dev.bergercookie.tefteri.agenda.REFRESH"
-        const val EXTRA_OPEN = "open"
         private const val PREFS = "tefteri_agenda_widget"
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -111,6 +111,21 @@ class AgendaWidgetProvider : AppWidgetProvider() {
             val p = prefs(context)
             val base = p.getString(baseKey(id), null)
             return if (base == AgendaData.dayKey(Calendar.getInstance())) p.getInt(offsetKey(id), 0) else 0
+        }
+
+        /**
+         * Two lines: "Today", "Tomorrow", "Yesterday" or the name of the weekday, and under it
+         * the date, for example "Today" and "22 Nov".
+         */
+        fun dateLabel(context: Context, offset: Int, day: Calendar): String {
+            val date = SimpleDateFormat("d MMM", Locale.getDefault()).format(day.time)
+            val name = when (offset) {
+                0 -> context.getString(R.string.agenda_today)
+                1 -> context.getString(R.string.agenda_tomorrow)
+                -1 -> context.getString(R.string.agenda_yesterday)
+                else -> SimpleDateFormat("EEEE", Locale.getDefault()).format(day.time)
+            }
+            return "$name\n$date"
         }
 
         /** The day that the widget shows. */

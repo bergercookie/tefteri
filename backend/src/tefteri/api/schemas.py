@@ -37,6 +37,8 @@ class TaskOut(BaseModel):
     description: str
     status: str
     due_at: UtcDatetime | None
+    all_day: bool = False
+    """The task has a due day but no time of day."""
     scheduled_start: UtcDatetime | None
     scheduled_end: UtcDatetime | None
     sync_state: str
@@ -78,6 +80,7 @@ class TaskOut(BaseModel):
             description=t.description,
             status=t.status,
             due_at=t.due_at,
+            all_day=bool(t.all_day),
             scheduled_start=t.scheduled_start,
             scheduled_end=t.scheduled_end,
             sync_state=t.sync_state,

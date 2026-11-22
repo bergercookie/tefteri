@@ -208,7 +208,6 @@ void main() {
         'agenda_swatch',
         'agenda_title',
         'agenda_time',
-        'agenda_detail',
       ]) {
         expect(row, contains('@+id/$id'));
       }

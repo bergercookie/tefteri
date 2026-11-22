@@ -3,7 +3,7 @@ package dev.bergercookie.tefteri
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
+import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
@@ -23,12 +23,14 @@ private class AgendaFactory(
 ) : RemoteViewsService.RemoteViewsFactory {
     private var items: List<AgendaItem> = emptyList()
     private var message: String? = null
+    private var link: Uri = Uri.parse("tefteri://app/")
 
     override fun onCreate() {}
 
     /** Runs off the main thread, so the request to the server may block here. */
     override fun onDataSetChanged() {
         val day = AgendaWidgetProvider.shownDay(context, widgetId)
+        link = Uri.parse("tefteri://app/?date=${AgendaData.dayKey(day)}")
         when (val result = AgendaData.fetch(context, day)) {
             is AgendaResult.Loaded -> {
                 items = result.items
@@ -52,12 +54,11 @@ private class AgendaFactory(
 
     override fun getViewAt(position: Int): RemoteViews {
         val row = RemoteViews(context.packageName, R.layout.tefteri_agenda_row)
-        val fill = Intent().putExtra(AgendaWidgetProvider.EXTRA_OPEN, true)
+        val fill = Intent().setData(link)
         row.setOnClickFillInIntent(R.id.agenda_row, fill)
         if (items.isEmpty()) {
             row.setViewVisibility(R.id.agenda_swatch, View.INVISIBLE)
             row.setViewVisibility(R.id.agenda_time, View.GONE)
-            row.setViewVisibility(R.id.agenda_detail, View.GONE)
             row.setTextViewText(R.id.agenda_title, message)
             return row
         }
@@ -72,10 +73,9 @@ private class AgendaFactory(
         }
         row.setTextViewText(R.id.agenda_title, prefix + item.title)
         val time = if (item.time.isEmpty() && item.isTask) context.getString(R.string.agenda_task) else item.time
-        row.setViewVisibility(R.id.agenda_time, if (time.isEmpty()) View.GONE else View.VISIBLE)
-        row.setTextViewText(R.id.agenda_time, time)
-        row.setViewVisibility(R.id.agenda_detail, if (item.detail.isEmpty()) View.GONE else View.VISIBLE)
-        row.setTextViewText(R.id.agenda_detail, item.detail)
+        val line = listOf(time, item.detail).filter { it.isNotEmpty() }.joinToString(" \u00b7 ")
+        row.setViewVisibility(R.id.agenda_time, if (line.isEmpty()) View.GONE else View.VISIBLE)
+        row.setTextViewText(R.id.agenda_time, line)
         row.setTextColor(
             R.id.agenda_title,
             context.getColor(if (item.done) R.color.widget_muted else R.color.widget_ink),

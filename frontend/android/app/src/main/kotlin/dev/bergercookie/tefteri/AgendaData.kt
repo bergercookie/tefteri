@@ -96,7 +96,8 @@ object AgendaData {
                     AgendaItem(
                         isTask = true,
                         title = t.optString("title"),
-                        time = "",
+                        time = if (t.optBoolean("all_day") || t.isNull("due_at")) ""
+                        else "Due ${clock(t.optString("due_at"))}",
                         detail = if (t.isNull("project")) "" else t.optString("project"),
                         color = color(if (t.isNull("project_color")) "" else t.optString("project_color")),
                         done = t.optString("status") == "done",
@@ -118,7 +119,7 @@ object AgendaData {
     }
 
     /** The local "HH:mm" of a time such as `2026-11-22T09:00:00Z` (UTC). */
-    private fun clock(iso: String): String {
+    fun clock(iso: String): String {
         if (iso.length < 19) return ""
         return try {
             val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT)

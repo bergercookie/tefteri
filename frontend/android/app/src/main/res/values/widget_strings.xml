@@ -16,6 +16,9 @@
     <string name="agenda_next_description">Show the day after</string>
     <string name="agenda_today_description">Go back to today</string>
     <string name="agenda_refresh_description">Refresh the agenda</string>
+    <string name="agenda_today">Today</string>
+    <string name="agenda_tomorrow">Tomorrow</string>
+    <string name="agenda_yesterday">Yesterday</string>
     <string name="agenda_task">Task</string>
     <string name="agenda_empty">Nothing planned for this day</string>
     <string name="agenda_sign_in">Sign in to Tefteri to see your agenda</string>
