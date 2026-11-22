@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 from importlib.metadata import PackageNotFoundError, version
 
@@ -10,6 +10,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
+from starlette.routing import Route
 from starlette.types import Scope
 
 from tefteri.adapters.google_calendar import GoogleCalendarBackend
@@ -19,6 +20,7 @@ from tefteri.api.errors import install_error_handlers
 from tefteri.api.errors_map import install_service_error_handlers
 from tefteri.api.routers import annual as annual_router
 from tefteri.api.routers import annual_review as annual_review_router
+from tefteri.api.routers import api_keys as api_keys_router
 from tefteri.api.routers import auth as auth_router
 from tefteri.api.routers import calendar as calendar_router
 from tefteri.api.routers import checklists as checklists_router
@@ -43,6 +45,7 @@ from tefteri.config import Settings
 from tefteri.db.base import Base
 from tefteri.db.session import create_engine, create_session_factory, session_scope
 from tefteri.domain.enums import ConnectionKind
+from tefteri.mcp_server import MCP_PATH, McpServer, build_mcp
 from tefteri.security.crypto import TokenCipher
 from tefteri.services.annual_plan import AnnualPlanService
 from tefteri.services.annual_review import AnnualReviewSeedCounter, AnnualReviewService
@@ -133,6 +136,8 @@ def create_app(
         registry or default_registry(cfg, http), TokenCipher(cfg.secret_key)
     )
 
+    mcp_servers: list[McpServer] = []
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         if cfg.create_schema:
@@ -147,7 +152,10 @@ def create_app(
             )
             background = asyncio.create_task(runner.run_forever(), name="background-sync")
         try:
-            yield
+            async with AsyncExitStack() as stack:
+                for mcp in mcp_servers:
+                    await stack.enter_async_context(mcp.run())
+                yield
         finally:
             if background is not None:
                 background.cancel()
@@ -268,10 +276,16 @@ def create_app(
         projects_router,
         users_router,
         settings_router,
+        api_keys_router,
         reminders_router,
         checklists_router,
     ):
         app.include_router(r.router, prefix="/api/v1")
+    # The MCP server: AI assistants connect to /mcp with an API key.
+    mcp = build_mcp(app, auth_service, factory)
+    mcp_servers.append(mcp)
+    for path in (MCP_PATH, MCP_PATH + "/"):
+        app.router.routes.append(Route(path, endpoint=mcp.asgi))
     # Mounted last so the API routes above take precedence over the files.
     if cfg.web_dir is not None:
         app.mount("/", _WebFiles(directory=cfg.web_dir, html=True), name="web")

@@ -1,5 +1,6 @@
 """ORM models. Import every model here so metadata is complete."""
 
+from tefteri.db.models.api_key import ApiKey
 from tefteri.db.models.calendar_entry import CalendarEntry
 from tefteri.db.models.checklist import ChecklistProgress
 from tefteri.db.models.connection import Connection, SourceContainer
@@ -29,6 +30,7 @@ from tefteri.db.models.user import AuthSession, User
 from tefteri.db.models.weekly import WeeklyMetric, WeeklyPlan, WeeklyPlanProject
 
 __all__ = [
+    "ApiKey",
     "AuthSession",
     "CalendarEntry",
     "ChecklistProgress",

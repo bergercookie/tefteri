@@ -1,6 +1,7 @@
 """Admin bootstrap, login, session issuing and token authentication."""
 
 import secrets
+import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -9,7 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.auth.passwords import hash_password, verify_password
 from tefteri.auth.throttle import LoginThrottle
+from tefteri.db.models.api_key import ApiKey
 from tefteri.db.models.user import AuthSession, User
+from tefteri.security.tokens import API_KEY_PREFIX as API_KEY_PREFIX
 from tefteri.security.tokens import digest_token as _digest
 
 
@@ -141,6 +144,67 @@ class AuthService:
         row.expires_at = now + lifetime
         await db.flush()
         return row.expires_at
+
+    # -- API keys -------------------------------------------------------------------------
+
+    _KEY_USED_EVERY = timedelta(minutes=1)
+    """A key that is in use gets its last-used time written at most this often."""
+
+    async def create_api_key(self, db: AsyncSession, user: User, name: str) -> tuple[ApiKey, str]:
+        """Make a key for ``user`` and return its row and the key itself.
+
+        The key is returned only here. Only its digest is stored.
+        """
+        key = API_KEY_PREFIX + secrets.token_urlsafe(32)
+        row = ApiKey(
+            user_id=user.id,
+            name=name.strip(),
+            prefix=key[: len(API_KEY_PREFIX) + 6],
+            token_hash=_digest(key),
+        )
+        db.add(row)
+        await db.flush()
+        return row, key
+
+    async def list_api_keys(self, db: AsyncSession, user_id: uuid.UUID) -> list[ApiKey]:
+        """Return the keys of a user, the newest first."""
+        return list(
+            (
+                await db.execute(
+                    select(ApiKey)
+                    .where(ApiKey.user_id == user_id)
+                    .order_by(ApiKey.created_at.desc(), ApiKey.id)
+                )
+            ).scalars()
+        )
+
+    async def revoke_api_key(self, db: AsyncSession, user_id: uuid.UUID, key_id: uuid.UUID) -> bool:
+        """Delete a key of the user. Returns ``False`` when the user has no such key."""
+        row = await db.get(ApiKey, key_id)
+        if row is None or row.user_id != user_id:
+            return False
+        await db.delete(row)
+        await db.flush()
+        return True
+
+    async def authenticate_api_key(self, db: AsyncSession, key: str) -> User | None:
+        """Return the user of a valid API key; ``None`` otherwise."""
+        row = (
+            await db.execute(select(ApiKey).where(ApiKey.token_hash == _digest(key)))
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        user = await db.get(User, row.user_id)
+        if user is None or user.disabled:
+            return None
+        now = self._clock()
+        used = row.last_used_at
+        if used is not None and used.tzinfo is None:
+            used = used.replace(tzinfo=UTC)
+        if used is None or now - used >= self._KEY_USED_EVERY:
+            row.last_used_at = now
+            await db.flush()
+        return user
 
     async def logout(self, db: AsyncSession, token: str) -> None:
         """Invalidate a token."""

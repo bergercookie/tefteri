@@ -8,7 +8,7 @@ from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tefteri.api.errors import ApiError
-from tefteri.auth.service import AuthService
+from tefteri.auth.service import API_KEY_PREFIX, AuthService
 from tefteri.config import Settings
 from tefteri.db.models.user import User
 from tefteri.db.session import session_scope
@@ -94,7 +94,17 @@ async def current_user(
     response: Response,
     settings: SettingsDep,
 ) -> User:
-    """Return the authenticated user or raise 401; a session that is in use is renewed."""
+    """Return the authenticated user or raise 401; a session that is in use is renewed.
+
+    The token is a login session, or an API key (it starts with ``tft_``). A request that came
+    with an API key is marked, so that routes that only a person may use can refuse it.
+    """
+    if token.startswith(API_KEY_PREFIX):
+        user = await auth.authenticate_api_key(db, token)
+        if user is None:
+            raise ApiError(401, "not_authenticated", "Invalid API key")
+        request.state.via_api_key = True
+        return user
     user = await auth.authenticate(db, token)
     if user is None:
         raise ApiError(401, "not_authenticated", "Invalid or expired session")
@@ -107,7 +117,25 @@ async def current_user(
 CurrentUser = Annotated[User, Depends(current_user)]
 
 
-async def admin_user(user: CurrentUser) -> User:
+async def session_user(user: CurrentUser, request: Request) -> User:
+    """Return the user, but only for a person who signed in: an API key gets 403.
+
+    This guards what a leaked key must not do: change the password, manage users or keys, and
+    export the credentials of the connections.
+    """
+    if getattr(request.state, "via_api_key", False):
+        raise ApiError(
+            403,
+            "api_key_not_allowed",
+            "This needs a signed-in session. An API key cannot do it.",
+        )
+    return user
+
+
+SessionUser = Annotated[User, Depends(session_user)]
+
+
+async def admin_user(user: SessionUser) -> User:
     """Return the authenticated user if they are an administrator, else raise 403."""
     if not user.is_admin:
         raise ApiError(403, "forbidden", "Only administrators can do this")

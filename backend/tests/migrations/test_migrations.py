@@ -1462,7 +1462,8 @@ def test_the_head_revision_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0038"
+    assert script.get_current_head() == "0039"
+    assert script.get_revision("0039").down_revision == "0038"
     assert script.get_revision("0038").down_revision == "0037"
     assert script.get_revision("0037").down_revision == "0036"
     assert script.get_revision("0036").down_revision == "0035"
@@ -1582,7 +1583,7 @@ def test_the_head_revision_is_0027_and_it_follows_0026() -> None:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[2] / "migrations"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "0038"
+    assert script.get_current_head() == "0039"
     assert script.get_revision("0036").down_revision == "0035"
     assert script.get_revision("0035").down_revision == "0034"
     assert script.get_revision("0034").down_revision == "0033"
@@ -1611,6 +1612,22 @@ def test_0030_adds_the_default_event_calendar_and_keeps_users(
     alembic_runner.migrate_down_to("0029")
     columns = {c["name"] for c in inspect(alembic_engine).get_columns("users")}
     assert "default_event_container_id" not in columns
+
+
+def test_0039_adds_the_api_keys_table_and_drops_it_again(
+    alembic_runner: MigrationContext, alembic_engine: Engine
+) -> None:
+    alembic_runner.migrate_up_to("0038")
+    assert "api_keys" not in inspect(alembic_engine).get_table_names()
+    alembic_runner.migrate_up_to("0039")
+    insp = inspect(alembic_engine)
+    assert "api_keys" in insp.get_table_names()
+    columns = {c["name"] for c in insp.get_columns("api_keys")}
+    assert {"user_id", "name", "prefix", "token_hash", "last_used_at"} <= columns
+    uniques = [set(u["column_names"]) for u in insp.get_unique_constraints("api_keys")]
+    assert {"token_hash"} in uniques  # a key is found by its digest, and two keys never share one
+    alembic_runner.migrate_down_to("0038")
+    assert "api_keys" not in inspect(alembic_engine).get_table_names()
 
 
 def test_0038_adds_the_event_reminder_with_15_minutes_for_every_user(

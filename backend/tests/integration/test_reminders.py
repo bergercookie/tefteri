@@ -103,6 +103,23 @@ async def test_a_task_with_a_due_time_is_reminded_before_it_is_due_without_a_rem
     assert later["id"] == reminder["id"]  # the same task keeps its id
 
 
+async def test_a_task_planned_for_a_time_is_reminded_before_its_block_starts(
+    env: ProjectsEnv,
+) -> None:
+    await _connected(env)
+    # The planner gives a task a block. The task is due when the block ends.
+    await _task(
+        env,
+        "Planned",
+        _at(SUNDAY, 15),
+        scheduled_start=_at(SUNDAY, 14),
+        scheduled_end=_at(SUNDAY, 15),
+    )
+    (reminder,) = [r for r in await _get(env, _at(SUNDAY, 0)) if r["kind"] == "task"]
+    assert reminder["fire_at"].startswith("2030-03-10T13:45:00")  # not 14:45
+    assert reminder["body"] == "Starts at 14:00"
+
+
 async def test_a_done_task_a_day_only_task_and_a_task_that_is_gone_get_no_reminder(
     env: ProjectsEnv,
 ) -> None:

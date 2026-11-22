@@ -50,11 +50,25 @@ void main() {
 
   testWidgets('settings page', (tester) async {
     SharedPreferences.setMockInitialValues({'show_versions': true});
-    await pumpScreen(tester, FakeApi({}), const SettingsScreen(), overrides: [
-      appVersionProvider
-          .overrideWith((_) async => const AppVersion('1.4.0', 3)),
-      serverVersionProvider.overrideWith((ref, address) async => '1.4.0'),
-    ]);
+    await pumpScreen(
+        tester,
+        FakeApi({
+          'GET /me/api-keys': [
+            {
+              'id': 'k1',
+              'name': 'Claude Code',
+              'prefix': 'tft_Qz81aB',
+              'created_at': '2026-11-02T08:15:00Z',
+              'last_used_at': '2026-11-02T08:40:00Z',
+            },
+          ],
+        }),
+        const SettingsScreen(),
+        overrides: [
+          appVersionProvider
+              .overrideWith((_) async => const AppVersion('1.4.0', 3)),
+          serverVersionProvider.overrideWith((ref, address) async => '1.4.0'),
+        ]);
     await saveScreenshot('settings-page');
   });
 

@@ -11,6 +11,7 @@ from tefteri.api.deps import (
     AuthDep,
     CurrentUser,
     Db,
+    SessionUser,
     SettingsDep,
     Token,
     set_session_cookie,
@@ -117,7 +118,7 @@ async def methods() -> MethodsResponse:
 
 @router.post("/password", status_code=204)
 async def change_password(
-    body: PasswordChange, db: Db, auth: AuthDep, user: CurrentUser, token: Token
+    body: PasswordChange, db: Db, auth: AuthDep, user: SessionUser, token: Token
 ) -> None:
     """Change your own password. Your other sessions end."""
     try:

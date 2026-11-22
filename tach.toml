@@ -34,9 +34,14 @@ path = "tefteri.api"
 depends_on = ["tefteri.services", "tefteri.domain", "tefteri.db", "tefteri.auth", "tefteri.config"]
 
 [[modules]]
+path = "tefteri.mcp_server"
+depends_on = ["tefteri.auth", "tefteri.db", "tefteri.security"]
+
+[[modules]]
 path = "tefteri"
 depends_on = [
   "tefteri.api",
+  "tefteri.mcp_server",
   "tefteri.services",
   "tefteri.adapters",
   "tefteri.db",

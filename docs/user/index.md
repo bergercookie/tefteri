@@ -11,6 +11,7 @@ connect-apps
 planner
 android-widget
 reminders
+mcp
 daily-planning
 scheduling
 annual-planning

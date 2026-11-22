@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from tefteri.api.deps import CurrentUser, Db
+from tefteri.api.deps import CurrentUser, Db, SessionUser
 from tefteri.services.checklists import MAX_ITEM_LENGTH, MAX_ITEMS
 from tefteri.services.connection_transfer import (
     CalendarRef,
@@ -242,7 +242,7 @@ class ImportOut(BaseModel):
 
 @router.get("/export")
 async def export_settings(
-    request: Request, db: Db, user: CurrentUser, include_connections: bool = False
+    request: Request, db: Db, user: SessionUser, include_connections: bool = False
 ) -> SettingsExport:
     """Return the current user's settings as a file that ``POST /me/settings/import`` reads.
 
@@ -279,7 +279,7 @@ async def export_settings(
 
 @router.post("/import")
 async def import_settings(
-    request: Request, body: SettingsExport, db: Db, user: CurrentUser
+    request: Request, body: SettingsExport, db: Db, user: SessionUser
 ) -> ImportOut:
     """Apply an export to the current user. Settings that the file leaves out stay as they are.
 

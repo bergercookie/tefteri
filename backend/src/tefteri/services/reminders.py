@@ -2,9 +2,11 @@
 
 The server works this out and the phone only schedules it. A reminder is one of:
 
-* a task with a due time, ``default_reminder_minutes`` before it is due. The task needs no
-  reminder in the task app. A task that is done, a task that the task app deleted and a task
-  with only a due day (no time of day) get none;
+* a task with a time, ``default_reminder_minutes`` before it. A task that the user planned
+  for a time of day counts from the start of its block (its due time is the end of the block);
+  any other task counts from its due time. The task needs no reminder in the task app. A task
+  that is done, a task that the task app deleted and a task with only a day (no time of day)
+  get none;
 * a calendar event with a start time, ``event_reminder_minutes`` before it starts. An event that
   is in more than one calendar is one reminder, not one for each calendar;
 * the weekly review, on Sunday at 12:00, the monthly review, on the last day of the month at
@@ -122,21 +124,25 @@ class ReminderService:
                 )
             )
         ).scalars():
-            assert t.due_at is not None  # noqa: S101 - selected above
-            due = _utc(t.due_at)
-            fire = due - before
+            # A task planned for a time starts at the start of its block; its due time is the end.
+            planned = t.scheduled_start is not None
+            anchor = _utc(t.scheduled_start) if t.scheduled_start is not None else None
+            if anchor is None:
+                assert t.due_at is not None  # noqa: S101 - selected above
+                anchor = _utc(t.due_at)
+            fire = anchor - before
             if not start <= fire <= end:
                 continue
             project = names.get(t.container_id) if t.container_id else None
-            when = f"Due at {_clock(due, zone)}"
+            when = f"{'Starts' if planned else 'Due'} at {_clock(anchor, zone)}"
             out.append(
                 Reminder(
-                    id=f"task:{t.id}:{due.isoformat()}",
+                    id=f"task:{t.id}:{anchor.isoformat()}",
                     kind="task",
                     title=t.title,
                     body=f"{when} · {project}" if project else when,
                     fire_at=fire,
-                    link=f"/?date={due.astimezone(zone).date().isoformat()}",
+                    link=f"/?date={anchor.astimezone(zone).date().isoformat()}",
                 )
             )
         return out

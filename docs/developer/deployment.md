@@ -136,6 +136,7 @@ port, so it does not change a running installation. The CI runs this recipe for 
 Put a reverse proxy in front of tefteri to give users an HTTPS address.
 
 1. Use HTTPS on the public address.
-2. Send all requests to the tefteri server, including the paths that start with `/api/`.
+2. Send all requests to the tefteri server, including the paths that start with `/api/` and the
+   path `/mcp` of the [MCP server](mcp.md). Do not buffer or cache the answers of `/mcp`.
 3. Pass the original host name and protocol to tefteri.
 4. Set `TEFTERI_PUBLIC_URL` to the public HTTPS address.

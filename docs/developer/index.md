@@ -16,6 +16,7 @@ weekly-planning
 work-categories
 project-classification
 android-widget
+mcp
 adding-an-adapter
 testing
 deployment
