@@ -10,4 +10,14 @@
     <string name="widget_week_description">Open the plan of the week</string>
     <string name="widget_month_description">Open the plan of the month</string>
     <string name="widget_planner_description">Open the planner with tasks and calendar</string>
+    <string name="agenda_label">Tefteri agenda</string>
+    <string name="agenda_description">The events and tasks of a day, with arrows to the day before and after</string>
+    <string name="agenda_previous_description">Show the day before</string>
+    <string name="agenda_next_description">Show the day after</string>
+    <string name="agenda_today_description">Go back to today</string>
+    <string name="agenda_refresh_description">Refresh the agenda</string>
+    <string name="agenda_task">Task</string>
+    <string name="agenda_empty">Nothing planned for this day</string>
+    <string name="agenda_sign_in">Sign in to Tefteri to see your agenda</string>
+    <string name="agenda_failed">Could not load the agenda. Tap refresh to try again</string>
 </resources>

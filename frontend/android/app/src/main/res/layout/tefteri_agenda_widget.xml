@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The agenda widget: a header with the arrows and the day, and the list of the day. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/agenda_previous"
+            style="@style/TefteriAgendaArrow"
+            android:contentDescription="@string/agenda_previous_description"
+            android:src="@drawable/ic_widget_arrow_left" />
+
+        <TextView
+            android:id="@+id/agenda_date"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/widget_button_background"
+            android:contentDescription="@string/agenda_today_description"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/widget_ink"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/agenda_refresh"
+            style="@style/TefteriAgendaArrow"
+            android:contentDescription="@string/agenda_refresh_description"
+            android:src="@drawable/ic_widget_refresh" />
+
+        <ImageView
+            android:id="@+id/agenda_next"
+            style="@style/TefteriAgendaArrow"
+            android:contentDescription="@string/agenda_next_description"
+            android:src="@drawable/ic_widget_arrow_right" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/agenda_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@null"
+        android:dividerHeight="0dp" />
+</LinearLayout>

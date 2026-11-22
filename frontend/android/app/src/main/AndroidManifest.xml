@@ -49,6 +49,22 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/tefteri_widget_info" />
         </receiver>
+        <!-- The agenda widget: the events and tasks of a day, with arrows to the next and previous day. -->
+        <receiver
+            android:name=".AgendaWidgetProvider"
+            android:exported="false"
+            android:label="@string/agenda_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tefteri_agenda_widget_info" />
+        </receiver>
+        <service
+            android:name=".AgendaWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

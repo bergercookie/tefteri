@@ -39,3 +39,40 @@ in first. After you sign in, choose the button again.
 
 - Check that you installed the newest version of tefteri.
 - Restart your phone, and look for tefteri in the list of widgets again.
+
+## The agenda widget
+
+The agenda widget shows the events and the tasks of one day on your home screen. Use it to see
+your day without you opening tefteri.
+
+### What the agenda widget shows
+
+- The events of the day come first, in time order. Each event shows its time and its place. The
+  color bar at the left is the color of the calendar.
+- The tasks that are due on the day come next. Open tasks are before tasks that you did. A done
+  task has a check mark.
+- The arrow at the left shows the day before. The arrow at the right shows the day after. You can
+  go from one day to the next as many times as you want.
+- The date between the arrows shows the day that you look at. Choose the date to go back to
+  today.
+- The refresh button loads the day again.
+
+The widget shows the current day when you add it. It also goes back to the current day when a new
+day starts. It does not stay on a day that you chose earlier.
+
+Choose an event or a task to open tefteri.
+
+### Add the agenda widget
+
+1. Press and hold an empty place on your home screen.
+2. Choose Widgets.
+3. Find tefteri in the list and choose Tefteri agenda.
+4. Drag the widget to a place on your home screen. It is four cells wide and three cells high.
+   You can make it larger.
+
+### Sign in first
+
+The widget uses the same server and the same login as the app. Sign in to tefteri one time. Then
+the widget shows your day. If the widget shows "Sign in to Tefteri", open the app and sign in.
+If the widget shows that it could not load the agenda, check your network and choose the refresh
+button.

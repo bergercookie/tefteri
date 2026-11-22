@@ -5,5 +5,6 @@
     <color name="widget_rule">#FFE2D9C6</color>
     <color name="widget_ink">#FF1D1B20</color>
     <color name="widget_accent">#FF2F4B7C</color>
+    <color name="widget_muted">#FF6B6760</color>
     <color name="widget_pressed">#1F2F4B7C</color>
 </resources>
