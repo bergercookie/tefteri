@@ -11,6 +11,7 @@ import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../../theme/theme.dart';
+import '../planner/details_dialogs.dart' show showTaskDetails;
 import '../settings/connection_models.dart';
 import '../settings/sync_controller.dart';
 import 'daily_providers.dart';
@@ -265,28 +266,83 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     );
   }
 
-  Widget _taskTile(PlanTask t) => ListTile(
-        key: Key('task-${t.id}'),
-        leading: Checkbox(
-          key: Key('complete-${t.id}'),
-          value: t.done,
-          onChanged: t.done
-              ? null
-              : (_) =>
-                  _run(() => ref.read(planningApiProvider).completeTask(t.id)),
+  /// Marks the task done, or open again when it is done already.
+  Future<void> _toggle(PlanTask t) => _run(() {
+        final api = ref.read(planningApiProvider);
+        return t.done ? api.reopenTask(t.id) : api.completeTask(t.id);
+      });
+
+  /// Opens the pop-up where the title, the due date and the rest can change,
+  /// then loads the day again.
+  Future<void> _edit(PlanTask t) async {
+    await showTaskDetails(context, taskId: t.id, initial: t);
+    if (mounted) ref.invalidate(dayViewProvider(_key));
+  }
+
+  /// When the task is due on this day: its time, or "All day".
+  String _dueText(PlanTask t) {
+    final start = t.scheduledStart?.toLocal() ?? t.dueAt?.toLocal();
+    return t.allDay || start == null ? 'All day' : 'Due ${hhmm(start)}';
+  }
+
+  Widget _taskTile(PlanTask t) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.tefteri;
+    final text = Theme.of(context).textTheme;
+    final details = [
+      _dueText(t),
+      if (t.project != null && t.project!.isNotEmpty) t.project!,
+    ].join(' \u00b7 ');
+    final note = _syncNote(t.syncState);
+    return InkWell(
+      key: Key('task-${t.id}'),
+      // A tap on the row opens the task to edit it.
+      onTap: () => _edit(t),
+      child: DecoratedBox(
+        // A ruled line under every task, like the lines of a notebook page.
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: colors.rule)),
         ),
-        title: Text(
-          t.title,
-          style: t.done
-              ? const TextStyle(decoration: TextDecoration.lineThrough)
-              : null,
-        ),
-        subtitle: _syncNote(t.syncState).isEmpty
-            ? null
-            : Text(_syncNote(t.syncState).substring(3)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
+            // A large target, so that a finger can hit it.
+            IconButton(
+              key: Key('complete-${t.id}'),
+              tooltip: t.done ? 'Mark not done' : 'Mark done',
+              iconSize: 28,
+              constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+              icon: Icon(
+                t.done ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: t.done
+                    ? (parseCalendarColor(t.projectColor) ?? colors.task)
+                    : scheme.onSurfaceVariant,
+              ),
+              onPressed: () => _toggle(t),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: t.done ? scheme.onSurfaceVariant : null,
+                        decoration: t.done ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    Text(details,
+                        key: Key('task-due-${t.id}'), style: text.bodySmall),
+                    if (note.isNotEmpty)
+                      Text(note.substring(3), style: text.bodySmall),
+                  ],
+                ),
+              ),
+            ),
             IconButton(
               key: Key('delete-${t.id}'),
               tooltip: 'Delete task',
@@ -296,7 +352,9 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
             ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
   /// Text appended to a subtitle for non-synced items (starts with " - ").
   String _syncNote(String state) => switch (state) {

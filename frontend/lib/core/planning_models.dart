@@ -29,6 +29,7 @@ class PlanTask {
     required this.syncState,
     this.description,
     this.dueAt,
+    this.allDay = false,
     this.scheduledStart,
     this.scheduledEnd,
     this.goalId,
@@ -50,6 +51,7 @@ class PlanTask {
         description: j['description'] as String?,
         status: '${j['status'] ?? 'open'}',
         dueAt: _dt(j['due_at']),
+        allDay: j['all_day'] == true,
         scheduledStart: _dt(j['scheduled_start']),
         scheduledEnd: _dt(j['scheduled_end']),
         syncState: '${j['sync_state'] ?? 'synced'}',
@@ -81,6 +83,9 @@ class PlanTask {
 
   /// Due time, if any.
   final DateTime? dueAt;
+
+  /// The task has a due day but no time of day.
+  final bool allDay;
 
   /// Planned start, if scheduled.
   final DateTime? scheduledStart;

@@ -38,15 +38,20 @@ The task goes to your task app. It shows in the daily view when it is due on tha
 ## Complete a task
 
 1. Find the task in the daily view.
-2. Choose the check box next to the task.
+2. Choose the circle at the left of the task. On a phone, the circle is large, so you can hit it
+   with a finger.
 
-The task app marks the task as done. To reopen the task, choose the check box again.
+The task app marks the task as done. The circle gets a check mark, and the title gets a line
+through it. To reopen the task, choose the circle again.
 
 ## Edit a task
 
-1. Choose the title of the task.
-2. Change the title, the due date or other fields.
+1. Choose the task. On a phone, touch the title.
+2. Change the title, the due date, the time, the description or other fields.
 3. Choose Save.
+
+The daily view loads the day again. If you gave the task another due date, the task moves to that
+day. Choose Cancel to close the window and keep the old values.
 
 ## Delete a task
 

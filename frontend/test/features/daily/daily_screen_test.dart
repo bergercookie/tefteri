@@ -69,12 +69,107 @@ void main() {
     expect(api.where(_path), hasLength(2));
   });
 
-  testWidgets('a done task cannot be completed again', (tester) async {
-    final api = _api();
+  testWidgets('a done task is marked not done by its check mark',
+      (tester) async {
+    final api = _api({'POST /tasks/t3/reopen': taskJson('t3', 'Old task')});
     await _pump(tester, api);
     await tester.tap(find.byKey(const Key('complete-t3')));
     await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(api.where('POST /tasks/t3/complete'), isEmpty);
+    expect(api.where('POST /tasks/t3/reopen'), hasLength(1));
+    expect(api.where(_path), hasLength(2));
+  });
+
+  testWidgets('the check mark is a target that a finger can hit',
+      (tester) async {
+    await _pump(tester, _api());
+    final size = tester.getSize(find.byKey(const Key('complete-t1')));
+    expect(size.width, greaterThanOrEqualTo(48));
+    expect(size.height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets(
+      'a tap on a task opens it, and a change of the title is saved and the day is loaded again',
+      (tester) async {
+    final api = _api({
+      'GET /tasks/t1': taskJson('t1', 'Write report'),
+      'PATCH /tasks/t1': taskJson('t1', 'Write the report'),
+      'POST /tasks/t1/schedule': taskJson('t1', 'Write the report'),
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+    // Nothing was completed by opening it.
+    expect(api.where('POST /tasks/t1/complete'), isEmpty);
+    await tester.enterText(
+        find.byKey(const Key('task-edit-title')), 'Write the report');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-save')));
+    await tester.pumpAndSettle();
+    expect(api.where('PATCH /tasks/t1').single.data,
+        {'title': 'Write the report', 'description': ''});
+    // The pop-up is closed and the day is loaded again.
+    expect(find.byKey(const Key('task-details')), findsNothing);
+    expect(api.where(_path), hasLength(2));
+  });
+
+  testWidgets('the due date of a task can be removed in its pop-up',
+      (tester) async {
+    final dated = {
+      ...taskJson('t1', 'Write report'),
+      'due_at': DateTime(2026, 11, 1).toUtc().toIso8601String(),
+    };
+    final day = _day();
+    (day['tasks']! as List<Object?>)[0] = dated;
+    final api = FakeApi({
+      _path: day,
+      'GET /connections': [connectionJson('c1', 'tasks', 'Home tasks')],
+      'GET /tasks/t1': dated,
+      'DELETE /tasks/t1/schedule': taskJson('t1', 'Write report'),
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('task-t1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('task-edit-date')), findsOneWidget);
+    expect(find.byKey(const Key('task-edit-time')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-edit-date-clear')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-save')));
+    await tester.pumpAndSettle();
+    expect(api.where('DELETE /tasks/t1/schedule'), hasLength(1));
+    // The day is loaded again, so the task can leave the list.
+    expect(api.where(_path), hasLength(2));
+  });
+
+  testWidgets('a task shows its due time, or all day', (tester) async {
+    final day = _day();
+    (day['tasks']! as List<Object?>)
+      ..[0] = {
+        ...taskJson('t1', 'Write report'),
+        'due_at': DateTime(2026, 11, 1, 14, 30).toUtc().toIso8601String(),
+        'scheduled_start':
+            DateTime(2026, 11, 1, 14, 30).toUtc().toIso8601String(),
+        'scheduled_end':
+            DateTime(2026, 11, 1, 15, 30).toUtc().toIso8601String(),
+        'project': 'Home',
+      }
+      ..[1] = {
+        ...taskJson('t2', 'Buy milk'),
+        'due_at': DateTime(2026, 11, 1).toUtc().toIso8601String(),
+        'all_day': true,
+      };
+    await _pump(
+        tester,
+        FakeApi({
+          _path: day,
+          'GET /connections': [connectionJson('c1', 'tasks', 'Home tasks')],
+        }));
+    final timed = tester.widget<Text>(find.byKey(const Key('task-due-t1')));
+    expect(timed.data, 'Due 14:30 \u00b7 Home');
+    final allDay = tester.widget<Text>(find.byKey(const Key('task-due-t2')));
+    expect(allDay.data, 'All day');
   });
 
   testWidgets('delete calls the API', (tester) async {
