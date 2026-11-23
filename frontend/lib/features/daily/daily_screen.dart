@@ -1,6 +1,8 @@
 /// Daily view: entries, tasks and the daily note for one day.
 library;
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +19,10 @@ import '../settings/sync_controller.dart';
 import 'daily_providers.dart';
 
 /// Shows one day with quick add, complete, delete and note append.
+///
+/// The events that are over are faded. On today, the list starts at the first
+/// event that has not ended, so the events that are over are scrolled out of
+/// view.
 class DailyScreen extends ConsumerStatefulWidget {
   /// Creates the screen; [initialDate] defaults to today.
   const DailyScreen({this.initialDate, super.key});
@@ -34,18 +40,46 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
   String? _connectionId;
   final _titleCtl = TextEditingController();
   final _noteCtl = TextEditingController();
+  final _scroll = ScrollController();
+
+  /// The first event that has not ended; the list scrolls to it.
+  final _anchorKey = GlobalKey();
+
+  /// Every minute, so that an event fades when it ends.
+  Timer? _tick;
+
+  /// The day for which the list was scrolled already. It scrolls once for each
+  /// time that the user comes to a day, not each time that the day reloads.
+  String? _scrolledFor;
 
   @override
   void initState() {
     super.initState();
-    _date = widget.initialDate ?? DateTime.now();
+    _date = widget.initialDate ?? _now;
+    _syncTick();
   }
 
   @override
   void dispose() {
+    _tick?.cancel();
+    _scroll.dispose();
     _titleCtl.dispose();
     _noteCtl.dispose();
     super.dispose();
+  }
+
+  DateTime get _now => ref.read(dailyClockProvider)();
+
+  bool get _isToday => dateKey(_date) == dateKey(_now);
+
+  /// Runs the minute timer only while today is shown.
+  void _syncTick() {
+    _tick?.cancel();
+    _tick = _isToday
+        ? Timer.periodic(const Duration(minutes: 1), (_) {
+            if (mounted) setState(() {});
+          })
+        : null;
   }
 
   String get _key => dateKey(_date);
@@ -96,15 +130,36 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     if (ok) _noteCtl.clear();
   }
 
-  void _today() => setState(() {
-        _date = DateTime.now();
-        _error = null;
-      });
+  void _today() {
+    setState(() {
+      _date = _now;
+      _error = null;
+      _scrolledFor = null;
+    });
+    _syncTick();
+  }
 
-  void _shiftDay(int days) => setState(() {
-        _date = DateTime(_date.year, _date.month, _date.day + days);
-        _error = null;
-      });
+  void _shiftDay(int days) {
+    setState(() {
+      _date = DateTime(_date.year, _date.month, _date.day + days);
+      _error = null;
+      _scrolledFor = null;
+    });
+    _syncTick();
+  }
+
+  /// The event is over: it ended before [now], or it is an all-day event of a
+  /// day that has passed.
+  bool _isPast(PlanEntry e, DateTime now) {
+    if (e.allDay) {
+      final day = e.start?.toLocal();
+      if (day == null) return false;
+      return DateTime(day.year, day.month, day.day)
+          .isBefore(DateTime(now.year, now.month, now.day));
+    }
+    final end = (e.end ?? e.start)?.toLocal();
+    return end != null && !end.isAfter(now);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,55 +270,134 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
 
   Widget _content(DayView v) {
     final theme = Theme.of(context).textTheme;
-    return ListView(
-      padding: const EdgeInsets.all(8),
-      children: [
-        Text('Events', style: theme.titleMedium),
-        if (v.entries.isEmpty) const Text('No events.'),
-        for (final e in v.entries) _entryTile(e),
-        const SizedBox(height: 16),
-        Text('Tasks', style: theme.titleMedium),
-        if (v.tasks.isEmpty) const Text('No tasks.'),
-        for (final t in v.tasks) _taskTile(t),
-        const SizedBox(height: 16),
-        Text('Daily note', style: theme.titleMedium),
-        Text(
-          (v.note?.body.isNotEmpty ?? false) ? v.note!.body : 'No note yet.',
-          key: const Key('note-body'),
-        ),
-        Row(
+    final now = _now;
+    // On today, the list starts at the first event that is not over. When all
+    // the events are over, it starts at the tasks. When no event is over yet,
+    // it starts at the top, so that the heading Events shows.
+    final anchorToday = _isToday && v.entries.isNotEmpty;
+    final upcoming =
+        anchorToday ? v.entries.indexWhere((e) => !_isPast(e, now)) : -1;
+    final scrolls = anchorToday && upcoming != 0;
+    if (scrolls && _scrolledFor != _key) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _anchorKey.currentContext;
+        if (!mounted || target == null || _scrolledFor == _key) return;
+        _scrolledFor = _key;
+        Scrollable.ensureVisible(target, alignment: 0, duration: Duration.zero);
+      });
+    }
+    return LayoutBuilder(
+        builder: (context, box) => SingleChildScrollView(
+              key: const Key('day-list'),
+              controller: _scroll,
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Events', style: theme.titleMedium),
+                  if (v.entries.isEmpty) const Text('No events.'),
+                  for (var i = 0; i < v.entries.length; i++)
+                    i == upcoming
+                        ? KeyedSubtree(
+                            key: _anchorKey,
+                            child: _entryTile(v.entries[i], now),
+                          )
+                        : _entryTile(v.entries[i], now),
+                  const SizedBox(height: 16),
+                  KeyedSubtree(
+                    key: anchorToday && upcoming == -1 ? _anchorKey : null,
+                    child: Text('Tasks', style: theme.titleMedium),
+                  ),
+                  if (v.tasks.isEmpty) const Text('No tasks.'),
+                  for (final t in v.tasks) _taskTile(t),
+                  const SizedBox(height: 16),
+                  Text('Daily note', style: theme.titleMedium),
+                  Text(
+                    (v.note?.body.isNotEmpty ?? false)
+                        ? v.note!.body
+                        : 'No note yet.',
+                    key: const Key('note-body'),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          key: const Key('note-field'),
+                          controller: _noteCtl,
+                          decoration: const InputDecoration(
+                              hintText: 'Add to the note'),
+                          onSubmitted: (_) => _appendNote(),
+                        ),
+                      ),
+                      IconButton(
+                        key: const Key('note-append-button'),
+                        tooltip: 'Add to note',
+                        icon: const Icon(Icons.send),
+                        onPressed: _appendNote,
+                      ),
+                    ],
+                  ),
+                  // Room below, so that the next event can reach the top of the list
+                  // also when little is below it.
+                  if (scrolls) SizedBox(height: box.maxHeight * 0.8),
+                ],
+              ),
+            ));
+  }
+
+  Widget _entryTile(PlanEntry e, DateTime now) {
+    final colors = context.tefteri;
+    final text = Theme.of(context).textTheme;
+    final past = _isPast(e, now);
+    final time = e.allDay || e.start == null
+        ? 'All day'
+        : '${hhmm(e.start!.toLocal())} - '
+            '${e.end == null ? '' : hhmm(e.end!.toLocal())}';
+    final place = (e.location?.isNotEmpty ?? false) ? ' - ${e.location}' : '';
+    final tile = DecoratedBox(
+      key: Key('entry-${e.id}'),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.rule)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: TextField(
-                key: const Key('note-field'),
-                controller: _noteCtl,
-                decoration: const InputDecoration(hintText: 'Add to the note'),
-                onSubmitted: (_) => _appendNote(),
+            // The color of its calendar.
+            Container(
+              width: 4,
+              margin: const EdgeInsets.symmetric(vertical: Space.sm),
+              decoration: BoxDecoration(
+                color: parseCalendarColor(e.color) ?? colors.task,
+                borderRadius: BorderRadius.circular(Corner.sm),
               ),
             ),
-            IconButton(
-              key: const Key('note-append-button'),
-              tooltip: 'Add to note',
-              icon: const Icon(Icons.send),
-              onPressed: _appendNote,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Space.md, vertical: Space.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(e.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w500)),
+                    Text('$time$place${_syncNote(e.syncState)}',
+                        style: text.bodySmall),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
-      ],
+      ),
     );
-  }
-
-  Widget _entryTile(PlanEntry e) {
-    final time = e.allDay || e.start == null
-        ? 'All day'
-        : '${hhmm(e.start!)} - ${e.end == null ? '' : hhmm(e.end!)}';
-    final place = (e.location?.isNotEmpty ?? false) ? ' - ${e.location}' : '';
-    return ListTile(
-      key: Key('entry-${e.id}'),
-      leading: Icon(Icons.event, color: parseCalendarColor(e.color)),
-      title: Text(e.title),
-      subtitle: Text('$time$place${_syncNote(e.syncState)}'),
-    );
+    // An event that is over is grayed out.
+    return past
+        ? Opacity(key: Key('entry-past-${e.id}'), opacity: 0.45, child: tile)
+        : tile;
   }
 
   /// Marks the task done, or open again when it is done already.

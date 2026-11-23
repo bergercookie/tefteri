@@ -24,6 +24,25 @@ Tefteri does not store these items. They stay in your own apps. Tefteri changes 
 
 If you did not connect your apps, read [Connect your apps](connect-apps.md) first.
 
+## Events that are over
+
+An event is over when its end time is before the current time. The daily view shows an event that
+is over in a lighter color, so that you see what is still to come.
+
+![The daily view of a day that has passed. Both events are in a lighter color.](../images/daily-past-day.png)
+
+When you open today, the list does not start at the top. It starts at the first event that is not
+over, and the events that are over are above it. Scroll up to see them. If an event is on now, it
+is not over, and the list starts with it. If every event is over, the list starts at the tasks. If
+no event is over yet, the list starts at the top.
+
+![The daily view at 10:00. The event Team standup is over and is scrolled out of view. The list starts with the event Dentist.](../images/daily-past-events.png)
+
+The view keeps up with the time. An event gets the lighter color when it ends, and you do not need
+to load the day again. The list scrolls once each time that you come to today, for example when you
+choose Today. It does not move again while you read the day. A day that has passed shows every event
+in the lighter color, and the list starts at the top. A day to come shows the events as usual.
+
 ## Add a task
 
 1. In the daily view, choose Add task.
