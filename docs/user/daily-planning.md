@@ -36,6 +36,9 @@ over, and the events that are over are above it. Scroll up to see them. If an ev
 is not over, and the list starts with it. If every event is over, the list starts at the tasks. If
 no event is over yet, the list starts at the top.
 
+An all-day event of today is not over. The events that are over are always before it, so that
+they are out of view and the list starts with the all-day event.
+
 ![The daily view at 10:00. The event Team standup is over and is scrolled out of view. The list starts with the event Dentist.](../images/daily-past-events.png)
 
 The view keeps up with the time. An event gets the lighter color when it ends, and you do not need

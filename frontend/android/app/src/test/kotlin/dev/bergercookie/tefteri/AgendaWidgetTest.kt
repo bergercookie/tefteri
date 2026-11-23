@@ -311,6 +311,22 @@ class AgendaWidgetTest {
         assertTrue(!AgendaData.isOver("", 1_000)) // an end that cannot be read is not over
     }
 
+    @Test
+    fun `an event that is over goes before an all-day event of today`() {
+        val now = System.currentTimeMillis()
+        fun event(title: String, allDay: Boolean, endMillis: Long) =
+            """{"title": "$title", "all_day": $allDay, "start": "${ReminderData.iso(endMillis - 3_600_000)}",
+               "end": "${ReminderData.iso(endMillis)}", "location": "", "color": ""}"""
+        val body = """{"entries": [
+            ${event("A all day", true, now + 3_600_000)},
+            ${event("Next", false, now + 7_200_000)},
+            ${event("Over", false, now - 1_800_000)}], "tasks": []}"""
+        val loaded = AgendaData.parse(body, now) as AgendaResult.Loaded
+        assertEquals(listOf("Over", "A all day", "Next"), loaded.items.map { it.title })
+        // The list starts at the all-day event, with the event that is over above it.
+        assertEquals(1, AgendaScroll.anchorIndex(loaded.items))
+    }
+
     private fun item(task: Boolean, past: Boolean = false) =
         AgendaItem(task, "x", "", "", 0, false, past)
 

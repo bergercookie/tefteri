@@ -167,6 +167,24 @@ void main() {
       expect(find.byKey(const Key('entry-past-e13')), findsOneWidget);
     });
 
+    testWidgets(
+        'an all-day event of today does not keep the events that are over in '
+        'view', (tester) async {
+      // The all-day event comes first in the data, as it does when the list is
+      // sorted by title or by start. The events that are over go before it.
+      await _pump(tester, [_allDay('today', 1), ...many],
+          now: DateTime(2026, 11, 1, 14, 30));
+      final scroll = _top(tester, find.byKey(const Key('day-list')));
+      expect(await offset(tester), greaterThan(0));
+      expect(
+          _top(tester, find.byKey(const Key('entry-e13'))), lessThan(scroll));
+      // The all-day event is not over: it is the first in view, and the next
+      // timed event is below it.
+      expect(_top(tester, find.text('All day today')) - scroll, lessThan(12));
+      expect(_top(tester, find.byKey(const Key('entry-e14'))),
+          greaterThan(_top(tester, find.text('All day today'))));
+    });
+
     testWidgets('does not scroll at the start of the day', (tester) async {
       await _pump(tester, many, now: DateTime(2026, 11, 1, 5)); // before all
       expect(await offset(tester), 0);

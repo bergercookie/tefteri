@@ -64,7 +64,9 @@ it, in a lighter color, and you can scroll up to see them. An event that is on n
 every event is over, the list starts at the tasks. If no event is over yet, the list starts at the
 top. The list scrolls one time each time that you come to today, for example when you choose the
 date to go back to today. It does not scroll again when the widget loads the day again. Other days
-show from the top, and a day that has passed shows all its events in the lighter color.
+show from the top, and a day that has passed shows all its events in the lighter color. An all-day
+event of today is not over, and the events that are over are always before it, so that they are
+out of view.
 
 The widget shows the current day when you add it. It also goes back to the current day when a new
 day starts. It does not stay on a day that you chose earlier.

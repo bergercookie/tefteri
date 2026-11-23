@@ -274,9 +274,15 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     // On today, the list starts at the first event that is not over. When all
     // the events are over, it starts at the tasks. When no event is over yet,
     // it starts at the top, so that the heading Events shows.
-    final anchorToday = _isToday && v.entries.isNotEmpty;
+    // The events that are over come first, even before an all-day event of
+    // today, so that they all scroll out of view above the next event.
+    final entries = [
+      ...v.entries.where((e) => _isPast(e, now)),
+      ...v.entries.where((e) => !_isPast(e, now)),
+    ];
+    final anchorToday = _isToday && entries.isNotEmpty;
     final upcoming =
-        anchorToday ? v.entries.indexWhere((e) => !_isPast(e, now)) : -1;
+        anchorToday ? entries.indexWhere((e) => !_isPast(e, now)) : -1;
     final scrolls = anchorToday && upcoming != 0;
     if (scrolls && _scrolledFor != _key) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -295,14 +301,14 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text('Events', style: theme.titleMedium),
-                  if (v.entries.isEmpty) const Text('No events.'),
-                  for (var i = 0; i < v.entries.length; i++)
+                  if (entries.isEmpty) const Text('No events.'),
+                  for (var i = 0; i < entries.length; i++)
                     i == upcoming
                         ? KeyedSubtree(
                             key: _anchorKey,
-                            child: _entryTile(v.entries[i], now),
+                            child: _entryTile(entries[i], now),
                           )
-                        : _entryTile(v.entries[i], now),
+                        : _entryTile(entries[i], now),
                   const SizedBox(height: 16),
                   KeyedSubtree(
                     key: anchorToday && upcoming == -1 ? _anchorKey : null,

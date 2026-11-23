@@ -92,6 +92,9 @@ object AgendaData {
                     ),
                 )
             }
+            // The events that are over come first, even before an all-day event of today, so that
+            // they all scroll out of view above the next event. The sort keeps the order otherwise.
+            items.sortByDescending { it.past }
             val tasks = root.optJSONArray("tasks")
             val taskItems = mutableListOf<AgendaItem>()
             for (i in 0 until (tasks?.length() ?: 0)) {
