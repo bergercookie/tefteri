@@ -32,11 +32,25 @@ enum PlannerSpan {
       : DateTime(day.year, day.month, day.day);
 }
 
-/// Keeps the [PlannerSpan] and stores it on this device. The week is the
-/// default.
-class PlannerSpanController extends StateNotifier<PlannerSpan> {
+/// Calendar widths from which the planner shows three days and the week.
+const double threeDaysMinWidth = 420;
+
+/// Calendar width from which the planner shows the whole week.
+const double weekMinWidth = 540;
+
+/// The span that fits a calendar that is [width] wide: a phone shows a day, a
+/// tablet or a narrow window three days, and a wide screen the week.
+PlannerSpan spanForWidth(double width) => width >= weekMinWidth
+    ? PlannerSpan.week
+    : width >= threeDaysMinWidth
+        ? PlannerSpan.threeDays
+        : PlannerSpan.day;
+
+/// What the user chose: a span, or null for automatic (the span follows the
+/// width of the calendar). Stored on this device. Automatic is the default.
+class PlannerSpanController extends StateNotifier<PlannerSpan?> {
   /// Creates the controller and loads the saved choice.
-  PlannerSpanController() : super(PlannerSpan.week) {
+  PlannerSpanController() : super(null) {
     _load();
   }
 
@@ -48,26 +62,31 @@ class PlannerSpanController extends StateNotifier<PlannerSpan> {
     try {
       final saved = (await SharedPreferences.getInstance()).getString(_key);
       if (!mounted || _userChanged || saved == null) return;
-      state = PlannerSpan.values
-          .firstWhere((s) => s.name == saved, orElse: () => PlannerSpan.week);
+      state = PlannerSpan.values.where((s) => s.name == saved).firstOrNull;
     } on Object {
-      // The choice is only a convenience: keep the week.
+      // The choice is only a convenience: stay automatic.
     }
   }
 
-  /// Shows [span] and keeps it for the next start.
-  Future<void> set(PlannerSpan span) async {
+  /// Shows [span], or follows the width again when [span] is null, and keeps
+  /// the choice for the next start.
+  Future<void> set(PlannerSpan? span) async {
     _userChanged = true;
     state = span;
     try {
-      await (await SharedPreferences.getInstance()).setString(_key, span.name);
+      final prefs = await SharedPreferences.getInstance();
+      if (span == null) {
+        await prefs.remove(_key);
+      } else {
+        await prefs.setString(_key, span.name);
+      }
     } on Object {
       // A store that does not work: the choice lasts until the app closes.
     }
   }
 }
 
-/// The number of days that the planner calendar shows.
+/// The span that the user chose, or null for automatic.
 final plannerSpanProvider =
-    StateNotifierProvider<PlannerSpanController, PlannerSpan>(
+    StateNotifierProvider<PlannerSpanController, PlannerSpan?>(
         (_) => PlannerSpanController());

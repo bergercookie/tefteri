@@ -99,4 +99,35 @@ void main() {
     expect(_columns(tester), 3);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a phone opens on one day, without a saved choice',
+      (tester) async {
+    await pumpPlanner(tester, plannerApi(), size: const Size(360, 640));
+    await tester.tap(find.byKey(const Key('tab-calendar')));
+    await tester.pumpAndSettle();
+    expect(_columns(tester), 1);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('planner_span'), isNull);
+  });
+
+  testWidgets('a tablet width opens on three days', (tester) async {
+    await pumpPlanner(tester, plannerApi(), size: const Size(500, 900));
+    await tester.tap(find.byKey(const Key('tab-calendar')));
+    await tester.pumpAndSettle();
+    expect(_columns(tester), 3);
+  });
+
+  testWidgets('a saved choice wins over the width, and Automatic undoes it',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'planner_span': 'week'});
+    await pumpPlanner(tester, plannerApi(), size: const Size(360, 640));
+    await tester.tap(find.byKey(const Key('tab-calendar')));
+    await tester.pumpAndSettle();
+    expect(_columns(tester), 7);
+
+    await _choose(tester, 'auto');
+    expect(_columns(tester), 1);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('planner_span'), isNull);
+  });
 }

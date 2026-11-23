@@ -29,7 +29,7 @@ void main() {
     expect(find.byKey(const Key('task-pane')).hitTestable(), findsNothing);
   });
 
-  testWidgets('filter, search text and week survive a tab switch',
+  testWidgets('filter, search text and day survive a tab switch',
       (tester) async {
     final api = plannerApi();
     await _pumpNarrow(tester, api);
@@ -54,7 +54,7 @@ void main() {
         'trip');
     await tester.tap(find.byKey(const Key('tab-calendar')));
     await tester.pumpAndSettle();
-    expect(find.text('Week of 2026-11-09'), findsOneWidget);
+    expect(find.text('Thu 2026-11-05'), findsOneWidget);
   });
 
   testWidgets('Schedule… chooses a date and time without dragging',

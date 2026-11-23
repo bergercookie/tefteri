@@ -48,6 +48,10 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   late DateTime _anchor;
   int _tab = 0;
 
+  /// The width that the calendar has now; it decides the span while the user
+  /// has not chosen one.
+  double _calendarWidth = twoColumnMinWidth;
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +60,8 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
 
   static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  PlannerSpan get _span => ref.read(plannerSpanProvider);
+  PlannerSpan get _span =>
+      ref.read(plannerSpanProvider) ?? spanForWidth(_calendarWidth);
 
   DateTime get _start => _span.startFor(_anchor);
 
@@ -64,15 +69,15 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   void _shift(int steps) => setState(() => _anchor =
       DateTime(_anchor.year, _anchor.month, _anchor.day + steps * _span.days));
 
-  /// Shows [span]. When today is on the screen, the new view holds it too;
+  /// Shows [chosen], or the span that fits the width when it is null. When today is on the screen, the new view holds it too;
   /// otherwise it starts where the old one starts.
-  void _setSpan(PlannerSpan span) {
+  void _setSpan(PlannerSpan? chosen) {
     final today = _dayOf(widget.clock());
     final start = _start;
     final end = DateTime(start.year, start.month, start.day + _span.days);
     setState(() => _anchor =
         !today.isBefore(start) && today.isBefore(end) ? today : start);
-    ref.read(plannerSpanProvider.notifier).set(span);
+    ref.read(plannerSpanProvider.notifier).set(chosen);
   }
 
   @override
@@ -116,11 +121,12 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                       ref.read(plannerErrorProvider.notifier).state = null,
                 ),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, c) => c.maxWidth >= twoColumnMinWidth
-                      ? _wide(c.maxWidth)
-                      : _narrow(),
-                ),
+                child: LayoutBuilder(builder: (context, c) {
+                  final wide = c.maxWidth >= twoColumnMinWidth;
+                  _calendarWidth =
+                      wide ? _wideCalendarWidth(c.maxWidth) : c.maxWidth;
+                  return wide ? _wide(c.maxWidth) : _narrow();
+                }),
               ),
             ],
           ),
@@ -134,9 +140,23 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
         span: _span,
         onShift: _shift,
         onSpan: _setSpan,
+        automatic: ref.read(plannerSpanProvider) == null,
         clock: widget.clock,
         onToday: () => setState(() => _anchor = _dayOf(widget.clock())),
       );
+
+  /// The width of the calendar next to the task list.
+  double _wideCalendarWidth(double available) {
+    final visibility = ref.read(plannerVisibilityProvider);
+    if (!visibility.showCalendar) return available;
+    if (!visibility.showTasks) return available;
+    final notifier = ref.read(taskPaneWidthProvider.notifier);
+    final most = (available - calendarMinWidth - resizeHandleWidth)
+        .clamp(notifier.min, notifier.max)
+        .toDouble();
+    final width = ref.read(taskPaneWidthProvider).clamp(notifier.min, most);
+    return available - width - resizeHandleWidth;
+  }
 
   Widget _wide(double available) {
     final visibility = ref.watch(plannerVisibilityProvider);

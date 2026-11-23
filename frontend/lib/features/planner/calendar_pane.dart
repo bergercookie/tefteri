@@ -44,6 +44,7 @@ class CalendarPane extends ConsumerStatefulWidget {
     required this.onToday,
     this.span = PlannerSpan.week,
     this.onSpan,
+    this.automatic = false,
     this.clock = DateTime.now,
     super.key,
   });
@@ -61,7 +62,10 @@ class CalendarPane extends ConsumerStatefulWidget {
   final VoidCallback onToday;
 
   /// Called when the user chooses another span. Without it there is no menu.
-  final ValueChanged<PlannerSpan>? onSpan;
+  final ValueChanged<PlannerSpan?>? onSpan;
+
+  /// True while the span follows the width of the calendar.
+  final bool automatic;
 
   /// Gives the current time. Tests replace it.
   final DateTime Function() clock;
@@ -272,6 +276,8 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
   /// Below this width the span menu shows an icon instead of its name.
   static const double _compactNavWidth = 440;
 
+  static const Object _auto = 'auto';
+
   static IconData _spanIcon(PlannerSpan span) => switch (span) {
         PlannerSpan.week => Icons.view_week_outlined,
         PlannerSpan.threeDays => Icons.view_column_outlined,
@@ -280,12 +286,23 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
 
   /// A button that names the span and opens the list of spans. When
   /// [compact], it shows the icon of the span instead of its name.
-  Widget _spanMenu({required bool compact}) => PopupMenuButton<PlannerSpan>(
+  Widget _spanMenu({required bool compact}) => PopupMenuButton<Object>(
         key: const Key('planner-span-button'),
         tooltip: 'Choose how many days to show',
-        initialValue: widget.span,
-        onSelected: widget.onSpan,
+        initialValue: widget.automatic ? _auto : widget.span,
+        onSelected: (v) => widget.onSpan?.call(v is PlannerSpan ? v : null),
         itemBuilder: (_) => [
+          PopupMenuItem<Object>(
+            key: const Key('planner-span-auto'),
+            value: _auto,
+            child: Row(children: [
+              const Icon(Icons.devices_outlined, size: 20),
+              const SizedBox(width: Space.sm),
+              Text(widget.automatic
+                  ? 'Automatic (${widget.span.label})'
+                  : 'Automatic'),
+            ]),
+          ),
           for (final s in PlannerSpan.values)
             PopupMenuItem(
               key: Key('planner-span-${s.name}'),

@@ -9,7 +9,7 @@ You can see what you must do and when you have time, on one screen.
 
 The left column is the task list. At the top you find the filters and the search box.
 The right column is the calendar. It shows your calendar entries and your tasks together. By
-default it shows one week. Refer to [Show a week, three days or one day](#show-a-week-three-days-or-one-day).
+default it shows the number of days that fits your screen. Refer to [Show a week, three days or one day](#show-a-week-three-days-or-one-day).
 
 Task blocks have a colored outline and a check mark. Calendar entries have no outline. An entry
 from a Google calendar has the color that you chose for that calendar in Google Calendar: a
@@ -85,12 +85,15 @@ The Month view is for the monthly theme focus and review. Read [Plan your month]
 
 The menu at the right of the calendar header sets how many days the calendar shows:
 
-- Week: Monday to Sunday. This is the default.
+- Automatic: tefteri picks the number of days from the width of the calendar. This is the default.
+  A wide window shows the week, a tablet or a narrow window shows three days, and a phone shows
+  one day. The menu shows the number of days that it picked.
+- Week: Monday to Sunday.
 - 3 days: three days. The first day is today, or the day that you move to with the arrows.
 - Day: one day.
 
-On a narrow screen, the menu shows an icon instead of the name. Tefteri keeps your choice on this
-device and uses it the next time you open the planner.
+On a narrow screen, the menu shows an icon instead of the name. When you choose Week, 3 days or Day, tefteri keeps your choice on this
+device and uses it each time you open the planner, whatever the width. Choose Automatic to let tefteri decide again.
 
 When you change the view and today is on the screen, the new view also shows today. If today is
 not on the screen, the new view starts on the first day that you saw.
