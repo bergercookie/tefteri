@@ -11,10 +11,20 @@ import android.widget.RemoteViewsService
 /** Gives the list of the agenda widget its rows. */
 class AgendaWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
-        AgendaFactory(
-            applicationContext,
-            intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID),
-        )
+        AgendaFactory(applicationContext, widgetIdOf(intent))
+
+    companion object {
+        /**
+         * The id of the widget that the list is for. It is an extra of the intent, and it is also
+         * in the data of the intent (see AgendaWidgetProvider), in case a launcher drops the extras.
+         */
+        fun widgetIdOf(intent: Intent): Int {
+            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            if (id != AppWidgetManager.INVALID_APPWIDGET_ID) return id
+            val fromData = Regex("appWidgetId=(\\d+)").find(intent.dataString ?: "")?.groupValues?.get(1)
+            return fromData?.toIntOrNull() ?: AppWidgetManager.INVALID_APPWIDGET_ID
+        }
+    }
 }
 
 private class AgendaFactory(
@@ -35,6 +45,10 @@ private class AgendaFactory(
             is AgendaResult.Loaded -> {
                 items = result.items
                 message = if (items.isEmpty()) context.getString(R.string.agenda_empty) else null
+                // On today, start the list at the next event, with the earlier ones above it.
+                if (AgendaWidgetProvider.currentOffset(context, widgetId) == 0) {
+                    AgendaScroll.request(context, widgetId, items)
+                }
             }
             AgendaResult.NotSignedIn -> {
                 items = emptyList()
@@ -76,6 +90,8 @@ private class AgendaFactory(
         val line = listOf(time, item.detail).filter { it.isNotEmpty() }.joinToString(" \u00b7 ")
         row.setViewVisibility(R.id.agenda_time, if (line.isEmpty()) View.GONE else View.VISIBLE)
         row.setTextViewText(R.id.agenda_time, line)
+        // An event that is over is grayed out.
+        if (item.past) row.setFloat(R.id.agenda_row, "setAlpha", PAST_ALPHA)
         row.setTextColor(
             R.id.agenda_title,
             context.getColor(if (item.done) R.color.widget_muted else R.color.widget_ink),
@@ -88,3 +104,6 @@ private class AgendaFactory(
     override fun getItemId(position: Int): Long = position.toLong()
     override fun hasStableIds(): Boolean = false
 }
+
+/** How faint a row of an event that is over is. */
+const val PAST_ALPHA = 0.45f

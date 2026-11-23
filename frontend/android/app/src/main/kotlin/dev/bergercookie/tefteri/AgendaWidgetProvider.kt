@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.RemoteViews
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -18,17 +19,19 @@ import java.util.Locale
 class AgendaWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        Log.i(TAG, "update of ${ids.toList()}")
         for (id in ids) refresh(context, id)
     }
 
     override fun onDeleted(context: Context, ids: IntArray) {
         val edit = prefs(context).edit()
-        for (id in ids) edit.remove(offsetKey(id)).remove(baseKey(id))
-        edit.apply()
+        for (id in ids) edit.remove(shownKey(id)).remove(setOnKey(id)).remove(scrolledKey(id))
+        edit.commit()
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        val id = widgetIdOf(intent)
+        Log.i(TAG, "received ${intent.action} for widget $id")
         when (intent.action) {
             ACTION_PREVIOUS -> move(context, id, -1)
             ACTION_NEXT -> move(context, id, 1)
@@ -40,11 +43,9 @@ class AgendaWidgetProvider : AppWidgetProvider() {
 
     private fun move(context: Context, id: Int, step: Int) {
         if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
-        val offset = if (step == 0) 0 else currentOffset(context, id) + step
-        prefs(context).edit()
-            .putInt(offsetKey(id), offset)
-            .putString(baseKey(id), AgendaData.dayKey(Calendar.getInstance()))
-            .apply()
+        val day = if (step == 0) Calendar.getInstance() else shownDay(context, id).apply { add(Calendar.DAY_OF_YEAR, step) }
+        show(context, id, day)
+        Log.i(TAG, "widget $id shows ${AgendaData.dayKey(day)}")
         refresh(context, id)
     }
 
@@ -84,12 +85,15 @@ class AgendaWidgetProvider : AppWidgetProvider() {
     }
 
     private fun action(context: Context, id: Int, action: String): PendingIntent {
+        // The widget and the button are in the address of the intent, so every button of every
+        // widget has an intent of its own. Nothing depends on the extras being kept up to date.
         val intent = Intent(context, AgendaWidgetProvider::class.java)
             .setAction(action)
+            .setData(Uri.parse("tefteri-agenda://widget/$id/${action.substringAfterLast('.').lowercase()}"))
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
         return PendingIntent.getBroadcast(
             context,
-            id * 10 + action.hashCode().mod(10),
+            0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -102,16 +106,80 @@ class AgendaWidgetProvider : AppWidgetProvider() {
         const val ACTION_REFRESH = "dev.bergercookie.tefteri.agenda.REFRESH"
         private const val PREFS = "tefteri_agenda_widget"
 
-        private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        private fun offsetKey(id: Int) = "offset_$id"
-        private fun baseKey(id: Int) = "base_$id"
+        private const val TAG = "TefteriAgenda"
 
-        /** Days from today that the widget shows. It is 0 when it was set on an earlier day. */
-        fun currentOffset(context: Context, id: Int): Int {
-            val p = prefs(context)
-            val base = p.getString(baseKey(id), null)
-            return if (base == AgendaData.dayKey(Calendar.getInstance())) p.getInt(offsetKey(id), 0) else 0
+        /** The widget that an intent is for: its extra, or the address of the intent. */
+        fun widgetIdOf(intent: Intent): Int {
+            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            if (id != AppWidgetManager.INVALID_APPWIDGET_ID) return id
+            val fromData = intent.data?.takeIf { it.scheme == "tefteri-agenda" }?.pathSegments?.firstOrNull()
+            return fromData?.toIntOrNull() ?: AppWidgetManager.INVALID_APPWIDGET_ID
         }
+
+        private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        private fun shownKey(id: Int) = "shown_$id"
+        private fun setOnKey(id: Int) = "set_on_$id"
+        private fun scrolledKey(id: Int) = "scrolled_$id"
+
+        /**
+         * Remembers the day that the arrows chose, as the day itself and not as a number of days
+         * from today. The write is finished when this returns (not queued), so that no later
+         * redraw, in this process or another one, can read an older day.
+         */
+        private fun show(context: Context, id: Int, day: Calendar) {
+            prefs(context).edit()
+                .putString(shownKey(id), AgendaData.dayKey(day))
+                .putString(setOnKey(id), AgendaData.dayKey(Calendar.getInstance()))
+                .remove(scrolledKey(id))
+                .commit()
+        }
+
+        /** The day that the widget shows: the one that the arrows chose today, else today. */
+        fun shownDay(context: Context, id: Int): Calendar {
+            val p = prefs(context)
+            val today = Calendar.getInstance()
+            val shown = p.getString(shownKey(id), null)
+            if (shown != null && p.getString(setOnKey(id), null) == AgendaData.dayKey(today)) {
+                parseDay(shown)?.let { return it }
+            }
+            return today
+        }
+
+        private fun parseDay(key: String): Calendar? {
+            val parts = key.split("-")
+            if (parts.size != 3) return null
+            return try {
+                Calendar.getInstance().apply {
+                    clear()
+                    set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 12, 0, 0)
+                }
+            } catch (e: NumberFormatException) {
+                null
+            }
+        }
+
+        /** Days from today that the widget shows: 1 is tomorrow, -1 is yesterday. */
+        fun currentOffset(context: Context, id: Int): Int {
+            val noon = { c: Calendar ->
+                Calendar.getInstance().apply {
+                    clear()
+                    set(c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
+                }.timeInMillis
+            }
+            val days = (noon(shownDay(context, id)) - noon(Calendar.getInstance())) / DAY_MILLIS.toDouble()
+            return Math.round(days).toInt()
+        }
+
+        /** True when the list of this day was scrolled to the next event already. */
+        fun wasScrolled(context: Context, id: Int): Boolean =
+            prefs(context).getString(scrolledKey(id), null) == AgendaData.dayKey(shownDay(context, id))
+
+        /** Remembers that the list of the shown day was scrolled, so that it happens once. */
+        fun markScrolled(context: Context, id: Int) {
+            prefs(context).edit().putString(scrolledKey(id), AgendaData.dayKey(shownDay(context, id))).commit()
+        }
+
+        private const val DAY_MILLIS = 24L * 60 * 60 * 1000
 
         /**
          * Two lines: "Today", "Tomorrow", "Yesterday" or the name of the weekday, and under it
@@ -126,13 +194,6 @@ class AgendaWidgetProvider : AppWidgetProvider() {
                 else -> SimpleDateFormat("EEEE", Locale.getDefault()).format(day.time)
             }
             return "$name\n$date"
-        }
-
-        /** The day that the widget shows. */
-        fun shownDay(context: Context, id: Int): Calendar {
-            val day = Calendar.getInstance()
-            day.add(Calendar.DAY_OF_YEAR, currentOffset(context, id))
-            return day
         }
     }
 }

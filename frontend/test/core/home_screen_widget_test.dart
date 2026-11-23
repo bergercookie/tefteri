@@ -230,8 +230,11 @@ void main() {
       final provider = read('$kotlin/AgendaWidgetProvider.kt');
       expect(provider, contains('ACTION_PREVIOUS'));
       expect(provider, contains('ACTION_NEXT'));
-      // The offset counts only on the day that it was set.
-      expect(provider, contains('base == AgendaData.dayKey'));
+      // The chosen day counts only on the day that it was chosen.
+      expect(provider, contains('set_on_'));
+      expect(provider, contains('shown_'));
+      // And the choice is written at once, so that no redraw can read an older day.
+      expect(provider, contains('.commit()'));
     });
 
     test('its strings and colors exist, and the colors have a dark version',

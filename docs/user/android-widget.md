@@ -59,6 +59,13 @@ your day without you opening tefteri.
   shows the name of the weekday. Choose the name to go back to today.
 - The refresh button loads the day again.
 
+On today, the list starts at the first event that is not over. The events that are over are above
+it, in a lighter color, and you can scroll up to see them. An event that is on now is not over. If
+every event is over, the list starts at the tasks. If no event is over yet, the list starts at the
+top. The list scrolls one time each time that you come to today, for example when you choose the
+date to go back to today. It does not scroll again when the widget loads the day again. Other days
+show from the top, and a day that has passed shows all its events in the lighter color.
+
 The widget shows the current day when you add it. It also goes back to the current day when a new
 day starts. It does not stay on a day that you chose earlier.
 

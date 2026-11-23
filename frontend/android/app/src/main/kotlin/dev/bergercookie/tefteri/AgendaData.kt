@@ -21,6 +21,8 @@ data class AgendaItem(
     /** The color of the calendar or project as ARGB, or 0 for the accent. */
     val color: Int,
     val done: Boolean,
+    /** An event that is over: it ended before now. The widget shows it grayed out. */
+    val past: Boolean = false,
 )
 
 /** What the widget shows for one day. */
@@ -55,7 +57,7 @@ object AgendaData {
                 conn.setRequestProperty("X-Tefteri-Client", "tefteri")
                 conn.setRequestProperty("Accept", "application/json")
                 when (conn.responseCode) {
-                    200 -> parse(conn.inputStream.bufferedReader().use { it.readText() })
+                    200 -> parse(conn.inputStream.bufferedReader().use { it.readText() }, System.currentTimeMillis())
                     401 -> AgendaResult.NotSignedIn
                     else -> AgendaResult.Failed
                 }
@@ -68,7 +70,7 @@ object AgendaData {
     }
 
     /** Turns the body of `GET /views/day/{day}` into rows: events by start, then tasks. */
-    fun parse(body: String): AgendaResult {
+    fun parse(body: String, now: Long = System.currentTimeMillis()): AgendaResult {
         return try {
             val root = JSONObject(body)
             val items = mutableListOf<AgendaItem>()
@@ -85,6 +87,8 @@ object AgendaData {
                         detail = e.optString("location"),
                         color = color(e.optString("color")),
                         done = false,
+                        // An all-day event ends at the end of its day, so it is over on the next day.
+                        past = isOver(e.optString("end"), now),
                     ),
                 )
             }
@@ -110,6 +114,21 @@ object AgendaData {
         } catch (e: Exception) {
             AgendaResult.Failed
         }
+    }
+
+    /** The time of [endIso] is not after [now]. An end that cannot be read is not over. */
+    fun isOver(endIso: String, now: Long): Boolean =
+        try {
+            if (endIso.length < 19) false else millis(endIso) <= now
+        } catch (e: Exception) {
+            false
+        }
+
+    /** `2030-03-10T14:15:00Z` as milliseconds since 1970. */
+    private fun millis(iso: String): Long {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT)
+        parser.timeZone = TimeZone.getTimeZone("UTC")
+        return parser.parse(iso.substring(0, 19))!!.time
     }
 
     /** "#rrggbb" to ARGB, or 0. */
