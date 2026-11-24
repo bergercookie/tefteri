@@ -136,8 +136,10 @@ void main() {
               dueTask('t2', 'Reply to Sam', due: DateTime(2026, 11, 4, 12)),
             ]);
     await pumpPlanner(tester, api);
-    Color icon(String id) =>
-        tester.widget<Icon>(find.byKey(Key('scheduled-$id'))).color!;
+    Color icon(String id) => tester
+        .widget<Icon>(find.descendant(
+            of: find.byKey(Key('complete-$id')), matching: find.byType(Icon)))
+        .color!;
     expect(icon('t1'), const Color.fromARGB(255, 3, 155, 229));
     expect(icon('t2'), TefteriColors.light.task);
   });

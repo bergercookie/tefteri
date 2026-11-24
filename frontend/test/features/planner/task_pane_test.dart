@@ -56,8 +56,8 @@ void main() {
               dueTask('b', 'Dated', due: DateTime(2026, 11, 4, 15)),
             ]);
     await pumpPlanner(tester, api);
-    expect(find.byKey(const Key('unscheduled-a')), findsOneWidget);
-    expect(find.byKey(const Key('scheduled-b')), findsOneWidget);
+    expect(find.byKey(const Key('complete-a')), findsOneWidget);
+    expect(find.byKey(const Key('complete-b')), findsOneWidget);
     expect(find.text('No due date'), findsOneWidget);
   });
 

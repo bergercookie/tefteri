@@ -71,6 +71,16 @@ void main() {
     expect(find.byKey(const Key('task-details')), findsNothing);
   });
 
+  testWidgets('the circle of a listed task completes it', (tester) async {
+    final api = plannerApi(extra: {
+      'POST /tasks/t1/complete': _done('t1'),
+    });
+    await pumpPlanner(tester, api);
+    await _click(tester, find.byKey(const Key('complete-t1')));
+    expect(api.where('POST /tasks/t1/complete'), hasLength(1));
+    expect(find.byKey(const Key('task-details')), findsNothing);
+  });
+
   testWidgets('a click that is quick enough to end before Flutter sees it',
       (tester) async {
     // On the web, Flutter delivers the click a moment late. Ctrl can be up by

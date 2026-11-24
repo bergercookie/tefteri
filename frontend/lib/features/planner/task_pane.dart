@@ -237,22 +237,30 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // The same circle as on the Today page: it completes the task, or
+              // opens it again when it is done.
               SizedBox(
                 width: 40,
-                child: Center(
-                  child: Icon(
-                    t.isScheduled
-                        ? Icons.event_available_outlined
-                        : Icons.radio_button_unchecked,
-                    key: Key(t.isScheduled
-                        ? 'scheduled-${t.id}'
-                        : 'unscheduled-${t.id}'),
-                    size: 20,
-                    // A planned task has the color of its project.
-                    color: t.isScheduled
+                child: IconButton(
+                  key: Key('complete-${t.id}'),
+                  tooltip: t.done ? 'Mark not done' : 'Mark done',
+                  padding: EdgeInsets.zero,
+                  iconSize: 22,
+                  icon: Icon(
+                    t.done ? Icons.check_circle : Icons.radio_button_unchecked,
+                    // A planned or finished task has the color of its project.
+                    color: t.done || t.isScheduled
                         ? (parseCalendarColor(t.projectColor) ?? colors.task)
                         : scheme.onSurfaceVariant,
                   ),
+                  onPressed: pending
+                      ? null
+                      : () {
+                          final actions = ref.read(plannerActionsProvider);
+                          t.done
+                              ? actions.reopen(t.id)
+                              : actions.complete(t.id);
+                        },
                 ),
               ),
               // The red margin line of the page.

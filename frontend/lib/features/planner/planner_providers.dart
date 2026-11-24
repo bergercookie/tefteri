@@ -179,6 +179,10 @@ class PlannerActions {
   Future<void> complete(String taskId) =>
       _run(taskId, (api) => api.completeTask(taskId));
 
+  /// Marks [taskId] as not done again in the task app.
+  Future<void> reopen(String taskId) =>
+      _run(taskId, (api) => api.reopenTask(taskId));
+
   /// Removes the due date and time of [taskId].
   Future<void> unschedule(String taskId) =>
       _run(taskId, (api) => api.unscheduleTask(taskId));
