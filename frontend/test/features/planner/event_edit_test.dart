@@ -319,6 +319,13 @@ void main() {
       return api;
     }
 
+    testWidgets('an Android phone has no edges to drag', (tester) async {
+      await pump(tester, _event());
+      expect(find.byKey(const Key('block-entry-e1')), findsOneWidget);
+      expect(handle('start'), findsNothing);
+      expect(handle('end'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
     testWidgets('dragging the bottom edge down makes the event longer',
         (tester) async {
       final api = await pump(tester, _event());
@@ -328,7 +335,7 @@ void main() {
       final body = _patch(api);
       expect(DateTime.parse('${body['start']}').toLocal(), _at(9));
       expect(DateTime.parse('${body['end']}').toLocal(), _at(10));
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('dragging the top edge up makes the event start earlier',
         (tester) async {
@@ -338,7 +345,7 @@ void main() {
       final body = _patch(api);
       expect(DateTime.parse('${body['start']}').toLocal(), _at(8, 15));
       expect(DateTime.parse('${body['end']}').toLocal(), _at(9, 30));
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('an edge snaps to a quarter of an hour', (tester) async {
       final api = await pump(tester, _event());
@@ -351,7 +358,7 @@ void main() {
       await settle(tester);
       final body = _patch(api);
       expect(DateTime.parse('${body['end']}').toLocal(), _at(9, 45));
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('the event is never shorter than a quarter of an hour',
         (tester) async {
@@ -361,7 +368,7 @@ void main() {
       final body = _patch(api);
       expect(DateTime.parse('${body['start']}').toLocal(), _at(9));
       expect(DateTime.parse('${body['end']}').toLocal(), _at(9, 15));
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('the end stays on the day', (tester) async {
       final api = await pump(tester, _event(start: _at(23), end: _at(23, 30)));
@@ -369,7 +376,7 @@ void main() {
       await settle(tester);
       final body = _patch(api);
       expect(DateTime.parse('${body['end']}').toLocal(), DateTime(2026, 11, 4));
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('a label shows the new times while the edge is dragged',
         (tester) async {
@@ -386,14 +393,14 @@ void main() {
       await gesture.up();
       await settle(tester);
       expect(find.byKey(const Key('resize-label-e1')), findsNothing);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('a click on the event still opens it', (tester) async {
       await pump(tester, _event());
       await tester.tap(find.byKey(const Key('block-entry-e1')));
       await settle(tester);
       expect(find.byKey(const Key('event-details')), findsOneWidget);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('a failed save shows the message and the event stays',
         (tester) async {
@@ -407,7 +414,7 @@ void main() {
       await tester.drag(handle('end'), const Offset(0, quarter * 2));
       await settle(tester);
       expect(find.text('Google Calendar did not answer.'), findsOneWidget);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets(
         'an event of a read-only calendar, an all-day event and a task '
@@ -415,12 +422,12 @@ void main() {
       await pump(tester, _event(readOnly: true));
       expect(handle('start'), findsNothing);
       expect(handle('end'), findsNothing);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
     testWidgets('an event that goes on past the day has no edge to drag',
         (tester) async {
       await pump(tester, _event(start: _at(22), end: DateTime(2026, 11, 4, 2)));
       expect(handle('end'), findsNothing);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
   });
 }

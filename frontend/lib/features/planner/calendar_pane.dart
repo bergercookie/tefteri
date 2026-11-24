@@ -5,6 +5,8 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart'
     show DragStartBehavior, DragUpdateDetails;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1157,10 +1159,14 @@ class _DayColumnState extends ConsumerState<_DayColumn> {
             child: body)
         : body;
     // An event can be made longer or shorter with the mouse, from its top or
-    // bottom edge, when all of it is on this day.
+    // bottom edge, when all of it is on this day. Not on a phone or a tablet:
+    // there a drag scrolls the calendar, and the handles got in the way.
+    final touch = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
     final dayStart = DateTime(day.year, day.month, day.day);
     final dayEnd = DateTime(day.year, day.month, day.day + 1);
-    final resizable = i.movable &&
+    final resizable = !touch &&
+        i.movable &&
         i.end != null &&
         !isPending &&
         !i.start!.toLocal().isBefore(dayStart) &&
