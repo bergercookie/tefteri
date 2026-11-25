@@ -4,7 +4,13 @@ from typing import Any
 
 import httpx
 
-from tefteri.domain.errors import AuthExpired, BackendError, BackendUnavailable, RemoteConflict
+from tefteri.domain.errors import (
+    AuthExpired,
+    BackendError,
+    BackendUnavailable,
+    RemoteConflict,
+    RemoteGone,
+)
 
 
 async def request(
@@ -21,6 +27,7 @@ async def request(
         BackendUnavailable: network error, timeout or a 5xx answer.
         AuthExpired: 401 or 403 answer.
         RemoteConflict: an answer in ``ok_conflict_statuses`` (version mismatch).
+        RemoteGone: a 404 answer (the item does not exist any more).
         BackendError: any other 4xx answer.
     """
     try:
@@ -32,6 +39,8 @@ async def request(
         raise AuthExpired(f"credentials rejected by {url}")
     if status in ok_conflict_statuses:
         raise RemoteConflict(f"{method} {url} conflicts with the remote version")
+    if status == 404:
+        raise RemoteGone(f"{method} {url} answered 404")
     if status >= 500:
         raise BackendUnavailable(f"{url} answered {status}")
     if status >= 400:

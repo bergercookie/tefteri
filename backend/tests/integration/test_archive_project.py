@@ -50,8 +50,8 @@ async def test_archive_hides_the_project_and_its_tasks(api: AsyncClient, world: 
     assert await _archive(api, connection, ids["Garden"]) == 204
     assert [c.name for c in world.tasks["default"].archived] == ["Garden"]
     assert "Garden" not in await _names(api, connection)
-    garden = [t for t in (await api.get(f"{V1}/tasks")).json() if t["title"] == "p4 task"]
-    assert garden[0]["sync_state"] == "deleted_remotely"
+    # The task list of the planner leaves out a task that the app does not have any more.
+    assert "p4 task" not in {t["title"] for t in (await api.get(f"{V1}/tasks")).json()}
     candidates = (await api.get(f"{V1}/weekly/{WEEK}/candidates")).json()
     assert "Garden" not in {c["name"] for c in candidates}
     # The next sync agrees: nothing comes back.

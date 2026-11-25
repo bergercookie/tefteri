@@ -15,6 +15,7 @@ from tefteri.api.schemas import EntryOut, TaskOut, aware
 from tefteri.api.task_links import task_base_url, task_url
 from tefteri.db.models.connection import Connection, SourceContainer
 from tefteri.db.models.task import Task
+from tefteri.domain.enums import SyncState
 from tefteri.services import task_filters
 from tefteri.services.errors import Invalid
 from tefteri.services.settings import MAX_REMINDER_MINUTES
@@ -147,7 +148,10 @@ async def list_tasks(
     searching = bool(q and q.strip())
     if (due is not None or searching) and not status:
         status = "open"
-    query = select(Task).where(Task.user_id == user.id)
+    # A task that the app no longer lists is gone: the sync flagged it, so do not show it.
+    query = select(Task).where(
+        Task.user_id == user.id, Task.sync_state != SyncState.DELETED_REMOTELY.value
+    )
     if status:
         query = query.where(Task.status == status)
     if goal_id:
@@ -193,7 +197,11 @@ async def task_counts(
     ] = None,
 ) -> dict[str, int]:
     """Count the user's open tasks for each planner filter (the badges of the filter chips)."""
-    query = select(Task).where(Task.user_id == user.id, Task.status == "open")
+    query = select(Task).where(
+        Task.user_id == user.id,
+        Task.status == "open",
+        Task.sync_state != SyncState.DELETED_REMOTELY.value,
+    )
     if exclude_connections:
         query = query.where(Task.connection_id.not_in(exclude_connections))
     rows = (await db.execute(query)).scalars()

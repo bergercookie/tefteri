@@ -27,6 +27,7 @@ from tefteri.domain.errors import (
     NotSaved,
     NotSupported,
     RemoteConflict,
+    RemoteGone,
 )
 
 
@@ -232,11 +233,15 @@ class FakeTaskBackend(_FakeBase):
     async def delete_task(self, remote_id: str) -> None:
         """Delete a task."""
         self._guard()
+        if remote_id not in self.tasks:
+            raise RemoteGone(f"no task {remote_id}")
         del self.tasks[remote_id]
 
     async def complete_task(self, remote_id: str) -> RemoteTask:
         """Mark a task done."""
         self._guard()
+        if remote_id not in self.tasks:
+            raise RemoteGone(f"no task {remote_id}")
         updated = replace(
             self.tasks[remote_id],
             done=True,

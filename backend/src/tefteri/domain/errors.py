@@ -32,5 +32,9 @@ class NotSaved(BackendError):
     """
 
 
+class RemoteGone(BackendError):
+    """The connected application has no such item: it was deleted there, or never existed."""
+
+
 class RemoteConflict(BackendError):
     """The remote item changed since the cached version was read."""

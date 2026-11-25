@@ -189,7 +189,12 @@ class TaskService:
         """Mark a task done in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)
         backend = await self._backend(db, connection)
-        remote = await guard(connection, backend.complete_task(task.remote_id))
+        try:
+            remote = await guard(connection, backend.complete_task(task.remote_id))
+        except BackendProblem as exc:
+            if exc.code == "remote_gone":
+                return await self._forget(db, task)
+            raise
         self._apply(task, remote)
         await db.flush()
         await self._recorder.record_completed(db, user_id, task)
@@ -199,7 +204,12 @@ class TaskService:
         """Mark a done task open again in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)
         backend = await self._backend(db, connection)
-        remote = await guard(connection, backend.reopen_task(task.remote_id))
+        try:
+            remote = await guard(connection, backend.reopen_task(task.remote_id))
+        except BackendProblem as exc:
+            if exc.code == "remote_gone":
+                return await self._forget(db, task)
+            raise
         self._apply(task, remote)
         await db.flush()
         return task
@@ -251,8 +261,21 @@ class TaskService:
     async def delete(self, db: AsyncSession, user_id: uuid.UUID, task: Task) -> None:
         """Delete a task in the app, then in the cache."""
         connection = await self._connection_of(db, user_id, task)
-        await guard(connection, (await self._backend(db, connection)).delete_task(task.remote_id))
+        try:
+            await guard(
+                connection, (await self._backend(db, connection)).delete_task(task.remote_id)
+            )
+        except BackendProblem as exc:
+            # Already deleted in the app: the aim is reached, so only the copy is left to remove.
+            if exc.code != "remote_gone":
+                raise
         await TaskRepository(db, user_id).delete(task)
+
+    async def _forget(self, db: AsyncSession, task: Task) -> Task:
+        """Flag a task that the app no longer has, so that no list shows it."""
+        task.sync_state = SyncState.DELETED_REMOTELY.value
+        await db.flush()
+        return task
 
     async def move_to_container(
         self, db: AsyncSession, user_id: uuid.UUID, task: Task, container: SourceContainer

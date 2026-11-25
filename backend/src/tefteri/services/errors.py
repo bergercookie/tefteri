@@ -10,6 +10,7 @@ from tefteri.domain.errors import (
     NotSaved,
     NotSupported,
     RemoteConflict,
+    RemoteGone,
 )
 
 
@@ -195,6 +196,12 @@ async def guard[T](connection: Connection, call: Awaitable[T]) -> T:
             name,
             f"{name} answered, but it did not keep the change. Nothing was changed in tefteri. "
             f"({exc})",
+        ) from exc
+    except RemoteGone as exc:
+        raise BackendProblem(
+            "remote_gone",
+            name,
+            f"The item does not exist in {name} any more. Sync to remove it from tefteri.",
         ) from exc
     except RemoteConflict as exc:
         raise BackendProblem(

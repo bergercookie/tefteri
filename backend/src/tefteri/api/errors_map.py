@@ -17,6 +17,7 @@ _STATUS = {
     "not_saved": 502,
     "not_supported": 409,
     "remote_conflict": 409,
+    "remote_gone": 404,
 }
 
 
