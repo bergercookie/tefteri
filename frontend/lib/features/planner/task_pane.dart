@@ -14,7 +14,6 @@ import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import 'details_dialogs.dart';
 import 'hover_lift.dart';
-import 'new_task_dialog.dart';
 import 'planner_draggable.dart';
 import 'planner_providers.dart';
 
@@ -82,18 +81,6 @@ class _TaskPaneState extends ConsumerState<TaskPane> {
       key: const Key('task-pane'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              key: const Key('new-task-button'),
-              onPressed: () => showNewTaskDialog(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('New task'),
-            ),
-          ),
-        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: Wrap(

@@ -231,7 +231,9 @@ void main() {
       expect(scrollable.position.pixels, greaterThan(0));
       final where = scrollable.position.pixels;
       // A note from the "+" button makes the day load again.
-      await tester.tap(find.byKey(const Key('daily-note-fab')));
+      await tester.tap(find.byKey(const Key('add-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('add-note')));
       await tester.pumpAndSettle();
       await tester.enterText(
           find.byKey(const Key('daily-note-field')), 'Hello');

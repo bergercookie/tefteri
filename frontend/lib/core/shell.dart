@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/daily/daily_note_button.dart';
+import '../features/add/add_menu.dart';
 import '../features/settings/sync_controller.dart';
 import '../theme/theme.dart';
 import 'auth_controller.dart';
@@ -77,7 +77,7 @@ class AppShell extends ConsumerWidget {
   /// buttons.
   final Widget? actions;
 
-  /// The page runs to the bottom edge, under the daily note button (the planner's calendar).
+  /// The page runs to the bottom edge, under the add button (the planner's calendar).
   /// Other pages keep a strip below their content, so that the button never covers the last
   /// row or its buttons.
   final bool fullBleed;
@@ -106,8 +106,8 @@ class AppShell extends ConsumerWidget {
           ? sidebar.clamp(_sidebarMinWidth, c.maxWidth * 0.4).toDouble()
           : _railCompactWidth;
       return Scaffold(
-        // On every screen: a line for the daily note is one tap away.
-        floatingActionButton: const DailyNoteButton(),
+        // On every screen: a note, a task or an event is one tap away.
+        floatingActionButton: const AddButton(),
         drawer: rail
             ? null
             : const Drawer(child: SafeArea(child: _NavPanel(extended: true))),
@@ -153,7 +153,7 @@ class AppShell extends ConsumerWidget {
                           ? body
                           : Padding(
                               padding: const EdgeInsets.only(
-                                  bottom: dailyNoteButtonClearance),
+                                  bottom: addButtonClearance),
                               child: body,
                             ),
                     ),

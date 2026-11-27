@@ -1,4 +1,4 @@
-/// The round "+" button on every screen that adds a line to the daily note.
+/// The sheet that adds a line to the daily note. The "+" menu and the key D open it.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,7 +11,7 @@ import '../../core/planning_api.dart';
 import '../../theme/theme.dart';
 import 'daily_providers.dart';
 
-/// The day that the "+" button writes to. The daily view sets it to the day that it shows, so
+/// The day that the sheet writes to. The daily view sets it to the day that it shows, so
 /// that a note added while looking at another day goes to that day. Null means today.
 final dailyNoteDayProvider = StateProvider<DateTime?>((ref) => null);
 
@@ -21,38 +21,6 @@ final dailyNoteDraftProvider = StateProvider<String>((ref) => '');
 
 /// Below this width the button is a plain circle, to leave room on a phone.
 const double dailyNoteButtonWideWidth = 600;
-
-/// The height below a page that the button keeps free: its height and the gap around it.
-const double dailyNoteButtonClearance = 72;
-
-/// A button at the bottom right: it opens a small sheet to write a line for the daily note.
-///
-/// On a phone it is a round "+". On a wider screen it also says "Note", because a "+" alone does
-/// not tell what it adds (the Today view has a "+" to add a task as well).
-class DailyNoteButton extends StatelessWidget {
-  /// Creates the button.
-  const DailyNoteButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    void open() => showDailyNoteSheet(context);
-    if (MediaQuery.sizeOf(context).width >= dailyNoteButtonWideWidth) {
-      return FloatingActionButton.extended(
-        key: const Key('daily-note-fab'),
-        tooltip: 'Add to the daily note',
-        onPressed: open,
-        icon: const Icon(Icons.add),
-        label: const Text('Note'),
-      );
-    }
-    return FloatingActionButton(
-      key: const Key('daily-note-fab'),
-      tooltip: 'Add to the daily note',
-      onPressed: open,
-      child: const Icon(Icons.add),
-    );
-  }
-}
 
 /// Opens the sheet that adds a line to the daily note.
 Future<void> showDailyNoteSheet(BuildContext context) =>
@@ -152,6 +120,9 @@ class _DailyNoteSheetState extends ConsumerState<DailyNoteSheet> {
       bindings: {
         const SingleActivator(LogicalKeyboardKey.enter, control: true): _add,
         const SingleActivator(LogicalKeyboardKey.enter, meta: true): _add,
+        // Esc closes the sheet; the text stays as a draft.
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).pop(),
       },
       child: Padding(
         // The sheet rises above the keyboard.

@@ -15,7 +15,6 @@ import '../../core/api_error.dart';
 import '../../core/browser_menu.dart';
 import '../../core/calendar_color.dart';
 import '../../core/control_key.dart';
-import '../../core/event_input.dart';
 import '../../core/planning_models.dart';
 import '../../theme/theme.dart';
 import '../calendar/calendar_providers.dart';
@@ -238,42 +237,11 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
-                    _newEventButton(compact: c.maxWidth < _labelledNavWidth),
                     if (widget.onSpan != null)
                       _spanMenu(compact: c.maxWidth < _compactNavWidth),
                   ],
                 )),
       );
-
-  /// Opens the pop-up that adds an event, at the next full hour. Shift+N does
-  /// the same. When [compact], it is an icon.
-  Widget _newEventButton({required bool compact}) {
-    void open() =>
-        showNewEventDialog(context, start: nextFullHour(widget.clock()));
-    return Padding(
-      padding: const EdgeInsets.only(right: Space.sm),
-      child: compact
-          ? IconButton.filled(
-              key: const Key('new-event-button'),
-              tooltip: 'New event (Shift+N)',
-              icon: const Icon(Icons.event_available_outlined, size: 18),
-              onPressed: open,
-            )
-          : Tooltip(
-              message: 'Shift+N',
-              child: FilledButton.icon(
-                key: const Key('new-event-button'),
-                onPressed: open,
-                icon: const Icon(Icons.event_available_outlined, size: 18),
-                label: const Text('New event'),
-              ),
-            ),
-    );
-  }
-
-  /// Below this width the new event button is an icon, so that the row of the
-  /// days never overflows next to the span menu.
-  static const double _labelledNavWidth = 760;
 
   /// Below this width the span menu shows an icon instead of its name.
   static const double _compactNavWidth = 440;

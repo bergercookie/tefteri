@@ -69,6 +69,18 @@ class NewEventIntent extends Intent {
   const NewEventIntent();
 }
 
+/// Opens the pop-up that adds a line to the daily note.
+class NewNoteIntent extends Intent {
+  /// Creates the intent.
+  const NewNoteIntent();
+}
+
+/// Opens the menu of the "+" button: a daily note, a task or a calendar event.
+class AddMenuIntent extends Intent {
+  /// Creates the intent.
+  const AddMenuIntent();
+}
+
 /// Opens the find bar.
 class FindIntent extends Intent {
   /// Creates the intent.
@@ -139,6 +151,18 @@ final List<AppShortcut> appShortcuts = [
     description: 'Sync all connections',
     activator: CharacterActivator('s'),
     intent: SyncIntent(plain: true),
+  ),
+  const AppShortcut(
+    keys: 'A',
+    description: 'Open the Add menu: a daily note, a task or an event',
+    activator: CharacterActivator('a'),
+    intent: AddMenuIntent(),
+  ),
+  const AppShortcut(
+    keys: 'D',
+    description: 'Add a line to the daily note',
+    activator: CharacterActivator('d'),
+    intent: NewNoteIntent(),
   ),
   const AppShortcut(
     keys: 'N',

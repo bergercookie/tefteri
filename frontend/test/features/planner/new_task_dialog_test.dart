@@ -32,7 +32,9 @@ FakeApi _api({Map<String, Object?> extra = const {}}) => plannerApi(extra: {
 Future<FakeApi> _open(WidgetTester tester, {FakeApi? api}) async {
   final a = api ?? _api();
   await pumpPlanner(tester, a);
-  await tester.tap(find.byKey(const Key('new-task-button')));
+  await tester.tap(find.byKey(const Key('add-button')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('add-task')));
   await settle(tester);
   return a;
 }
@@ -139,7 +141,9 @@ void main() {
     await settle(tester);
     await _create(tester);
     expect(_body(api)['container_id'], 'k2');
-    await tester.tap(find.byKey(const Key('new-task-button')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-task')));
     await settle(tester);
     expect(_projectText(tester), 'Website');
   });

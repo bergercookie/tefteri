@@ -199,7 +199,9 @@ void main() {
     await _pump(tester, api);
     // The old field at the bottom of the page is gone.
     expect(find.byKey(const Key('note-field')), findsNothing);
-    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-note')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('daily-note-sheet')), findsOneWidget);
     expect(find.text('2026-11-01'), findsWidgets); // the day that it adds to
@@ -217,7 +219,9 @@ void main() {
 
   testWidgets('the button to add is off until there is text', (tester) async {
     await _pump(tester, _api());
-    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-note')));
     await tester.pumpAndSettle();
     FilledButton save() =>
         tester.widget<FilledButton>(find.byKey(const Key('daily-note-save')));
@@ -237,7 +241,9 @@ void main() {
           'Notes is not reachable. Try again later.', 'backend_unavailable'),
     });
     await _pump(tester, api);
-    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-note')));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.byKey(const Key('daily-note-field')), 'Keep me');
@@ -254,14 +260,18 @@ void main() {
       'text that was not added is still there when the sheet opens again',
       (tester) async {
     await _pump(tester, _api());
-    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-note')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('daily-note-field')), 'Draft');
     await tester
         .tapAt(const Offset(10, 10)); // a tap beside the sheet closes it
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('daily-note-sheet')), findsNothing);
-    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-note')));
     await tester.pumpAndSettle();
     expect(find.text('Draft'), findsOneWidget);
   });

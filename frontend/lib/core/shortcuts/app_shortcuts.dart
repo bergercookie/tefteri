@@ -6,11 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/planner/new_event_dialog.dart';
+import '../../features/add/add_menu.dart';
+import '../../features/daily/daily_note_button.dart';
 import '../../features/planner/new_task_dialog.dart';
 import '../../features/settings/sync_controller.dart';
 import '../auth_controller.dart';
-import '../event_input.dart';
 import '../find.dart';
 import 'keymap.dart';
 import 'page_scroll.dart';
@@ -121,10 +121,21 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
           NewEventIntent: _KeyAction<NewEventIntent>(
             (_) {
               final context = _navigator?.context;
-              if (context != null) {
-                showNewEventDialog(context,
-                    start: nextFullHour(DateTime.now()));
-              }
+              if (context != null) startNewEvent(context);
+            },
+            (_) => _signedIn && _plainAllowed(),
+          ),
+          NewNoteIntent: _KeyAction<NewNoteIntent>(
+            (_) {
+              final context = _navigator?.context;
+              if (context != null) showDailyNoteSheet(context);
+            },
+            (_) => _signedIn && _plainAllowed(),
+          ),
+          AddMenuIntent: _KeyAction<AddMenuIntent>(
+            (_) {
+              final context = _navigator?.context;
+              if (context != null) showAddMenu(context);
             },
             (_) => _signedIn && _plainAllowed(),
           ),

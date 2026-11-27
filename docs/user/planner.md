@@ -117,7 +117,8 @@ A long name is cut. Point at the label to read the whole name. Events have no la
 
 ## Create a task
 
-1. Press N, or choose New task above the task list.
+1. Press N, or choose the Add button and then Task. The Add button is the round plus button at the
+   bottom right of every screen.
 2. Type the title.
 3. Choose the project. Type a few letters, and tefteri shows the projects that match. Use the
    arrow keys and Enter, or choose a project with the pointer. Tefteri remembers the project
@@ -328,8 +329,7 @@ a change.
 
 You can add an event in three ways:
 
-- Choose the button New event in the row above the calendar. On a narrow screen, the button is a
-  small icon.
+- Choose the Add button at the bottom right of any page, and then Calendar event.
 - Press Shift+N on any page.
 - Click an empty slot of the calendar with the right mouse button. A menu opens, with the time
   of the slot (a quarter of an hour).

@@ -74,7 +74,9 @@ void main() {
   testWidgets('the button opens the dialog and letters in it are safe too',
       (tester) async {
     final c = await _app(tester);
-    await tester.tap(find.byKey(const Key('new-task-button')));
+    await tester.tap(find.byKey(const Key('add-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-task')));
     await settle(tester);
     for (var stop = 0; stop < 9; stop++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);

@@ -35,6 +35,8 @@ Month opens the monthly theme plan and review. Read [Plan your month](monthly-pl
 | --- | --- |
 | Left arrow | In the planner: show the week before |
 | Right arrow | In the planner: show the week after |
+| A | Open the Add menu: a daily note, a task or a calendar event |
+| D | Add a line to the daily note |
 | N | Create a new task (opens the New task dialog) |
 | Shift+N | Create a new calendar event (opens the New event dialog) |
 | S | Sync all connections |
@@ -61,6 +63,8 @@ Greek letter.
 | G | γ | Annual plan |
 | O | ο | Projects |
 | X | χ | Conflicts |
+| A | α | Add menu |
+| D | δ | Daily note |
 | N | ν | New task |
 | Shift+N | Shift+ν | New event |
 | S | σ | Sync |

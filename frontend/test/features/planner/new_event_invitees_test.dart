@@ -30,7 +30,9 @@ FakeApi _api({List<String> invitees = _invitees}) => plannerApi(extra: {
 
 Future<void> _openFromButton(WidgetTester tester, FakeApi api) async {
   await pumpPlanner(tester, api);
-  await tester.tap(find.byKey(const Key('new-event-button')));
+  await tester.tap(find.byKey(const Key('add-button')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('add-event')));
   await tester.pumpAndSettle();
   expect(find.byKey(const Key('new-event-dialog')), findsOneWidget);
 }
