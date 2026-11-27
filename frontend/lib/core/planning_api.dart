@@ -111,8 +111,10 @@ class PlanningApi {
     Map<ChecklistKind, List<String>>? checklists,
     Map<ChecklistKind, String>? checklistSources,
     List<String>? eventInvitees,
+    String? timezone,
   }) async {
     final r = await _dio.patch<Object?>('/me/settings', data: {
+      if (timezone != null) 'timezone': timezone,
       if (eventInvitees != null) 'event_invitees': eventInvitees,
       if (checklists != null)
         'checklists': {for (final e in checklists.entries) e.key.name: e.value},

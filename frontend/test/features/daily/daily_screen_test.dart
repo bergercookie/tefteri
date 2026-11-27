@@ -193,14 +193,77 @@ void main() {
     expect(find.text('Call Sam'), findsNothing); // field cleared
   });
 
-  testWidgets('daily note append sends the text', (tester) async {
+  testWidgets('the + button adds a line to the note of the day shown',
+      (tester) async {
     final api = _api({'POST /notes/daily/2026-11-01/append': {}});
     await _pump(tester, api);
-    await tester.enterText(find.byKey(const Key('note-field')), 'More');
-    await tester.tap(find.byKey(const Key('note-append-button')));
+    // The old field at the bottom of the page is gone.
+    expect(find.byKey(const Key('note-field')), findsNothing);
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('daily-note-sheet')), findsOneWidget);
+    expect(find.text('2026-11-01'), findsWidgets); // the day that it adds to
+    await tester.enterText(find.byKey(const Key('daily-note-field')), 'More');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('daily-note-save')));
     await tester.pumpAndSettle();
     expect(api.where('POST /notes/daily/2026-11-01/append').single.data,
         {'text': 'More'});
+    // The sheet closes, a message says where the line went, and the day reloads.
+    expect(find.byKey(const Key('daily-note-sheet')), findsNothing);
+    expect(find.text('Added to the note of 2026-11-01.'), findsOneWidget);
+    expect(api.where(_path), hasLength(2));
+  });
+
+  testWidgets('the button to add is off until there is text', (tester) async {
+    await _pump(tester, _api());
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    FilledButton save() =>
+        tester.widget<FilledButton>(find.byKey(const Key('daily-note-save')));
+    expect(save().onPressed, isNull);
+    await tester.enterText(find.byKey(const Key('daily-note-field')), '   ');
+    await tester.pump();
+    expect(save().onPressed, isNull); // spaces are not a note
+    await tester.enterText(find.byKey(const Key('daily-note-field')), 'Hi');
+    await tester.pump();
+    expect(save().onPressed, isNotNull);
+  });
+
+  testWidgets('a refusal stays in the sheet and keeps the text',
+      (tester) async {
+    final api = _api({
+      'POST /notes/daily/2026-11-01/append': const ApiFailure(502,
+          'Notes is not reachable. Try again later.', 'backend_unavailable'),
+    });
+    await _pump(tester, api);
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('daily-note-field')), 'Keep me');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('daily-note-save')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('daily-note-sheet')), findsOneWidget);
+    expect(
+        find.text('Notes is not reachable. Try again later.'), findsOneWidget);
+    expect(find.text('Keep me'), findsOneWidget);
+  });
+
+  testWidgets(
+      'text that was not added is still there when the sheet opens again',
+      (tester) async {
+    await _pump(tester, _api());
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('daily-note-field')), 'Draft');
+    await tester
+        .tapAt(const Offset(10, 10)); // a tap beside the sheet closes it
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('daily-note-sheet')), findsNothing);
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    expect(find.text('Draft'), findsOneWidget);
   });
 
   testWidgets('unreachable app shows the detail and does not retry',

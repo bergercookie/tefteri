@@ -576,6 +576,7 @@ class UserSettings {
     this.defaultEventContainerId,
     this.eventInvitees = const [],
     this.seenHints = const [],
+    this.timezone = 'UTC',
   });
 
   /// Parses the settings JSON object.
@@ -602,6 +603,7 @@ class UserSettings {
         eventInvitees: [
           for (final a in (j['event_invitees'] as List? ?? const [])) '$a',
         ],
+        timezone: '${j['timezone'] ?? 'UTC'}',
         seenHints: [
           for (final h in (j['seen_hints'] as List? ?? const [])) '$h',
         ],
@@ -627,6 +629,9 @@ class UserSettings {
 
   /// The ids of the hints that the user has seen. Each hint shows only once.
   final List<String> seenHints;
+
+  /// The IANA time zone that the server uses for this user.
+  final String timezone;
 
   /// The planning checklists: the items to go through at each kind of
   /// planning. A kind without items has no checklist.

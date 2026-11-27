@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/daily/daily_note_button.dart';
 import '../features/settings/sync_controller.dart';
 import '../theme/theme.dart';
 import 'auth_controller.dart';
@@ -61,6 +62,7 @@ class AppShell extends ConsumerWidget {
     required this.body,
     this.backTo,
     this.actions,
+    this.fullBleed = false,
     super.key,
   });
 
@@ -74,6 +76,11 @@ class AppShell extends ConsumerWidget {
   /// Extra buttons for the header, before the standard keyboard and sync
   /// buttons.
   final Widget? actions;
+
+  /// The page runs to the bottom edge, under the daily note button (the planner's calendar).
+  /// Other pages keep a strip below their content, so that the button never covers the last
+  /// row or its buttons.
+  final bool fullBleed;
 
   /// View content.
   final Widget body;
@@ -99,6 +106,8 @@ class AppShell extends ConsumerWidget {
           ? sidebar.clamp(_sidebarMinWidth, c.maxWidth * 0.4).toDouble()
           : _railCompactWidth;
       return Scaffold(
+        // On every screen: a line for the daily note is one tap away.
+        floatingActionButton: const DailyNoteButton(),
         drawer: rail
             ? null
             : const Drawer(child: SafeArea(child: _NavPanel(extended: true))),
@@ -139,7 +148,15 @@ class AppShell extends ConsumerWidget {
                       actions: actions,
                     ),
                     const Divider(height: 1),
-                    Expanded(child: body),
+                    Expanded(
+                      child: fullBleed
+                          ? body
+                          : Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: dailyNoteButtonClearance),
+                              child: body,
+                            ),
+                    ),
                   ],
                 ),
               ),

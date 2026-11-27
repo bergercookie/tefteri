@@ -50,4 +50,26 @@ void main() {
     await tester.pumpAndSettle();
     await saveScreenshot('daily-quick-add');
   });
+
+  testWidgets('daily note sheet', (tester) async {
+    await pumpScreen(tester, _api(), DailyScreen(initialDate: day),
+        overrides: [_at(8)]);
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('daily-note-field')),
+        'Agreed with Sam to move the review to Thursday.');
+    await tester.pumpAndSettle();
+    await saveScreenshot('daily-note-sheet');
+  });
+
+  testWidgets('daily note sheet on a phone', (tester) async {
+    await pumpScreen(tester, _api(), DailyScreen(initialDate: day),
+        overrides: [_at(8)], size: const Size(390, 760));
+    await tester.tap(find.byKey(const Key('daily-note-fab')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('daily-note-field')),
+        'Agreed with Sam to move the review to Thursday.');
+    await tester.pumpAndSettle();
+    await saveScreenshot('daily-note-sheet-phone');
+  });
 }

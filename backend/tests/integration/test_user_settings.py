@@ -17,6 +17,7 @@ OFF = {
     "default_event_container_id": None,
     "event_invitees": [],
     "seen_hints": [],
+    "timezone": "UTC",
 }
 
 
@@ -391,3 +392,13 @@ async def test_a_hint_id_must_be_a_plain_id(api: AsyncClient) -> None:
     spaces = await api.post(f"{V1}/me/settings/hints/not%20an%20id/seen")
     assert spaces.status_code == 422
     assert (await api.get(f"{V1}/me/settings")).json()["seen_hints"] == []
+
+
+async def test_the_time_zone_can_be_set_and_an_unknown_one_is_refused(api: AsyncClient) -> None:
+    set_ = await api.patch(f"{V1}/me/settings", json={"timezone": "Europe/Athens"})
+    assert set_.status_code == 200 and set_.json()["timezone"] == "Europe/Athens"
+    assert (await api.get(f"{V1}/me/settings")).json()["timezone"] == "Europe/Athens"
+    bad = await api.patch(f"{V1}/me/settings", json={"timezone": "Mars/Olympus"})
+    assert bad.status_code == 422 and bad.json()["code"] == "bad_timezone"
+    # Nothing changed.
+    assert (await api.get(f"{V1}/me/settings")).json()["timezone"] == "Europe/Athens"

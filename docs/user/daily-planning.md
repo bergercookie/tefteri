@@ -87,12 +87,19 @@ The task is gone from your task app. You cannot undo this action in tefteri.
 
 The daily note keeps your short notes for the day. Tefteri adds your text to the end of the note. It does not change the text that is there.
 
-1. In the daily view, find the daily note.
-2. Choose Add to note.
-3. Type your text.
-4. Choose Save.
+A round button with a plus sign is at the bottom right of every screen. Use it to add to the note from any place.
 
-If the day has no daily note yet, tefteri offers to create one. Choose Create to accept. The note goes to Trilium Next.
+1. Choose the plus button.
+2. Type your text. You can type more than one line.
+3. Choose Add to note. You can also press Ctrl+Enter.
+
+The text goes to the note of today. In the daily view, it goes to the day that the view shows. To use another day, choose the date at the top of the sheet.
+
+![The sheet that adds a line to the daily note, with the date at the top and the button Add to note.](../images/daily-note-sheet.png)
+
+If you close the sheet by mistake, your text stays. It is there when you open the sheet again. If the note app does not answer, the sheet stays open and shows the reason. Your text is not lost.
+
+If the day has no daily note yet, tefteri creates it in Trilium Next.
 
 ## Link a note to a task
 

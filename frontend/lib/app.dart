@@ -22,6 +22,7 @@ import 'features/daily/daily_screen.dart';
 import 'features/month/month_screen.dart';
 import 'features/month/review_screen.dart';
 import 'features/projects/projects_screen.dart';
+import 'features/settings/device_zone_host.dart';
 import 'features/settings/reminder_sync_host.dart';
 import 'features/settings/checklists_screen.dart';
 import 'features/settings/connections_screen.dart';
@@ -202,7 +203,9 @@ class TefteriApp extends ConsumerWidget {
               // and copy text on every screen, also in dialogs and messages.
               child: FindHost(
                 child: AppSelection(
-                  child: ReminderSyncHost(child: child ?? const SizedBox()),
+                  child: DeviceZoneHost(
+                    child: ReminderSyncHost(child: child ?? const SizedBox()),
+                  ),
                 ),
               ),
             ),

@@ -229,13 +229,14 @@ void main() {
       await tester.pumpAndSettle();
       final scrollable = tester.state<ScrollableState>(_list);
       expect(scrollable.position.pixels, greaterThan(0));
-      // The user goes to the note, at the end of the page.
-      await tester.ensureVisible(find.byKey(const Key('note-field')));
-      await tester.pumpAndSettle();
       final where = scrollable.position.pixels;
-      // A note makes the day load again.
-      await tester.enterText(find.byKey(const Key('note-field')), 'Hello');
-      await tester.tap(find.byKey(const Key('note-append-button')));
+      // A note from the "+" button makes the day load again.
+      await tester.tap(find.byKey(const Key('daily-note-fab')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('daily-note-field')), 'Hello');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('daily-note-save')));
       await tester.pumpAndSettle();
       expect(api.where('GET /views/day/2026-11-01'), hasLength(2));
       // The list stays where the user is. It does not go back to the event.

@@ -64,6 +64,18 @@ ThemeData buildTefteriTheme(Brightness brightness) {
       surfaceTintColor: Colors.transparent,
       shape: shape(Corner.lg, side: hairline),
     ),
+    // The round "+" button of the daily note: the ink of the page, not the pale blue of Material.
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: scheme.primary,
+      foregroundColor: scheme.onPrimary,
+      // Flat, like the cards: the page has no shadows.
+      elevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      highlightElevation: 0,
+      shape: const StadiumBorder(),
+      extendedTextStyle: text.labelLarge,
+    ),
     dialogTheme: DialogThemeData(
       backgroundColor: scheme.surface,
       surfaceTintColor: Colors.transparent,

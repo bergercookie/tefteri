@@ -50,7 +50,9 @@ time, you get nothing.
 | Monthly | The last day of the month at 12:00 | You saved the monthly review of the month |
 | Annual | 26 December at 12:00, and 31 December at 15:00 | You wrote a note in the annual review of the year |
 
-The times are in your time zone. The annual review gets two notifications. Both stop when you
+The times are in your time zone. The app sends the time zone of your phone to the server when you
+sign in and when you open the app. If you travel, the new zone is used from then on. The annual
+review gets two notifications. Both stop when you
 write a note in the annual review.
 
 ## Allow notifications

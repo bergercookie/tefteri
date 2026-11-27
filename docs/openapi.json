@@ -6453,6 +6453,10 @@
             },
             "title": "Seen Hints",
             "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
           }
         },
         "required": [
@@ -6463,7 +6467,8 @@
           "checklist_sources",
           "default_event_container_id",
           "event_invitees",
-          "seen_hints"
+          "seen_hints",
+          "timezone"
         ],
         "title": "SettingsOut",
         "type": "object"
@@ -6555,6 +6560,18 @@
               }
             ],
             "title": "Random Time On Date Drop"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
           }
         },
         "title": "SettingsPatch",
@@ -9073,9 +9090,32 @@
       "tefteri__api__routers__reminders__ReminderOut": {
         "description": "One notification to show.",
         "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
           "body": {
             "title": "Body",
             "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
           },
           "fire_at": {
             "format": "date-time",
@@ -9097,6 +9137,17 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "verb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verb"
           }
         },
         "required": [

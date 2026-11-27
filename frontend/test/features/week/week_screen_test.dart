@@ -111,7 +111,9 @@ Map<String, Object?> _weekly() => {
 
 Future<void> _pump(WidgetTester tester, FakeApi api) {
   SharedPreferences.setMockInitialValues({});
-  return pumpWithApi(tester, api, WeekScreen(initialDate: _day));
+  // Tall, because the list of tasks is far down the page and is built only when it is near.
+  return pumpWithApi(tester, api, WeekScreen(initialDate: _day),
+      size: const Size(1000, 3000));
 }
 
 double topOf(WidgetTester tester, String key) =>

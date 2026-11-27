@@ -74,6 +74,8 @@ class SettingsOut(BaseModel):
     """The e-mail addresses of the people that the user usually invites to an event."""
     seen_hints: list[str]
     """The ids of the hints that the user has seen. A hint shows only once."""
+    timezone: str
+    """The IANA time zone of the user. The app sends the one of the device."""
 
     @classmethod
     def of(cls, s: UserSettings) -> "SettingsOut":
@@ -87,6 +89,7 @@ class SettingsOut(BaseModel):
             default_event_container_id=s.default_event_container_id,
             event_invitees=s.event_invitees,
             seen_hints=s.seen_hints,
+            timezone=s.timezone,
         )
 
 
@@ -114,6 +117,8 @@ class SettingsPatch(BaseModel):
     """The calendar for new events; an explicit null clears the choice."""
     event_invitees: list[str] | None = Field(default=None, max_length=200)
     """The whole list of standard invitees (e-mail addresses). It replaces the old list."""
+    timezone: str | None = Field(default=None, max_length=64)
+    """An IANA time zone, for example ``Europe/Athens``. 422 ``bad_timezone`` when it is unknown."""
 
 
 @router.get("")
@@ -144,6 +149,7 @@ async def update_settings(body: SettingsPatch, db: Db, user: CurrentUser) -> Set
                 else UNSET
             ),
             event_invitees=body.event_invitees,
+            timezone=body.timezone,
         )
     )
 

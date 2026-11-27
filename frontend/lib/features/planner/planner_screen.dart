@@ -142,6 +142,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     ref.watch(plannerSpanProvider); // the calendar follows the span
     return AppShell(
       title: 'Planner',
+      fullBleed: true,
       actions: IconButton(
         key: const Key('planner-views-button'),
         tooltip: 'Choose what the planner shows',

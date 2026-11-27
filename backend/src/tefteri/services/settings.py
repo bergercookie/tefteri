@@ -3,6 +3,7 @@
 import re
 import uuid
 from dataclasses import dataclass, field
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +38,9 @@ class UserSettings:
     """The ids of the hints that the user has seen, so that each shows only once."""
     event_reminder_minutes: int = 15
     """Minutes before a calendar event starts that the app reminds the user."""
+    timezone: str = "UTC"
+    """The IANA time zone that decides where a day starts and at what hour a review reminder
+    comes. The app sets it from the device."""
 
 
 class _Unset:
@@ -58,7 +62,18 @@ def _of(user: User) -> UserSettings:
         list(user.event_invitees or []),
         list(user.seen_hints or []),
         user.event_reminder_minutes,
+        user.timezone,
     )
+
+
+def clean_timezone(name: str) -> str:
+    """Return ``name`` when it is an IANA time zone such as ``Europe/Athens``, else raise."""
+    name = name.strip()
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError, OSError) as exc:
+        raise Invalid(f"{name!r} is not a time zone.", "bad_timezone") from exc
+    return name
 
 
 MAX_INVITEES = 100
@@ -151,6 +166,7 @@ class SettingsService:
         default_event_container_id: uuid.UUID | None | _Unset = UNSET,
         event_invitees: list[str] | None = None,
         event_reminder_minutes: int | None = None,
+        timezone: str | None = None,
     ) -> UserSettings:
         """Change the fields that are not ``None`` and return the new settings."""
         user = await db.get(User, user_id)
@@ -184,6 +200,8 @@ class SettingsService:
             user.default_event_container_id = default_event_container_id
         if event_invitees is not None:
             user.event_invitees = clean_invitees(event_invitees)
+        if timezone is not None:
+            user.timezone = clean_timezone(timezone)
         await db.flush()
         return _of(user)
 

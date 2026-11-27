@@ -16,6 +16,7 @@ import '../../theme/theme.dart';
 import '../planner/details_dialogs.dart' show showTaskDetails;
 import '../settings/connection_models.dart';
 import '../settings/sync_controller.dart';
+import 'daily_note_button.dart';
 import 'daily_providers.dart';
 
 /// Shows one day with quick add, complete, delete and note append.
@@ -39,7 +40,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
   String? _error;
   String? _connectionId;
   final _titleCtl = TextEditingController();
-  final _noteCtl = TextEditingController();
+  late final StateController<DateTime?> _noteDay;
   final _scroll = ScrollController();
 
   /// The first event that has not ended; the list scrolls to it.
@@ -56,15 +57,30 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
   void initState() {
     super.initState();
     _date = widget.initialDate ?? _now;
+    _noteDay = ref.read(dailyNoteDayProvider.notifier);
+    // After the first frame: a provider must not change while the tree builds.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _shareDay());
     _syncTick();
+  }
+
+  /// The "+" button adds to the day that this screen shows.
+  void _shareDay() {
+    if (mounted) _noteDay.state = _date;
   }
 
   @override
   void dispose() {
+    // Other screens add to today again.
+    Future.microtask(() {
+      try {
+        _noteDay.state = null;
+      } on Object {
+        // The app is closing.
+      }
+    });
     _tick?.cancel();
     _scroll.dispose();
     _titleCtl.dispose();
-    _noteCtl.dispose();
     super.dispose();
   }
 
@@ -122,20 +138,13 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     if (ok) _titleCtl.clear();
   }
 
-  Future<void> _appendNote() async {
-    final text = _noteCtl.text.trim();
-    if (text.isEmpty) return;
-    final ok = await _run(
-        () => ref.read(planningApiProvider).appendToDailyNote(_key, text));
-    if (ok) _noteCtl.clear();
-  }
-
   void _today() {
     setState(() {
       _date = _now;
       _error = null;
       _scrolledFor = null;
     });
+    _shareDay();
     _syncTick();
   }
 
@@ -145,6 +154,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
       _error = null;
       _scrolledFor = null;
     });
+    _shareDay();
     _syncTick();
   }
 
@@ -321,27 +331,8 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
                   Text(
                     (v.note?.body.isNotEmpty ?? false)
                         ? v.note!.body
-                        : 'No note yet.',
+                        : 'No note yet. Tap + to add a line.',
                     key: const Key('note-body'),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          key: const Key('note-field'),
-                          controller: _noteCtl,
-                          decoration: const InputDecoration(
-                              hintText: 'Add to the note'),
-                          onSubmitted: (_) => _appendNote(),
-                        ),
-                      ),
-                      IconButton(
-                        key: const Key('note-append-button'),
-                        tooltip: 'Add to note',
-                        icon: const Icon(Icons.send),
-                        onPressed: _appendNote,
-                      ),
-                    ],
                   ),
                   // Room below, so that the next event can reach the top of the list
                   // also when little is below it.
