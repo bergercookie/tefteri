@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/features/planner/details_dialogs.dart';
+import 'package:tefteri/features/planner/planner_screen.dart';
 
 import '../../support/fake_api.dart';
 import 'planner_helpers.dart';
@@ -491,4 +492,29 @@ void main() {
     expect(api.where('PUT /tasks/t1/schedule'), hasLength(1));
     expect(find.byKey(const Key('task-details')), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets('a notification link with a task opens that task',
+      (tester) async {
+    final api = plannerApi(extra: {
+      'GET /tasks/t9': _full('t9', 'Call Sam', due: DateTime(2026, 11, 4, 15)),
+    });
+    await pumpWithApi(
+        tester, api, PlannerScreen(initialDate: wednesday, openTaskId: 't9'));
+    await settle(tester);
+    expect(find.byKey(const Key('task-details')), findsOneWidget);
+    expect(_field(tester, 'task-edit-title'), 'Call Sam');
+  });
+
+  testWidgets('a notification link with an event opens that event',
+      (tester) async {
+    final api = plannerApi(calendar: [
+      calItem('entry', 'e1', 'Team standup',
+          start: DateTime(2026, 11, 4, 9), end: DateTime(2026, 11, 4, 9, 30)),
+    ]);
+    await pumpWithApi(
+        tester, api, PlannerScreen(initialDate: wednesday, openEventId: 'e1'));
+    await settle(tester);
+    expect(find.byKey(const Key('event-details')), findsOneWidget);
+    expect(_field(tester, 'event-edit-title'), 'Team standup');
+  });
 }

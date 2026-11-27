@@ -1,16 +1,19 @@
 /// The default planning screen: tasks on the left, the calendar on the right.
 library;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_error.dart';
 import '../../core/pane_widths.dart';
+import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../settings/sync_controller.dart';
 import 'calendar_pane.dart';
+import 'details_dialogs.dart';
 import 'planner_providers.dart';
 import 'planner_span.dart';
 import 'planner_visibility.dart';
@@ -30,10 +33,21 @@ class PlannerScreen extends ConsumerStatefulWidget {
   /// Creates the screen; the calendar shows the days that hold
   /// [initialDate] (default today): its week, or the day and the days after
   /// it, as the user chose.
-  const PlannerScreen({this.initialDate, this.clock = DateTime.now, super.key});
+  const PlannerScreen(
+      {this.initialDate,
+      this.openTaskId,
+      this.openEventId,
+      this.clock = DateTime.now,
+      super.key});
 
   /// A day to show first.
   final DateTime? initialDate;
+
+  /// A task whose details open at once (the user tapped its notification).
+  final String? openTaskId;
+
+  /// An event whose details open at once (the user tapped its notification).
+  final String? openEventId;
 
   /// Gives the current time (the red line on the calendar). Tests replace it.
   final DateTime Function() clock;
@@ -56,6 +70,42 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   void initState() {
     super.initState();
     _anchor = _dayOf(widget.initialDate ?? widget.clock());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openLinked());
+  }
+
+  @override
+  void didUpdateWidget(PlannerScreen old) {
+    super.didUpdateWidget(old);
+    // A notification tapped while the planner is open gives the same screen new values.
+    if (widget.openTaskId != old.openTaskId ||
+        widget.openEventId != old.openEventId) {
+      if (widget.initialDate != null) {
+        _anchor = _dayOf(widget.initialDate!);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openLinked());
+    }
+  }
+
+  /// Opens the pop-up of the task or the event that the link names.
+  Future<void> _openLinked() async {
+    if (!mounted) return;
+    final taskId = widget.openTaskId;
+    final eventId = widget.openEventId;
+    if (taskId != null && taskId.isNotEmpty) {
+      await showTaskDetails(context, taskId: taskId);
+    } else if (eventId != null && eventId.isNotEmpty) {
+      final day = _dayOf(widget.initialDate ?? widget.clock());
+      try {
+        final items = await ref
+            .read(planningApiProvider)
+            .calendar(day, DateTime(day.year, day.month, day.day + 1));
+        final event = items.where((i) => !i.isTask && i.id == eventId);
+        if (!mounted || event.isEmpty) return;
+        await showEventDetails(context, event.first);
+      } on DioException catch (e) {
+        ref.read(plannerErrorProvider.notifier).state = apiErrorMessage(e);
+      }
+    }
   }
 
   static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);

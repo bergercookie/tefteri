@@ -56,6 +56,12 @@ class Reminder:
     """When to show it, as an aware UTC time."""
     link: str
     """The path in the app that a tap on the notification opens."""
+    at: datetime | None = None
+    """The start or the due time of a task or an event, as an aware UTC time."""
+    verb: str | None = None
+    """``Starts`` or ``Due``: how ``at`` reads in the text."""
+    detail: str | None = None
+    """The project of a task or the place of an event."""
 
 
 def _utc(value: datetime) -> datetime:
@@ -142,7 +148,10 @@ class ReminderService:
                     title=t.title,
                     body=f"{when} · {project}" if project else when,
                     fire_at=fire,
-                    link=f"/?date={anchor.astimezone(zone).date().isoformat()}",
+                    link=f"/?date={anchor.astimezone(zone).date().isoformat()}&task={t.id}",
+                    at=anchor,
+                    verb="Starts" if planned else "Due",
+                    detail=project,
                 )
             )
         return out
@@ -186,7 +195,10 @@ class ReminderService:
                     title=e.title,
                     body=f"{when} · {e.location}" if e.location else when,
                     fire_at=fire,
-                    link=f"/?date={begins.astimezone(zone).date().isoformat()}",
+                    link=f"/?date={begins.astimezone(zone).date().isoformat()}&event={e.id}",
+                    at=begins,
+                    verb="Starts",
+                    detail=e.location or None,
                 )
             )
         return out

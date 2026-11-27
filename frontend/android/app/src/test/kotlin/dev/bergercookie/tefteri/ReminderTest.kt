@@ -207,4 +207,21 @@ class ReminderTest {
         assertEquals("tefteri://app/week/plan?date=2030-03-11", intent.data.toString())
         assertNull(intent.type)
     }
+
+    @Test
+    fun theTextShowsTheTimeInTheTimeZoneOfThePhone() {
+        // 12:30 UTC is 14:30 in Athens (UTC+2 in winter) and 07:30 in New York (UTC-5).
+        val at = ReminderData.millis("2030-01-10T12:30:00Z")
+        val task = ReminderItem("t", "task", "Call Sam", "Due at 12:30", at, "/", at, "Due", "Home")
+        assertEquals("Due at 14:30 \u00b7 Home", task.text(java.util.TimeZone.getTimeZone("Europe/Athens")))
+        assertEquals("Due at 07:30 \u00b7 Home", task.text(java.util.TimeZone.getTimeZone("America/New_York")))
+        val event = ReminderItem("e", "event", "Standup", "x", at, "/", at, "Starts", null)
+        assertEquals("Starts at 14:30", event.text(java.util.TimeZone.getTimeZone("Europe/Athens")))
+    }
+
+    @Test
+    fun aReviewKeepsTheTextOfTheServer() {
+        val review = ReminderItem("r", "weekly_review", "Review", "Look back.", now, "/")
+        assertEquals("Look back.", review.text())
+    }
 }

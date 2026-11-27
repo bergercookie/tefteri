@@ -26,11 +26,27 @@ class ReminderOut(BaseModel):
     fire_at: UtcDatetime
     link: str
     """The path in the app that a tap opens, for example ``/week/plan?date=2030-03-11``."""
+    at: UtcDatetime | None = None
+    """The start or due time of a task or an event. A phone writes it in its own time zone."""
+    verb: str | None = None
+    """``Starts`` or ``Due``."""
+    detail: str | None = None
+    """The project of a task or the place of an event."""
 
     @classmethod
     def of(cls, r: Reminder) -> "ReminderOut":
         """Build from a reminder."""
-        return cls(id=r.id, kind=r.kind, title=r.title, body=r.body, fire_at=r.fire_at, link=r.link)
+        return cls(
+            id=r.id,
+            kind=r.kind,
+            title=r.title,
+            body=r.body,
+            fire_at=r.fire_at,
+            link=r.link,
+            at=r.at,
+            verb=r.verb,
+            detail=r.detail,
+        )
 
 
 class RemindersOut(BaseModel):

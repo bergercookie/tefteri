@@ -71,10 +71,11 @@ object ReminderScheduler {
             scheduled.remove(id)
         }
         for ((id, item) in wanted) {
-            if (scheduled.optLong(id, -1) == item.fireAt) continue
+            // The link is part of what was set: an alarm with an older link is set again.
+            if (scheduled.optString(id) == "${item.fireAt}|${item.link}|${item.at}|${item.detail}") continue
             // A reminder whose time has just passed (a task that was added late) fires at once.
             set(context, alarms, item, maxOf(item.fireAt, now + 1_000))
-            scheduled.put(id, item.fireAt)
+            scheduled.put(id, "${item.fireAt}|${item.link}|${item.at}|${item.detail}")
         }
         val keep = JSONObject()
         for (id in fired.keys()) {
@@ -105,6 +106,9 @@ object ReminderScheduler {
             .putExtra("body", item.body)
             .putExtra("fireAt", item.fireAt)
             .putExtra("link", item.link)
+            .putExtra("at", item.at ?: -1L)
+            .putExtra("verb", item.verb)
+            .putExtra("detail", item.detail)
         val pending = PendingIntent.getBroadcast(
             context,
             item.id.hashCode(),
@@ -202,8 +206,8 @@ object ReminderScheduler {
         val notification = builder
             .setSmallIcon(R.drawable.ic_stat_reminder)
             .setContentTitle(item.title)
-            .setContentText(item.body)
-            .setStyle(Notification.BigTextStyle().bigText(item.body))
+            .setContentText(item.text())
+            .setStyle(Notification.BigTextStyle().bigText(item.text()))
             .setContentIntent(tap)
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)

@@ -17,7 +17,24 @@ data class ReminderItem(
     val fireAt: Long,
     /** A path in the app, such as `/week/plan?date=2030-03-11`. */
     val link: String,
-)
+    /** The start or due time of a task or an event (milliseconds), or null for a review. */
+    val at: Long? = null,
+    /** `Starts` or `Due`. */
+    val verb: String? = null,
+    /** The project of a task or the place of an event. */
+    val detail: String? = null,
+) {
+    /**
+     * The text of the notification. For a task or an event the time is written in the time zone
+     * of the phone, not the one that the server keeps for the user.
+     */
+    fun text(zone: TimeZone = TimeZone.getDefault()): String {
+        if (at == null || verb.isNullOrEmpty()) return body
+        val clock = SimpleDateFormat("HH:mm", Locale.ROOT).apply { timeZone = zone }.format(at)
+        val when_ = "$verb at $clock"
+        return if (detail.isNullOrEmpty()) when_ else "$when_ \u00b7 $detail"
+    }
+}
 
 /** What the server said about the reminders. */
 sealed class ReminderResult {
@@ -72,6 +89,9 @@ object ReminderData {
                     body = r.optString("body"),
                     fireAt = millis(r.getString("fire_at")),
                     link = r.optString("link", "/"),
+                    at = if (r.isNull("at")) null else millis(r.getString("at")),
+                    verb = if (r.isNull("verb")) null else r.optString("verb"),
+                    detail = if (r.isNull("detail")) null else r.optString("detail"),
                 )
             }
             ReminderResult.Loaded(items)

@@ -94,9 +94,13 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/users', redirect: (_, __) => '/admin/users'),
       GoRoute(
         path: '/',
+        // A notification of a task or an event adds `task` or `event`: the planner
+        // then opens the details of that item.
         builder: (_, s) => PlannerScreen(
-            initialDate:
-                DateTime.tryParse(s.uri.queryParameters['date'] ?? '')),
+          initialDate: DateTime.tryParse(s.uri.queryParameters['date'] ?? ''),
+          openTaskId: s.uri.queryParameters['task'],
+          openEventId: s.uri.queryParameters['event'],
+        ),
       ),
       GoRoute(path: '/daily', builder: (_, __) => const DailyScreen()),
       GoRoute(path: '/calendar', redirect: (_, __) => '/'),

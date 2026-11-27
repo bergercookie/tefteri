@@ -96,7 +96,12 @@ async def test_a_task_with_a_due_time_is_reminded_before_it_is_due_without_a_rem
     assert reminder["title"] == "Call Sam"
     assert reminder["fire_at"].startswith("2030-03-10T14:15:00")  # 15 minutes before
     assert reminder["body"] == "Due at 14:30"
-    assert reminder["link"] == "/?date=2030-03-10"
+    # A phone writes the time in its own zone, from the raw time and the words around it.
+    assert reminder["at"].startswith("2030-03-10T14:30:00")
+    assert (reminder["verb"], reminder["detail"]) == ("Due", None)
+    # The link opens the task itself, not only its day.
+    assert reminder["link"].startswith("/?date=2030-03-10&task=")
+    assert reminder["link"].removeprefix("/?date=2030-03-10&task=") in reminder["id"]
     await _settings(env, default_reminder_minutes=60)
     (later,) = [r for r in await _get(env, _at(SUNDAY, 0)) if r["kind"] == "task"]
     assert later["fire_at"].startswith("2030-03-10T13:30:00")
@@ -141,6 +146,9 @@ async def test_an_event_is_reminded_before_it_starts_and_the_time_can_change(
     (reminder,) = [r for r in await _get(env, _at(SUNDAY, 0)) if r["kind"] == "event"]
     assert reminder["fire_at"].startswith("2030-03-10T08:45:00")
     assert reminder["body"] == "Starts at 09:00 · Room 4"
+    assert reminder["link"].startswith("/?date=2030-03-10&event=")
+    assert reminder["at"].startswith("2030-03-10T09:00:00")
+    assert (reminder["verb"], reminder["detail"]) == ("Starts", "Room 4")
     await _settings(env, event_reminder_minutes=30)
     (later,) = [r for r in await _get(env, _at(SUNDAY, 0)) if r["kind"] == "event"]
     assert later["fire_at"].startswith("2030-03-10T08:30:00")

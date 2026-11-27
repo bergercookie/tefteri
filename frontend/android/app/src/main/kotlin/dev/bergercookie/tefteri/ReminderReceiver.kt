@@ -20,6 +20,9 @@ class ReminderReceiver : BroadcastReceiver() {
                     body = intent.getStringExtra("body") ?: "",
                     fireAt = intent.getLongExtra("fireAt", System.currentTimeMillis()),
                     link = intent.getStringExtra("link") ?: "/",
+                    at = intent.getLongExtra("at", -1L).takeIf { it >= 0 },
+                    verb = intent.getStringExtra("verb"),
+                    detail = intent.getStringExtra("detail"),
                 )
                 background { ReminderScheduler.fire(app, item) }
             }
