@@ -53,7 +53,6 @@ class _VersionsCardState extends ConsumerState<VersionsCard> {
   @override
   Widget build(BuildContext context) {
     final show = ref.watch(showVersionsProvider);
-    final channel = ref.watch(updateChannelProvider);
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return Card(
@@ -97,26 +96,7 @@ class _VersionsCardState extends ConsumerState<VersionsCard> {
                   const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, 0),
               child: Text('Updates', style: text.titleSmall),
             ),
-            Padding(
-              padding: const EdgeInsets.all(Space.lg),
-              child: SegmentedButton<UpdateChannel>(
-                key: const Key('update-channel'),
-                segments: const [
-                  ButtonSegment(
-                      value: UpdateChannel.standard, label: Text('Standard')),
-                  ButtonSegment(
-                      value: UpdateChannel.nightly, label: Text('Nightly')),
-                ],
-                selected: {channel},
-                onSelectionChanged: (s) {
-                  ref.read(updateChannelProvider.notifier).set(s.first);
-                  setState(() {
-                    _result = null;
-                    _error = null;
-                  });
-                },
-              ),
-            ),
+            const SizedBox(height: Space.sm),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.lg),
               child: Align(

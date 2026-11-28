@@ -1,18 +1,46 @@
-# Tag vX.Y.Z: build the server image and the client packages, publish them.
+# Every push to the main branch is a release. The workflow takes the newest version tag, adds one
+# to the patch number (1.2.3 -> 1.2.4, and 3.3 -> 3.3.1), builds the server image and the client
+# packages with that version, and publishes them. The release creates the tag vX.Y.Z at the commit
+# that was built. To start a new major or minor version, push a tag such as v1.3 by hand: the next
+# release is then 1.3.1. A tag that is pushed by hand does not start a release itself.
 # Every build step calls `just` (see the root justfile); the other steps only provision tools.
 name: release
 on:
   push:
-    tags: ["v*"]
+    branches: [master]
+    # A change of the documentation alone is not a release.
+    paths-ignore: ["docs/**", "specs/**", "**/*.md"]
+  workflow_dispatch:
 permissions:
   contents: write
   packages: write
+# One release at a time, in the order of the pushes, so that each one gets its own number.
+concurrency:
+  group: release
+  cancel-in-progress: false
 env:
   # The Flutter version of the Linux packages. Keep it equal to the one in devbox.json.
   FLUTTER_SDK: "3.47.4"
 jobs:
-  image:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      needed: ${{ steps.v.outputs.needed }}
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      # All the tags are needed to find the newest version.
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: extractions/setup-just@v2
+      - id: v
+        run: just release::next >> "$GITHUB_OUTPUT"
+
+  image:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TEFTERI_RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
@@ -26,8 +54,12 @@ jobs:
       - run: devbox run -- just release::image
 
   linux:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
     # The oldest runner image that GitHub still offers: the packages then run on older systems too.
     runs-on: ubuntu-22.04
+    env:
+      TEFTERI_RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
@@ -50,7 +82,11 @@ jobs:
           if-no-files-found: error
 
   android:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
     runs-on: ubuntu-latest
+    env:
+      TEFTERI_RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
@@ -88,9 +124,13 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  # The tag and the GitHub release are made last, when the image and the packages are built.
   publish:
-    needs: [linux, android]
+    needs: [version, image, linux, android]
+    if: needs.version.outputs.needed == 'true'
     runs-on: ubuntu-latest
+    env:
+      TEFTERI_RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}

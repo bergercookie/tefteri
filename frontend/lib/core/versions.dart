@@ -67,17 +67,7 @@ final serverVersionProvider =
   return version;
 });
 
-/// Which releases the update check follows.
-enum UpdateChannel {
-  /// Tagged releases.
-  standard,
-
-  /// The rolling `nightly` pre-release.
-  nightly,
-}
-
 const _showVersionsKey = 'show_versions';
-const _channelKey = 'update_channel';
 
 /// Whether Settings shows the backend and application versions.
 class ShowVersions extends StateNotifier<bool> {
@@ -99,27 +89,3 @@ class ShowVersions extends StateNotifier<bool> {
 /// The saved "show versions" choice.
 final showVersionsProvider =
     StateNotifierProvider<ShowVersions, bool>((_) => ShowVersions());
-
-/// The release channel of the update check.
-class ChannelChoice extends StateNotifier<UpdateChannel> {
-  /// Starts on the standard channel until the saved one is read.
-  ChannelChoice() : super(UpdateChannel.standard) {
-    SharedPreferences.getInstance().then((p) {
-      if (!mounted) return;
-      state = p.getString(_channelKey) == UpdateChannel.nightly.name
-          ? UpdateChannel.nightly
-          : UpdateChannel.standard;
-    }, onError: (_) {}); // no saved choice: keep the default
-  }
-
-  /// Sets and saves the channel.
-  Future<void> set(UpdateChannel value) async {
-    state = value;
-    await (await SharedPreferences.getInstance())
-        .setString(_channelKey, value.name);
-  }
-}
-
-/// The saved update channel.
-final updateChannelProvider =
-    StateNotifierProvider<ChannelChoice, UpdateChannel>((_) => ChannelChoice());
