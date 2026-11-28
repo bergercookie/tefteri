@@ -16,6 +16,8 @@
     <string name="agenda_next_description">Show the day after</string>
     <string name="agenda_today_description">Go back to today</string>
     <string name="agenda_refresh_description">Refresh the agenda</string>
+    <string name="agenda_add_description">Add a note, a task or an event</string>
+    <string name="agenda_stale">Offline. Showing the list from %1$s</string>
     <string name="agenda_today">Today</string>
     <string name="agenda_tomorrow">Tomorrow</string>
     <string name="agenda_yesterday">Yesterday</string>

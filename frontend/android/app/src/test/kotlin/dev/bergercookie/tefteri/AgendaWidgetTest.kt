@@ -34,6 +34,9 @@ class AgendaWidgetTest {
     private val requests = mutableListOf<Pair<String, String?>>()
     private var status = 200
 
+    /** The server answers 500 to this many requests, then works again. */
+    private var failFirst = 0
+
     private var body = """
         {"date": "2026-11-22",
          "entries": [
@@ -53,6 +56,8 @@ class AgendaWidgetTest {
 
     @Before
     fun setUp() {
+        AgendaData.retryDelayMillis = 0
+        AgendaData.clearCache(context)
         TimeZone.setDefault(TimeZone.getTimeZone("Europe/Athens"))
         val http = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
         server = http
@@ -69,12 +74,14 @@ class AgendaWidgetTest {
                             if (line.startsWith("Authorization:", ignoreCase = true)) auth = line.substringAfter(":").trim()
                         }
                         synchronized(requests) { requests.add(path to auth) }
+                        val failing = synchronized(requests) { if (failFirst > 0) { failFirst--; true } else false }
+                        val code = if (failing) 500 else status
                         val bytes = body.toByteArray()
                         val out = socket.getOutputStream()
-                        val head = if (status == 200) "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n"
-                        else "HTTP/1.1 $status Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                        val head = if (code == 200) "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n"
+                        else "HTTP/1.1 $code Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
                         out.write(head.toByteArray())
-                        if (status == 200) out.write(bytes)
+                        if (code == 200) out.write(bytes)
                         out.flush()
                     }
                 } catch (e: Exception) {
@@ -401,5 +408,94 @@ class AgendaWidgetTest {
         val bare = Intent(AgendaWidgetProvider.ACTION_NEXT)
             .setData(android.net.Uri.parse("tefteri-agenda://widget/$second/next"))
         assertEquals(second, AgendaWidgetProvider.widgetIdOf(bare))
+    }
+
+    private fun statusLine(manager: ShadowAppWidgetManager, id: Int): TextView =
+        manager.getViewFor(id).findViewById(R.id.agenda_status)
+
+    /** Draws the widget again, as the launcher does after an update. */
+    private fun redraw(id: Int) =
+        AgendaWidgetProvider().onUpdate(context, AppWidgetManager.getInstance(context), intArrayOf(id))
+
+    @Test
+    fun `a request that fails is tried again before the widget gives up`() {
+        val (id, _) = createWidget()
+        failFirst = 2
+        val shown = rows(id)
+        assertEquals(3, requests.size)
+        assertTrue(shown.toString(), shown.any { it.contains("Standup") })
+    }
+
+    @Test
+    fun `when the server cannot be reached the last list is shown, marked as old`() {
+        val (id, manager) = createWidget()
+        assertTrue(rows(id).any { it.contains("Standup") }) // a good answer, kept
+        status = 503
+        val shown = rows(id)
+        // The same rows as before, and not the message that the agenda could not load.
+        assertTrue(shown.toString(), shown.any { it.contains("Standup") })
+        assertTrue(shown.none { it.contains(context.getString(R.string.agenda_failed)) })
+        redraw(id)
+        val line = statusLine(manager, id)
+        assertEquals(View.VISIBLE, line.visibility)
+        assertTrue(line.text.toString(), line.text.toString().startsWith("Offline. Showing the list from"))
+    }
+
+    @Test
+    fun `the old-list line goes away when the server answers again`() {
+        val (id, manager) = createWidget()
+        rows(id)
+        status = 503
+        rows(id)
+        status = 200
+        rows(id)
+        redraw(id)
+        assertEquals(View.GONE, statusLine(manager, id).visibility)
+    }
+
+    @Test
+    fun `a day that was never loaded still says that it could not load`() {
+        val (id, _) = createWidget()
+        status = 503
+        assertEquals(listOf(listOf(context.getString(R.string.agenda_failed))), rows(id))
+    }
+
+    @Test
+    fun `signing out forgets the kept list`() {
+        val (id, _) = createWidget()
+        rows(id)
+        status = 401
+        assertEquals(listOf(listOf(context.getString(R.string.agenda_sign_in))), rows(id))
+        status = 503
+        assertEquals(listOf(listOf(context.getString(R.string.agenda_failed))), rows(id))
+    }
+
+    @Test
+    fun `a row opens its task or event in the app, and an old row opens the day`() {
+        val task = AgendaItem(true, "Write", "", "", 0, false, false, "t-1")
+        val event = AgendaItem(false, "Standup", "", "", 0, false, false, "e 2")
+        val old = AgendaItem(true, "Old", "", "", 0, false, false, "")
+        assertEquals("tefteri://app/?date=2026-11-22&task=t-1", rowLink("2026-11-22", task).toString())
+        assertEquals("tefteri://app/?date=2026-11-22&event=e%202", rowLink("2026-11-22", event).toString())
+        assertEquals("tefteri://app/?date=2026-11-22", rowLink("2026-11-22", old).toString())
+    }
+
+    @Test
+    fun `the ids of the answer reach the rows`() {
+        body = body.replace("\"title\": \"Standup\"", "\"id\": \"e-9\", \"title\": \"Standup\"")
+            .replace("\"title\": \"Write report\"", "\"id\": \"t-7\", \"title\": \"Write report\"")
+        val loaded = AgendaData.parse(body) as AgendaResult.Loaded
+        assertEquals("e-9", loaded.items.first { it.title == "Standup" }.id)
+        assertEquals("t-7", loaded.items.first { it.title == "Write report" }.id)
+    }
+
+    @Test
+    fun `the plus button opens the app on the add menu for the shown day`() {
+        val (id, manager) = createWidget()
+        click(manager, id, R.id.agenda_add)
+        val started = shadowOf(context as android.app.Application).nextStartedActivity
+        val day = AgendaData.dayKey(Calendar.getInstance())
+        assertEquals("tefteri://app/?date=$day&add=menu", started.dataString)
+        assertEquals(MainActivity::class.java.name, started.component?.className)
     }
 }

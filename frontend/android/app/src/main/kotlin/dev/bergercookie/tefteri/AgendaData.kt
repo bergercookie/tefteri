@@ -23,11 +23,17 @@ data class AgendaItem(
     val done: Boolean,
     /** An event that is over: it ended before now. The widget shows it grayed out. */
     val past: Boolean = false,
+    /** The id of the task or the event in tefteri. A tap on the row opens it in the app. */
+    val id: String = "",
 )
 
 /** What the widget shows for one day. */
 sealed class AgendaResult {
-    data class Loaded(val items: List<AgendaItem>) : AgendaResult()
+    /**
+     * The rows of the day. [staleSince] is set when the server could not be reached and the rows
+     * are the ones of an earlier answer: the time of that answer, in milliseconds since 1970.
+     */
+    data class Loaded(val items: List<AgendaItem>, val staleSince: Long? = null) : AgendaResult()
     object NotSignedIn : AgendaResult()
     object Failed : AgendaResult()
 }
@@ -42,13 +48,25 @@ object AgendaData {
             cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH),
         )
 
-    fun fetch(context: Context, day: Calendar): AgendaResult {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val token = prefs.getString("flutter.session_token", null)
-        val server = prefs.getString("flutter.server_address", null)
-        if (token.isNullOrEmpty() || server.isNullOrEmpty()) return AgendaResult.NotSignedIn
-        return try {
-            val url = URL("${server.trimEnd('/')}/api/v1/views/day/${dayKey(day)}")
+    private const val CACHE = "tefteri_agenda_cache"
+    private const val KEEP_MILLIS = 14L * 24 * 60 * 60 * 1000
+
+    /** How many times the server is asked before the widget falls back to the last answer. */
+    const val ATTEMPTS = 3
+
+    /** The wait between two attempts. A test sets it to 0. */
+    @Volatile
+    var retryDelayMillis = 2_000L
+
+    private sealed class Answer {
+        data class Body(val text: String) : Answer()
+        object Unauthorized : Answer()
+        object Failure : Answer()
+    }
+
+    private fun ask(server: String, token: String, key: String): Answer =
+        try {
+            val url = URL("${server.trimEnd('/')}/api/v1/views/day/$key")
             val conn = url.openConnection() as HttpURLConnection
             try {
                 conn.connectTimeout = 10_000
@@ -57,16 +75,73 @@ object AgendaData {
                 conn.setRequestProperty("X-Tefteri-Client", "tefteri")
                 conn.setRequestProperty("Accept", "application/json")
                 when (conn.responseCode) {
-                    200 -> parse(conn.inputStream.bufferedReader().use { it.readText() }, System.currentTimeMillis())
-                    401 -> AgendaResult.NotSignedIn
-                    else -> AgendaResult.Failed
+                    200 -> Answer.Body(conn.inputStream.bufferedReader().use { it.readText() })
+                    401 -> Answer.Unauthorized
+                    else -> Answer.Failure
                 }
             } finally {
                 conn.disconnect()
             }
         } catch (e: Exception) {
-            AgendaResult.Failed
+            Answer.Failure
         }
+
+    /**
+     * Reads the day from the server. A request that fails (a phone that is asleep, a network that
+     * is not up yet, a server that is slow to wake) is tried again. When every attempt fails, the
+     * last answer for this day is shown, marked as old, and only a day that was never loaded shows
+     * the failure.
+     */
+    fun fetch(context: Context, day: Calendar, now: () -> Long = System::currentTimeMillis): AgendaResult {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val token = prefs.getString("flutter.session_token", null)
+        val server = prefs.getString("flutter.server_address", null)
+        if (token.isNullOrEmpty() || server.isNullOrEmpty()) {
+            clearCache(context)
+            return AgendaResult.NotSignedIn
+        }
+        val key = dayKey(day)
+        for (attempt in 1..ATTEMPTS) {
+            when (val answer = ask(server, token, key)) {
+                is Answer.Body -> {
+                    val result = parse(answer.text, now())
+                    // Only an answer that can be read is kept.
+                    if (result is AgendaResult.Loaded) remember(context, key, answer.text, now())
+                    return result
+                }
+                Answer.Unauthorized -> {
+                    clearCache(context)
+                    return AgendaResult.NotSignedIn
+                }
+                Answer.Failure -> if (attempt < ATTEMPTS && retryDelayMillis > 0) Thread.sleep(retryDelayMillis)
+            }
+        }
+        return fromCache(context, key, now()) ?: AgendaResult.Failed
+    }
+
+    private fun cache(context: Context) = context.getSharedPreferences(CACHE, Context.MODE_PRIVATE)
+
+    private fun remember(context: Context, key: String, body: String, at: Long) {
+        val edit = cache(context).edit().putString("body_$key", body).putLong("at_$key", at)
+        // Forget the days that are old: the cache holds a few days, not a history.
+        for ((name, value) in cache(context).all) {
+            if (name.startsWith("at_") && value is Long && at - value > KEEP_MILLIS) {
+                edit.remove(name).remove("body_" + name.removePrefix("at_"))
+            }
+        }
+        edit.apply()
+    }
+
+    private fun fromCache(context: Context, key: String, now: Long): AgendaResult? {
+        val body = cache(context).getString("body_$key", null) ?: return null
+        val at = cache(context).getLong("at_$key", 0L)
+        val parsed = parse(body, now) as? AgendaResult.Loaded ?: return null
+        return parsed.copy(staleSince = at)
+    }
+
+    /** Forgets every kept answer, when the person signs out. */
+    fun clearCache(context: Context) {
+        cache(context).edit().clear().apply()
     }
 
     /** Turns the body of `GET /views/day/{day}` into rows: events by start, then tasks. */
@@ -80,6 +155,7 @@ object AgendaData {
                 val allDay = e.optBoolean("all_day")
                 items.add(
                     AgendaItem(
+                        id = e.optString("id"),
                         isTask = false,
                         title = e.optString("title"),
                         time = if (allDay) "All day"
@@ -101,6 +177,7 @@ object AgendaData {
                 val t = tasks!!.getJSONObject(i)
                 taskItems.add(
                     AgendaItem(
+                        id = t.optString("id"),
                         isTask = true,
                         title = t.optString("title"),
                         time = if (t.optBoolean("all_day") || t.isNull("due_at")) ""

@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api_error.dart';
 import '../../core/pane_widths.dart';
@@ -12,12 +13,15 @@ import '../../core/planning_api.dart';
 import '../../core/planning_models.dart';
 import '../../core/shell.dart';
 import '../settings/sync_controller.dart';
+import '../add/add_menu.dart';
+import '../daily/daily_note_button.dart';
 import 'calendar_pane.dart';
 import 'details_dialogs.dart';
 import 'planner_providers.dart';
 import 'planner_span.dart';
 import 'planner_visibility.dart';
 import 'planner_views_dialog.dart';
+import 'new_task_dialog.dart';
 import 'schedule_dialog.dart';
 import 'task_pane.dart';
 
@@ -37,6 +41,7 @@ class PlannerScreen extends ConsumerStatefulWidget {
       {this.initialDate,
       this.openTaskId,
       this.openEventId,
+      this.openAdd,
       this.clock = DateTime.now,
       super.key});
 
@@ -48,6 +53,10 @@ class PlannerScreen extends ConsumerStatefulWidget {
 
   /// An event whose details open at once (the user tapped its notification).
   final String? openEventId;
+
+  /// What to add at once (the user tapped the plus of the widget): `menu` opens the Add menu, and
+  /// `note`, `task` or `event` open that form.
+  final String? openAdd;
 
   /// Gives the current time (the red line on the calendar). Tests replace it.
   final DateTime Function() clock;
@@ -94,7 +103,8 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     super.didUpdateWidget(old);
     // A notification tapped while the planner is open gives the same screen new values.
     if (widget.openTaskId != old.openTaskId ||
-        widget.openEventId != old.openEventId) {
+        widget.openEventId != old.openEventId ||
+        widget.openAdd != old.openAdd) {
       if (widget.initialDate != null) {
         _anchor = _dayOf(widget.initialDate!);
       }
@@ -102,12 +112,37 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     }
   }
 
+  /// Takes the task, event and add parts out of the address once they are used. The same link
+  /// then works again: a second tap of the same row of the widget is a change of the address.
+  void _forgetLink() {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+    final day = dateKey(_anchor);
+    router.go('/?date=$day');
+  }
+
   /// Opens the pop-up of the task or the event that the link names.
   Future<void> _openLinked() async {
     if (!mounted) return;
     final taskId = widget.openTaskId;
     final eventId = widget.openEventId;
-    if (taskId != null && taskId.isNotEmpty) {
+    final add = widget.openAdd;
+    final linked = (taskId?.isNotEmpty ?? false) ||
+        (eventId?.isNotEmpty ?? false) ||
+        (add?.isNotEmpty ?? false);
+    if (linked) _forgetLink();
+    if (add != null && add.isNotEmpty) {
+      switch (add) {
+        case 'note':
+          await showDailyNoteSheet(context);
+        case 'task':
+          await showNewTaskDialog(context);
+        case 'event':
+          await startNewEvent(context);
+        default:
+          await showAddMenu(context);
+      }
+    } else if (taskId != null && taskId.isNotEmpty) {
       await showTaskDetails(context, taskId: taskId);
     } else if (eventId != null && eventId.isNotEmpty) {
       final day = _dayOf(widget.initialDate ?? widget.clock());

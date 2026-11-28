@@ -58,6 +58,8 @@ your day without you opening tefteri.
   For the day before and the day after, it shows "Yesterday" and "Tomorrow". For other days, it
   shows the name of the weekday. Choose the name to go back to today.
 - The refresh button loads the day again.
+- The plus button at the right opens tefteri on the Add menu. You can add a daily note, a task or
+  a calendar event from there.
 
 On today, the list starts at the first event that is not over. The events that are over are above
 it, in a lighter color, and you can scroll up to see them. An event that is on now is not over. If
@@ -71,8 +73,8 @@ out of view.
 The widget shows the current day when you add it. It also goes back to the current day when a new
 day starts. It does not stay on a day that you chose earlier.
 
-Choose an event or a task to open the planner in tefteri. The planner shows the day that the
-widget shows.
+Choose an event or a task to open it in tefteri. The details of that event or task open on top of
+the planner, and you can change them there. The planner shows the day that the widget shows.
 
 ### Add the agenda widget
 
@@ -93,5 +95,15 @@ restart your phone. Some launchers keep an old list of widgets until they restar
 
 The widget uses the same server and the same login as the app. Sign in to tefteri one time. Then
 the widget shows your day. If the widget shows "Sign in to Tefteri", open the app and sign in.
-If the widget shows that it could not load the agenda, check your network and choose the refresh
-button.
+
+### When the server does not answer
+
+The widget asks the server up to three times, with a short wait between the asks. A phone that
+was asleep, or a network that is not ready yet, is often fine on the second ask.
+
+If the server still does not answer, the widget shows the last list that it loaded for that day.
+A small line under the header then says "Offline. Showing the list from" and the time of that
+list. The line goes away when the server answers again. Choose the refresh button to try at once.
+
+The widget shows "Could not load the agenda" only for a day that it never loaded before. The
+widget keeps the lists of the last days. It forgets them when you sign out.

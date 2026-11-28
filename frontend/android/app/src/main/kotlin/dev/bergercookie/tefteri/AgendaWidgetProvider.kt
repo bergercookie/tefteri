@@ -25,7 +25,7 @@ class AgendaWidgetProvider : AppWidgetProvider() {
 
     override fun onDeleted(context: Context, ids: IntArray) {
         val edit = prefs(context).edit()
-        for (id in ids) edit.remove(shownKey(id)).remove(setOnKey(id)).remove(scrolledKey(id))
+        for (id in ids) edit.remove(shownKey(id)).remove(setOnKey(id)).remove(scrolledKey(id)).remove(staleKey(id))
         edit.commit()
     }
 
@@ -65,6 +65,17 @@ class AgendaWidgetProvider : AppWidgetProvider() {
         // The date goes back to today; today is also the refresh.
         views.setOnClickPendingIntent(R.id.agenda_date, action(context, id, ACTION_TODAY))
         views.setOnClickPendingIntent(R.id.agenda_refresh, action(context, id, ACTION_REFRESH))
+        // The plus opens the app on the menu with a note, a task and an event, for the shown day.
+        views.setOnClickPendingIntent(
+            R.id.agenda_add,
+            PendingIntent.getActivity(
+                context,
+                id,
+                openApp(context, Uri.parse("tefteri://app/?date=${AgendaData.dayKey(day)}&add=menu")),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+        applyStatus(context, views, id)
 
         val service = Intent(context, AgendaWidgetService::class.java)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
@@ -74,15 +85,20 @@ class AgendaWidgetProvider : AppWidgetProvider() {
 
         // A tap on a row opens the planner at that day in the app. The row adds the link, because
         // only the row knows the day (see AgendaWidgetService).
-        val open = Intent(Intent.ACTION_VIEW)
-            .setClass(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val open = openApp(context, null)
         views.setPendingIntentTemplate(
             R.id.agenda_list,
             PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE),
         )
         manager.updateAppWidget(id, views)
     }
+
+    /** An intent that opens the app, at [link] when it is given. */
+    private fun openApp(context: Context, link: Uri?): Intent =
+        Intent(Intent.ACTION_VIEW)
+            .setClass(context, MainActivity::class.java)
+            .apply { if (link != null) data = link }
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
     private fun action(context: Context, id: Int, action: String): PendingIntent {
         // The widget and the button are in the address of the intent, so every button of every
@@ -107,6 +123,39 @@ class AgendaWidgetProvider : AppWidgetProvider() {
         private const val PREFS = "tefteri_agenda_widget"
 
         private const val TAG = "TefteriAgenda"
+
+        private fun staleKey(id: Int) = "stale_$id"
+
+        /**
+         * Shows or hides the line that says the list is an old one. [staleSince] is the time of the
+         * answer that the rows come from, or null when the rows are fresh. It is also kept, so
+         * that a redraw of the widget keeps the line until a new answer comes.
+         */
+        fun showStatus(context: Context, id: Int, staleSince: Long?) {
+            if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
+            prefs(context).edit().putLong(staleKey(id), staleSince ?: 0L).commit()
+            val views = RemoteViews(context.packageName, R.layout.tefteri_agenda_widget)
+            applyStatus(context, views, id)
+            AppWidgetManager.getInstance(context).partiallyUpdateAppWidget(id, views)
+        }
+
+        private fun applyStatus(context: Context, views: RemoteViews, id: Int) {
+            val since = prefs(context).getLong(staleKey(id), 0L)
+            if (since <= 0L) {
+                views.setViewVisibility(R.id.agenda_status, android.view.View.GONE)
+                return
+            }
+            views.setViewVisibility(R.id.agenda_status, android.view.View.VISIBLE)
+            views.setTextViewText(R.id.agenda_status, context.getString(R.string.agenda_stale, staleLabel(since)))
+        }
+
+        /** "14:05" for a time of today, and "21 Nov 14:05" for an earlier day. */
+        fun staleLabel(since: Long, now: Long = System.currentTimeMillis()): String {
+            val then = Calendar.getInstance().apply { timeInMillis = since }
+            val today = Calendar.getInstance().apply { timeInMillis = now }
+            val sameDay = AgendaData.dayKey(then) == AgendaData.dayKey(today)
+            return SimpleDateFormat(if (sameDay) "HH:mm" else "d MMM HH:mm", Locale.getDefault()).format(then.time)
+        }
 
         /** The widget that an intent is for: its extra, or the address of the intent. */
         fun widgetIdOf(intent: Intent): Int {

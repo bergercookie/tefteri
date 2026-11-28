@@ -33,6 +33,22 @@ The Month button opens the monthly theme plan and review. The route stays `/mont
 The paths are the ones of `lib/core/shortcuts/keymap.dart`. To change a button, change the
 `buttons` list in `NavWidgetProvider.kt`, and the layout, the icon and the strings.
 
+## The agenda widget: links, cache and retry
+
+A tap on a row of the agenda opens a link on the planner route with the day and the item:
+`tefteri://app/?date=2026-11-22&task=<id>` or `&event=<id>` (`rowLink` in
+`AgendaWidgetService.kt`). The plus button opens `...&add=menu`. The planner (`PlannerScreen`)
+reads `task`, `event` and `add`, opens the details pop-up or the Add menu, and then takes those
+parts out of the address. Without that step, a second tap on the same row would be the same
+address and would not open anything. The links of the reminder notifications use the same
+parameters.
+
+`AgendaData.fetch` asks the server up to `ATTEMPTS` times with `retryDelayMillis` between the
+asks. An answer that can be read is kept in the `tefteri_agenda_cache` preferences, by day, for
+14 days. When every ask fails, `fetch` returns the kept answer with `staleSince` set, and the
+factory then shows the line `agenda_status` through `AgendaWidgetProvider.showStatus`. Only a day
+with no kept answer shows `agenda_failed`. A 401 answer, or no login, clears the cache.
+
 ## Tests
 
 `frontend/test/core/home_screen_widget_test.dart` starts the app from each link and sends each

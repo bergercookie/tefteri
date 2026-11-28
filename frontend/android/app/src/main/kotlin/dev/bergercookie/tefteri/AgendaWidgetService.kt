@@ -33,6 +33,7 @@ private class AgendaFactory(
 ) : RemoteViewsService.RemoteViewsFactory {
     private var items: List<AgendaItem> = emptyList()
     private var message: String? = null
+    private var dayKey: String = ""
     private var link: Uri = Uri.parse("tefteri://app/")
 
     override fun onCreate() {}
@@ -40,9 +41,11 @@ private class AgendaFactory(
     /** Runs off the main thread, so the request to the server may block here. */
     override fun onDataSetChanged() {
         val day = AgendaWidgetProvider.shownDay(context, widgetId)
-        link = Uri.parse("tefteri://app/?date=${AgendaData.dayKey(day)}")
+        dayKey = AgendaData.dayKey(day)
+        link = Uri.parse("tefteri://app/?date=$dayKey")
         when (val result = AgendaData.fetch(context, day)) {
             is AgendaResult.Loaded -> {
+                AgendaWidgetProvider.showStatus(context, widgetId, result.staleSince)
                 items = result.items
                 message = if (items.isEmpty()) context.getString(R.string.agenda_empty) else null
                 // On today, start the list at the next event, with the earlier ones above it.
@@ -51,10 +54,12 @@ private class AgendaFactory(
                 }
             }
             AgendaResult.NotSignedIn -> {
+                AgendaWidgetProvider.showStatus(context, widgetId, null)
                 items = emptyList()
                 message = context.getString(R.string.agenda_sign_in)
             }
             AgendaResult.Failed -> {
+                AgendaWidgetProvider.showStatus(context, widgetId, null)
                 items = emptyList()
                 message = context.getString(R.string.agenda_failed)
             }
@@ -68,15 +73,16 @@ private class AgendaFactory(
 
     override fun getViewAt(position: Int): RemoteViews {
         val row = RemoteViews(context.packageName, R.layout.tefteri_agenda_row)
-        val fill = Intent().setData(link)
-        row.setOnClickFillInIntent(R.id.agenda_row, fill)
         if (items.isEmpty()) {
+            row.setOnClickFillInIntent(R.id.agenda_row, Intent().setData(link))
             row.setViewVisibility(R.id.agenda_swatch, View.INVISIBLE)
             row.setViewVisibility(R.id.agenda_time, View.GONE)
             row.setTextViewText(R.id.agenda_title, message)
             return row
         }
         val item = items[position]
+        // A tap opens the task or the event in the app, ready to edit.
+        row.setOnClickFillInIntent(R.id.agenda_row, Intent().setData(rowLink(dayKey, item)))
         row.setViewVisibility(R.id.agenda_swatch, View.VISIBLE)
         val accent = context.getColor(R.color.widget_accent)
         row.setInt(R.id.agenda_swatch, "setBackgroundColor", if (item.color != 0) item.color else accent)
@@ -103,6 +109,16 @@ private class AgendaFactory(
     override fun getViewTypeCount(): Int = 1
     override fun getItemId(position: Int): Long = position.toLong()
     override fun hasStableIds(): Boolean = false
+}
+
+/**
+ * Where a tap on a row goes: the planner at the day, with the task or the event opened. A row
+ * that has no id (an old answer) opens the day only.
+ */
+fun rowLink(dayKey: String, item: AgendaItem): Uri {
+    val base = "tefteri://app/?date=$dayKey"
+    if (item.id.isEmpty()) return Uri.parse(base)
+    return Uri.parse("$base&${if (item.isTask) "task" else "event"}=${Uri.encode(item.id)}")
 }
 
 /** How faint a row of an event that is over is. */
