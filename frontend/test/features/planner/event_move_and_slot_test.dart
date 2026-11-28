@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tefteri/core/calendar_color.dart';
 import 'package:tefteri/theme/theme.dart';
@@ -90,6 +91,80 @@ Future<void> _rightClickAt(WidgetTester tester, Offset at) async {
 }
 
 void main() {
+  group('undo after a drag', () {
+    List<Map> patches(FakeApi api) => [
+          for (final r in api.where('PATCH /calendar/entries/e1'))
+            r.data! as Map,
+        ];
+    DateTime at(Map body, String key) =>
+        DateTime.parse('${body[key]}').toLocal();
+
+    testWidgets('a move shows a message, and Undo puts the event back',
+        (tester) async {
+      final api = _api();
+      await pumpPlanner(tester, api);
+      await dragTo(tester, find.byKey(const Key('block-entry-e1')),
+          slotPoint(tester, wednesday, 14, 0));
+      expect(find.text('Event moved'), findsOneWidget);
+      await tester.tap(find.text('Undo'));
+      await settle(tester);
+      final all = patches(api);
+      expect(all, hasLength(2));
+      // The second save writes the first time again: 09:00 to 10:30 on Wednesday.
+      expect(at(all.last, 'start'), DateTime(2026, 11, 4, 9));
+      expect(at(all.last, 'end'), DateTime(2026, 11, 4, 10, 30));
+      // The message is gone, and a second Undo does nothing.
+      expect(find.text('Event moved'), findsNothing);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyZ);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await settle(tester);
+      expect(patches(api), hasLength(2));
+    }, variant: _linux);
+
+    testWidgets('Ctrl+Z does the same as the button', (tester) async {
+      final api = _api();
+      await pumpPlanner(tester, api);
+      await dragTo(tester, find.byKey(const Key('block-entry-e1')),
+          slotPoint(tester, wednesday, 14, 0));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyZ);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await settle(tester);
+      final all = patches(api);
+      expect(all, hasLength(2));
+      expect(at(all.last, 'start'), DateTime(2026, 11, 4, 9));
+    }, variant: _linux);
+
+    testWidgets('a new move replaces the one that could be undone',
+        (tester) async {
+      final api = _api();
+      await pumpPlanner(tester, api);
+      await dragTo(tester, find.byKey(const Key('block-entry-e1')),
+          slotPoint(tester, wednesday, 14, 0));
+      await dragTo(tester, find.byKey(const Key('block-entry-e1')),
+          slotPoint(tester, _thursday, 11, 0));
+      await tester.tap(find.text('Undo'));
+      await settle(tester);
+      // One Undo takes back the last move only. The fake calendar does not change after a
+      // save, so the event is at 09:00 before each of the two moves.
+      expect(patches(api), hasLength(3));
+      expect(at(patches(api).last, 'start'), DateTime(2026, 11, 4, 9));
+    }, variant: _linux);
+
+    testWidgets('a refused move offers no Undo', (tester) async {
+      final api = _api(extra: {
+        'PATCH /calendar/entries/e1': const ApiFailure(
+            502, 'Google Calendar did not answer.', 'unavailable'),
+      });
+      await pumpPlanner(tester, api);
+      await dragTo(tester, find.byKey(const Key('block-entry-e1')),
+          slotPoint(tester, wednesday, 14, 0));
+      expect(find.text('Undo'), findsNothing);
+      expect(find.text('Google Calendar did not answer.'), findsOneWidget);
+    }, variant: _linux);
+  });
+
   group('dragging an event', () {
     testWidgets('moves it and keeps its length', (tester) async {
       final api = _api();

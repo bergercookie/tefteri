@@ -297,6 +297,17 @@ on the same day.
 You can drag the edges of an event only when you can move it: it has a time, it is not all day,
 it is in a calendar that you can change, and it starts and ends on the same day.
 
+## Undo a move or a change of an event
+
+After you move an event, or drag one of its edges, a message at the bottom of the screen says
+Event moved or Event changed. It has the button Undo. Choose Undo, or press Ctrl+Z (Cmd+Z on a
+Mac), and tefteri writes the old times back to your calendar app. The message stays for 8
+seconds. The key works until you leave the planner.
+
+Undo takes back only the last change. A new move replaces the one that you could undo. If your
+calendar app refuses a move, nothing changed, and there is nothing to undo. Undo does not apply
+to the pop-up where you change the title, the place and the other details of an event.
+
 ## Change an event
 
 Choose an event block. A pop-up opens with the details of the event as fields that you can change:

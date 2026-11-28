@@ -347,6 +347,20 @@ void main() {
       expect(DateTime.parse('${body['end']}').toLocal(), _at(9, 30));
     }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
+    testWidgets('a change of an edge can be undone', (tester) async {
+      final api = await pump(tester, _event());
+      await tester.drag(handle('end'), const Offset(0, quarter * 2));
+      await settle(tester);
+      expect(find.text('Event changed'), findsOneWidget);
+      await tester.tap(find.text('Undo'));
+      await settle(tester);
+      final all = api.where('PATCH /calendar/entries/e1');
+      expect(all, hasLength(2));
+      final back = all.last.data! as Map;
+      expect(DateTime.parse('${back['start']}').toLocal(), _at(9));
+      expect(DateTime.parse('${back['end']}').toLocal(), _at(9, 30));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
     testWidgets('an edge snaps to a quarter of an hour', (tester) async {
       final api = await pump(tester, _event());
       // A move that is too small starts no drag: nothing changes.

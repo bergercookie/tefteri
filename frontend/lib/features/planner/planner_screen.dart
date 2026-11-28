@@ -66,9 +66,25 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   /// has not chosen one.
   double _calendarWidth = twoColumnMinWidth;
 
+  late final StateController<PlannerUndo?> _undoState;
+
+  @override
+  void dispose() {
+    // Leaving the planner: an old move can no longer be undone from here.
+    Future.microtask(() {
+      try {
+        _undoState.state = null;
+      } on Object {
+        // The app is closing.
+      }
+    });
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _undoState = ref.read(plannerUndoProvider.notifier);
     _anchor = _dayOf(widget.initialDate ?? widget.clock());
     WidgetsBinding.instance.addPostFrameCallback((_) => _openLinked());
   }
@@ -130,12 +146,33 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     ref.read(plannerSpanProvider.notifier).set(chosen);
   }
 
+  void _undo() => ref.read(plannerActionsProvider).undo();
+
   @override
   Widget build(BuildContext context) {
     ref.listen<SyncState>(syncControllerProvider, (prev, next) {
       if (prev != null && prev.busy && !next.busy) {
         ref.read(plannerActionsProvider).refresh();
       }
+    });
+    // After an event was moved or resized: a message with Undo, for a few seconds.
+    ref.listen<PlannerUndo?>(plannerUndoProvider, (prev, next) {
+      final messenger = ScaffoldMessenger.of(context);
+      if (next == null) {
+        messenger.hideCurrentSnackBar();
+        return;
+      }
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          key: const Key('undo-snackbar'),
+          content: Text(next.message),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => ref.read(plannerActionsProvider).undo(),
+          ),
+        ));
     });
     final error = ref.watch(plannerErrorProvider);
     final visibility = ref.watch(plannerVisibilityProvider);
@@ -160,6 +197,10 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
         bindings: {
           const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _shift(-1),
           const SingleActivator(LogicalKeyboardKey.arrowRight): () => _shift(1),
+          // Ctrl+Z (Cmd+Z on a Mac) takes back the last move of an event. A text field handles
+          // the key itself first, to undo its own typing.
+          const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
+          const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): _undo,
         },
         child: Focus(
           autofocus: true,

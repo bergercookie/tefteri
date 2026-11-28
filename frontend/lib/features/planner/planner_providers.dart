@@ -144,6 +144,37 @@ final plannerErrorProvider = StateProvider<String?>((_) => null);
 /// Id of the task whose schedule change is being saved, if any.
 final pendingTaskProvider = StateProvider<String?>((_) => null);
 
+/// The last change of an event's time that the user can undo: where the event was before.
+@immutable
+class PlannerUndo {
+  /// Remembers that the event [id] was at [start] to [end] before [message] happened.
+  const PlannerUndo({
+    required this.serial,
+    required this.id,
+    required this.message,
+    required this.start,
+    required this.end,
+  });
+
+  /// Differs for each change, so that a screen shows a message for each one.
+  final int serial;
+
+  /// Id of the event.
+  final String id;
+
+  /// What happened, for the user: "Event moved".
+  final String message;
+
+  /// The start before the change.
+  final DateTime start;
+
+  /// The end before the change.
+  final DateTime end;
+}
+
+/// The change that Undo takes back, or null when there is none. Only the last change counts.
+final plannerUndoProvider = StateProvider<PlannerUndo?>((_) => null);
+
 /// Schedule actions. The UI shows a change only after the server has saved
 /// it: nothing is optimistic and nothing is queued (spec FR-012).
 class PlannerActions {
@@ -165,15 +196,41 @@ class PlannerActions {
   Future<void> moveEntry(CalendarItem item, DateTime start) {
     final length = (item.end ?? item.start!.add(const Duration(hours: 1)))
         .difference(item.start!);
-    return _run(
-        item.id, (api) => api.moveEntry(item.id, start, start.add(length)));
+    return _changeTime(item, start, start.add(length), 'Event moved');
   }
 
   /// Gives the event [item] a new [start] and [end], for example after its edge
   /// was dragged. The calendar app saves the new time; a calendar that is
   /// read-only refuses.
   Future<void> resizeEntry(CalendarItem item, DateTime start, DateTime end) =>
-      _run(item.id, (api) => api.moveEntry(item.id, start, end));
+      _changeTime(item, start, end, 'Event changed');
+
+  int _serial = 0;
+
+  /// Saves a new time for [item] and, when the calendar app took it, remembers the old time so
+  /// that [undo] can bring it back.
+  Future<void> _changeTime(
+      CalendarItem item, DateTime start, DateTime end, String message) async {
+    final was = PlannerUndo(
+      serial: ++_serial,
+      id: item.id,
+      message: message,
+      start: item.start!,
+      end: item.end ?? item.start!.add(const Duration(hours: 1)),
+    );
+    final saved =
+        await _run(item.id, (api) => api.moveEntry(item.id, start, end));
+    if (saved) _ref.read(plannerUndoProvider.notifier).state = was;
+  }
+
+  /// Puts the last moved or resized event back where it was. Does nothing when there is
+  /// nothing to undo. A change can be undone once.
+  Future<void> undo() async {
+    final undo = _ref.read(plannerUndoProvider);
+    if (undo == null) return;
+    _ref.read(plannerUndoProvider.notifier).state = null;
+    await _run(undo.id, (api) => api.moveEntry(undo.id, undo.start, undo.end));
+  }
 
   /// Marks [taskId] as done in the task app.
   Future<void> complete(String taskId) =>
@@ -194,18 +251,23 @@ class PlannerActions {
     _ref.invalidate(taskCountsProvider);
   }
 
-  Future<void> _run(
+  /// Runs [action] and reloads. True when it worked, false when the server refused it (the
+  /// message is then in [plannerErrorProvider]).
+  Future<bool> _run(
       String taskId, Future<void> Function(PlanningApi api) action) async {
+    var ok = false;
     _ref.read(pendingTaskProvider.notifier).state = taskId;
     try {
       await action(_ref.read(planningApiProvider));
       _ref.read(plannerErrorProvider.notifier).state = null;
+      ok = true;
     } on DioException catch (e) {
       _ref.read(plannerErrorProvider.notifier).state = apiErrorMessage(e);
     } finally {
       _ref.read(pendingTaskProvider.notifier).state = null;
       refresh();
     }
+    return ok;
   }
 }
 

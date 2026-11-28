@@ -45,6 +45,7 @@ Month opens the monthly theme plan and review. Read [Plan your month](monthly-pl
 | Page Down | Scroll the page down by one page |
 | Page Up | Scroll the page up by one page |
 | ? | Show the list of shortcuts |
+| Ctrl+Z | In the planner: undo the last move or change of an event (Cmd+Z on a Mac) |
 | Esc | Leave the text field |
 
 ## Use a Greek keyboard
