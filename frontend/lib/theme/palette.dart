@@ -256,3 +256,13 @@ ColorScheme tefteriScheme(Brightness brightness) {
     scrim: Color(0xFF000000),
   );
 }
+
+/// The two colors of a QR code. It is always dark on light, whatever the theme: scanners expect
+/// that, and many fail on an inverted code.
+abstract final class QrPalette {
+  /// The light ground of the code and of its quiet zone.
+  static Color get paper => TefteriColors.light.paper;
+
+  /// The dark modules.
+  static Color get ink => tefteriScheme(Brightness.light).onSurface;
+}

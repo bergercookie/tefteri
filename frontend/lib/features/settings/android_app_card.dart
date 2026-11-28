@@ -161,8 +161,8 @@ class QrCode extends StatelessWidget {
         child: CustomPaint(
           painter: _QrPainter(
             rows,
-            paper: TefteriColors.light.paper,
-            ink: tefteriScheme(Brightness.light).onSurface,
+            paper: QrPalette.paper,
+            ink: QrPalette.ink,
           ),
         ),
       ),
@@ -192,8 +192,8 @@ class _QrPainter extends CustomPainter {
         if (rows[y][x] != '1') continue;
         // Slightly larger than the cell, so that no seam shows between two.
         canvas.drawRect(
-            Rect.fromLTWH(
-                (x + _quiet) * cell, (y + _quiet) * cell, cell + 0.5, cell + 0.5),
+            Rect.fromLTWH((x + _quiet) * cell, (y + _quiet) * cell, cell + 0.5,
+                cell + 0.5),
             paint);
       }
     }
