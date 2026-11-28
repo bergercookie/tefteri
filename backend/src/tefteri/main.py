@@ -18,6 +18,7 @@ from tefteri.adapters.trilium import TriliumNoteBackend
 from tefteri.adapters.vikunja import VikunjaTaskBackend
 from tefteri.api.errors import install_error_handlers
 from tefteri.api.errors_map import install_service_error_handlers
+from tefteri.api.routers import android_app as android_app_router
 from tefteri.api.routers import annual as annual_router
 from tefteri.api.routers import annual_review as annual_review_router
 from tefteri.api.routers import api_keys as api_keys_router
@@ -277,6 +278,7 @@ def create_app(
         users_router,
         settings_router,
         api_keys_router,
+        android_app_router,
         reminders_router,
         checklists_router,
     ):

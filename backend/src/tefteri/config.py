@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     web_dir: Path | None = None  # built web client (`flutter build web`), served at /
     public_url: str | None = None  # base URL for OAuth redirect addresses behind a proxy
+    release_repo: str = "bergercookie/tefteri"
+    """The GitHub repository (``owner/name``) whose releases hold the Android app."""
     google_client_id: str | None = None
     google_client_secret: str | None = None
 

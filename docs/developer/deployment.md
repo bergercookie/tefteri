@@ -15,6 +15,7 @@ Tefteri reads its settings from environment variables that start with `TEFTERI_`
 | `TEFTERI_WEB_DIR` | none | Folder of the built web client. If you set it, the server gives the web client at `/`. |
 | `TEFTERI_GOOGLE_CLIENT_ID` | none | Google OAuth client ID. |
 | `TEFTERI_GOOGLE_CLIENT_SECRET` | none | Google OAuth client secret. |
+| `TEFTERI_RELEASE_REPO` | `bergercookie/tefteri` | GitHub repository whose releases hold the Android app; the Obtainium link in Settings points at it. |
 | `TEFTERI_SYNC_INTERVAL_MINUTES` | `60` | Minutes between two automatic syncs of all connections. Set `0` to turn them off. |
 | `TEFTERI_SESSION_LIFETIME_SECONDS` | `28800` | Session length. The default is 8 hours. |
 | `TEFTERI_LOGIN_MAX_FAILURES` | `5` | Wrong passwords that cause a block. |

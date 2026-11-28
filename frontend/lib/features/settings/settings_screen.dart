@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/settings_list.dart';
 import '../../core/shell.dart';
+import 'android_app_card.dart';
 import 'api_keys_card.dart';
 import 'hints_card.dart';
 import 'settings_transfer_card.dart';
@@ -24,6 +25,7 @@ class SettingsScreen extends StatelessWidget {
           footer: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const AndroidAppCard(),
               const ApiKeysCard(),
               const HintsCard(),
               const SettingsTransferCard(),

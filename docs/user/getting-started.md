@@ -26,6 +26,16 @@ On Android:
 2. Open the file. Let your phone install apps from this source if it asks.
 3. Start Tefteri.
 
+To keep the Android app in step with the server, use [Obtainium](https://obtainium.imranr.dev/):
+
+1. Open Settings in the web client or the Linux client, and find the card Android app.
+2. Scan the QR code with your phone, or open the link on your phone. Obtainium adds Tefteri and
+   installs the release of the version that the server runs.
+3. After the server is updated, use the new link or code from the same card. The link is for one
+   version, so the app never gets ahead of the server.
+
+The card has no link when the server is not a published release (for example a development build).
+
 In a web browser, open the address that your administrator gives you.
 
 The `nightly` pre-release has the newest packages. These packages are not tested as much as a

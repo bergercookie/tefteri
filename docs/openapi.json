@@ -1,6 +1,57 @@
 {
   "components": {
     "schemas": {
+      "AndroidAppOut": {
+        "description": "How to install the Android app that matches this server.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "obtainium_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtainium Link"
+          },
+          "qr": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Qr",
+            "type": "array"
+          },
+          "release_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Url"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "available",
+          "release_url",
+          "obtainium_link",
+          "qr"
+        ],
+        "title": "AndroidAppOut",
+        "type": "object"
+      },
       "AnnualReviewOut": {
         "description": "The whole read-only review of one planning year.",
         "properties": {
@@ -12087,6 +12138,28 @@
         "summary": "Legacy Goals",
         "tags": [
           "planning"
+        ]
+      }
+    },
+    "/api/v1/me/android-app": {
+      "get": {
+        "description": "Return the Obtainium link for the release that matches the server version.",
+        "operationId": "android_app_api_v1_me_android_app_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidAppOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Android App",
+        "tags": [
+          "android-app"
         ]
       }
     },
