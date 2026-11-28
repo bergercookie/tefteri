@@ -9,7 +9,7 @@ import 'package:tefteri/core/versions.dart';
 import 'package:tefteri/features/settings/versions_card.dart';
 
 Future<void> _pump(WidgetTester tester,
-    {PublishedRelease? latest, List<UpdateChannel>? asked}) async {
+    {PublishedRelease? latest, List<String>? asked}) async {
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -18,11 +18,10 @@ Future<void> _pump(WidgetTester tester,
       serverVersionProvider.overrideWith((ref, address) async => '1.3.0'),
       serverAddressProvider
           .overrideWith((_) => ServerAddress('https://t.example')),
-      releaseFetcherProvider.overrideWithValue((channel) async {
-        asked?.add(channel);
+      releaseFetcherProvider.overrideWithValue(() async {
+        asked?.add('latest');
         return latest ??
-            const PublishedRelease(
-                name: '1.4.0', post: null, url: '', label: '1.4.0');
+            const PublishedRelease(name: '1.4.0', url: '', label: '1.4.0');
       }),
     ],
     child: const MaterialApp(
@@ -45,24 +44,20 @@ void main() {
         '1.4.0 (build 2)');
   });
 
-  testWidgets('the update check follows the chosen channel', (tester) async {
-    final asked = <UpdateChannel>[];
+  testWidgets('the update check asks for the latest release', (tester) async {
+    final asked = <String>[];
     await _pump(tester,
         asked: asked,
-        latest: const PublishedRelease(
-            name: '1.5.0', post: null, url: 'u', label: '1.5.0'));
+        latest:
+            const PublishedRelease(name: '1.5.0', url: 'u', label: '1.5.0'));
+    // There is one way to check: the old choice of a Nightly channel is gone.
+    expect(find.text('Nightly'), findsNothing);
+    expect(find.byKey(const Key('update-channel')), findsNothing);
     await tester.tap(find.byKey(const Key('check-updates')));
     await tester.pumpAndSettle();
-    expect(asked, [UpdateChannel.standard]);
+    expect(asked, ['latest']);
     expect(find.text('A newer version is available: 1.5.0.'), findsOneWidget);
     expect(find.byKey(const Key('update-open')), findsOneWidget);
-
-    await tester.tap(find.text('Nightly'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('update-result')), findsNothing);
-    await tester.tap(find.byKey(const Key('check-updates')));
-    await tester.pumpAndSettle();
-    expect(asked, [UpdateChannel.standard, UpdateChannel.nightly]);
   });
 
   testWidgets('up to date says so', (tester) async {

@@ -28,8 +28,9 @@ On Android:
 
 In a web browser, open the address that your administrator gives you.
 
-The `nightly` pre-release has the newest packages. These packages are not tested as much as a
-release. Use them only to try new features.
+Every change that reaches the main branch becomes a new release, with a new version number. The
+newest release has the newest packages. In Settings, choose Check for updates to see if a newer
+version exists.
 
 ## Sign in for the first time
 

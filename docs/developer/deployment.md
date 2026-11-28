@@ -100,9 +100,9 @@ The folder `deploy/` has the container files:
 - `.env.example` is the template for the settings.
 - `deploy.just` has the recipes. Call them as `just deploy::<recipe>`.
 
-Tagged releases publish the image as `ghcr.io/bergercookie/tefteri:<version>` and
-`ghcr.io/bergercookie/tefteri:latest`. The nightly build publishes
-`ghcr.io/bergercookie/tefteri:nightly`.
+Every release publishes the image as `ghcr.io/bergercookie/tefteri:<version>` and
+`ghcr.io/bergercookie/tefteri:latest`. A release is made for each push to the main branch (see
+[Releases](releases.md)).
 
 To run the server with SQLite:
 
